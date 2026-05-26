@@ -244,118 +244,6 @@ window.PAL_RULES = {
 };
 
 // =========================================================================
-// SEED — Annuaire local de plongeurs (démonstration)
-// =========================================================================
-window.SEED_DIVERS = [
-  { id: "d1", nom: "Martin",  prenom: "Claire",     dn: "1978-03-12", licence: "A-29-118802", niveau: "E3",  qualifs: ["PN-C","TIV","RIFAP"], medical: "2025-09-12" },
-  { id: "d2", nom: "Roussel", prenom: "Thomas",     dn: "1985-07-04", licence: "A-29-220041", niveau: "E2",  qualifs: ["PN","RIFAP"], medical: "2025-10-21" },
-  { id: "d3", nom: "Nguyen",  prenom: "Linh",       dn: "1990-11-29", licence: "A-29-330099", niveau: "N4",  qualifs: ["PN","TIV"], medical: "2026-01-14" },
-  { id: "d4", nom: "Bernard", prenom: "Hugo",       dn: "1992-02-18", licence: "A-29-440112", niveau: "N3",  qualifs: ["PN"], medical: "2025-12-02" },
-  { id: "d5", nom: "Lefèvre", prenom: "Anaïs",      dn: "1988-05-22", licence: "A-29-550027", niveau: "N3",  qualifs: ["PN"], medical: "2026-02-08" },
-  { id: "d6", nom: "Dubois",  prenom: "Pierre",     dn: "1965-09-30", licence: "A-29-660188", niveau: "N4",  qualifs: ["PN-C","PTH-70","RIFAP"], medical: "2025-11-19" },
-  { id: "d7", nom: "Garcia",  prenom: "Inès",       dn: "1995-06-11", licence: "A-29-770201", niveau: "N2",  qualifs: [],     medical: "2025-08-30" },
-  { id: "d8", nom: "Moreau",  prenom: "Maxime",     dn: "1999-12-03", licence: "A-29-880345", niveau: "N2",  qualifs: ["PN"], medical: "2025-10-04" },
-  { id: "d9", nom: "Robin",   prenom: "Sandra",     dn: "1980-04-26", licence: "A-29-990412", niveau: "N1",  qualifs: [],     medical: "2026-03-15" },
-  { id: "d10", nom: "Caron",  prenom: "Yannick",    dn: "1972-08-14", licence: "A-29-101458", niveau: "N1",  qualifs: [],     medical: "2025-09-01" },
-  { id: "d11", nom: "Pichon", prenom: "Diane",      dn: "1986-01-20", licence: "A-29-112233", niveau: "GP",  qualifs: ["PN","RIFAP"], medical: "2026-01-08" },
-  { id: "d12", nom: "Olivier", prenom: "Karim",     dn: "1991-10-08", licence: "A-29-123344", niveau: "N3",  qualifs: ["PN","PSC1"], medical: "2025-12-17" }
-];
-
-// =========================================================================
-// SEED — Profil-type pré-rempli pour démo
-// =========================================================================
-window.SEED_PROFILE = {
-  date: "2026-05-31T09:30",
-  site: "Sec de l'Esquillade — Cap Sicié",
-  dp_nom: "Claire Martin",
-  dp_qual: "E3",
-  structure: "Club FFESSM associatif",
-  milieu: "Milieu naturel",
-  activite: "Mixte",
-  depart: "En bateau",
-  embarcation: "Bateau du club",
-  vhf: true,
-  chef_bord: true,
-  pavillon_alpha: true,
-  distance_cote: 1.2,
-  delai_secours: "30 min vers HIA Sainte-Anne — Toulon",
-  meteo: "Vent NE 10 nds, mer belle, courant faible NW, visibilité estimée 12-15 m.",
-  prof_max: "40 m",
-  paliers: true,
-  successive: false,
-  air: true,
-  nitrox: true,
-  nitrox_details: "EAN32 — MOD 40 m — PpO2 max 1.4 — 4 blocs analysés",
-  trimix: false,
-  oxygene_pur: false,
-  recycleur: false,
-  bloc_relais: false,
-  parachute_obligatoire: true,
-  mineurs: false,
-  formation: true,
-  formation_niveaux: ["N1","N2"],
-  etrangers: false,
-  handisub: false,
-  sec_surface: true,
-  plan_secours: true,
-  coords_secours: true,
-  o2: true,
-  trousse: true,
-  eau_potable: true,
-  rappel: true,
-  bouee_surface: true,
-  ens_niveau: "N2",
-  ens_exos: "Descente lestée, vidage masque, RSE 20→0m, gilet à la stab.",
-  ens_encadrants: "1 × E3 (DP), 1 × E2"
-};
-
-// =========================================================================
-// SEED — Palanquées pré-constituées pour la démo
-// =========================================================================
-window.SEED_PALANQUEES = [
-  {
-    id: "p1",
-    nom: "Palanquée 1 — Exploration tek",
-    membres: [
-      { diverId: "d6", role: "guide" },
-      { diverId: "d3", role: "autonome" },
-      { diverId: "d11", role: "autonome" }
-    ],
-    profMax: 38,
-    duree: 35,
-    dtr: 8,
-    melange: "Air"
-  },
-  {
-    id: "p2",
-    nom: "Palanquée 2 — Formation N2",
-    membres: [
-      { diverId: "d1", role: "encadrant" },
-      { diverId: "d7", role: "encadre" },
-      { diverId: "d8", role: "encadre" }
-    ],
-    profMax: 25,
-    duree: 35,
-    dtr: 5,
-    melange: "Air"
-  },
-  {
-    id: "p3",
-    nom: "Palanquée 3 — Exploration Nitrox",
-    membres: [
-      { diverId: "d2", role: "guide" },
-      { diverId: "d4", role: "autonome" },
-      { diverId: "d5", role: "autonome" },
-      { diverId: "d12", role: "autonome" }
-    ],
-    profMax: 32,
-    duree: 40,
-    dtr: 6,
-    melange: "EAN32"
-  }
-];
-
-// =========================================================================
 // Roles disponibles dans une palanquée
 // =========================================================================
 window.PAL_ROLES = [
@@ -364,15 +252,6 @@ window.PAL_ROLES = [
   { id: "autonome",  label: "Autonome" },
   { id: "encadre",   label: "Encadré" },
   { id: "serre",     label: "Serre-file" }
-];
-
-// =========================================================================
-// SEED — Historique récent (page d'accueil)
-// =========================================================================
-window.SEED_RECENT = [
-  { id: "r1", date: "24 mai 2026 — 09:00", titre: "Le Donator — exploration", site: "Le Donator", pal: 4, prof: "55 m", tags: ["Bateau","Air","Nitrox"] },
-  { id: "r2", date: "17 mai 2026 — 14:00", titre: "Cap Lardier — formation N1", site: "Cap Lardier", pal: 2, prof: "18 m", tags: ["Du bord","Enseignement"] },
-  { id: "r3", date: "10 mai 2026 — 09:30", titre: "Sec du Magaud — exploration", site: "Sec du Magaud", pal: 3, prof: "32 m", tags: ["Bateau","Nitrox"] }
 ];
 
 // =========================================================================

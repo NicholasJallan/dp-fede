@@ -1,0 +1,4 @@
+backend/config.php
+*.sqlite
+*.log
+.DS_Store

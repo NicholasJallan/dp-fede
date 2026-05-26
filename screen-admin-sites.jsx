@@ -3,6 +3,141 @@
 const MILIEUX_LIST = ['En mer','Lac','Carrière','Piscine','Autre'];
 const emptySite = () => ({ nom: '', milieu: 'En mer', profondeur_max: '', coordonnees: null, notes: '' });
 
+// Default map center — Méditerranée française
+const MAP_DEFAULT = { lat: 43.3, lng: 5.4 };
+
+// ── MapPicker ──────────────────────────────────────────────────────────────
+function MapPicker({ coordonnees, onChange }) {
+  const containerRef = React.useRef(null);
+  const mapRef       = React.useRef(null);
+  const markerRef    = React.useRef(null);
+  const searchRef    = React.useRef(null);
+  const [ready, setReady] = useState(!!window.__gmapsLoaded);
+
+  // Wait for Maps API to load
+  useEffect(() => {
+    if (window.__gmapsLoaded) { setReady(true); return; }
+    const onReady = () => setReady(true);
+    window.addEventListener('gmaps:ready', onReady);
+    return () => window.removeEventListener('gmaps:ready', onReady);
+  }, []);
+
+  // Init map once API + DOM are ready
+  useEffect(() => {
+    if (!ready || !containerRef.current) return;
+
+    const center = (coordonnees?.lat && coordonnees?.lng)
+      ? { lat: Number(coordonnees.lat), lng: Number(coordonnees.lng) }
+      : MAP_DEFAULT;
+
+    const map = new google.maps.Map(containerRef.current, {
+      center,
+      zoom: (coordonnees?.lat && coordonnees?.lng) ? 13 : 7,
+      mapTypeId: 'hybrid',
+      mapTypeControl: true,
+      mapTypeControlOptions: {
+        style: google.maps.MapTypeControlStyle.DROPDOWN_MENU,
+        mapTypeIds: ['roadmap', 'satellite', 'hybrid', 'terrain'],
+      },
+      streetViewControl: false,
+      fullscreenControl: false,
+    });
+    mapRef.current = map;
+
+    // Initial marker if editing existing site
+    if (coordonnees?.lat && coordonnees?.lng) {
+      const m = new google.maps.Marker({ position: center, map, draggable: true });
+      m.addListener('dragend', e =>
+        onChange({ lat: e.latLng.lat(), lng: e.latLng.lng() })
+      );
+      markerRef.current = m;
+    }
+
+    // Click to place/move marker
+    map.addListener('click', e => {
+      const lat = e.latLng.lat();
+      const lng = e.latLng.lng();
+      if (markerRef.current) {
+        markerRef.current.setPosition(e.latLng);
+      } else {
+        const m = new google.maps.Marker({ position: e.latLng, map, draggable: true });
+        m.addListener('dragend', ev =>
+          onChange({ lat: ev.latLng.lat(), lng: ev.latLng.lng() })
+        );
+        markerRef.current = m;
+      }
+      onChange({ lat, lng });
+    });
+
+    // Search box (Places Autocomplete)
+    if (searchRef.current) {
+      const ac = new google.maps.places.Autocomplete(searchRef.current, {
+        types: ['geocode', 'establishment'],
+      });
+      ac.bindTo('bounds', map);
+      ac.addListener('place_changed', () => {
+        const place = ac.getPlace();
+        if (!place.geometry?.location) return;
+        map.setCenter(place.geometry.location);
+        map.setZoom(14);
+        const lat = place.geometry.location.lat();
+        const lng = place.geometry.location.lng();
+        if (markerRef.current) {
+          markerRef.current.setPosition(place.geometry.location);
+        } else {
+          const m = new google.maps.Marker({
+            position: place.geometry.location, map, draggable: true,
+          });
+          m.addListener('dragend', ev =>
+            onChange({ lat: ev.latLng.lat(), lng: ev.latLng.lng() })
+          );
+          markerRef.current = m;
+        }
+        onChange({ lat, lng });
+        // Autofill name if field is empty — caller handles this via onNameSuggest
+        if (place.name) window.__lastPlaceName = place.name;
+      });
+    }
+
+    return () => {
+      if (markerRef.current) markerRef.current.setMap(null);
+      markerRef.current = null;
+      mapRef.current = null;
+    };
+  }, [ready]);
+
+  if (!ready) {
+    return (
+      <div className="map-placeholder">
+        <div className="muted" style={{ fontSize: 13 }}>Chargement de la carte…</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="map-picker-wrap">
+      <input
+        ref={searchRef}
+        className="input"
+        placeholder="Rechercher un lieu, une épave, un site…"
+        style={{ marginBottom: 8 }}
+      />
+      <div ref={containerRef} className="map-canvas" />
+      {coordonnees?.lat && (
+        <div className="map-coords">
+          {coordonnees.lat.toFixed(6)}, {coordonnees.lng.toFixed(6)}
+          <a
+            href={`https://www.google.com/maps?q=${coordonnees.lat},${coordonnees.lng}`}
+            target="_blank" rel="noopener noreferrer"
+            style={{ marginLeft: 8, fontSize: 11 }}
+          >Ouvrir dans Maps ↗</a>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── ScreenAdminSites ───────────────────────────────────────────────────────
 function ScreenAdminSites() {
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +231,15 @@ function ScreenAdminSites() {
               <div className="meta-row">
                 {s.milieu && <Pill>{s.milieu}</Pill>}
                 {s.profondeur_max != null && <Pill tone="marine">max {s.profondeur_max} m</Pill>}
+                {s.coordonnees?.lat && (
+                  <a
+                    href={`https://www.google.com/maps?q=${s.coordonnees.lat},${s.coordonnees.lng}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="muted" style={{ fontSize: 11 }}
+                  >
+                    📍 {Number(s.coordonnees.lat).toFixed(4)}, {Number(s.coordonnees.lng).toFixed(4)}
+                  </a>
+                )}
               </div>
               {s.notes && <small className="muted">{s.notes}</small>}
             </div>
@@ -111,7 +255,7 @@ function ScreenAdminSites() {
       {/* Modal édition */}
       {editing !== null && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
-          <div className="modal">
+          <div className="modal modal-wide">
             <div className="modal-head">
               <h3>{editing === 'new' ? 'Nouveau site' : `Modifier ${editing.nom}`}</h3>
               <button className="x" onClick={closeModal}>×</button>
@@ -122,7 +266,7 @@ function ScreenAdminSites() {
               <div className="field">
                 <label>Nom du site *</label>
                 <input className="input" value={form.nom} onChange={e => setField('nom', e.target.value)}
-                  placeholder="Épave du Rhône, Lac de Salanfe…" />
+                  placeholder="Épave du Rhône, Lac de Salanfe, Sec de…" />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
@@ -140,21 +284,19 @@ function ScreenAdminSites() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
-                <div className="field">
-                  <label>Latitude</label>
-                  <input className="input" type="number" step="0.000001"
-                    value={form.coordonnees?.lat || ''}
-                    onChange={e => setField('coordonnees', { ...(form.coordonnees || {}), lat: parseFloat(e.target.value) || null })}
-                    placeholder="46.1234" />
-                </div>
-                <div className="field">
-                  <label>Longitude</label>
-                  <input className="input" type="number" step="0.000001"
-                    value={form.coordonnees?.lng || ''}
-                    onChange={e => setField('coordonnees', { ...(form.coordonnees || {}), lng: parseFloat(e.target.value) || null })}
-                    placeholder="7.5678" />
-                </div>
+              <div className="field" style={{ marginTop: 12 }}>
+                <label>Localisation — cliquer sur la carte ou rechercher un lieu</label>
+                <MapPicker
+                  coordonnees={form.coordonnees}
+                  onChange={coords => {
+                    setField('coordonnees', coords);
+                    // Auto-fill name from Places search if still empty
+                    if (!form.nom && window.__lastPlaceName) {
+                      setField('nom', window.__lastPlaceName);
+                      window.__lastPlaceName = null;
+                    }
+                  }}
+                />
               </div>
 
               <div className="field" style={{ marginTop: 10 }}>

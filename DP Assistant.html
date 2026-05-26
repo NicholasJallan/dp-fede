@@ -16,8 +16,17 @@
 
   <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <!-- Remplacer par le Client ID Google OAuth 2.0 réel -->
   <script>window.GOOGLE_CLIENT_ID = "813155202106-jlddu3nmfuq552p9673odcegrf5kuke7.apps.googleusercontent.com";</script>
+
+  <!-- Google Maps JS API (Places) -->
+  <script>
+    window.__gmapsLoaded = false;
+    window.__gmapsReady = function() {
+      window.__gmapsLoaded = true;
+      window.dispatchEvent(new Event('gmaps:ready'));
+    };
+  </script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCTMJRl4wywovs3dkkDMJgmhAsMsHofYCM&libraries=places&callback=__gmapsReady" async defer></script>
 
   <!-- React + Babel (pinned) -->
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>

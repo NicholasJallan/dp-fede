@@ -1297,3 +1297,36 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 
 /* text-coral utility */
 .text-coral { color: var(--coral); }
+
+/* ===== Modal wide (sites + map) ===== */
+.modal-wide { max-width: 680px; }
+
+/* ===== Map picker ===== */
+.map-picker-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.map-canvas {
+  width: 100%;
+  height: 300px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+}
+.map-placeholder {
+  width: 100%;
+  height: 300px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.map-coords {
+  margin-top: 6px;
+  font-size: 12px;
+  font-family: var(--t-mono);
+  color: var(--ink-3);
+}

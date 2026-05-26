@@ -1,83 +1,77 @@
 # CLAUDE.md — DP Assistant
 
 Outil d'aide au Directeur de Plongée (FFESSM / Code du Sport).
-Application web standalone : React 18 + Babel CDN, zéro build, zéro dépendances.
+Frontend : React 18 + Babel CDN, zéro build. Backend : PHP 7.4 + MariaDB sur Raspberry Pi.
 
-## Lancer localement
+## Architecture
 
-```bash
-python3 -m http.server 8000
-# puis ouvrir http://localhost:8000/DP%20Assistant.html
+```
+/var/www/html/dp-fede/       ← fichiers statiques (nginx)
+  DP Assistant.html / index.html
+  api.js, auth-context.jsx, app.jsx, screen-*.jsx
+  components.jsx, data.js, styles.css
+
+/var/www/dp-fede-api/        ← backend PHP (nginx → PHP-FPM)
+  index.php, lib/, routes/, migrations/
+
+/etc/dp-fede/config.php      ← config secrète (hors web root, chown root:www-data 640)
+
+MariaDB : base dp_fede, user dp_fede_user@localhost
 ```
 
-## Déployer sur le Raspberry Pi
+- Auth : Google OAuth 2.0 (Google Identity Services) — pas de mot de passe
+- Annuaire plongeurs et sites : per-user, stockés en MariaDB
+- Session : cookie HttpOnly SameSite=Lax + CSRF double-submit cookie
+- Premier utilisateur connecté = admin automatiquement
 
-Le Pi sert le site depuis `/var/www/html/dp-fede` via nginx.
-Pas de git sur le Pi — déployer par rsync :
+## Déployer le frontend
 
 ```bash
-# Projet complet
 rsync -av --rsync-path="sudo rsync" \
-  --exclude='.git' \
+  --exclude='.git' --exclude='backend/' \
   /Users/nicholas/projects/dpchecklist/ \
   pi@bullesenvalais.ch:/var/www/html/dp-fede/
 
-# Toujours corriger les permissions après rsync
-ssh pi@bullesenvalais.ch "sudo chown -R www-data:www-data /var/www/html/dp-fede"
+ssh pi@bullesenvalais.ch "sudo chown -R www-data:www-data /var/www/html/dp-fede && \
+  sudo cp '/var/www/html/dp-fede/DP Assistant.html' /var/www/html/dp-fede/index.html && \
+  sudo chown www-data:www-data /var/www/html/dp-fede/index.html"
 ```
 
-> L'entrée nginx sert `index.html` (copie de `DP Assistant.html`).
-> Après rsync, répliquer manuellement si `DP Assistant.html` a changé :
-> `ssh pi@bullesenvalais.ch "sudo cp '/var/www/html/dp-fede/DP Assistant.html' /var/www/html/dp-fede/index.html && sudo chown www-data:www-data /var/www/html/dp-fede/index.html"`
+## Déployer le backend PHP
 
-Après modification de la config nginx :
+```bash
+rsync -av --rsync-path="sudo rsync" \
+  /Users/nicholas/projects/dpchecklist/backend/ \
+  pi@bullesenvalais.ch:/var/www/dp-fede-api/
+
+ssh pi@bullesenvalais.ch "sudo chown -R www-data:www-data /var/www/dp-fede-api"
+```
+
+> Ne jamais déployer `backend/config.php` (gitignored) — la config vit sur le Pi dans `/etc/dp-fede/config.php`.
+
+## Accès
+
+- **URL** : https://dp-fede.bullesenvalais.ch
+- **SSH Pi** : `pi@bullesenvalais.ch`
+- **Frontend** : `/var/www/html/dp-fede/`
+- **Backend PHP** : `/var/www/dp-fede-api/`
+- **Config secrète** : `/etc/dp-fede/config.php`
+- **DB** : MariaDB `dp_fede` / user `dp_fede_user@localhost`
+- **nginx** : `/etc/nginx/sites-available/bullesenvalais` (bloc dp-fede en bas)
+- **GitHub** : https://github.com/NicholasJallan/dp-fede
+- **Google OAuth Client ID** : `813155202106-jlddu3nmfuq552p9673odcegrf5kuke7.apps.googleusercontent.com`
+- **GCP Project** : `api-project-813155202106`
+
+## Nginx après modification
+
 ```bash
 ssh pi@bullesenvalais.ch "sudo nginx -t && sudo systemctl reload nginx"
 ```
 
-## Accès
-
-- **URL** : https://dp-fede.bullesenvalais.ch *(HTTPS actif une fois DNS + cert en place)*
-- **SSH Pi** : `pi@bullesenvalais.ch`
-- **Dossier web** : `/var/www/html/dp-fede/`
-- **Config nginx** : `/etc/nginx/sites-available/bullesenvalais` (bloc `dp-fede` en bas du fichier)
-- **GitHub** : https://github.com/NicholasJallan/dp-fede
-
-## DNS à créer (requis pour HTTPS)
-
-Ajouter chez le registrar / DNS provider :
-
-| Nom | Type | Valeur |
-|-----|------|--------|
-| `dp-fede` | A | `213.230.59.20` |
-
-Une fois le DNS propagé, relancer certbot pour étendre le certificat :
-
-```bash
-ssh pi@bullesenvalais.ch "sudo certbot certonly --webroot \
-  -w /var/www/html/dive \
-  --expand \
-  -d bullesenvalais.ch \
-  -d dive.bullesenvalais.ch \
-  -d shop.bullesenvalais.ch \
-  -d www.bullesenvalais.ch \
-  -d dp-fede.bullesenvalais.ch \
-  --non-interactive --agree-tos && sudo systemctl reload nginx"
-```
-
-## Architecture
-
-Même stack que `bulles_en_valais/` (dive.bullesenvalais.ch) :
-- React 18 + Babel Standalone depuis unpkg CDN (SRI hashes)
-- JSX transpiré **dans le navigateur** à l'exécution
-- Chaque fichier `.jsx` expose ses composants via `Object.assign(window, {...})`
-- `data.js` contient toutes les règles métier — modifiable sans toucher au code
-
 ## Données métier
 
-Tout est dans `data.js` (aucun build requis pour modifier) :
+Tout est dans `data.js` (aucun build requis) :
 - `QUESTIONS` — 8 sections, questions conditionnelles
 - `CHECKLIST_RULES` — 5 phases, items conditionnels
 - `LEVELS` / `QUALIFICATIONS` — niveaux FFESSM et qualifs complémentaires
 - `PAL_RULES` — règles de composition des palanquées
-- `SEED_*` — données de démonstration

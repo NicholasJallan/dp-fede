@@ -34,7 +34,8 @@ window.DP_DEPTH_RULES = {
 window.getProfOptions = function(niveauEncadrant, activite) {
   const isExplo = !activite || activite === 'Exploration';
   const rules = window.DP_DEPTH_RULES[niveauEncadrant] || { formation: 60, exploration: 60 };
-  const max = isExplo ? rules.exploration : rules.formation;
+  // Si exploration = 0 pour ce DP (E1, E2), fallback sur formation
+  const max = isExplo ? (rules.exploration || rules.formation) : rules.formation;
   if (max === 0) return [];
   const all = [6, 12, 20, 40, 60, 70, 80];
   return all.filter(d => d <= max).map(d => d + ' m').concat(max >= 80 ? ['>80 m'] : []);
@@ -113,11 +114,6 @@ window.QUESTIONS = [
         hint:'Filtré sur E1→E4 et N5 — la qualification est déduite automatiquement.' },
       { id:'structure', label:'Type de structure', type:'structure-display',
         hint:'Renseigné dans Paramètres → Mon compte.' },
-      { id:'milieu',    label:'Milieu de plongée', type:'choice',
-        options:['Milieu naturel (mer)','Milieu naturel (lac/carrière)','Piscine ≤ 6 m','Fosse > 6 m'], cols:2, required:true },
-      { id:'activite',  label:'Activité', type:'activite-choice',
-        options:['Exploration','Enseignement','Mixte','Baptême'], cols:4, required:true,
-        ref:'CdS A322-77', hint:'Bloqué sur Exploration si le DP est N5.' },
     ]
   },
   {
@@ -321,11 +317,13 @@ window.matchCondition = function(when, answers) {
 };
 
 // Résume le milieu en : 'mer' | 'lac' | 'piscine' | 'fosse'
+// Gère les valeurs site ('En mer', 'Lac', 'Carrière', 'Piscine') et les anciennes valeurs question
 window.getMilieuType = function(milieu) {
   if (!milieu) return 'mer';
-  if (milieu.includes('lac') || milieu.includes('carrière')) return 'lac';
-  if (milieu.includes('Piscine')) return 'piscine';
-  if (milieu.includes('Fosse'))   return 'fosse';
+  const m = milieu.toLowerCase();
+  if (m.includes('lac') || m.includes('carrière') || m.includes('carriere')) return 'lac';
+  if (m.includes('piscine')) return 'piscine';
+  if (m.includes('fosse'))   return 'fosse';
   return 'mer';
 };
 

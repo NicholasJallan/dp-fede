@@ -71,7 +71,31 @@ ssh pi@bullesenvalais.ch "sudo nginx -t && sudo systemctl reload nginx"
 ## Données métier
 
 Tout est dans `data.js` (aucun build requis) :
-- `QUESTIONS` — 8 sections, questions conditionnelles
+- `QUESTIONS` — 8 sections A→H, questions conditionnelles
 - `CHECKLIST_RULES` — 5 phases, items conditionnels
 - `LEVELS` / `QUALIFICATIONS` — niveaux FFESSM et qualifs complémentaires
-- `PAL_RULES` — règles de composition des palanquées
+- `APTITUDE_MAP` — mapping niveau → aptitudes mandatory/optional
+- `DP_DEPTH_RULES` — profondeurs max par niveau DP (exploration / formation)
+- `getMilieuType(milieu)` — normalise 'En mer'/'Lac'/'Carrière'/'Piscine'/'Fosse' → 'mer'/'lac'/'piscine'/'fosse'
+- `getProfOptions(dpQual, activite)` — liste des profondeurs disponibles ; si exploration=0 pour le DP (E1/E2), fallback sur formation
+- `getDiverAptitudes(diver, isExploration)` — aptitudes disponibles pour un plongeur selon isExploration
+- `getPalType(membres)` — type de palanquée : 'bapteme'/'formation'/'guidee'/'exploration'
+- `calcDTR(profMax)` — DTR sans déco : Math.ceil(profMax / 10)
+
+## Règles de dérivation automatique (ne pas re-questionner l'utilisateur)
+
+- **`answers.milieu`** : propagé depuis `selectedSite.milieu` dans `screen-profil.jsx` (useEffect sur `answers.site_id`). Ne pas afficher de question milieu en section A.
+- **`answers.activite`** : dérivé dans `screen-palanquees.jsx` (useEffect sur `palanquees`) — 'Enseignement' si palanquée avec E1→E4, 'Exploration' sinon, 'Mixte' si les deux. Ne pas afficher de question activité en section A.
+- **`isExploration`** dans `screen-palanquees.jsx` = `answers.dp_qual === 'N5'` (N5 ne peut faire qu'exploration). Ce n'est PAS dérivé de `answers.activite`.
+- **`answers.depart_bord` / `answers.depart_bateau`** : propagés depuis `selectedSite` (même useEffect).
+- **`answers.dp_qual` / `answers.dp_nom`** : propagés depuis le plongeur sélectionné comme DP (useEffect sur `answers.dp_id`).
+
+## Layout
+
+- `.main` dans `styles.css` n'a PAS de `max-width` ni `margin: auto` — il est pleine largeur comme la topbar et le stepper. Si on les rajoute, le contenu se décale visuellement vers la droite.
+
+## Pièges connus
+
+- `buildQualifs()` dans `backend/routes/divers.php` : utiliser `$recs` (variable locale filtrée) et NON `compact('recycleurs')` qui capturerait le paramètre de fonction (liste complète).
+- `DIPLOMES_PRO` = `['BEES1','DEJEPS','DESJEPS','Autre']` — MF1/MF2 sont des brevets fédéraux, pas des diplômes professionnels d'État.
+- `getMilieuType()` est case-insensitive (`.toLowerCase()`) pour gérer les valeurs sites ('Lac', 'Carrière') et les anciennes valeurs questions.

@@ -40,18 +40,33 @@ function ScreenFiche({ answers, palanquees, divers }) {
     return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
   };
 
+  const diffMinutes = (startHHMM, endHHMM) => {
+    const [sh, sm] = startHHMM.split(':').map(Number);
+    const [eh, em] = endHHMM.split(':').map(Number);
+    let diff = (eh * 60 + em) - (sh * 60 + sm);
+    if (diff < 0) diff += 24 * 60; // passage minuit
+    return diff;
+  };
+
   const startDive = (palId) =>
     setHeuresDebut(prev => ({ ...prev, [palId]: nowHHMM() }));
 
   const openFinModal = (palId, pal) => {
-    setFinForm({ duree:'', profMax: String(pal.profMax || ''), dtr: String(window.calcDTR(pal.profMax)) });
-    setFinModal(palId);
+    const endTime = nowHHMM();
+    const debut   = heuresDebut[palId];
+    const elapsed = debut ? diffMinutes(debut, endTime) : null;
+    setFinForm({
+      duree:   elapsed !== null ? String(elapsed) : '',
+      profMax: String(pal.profMax || ''),
+      dtr:     String(window.calcDTR(pal.profMax)),
+    });
+    setFinModal({ palId, endTime, elapsed });
   };
 
   const confirmFin = () => {
     if (!finModal) return;
-    setHeuresFin(prev => ({ ...prev, [finModal]: nowHHMM() }));
-    setRealises(prev => ({ ...prev, [finModal]: { ...finForm } }));
+    setHeuresFin(prev => ({ ...prev, [finModal.palId]: finModal.endTime }));
+    setRealises(prev => ({ ...prev, [finModal.palId]: { ...finForm } }));
     setFinModal(null);
   };
 
@@ -235,14 +250,20 @@ function ScreenFiche({ answers, palanquees, divers }) {
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setFinModal(null)}>
           <div className="modal" style={{ maxWidth:420 }}>
             <div className="modal-head">
-              <h3>Fin de plongée — P{palanquees.findIndex(p => p.id === finModal) + 1}</h3>
+              <h3>Fin de plongée — P{palanquees.findIndex(p => p.id === finModal.palId) + 1}</h3>
               <button className="x" onClick={() => setFinModal(null)}>×</button>
             </div>
             <div className="modal-body" style={{ display:'grid', gap:12 }}>
               <div className="field">
-                <label>Durée réelle (min)</label>
-                <input className="input" type="number" min="1" max="240"
-                  value={finForm.duree} onChange={e => setFinForm(f => ({ ...f, duree:e.target.value }))}
+                <label>Durée réelle (min){finModal.elapsed !== null ? ` — max ${finModal.elapsed} min` : ''}</label>
+                <input className="input" type="number" min="1" max={finModal.elapsed ?? 240}
+                  value={finForm.duree}
+                  onChange={e => {
+                    const v = parseInt(e.target.value, 10);
+                    const max = finModal.elapsed;
+                    const clamped = max !== null && v > max ? String(max) : e.target.value;
+                    setFinForm(f => ({ ...f, duree: clamped }));
+                  }}
                   placeholder="ex. 42" />
               </div>
               <div className="field">

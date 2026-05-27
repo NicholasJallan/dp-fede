@@ -55,7 +55,6 @@ function SitePicker({ value, sites, setSites, onChange, answers }) {
   };
 
   const selected = sites.find(s => s.id === value);
-  const milieuType = window.getMilieuType(answers.milieu);
 
   return (
     <div>
@@ -218,16 +217,16 @@ function ScreenProfil({ answers, setAnswer, derived, divers, sites, setSites }) 
   // Site sélectionné
   const selectedSite = useMemo(() => sites.find(s => s.id === answers.site_id), [sites, answers.site_id]);
 
-  // Quand DP change → propager dp_qual + verrouiller activité si N5
+  // Quand DP change → propager dp_qual
   useEffect(() => {
     setAnswer('dp_qual', dpQual || '');
     setAnswer('dp_nom', selectedDP ? diverFullName(selectedDP) : '');
-    if (dpN5 && answers.activite !== 'Exploration') setAnswer('activite', 'Exploration');
   }, [answers.dp_id]);
 
-  // Quand site change → propager depart_bord/bateau
+  // Quand site change → propager milieu + depart_bord/bateau
   useEffect(() => {
     if (selectedSite) {
+      setAnswer('milieu',        selectedSite.milieu);
       setAnswer('depart_bord',   selectedSite.depart_bord);
       setAnswer('depart_bateau', selectedSite.depart_bateau);
       setAnswer('site_nom',      selectedSite.nom);
@@ -286,7 +285,7 @@ function ScreenProfil({ answers, setAnswer, derived, divers, sites, setSites }) 
               <b>{diverFullName(selectedDP)}</b> ·{' '}
               <Pill tone="ink">{dpQual}</Pill>
               {selectedDP.diplome_pro && <Pill tone="marine" style={{ marginLeft:4 }}>{selectedDP.diplome_pro}</Pill>}
-              {dpN5 && <Alert tone="info" style={{ marginTop:6 }}>N5 : activité forcée sur Exploration.</Alert>}
+              {dpN5 && <Alert tone="info" style={{ marginTop:6 }}>N5 : exploration uniquement — aptitudes E1→E4 non disponibles en palanquées.</Alert>}
             </div>
           )}
         </Field>
@@ -299,19 +298,6 @@ function ScreenProfil({ answers, setAnswer, derived, divers, sites, setSites }) 
           <div className="muted" style={{ padding:'8px 0', fontStyle: structureLabel ? 'normal' : 'italic' }}>
             {structureLabel || 'Non renseigné — à définir dans Paramètres → Mon compte'}
             {user?.club_nom ? <span style={{ marginLeft:8, color:'var(--ink-2)' }}>· {user.club_nom}</span> : null}
-          </div>
-        </Field>
-      );
-    }
-
-    if (q.id === 'activite') {
-      return (
-        <Field key={q.id} label={q.label} hint={dpN5 ? 'Bloqué sur Exploration (DP est N5).' : q.hint} regRef={q.ref} required={q.required}>
-          <div className={`opt-group col-4 ${dpN5 ? 'locked-group' : ''}`}>
-            {q.options.map(o => (
-              <Opt key={o} label={o} checked={val === o}
-                onClick={() => !dpN5 && set(o)} />
-            ))}
           </div>
         </Field>
       );

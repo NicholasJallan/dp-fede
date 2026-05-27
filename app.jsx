@@ -89,7 +89,7 @@ function AppInner() {
     if (answers.depart_bateau && !answers.vhf) {
       notes.push({ tone:"warn", text:"Sortie en bateau sans VHF déclarée — moyen de communication à confirmer." });
     }
-    if (answers.milieu === "Piscine ≤ 6 m") {
+    if (window.getMilieuType(answers.milieu) === 'piscine') {
       notes.push({ tone:"info", text:"En piscine ≤ 6 m : la fiche de sécurité n'est pas obligatoire (Art. A322-98)." });
     }
     return { notes };
@@ -260,7 +260,7 @@ function AppInner() {
             <ScreenPalanquees
               divers={divers} setDivers={setDivers}
               palanquees={palanquees} setPalanquees={setPalanquees}
-              answers={answers}
+              answers={answers} setAnswer={setAnswer}
             />
           )}
           {screen === "checklist" && (

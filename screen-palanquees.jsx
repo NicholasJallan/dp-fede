@@ -32,7 +32,7 @@ function validatePal(pal, diversById, answers) {
     return issues;
   }
 
-  const isExplo = !answers.activite || answers.activite === 'Exploration';
+  const isExplo = answers.dp_qual === 'N5';
   const milieu  = window.getMilieuType(answers.milieu);
   const apts    = membres.map(m => m.aptitude || '');
   const type    = window.getPalType(pal.membres);
@@ -120,12 +120,21 @@ function validatePal(pal, diversById, answers) {
   return issues;
 }
 
-function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answers }) {
+function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answers, setAnswer }) {
   const [filter, setFilter] = useState('');
   const [showQuickDiver, setShowQuickDiver] = useState(false);
 
-  const isExploration = !answers.activite || answers.activite === 'Exploration';
+  // N5 → exploration uniquement (aptitudes E1-E4 bloquées)
+  const isExploration = answers.dp_qual === 'N5';
   const dpQual = answers.dp_qual || '';
+
+  // Dériver activité depuis les aptitudes utilisées en palanquées
+  useEffect(() => {
+    if (!palanquees.length) { setAnswer('activite', 'Exploration'); return; }
+    const hasEns = palanquees.some(p => p.membres.some(m => ['E1','E2','E3','E4'].includes(m.aptitude)));
+    const hasExp = palanquees.some(p => p.membres.some(m => !['E1','E2','E3','E4'].includes(m.aptitude)));
+    setAnswer('activite', (hasEns && hasExp) ? 'Mixte' : hasEns ? 'Enseignement' : 'Exploration');
+  }, [palanquees]);
 
   const diversById = useMemo(() => {
     const m = {}; divers.forEach(d => m[d.id] = d); return m;
@@ -211,7 +220,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
       </div>
 
       <Alert tone={dpQualOK.tone}>{dpQualOK.text}</Alert>
-      {isExploration && <Alert tone="info">Mode Exploration — aptitudes E1→E4 indisponibles.</Alert>}
+      {isExploration && <Alert tone="info">DP N5 — aptitudes E1→E4 non disponibles (exploration uniquement).</Alert>}
 
       <div className="divers-grid">
         {/* Annuaire */}

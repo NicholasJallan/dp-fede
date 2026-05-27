@@ -2,7 +2,7 @@
 
 const NIVEAUX_PLONGEUR  = ['N1','N2','N3'];
 const NIVEAUX_ENCADRANT = ['N4','N5','E1','E2','E3','E4'];
-const DIPLOMES_PRO      = ['MF1','MF2','BEES1','DEJEPS','DESJEPS','Autre'];
+const DIPLOMES_PRO      = ['BEES1','DEJEPS','DESJEPS','Autre'];
 const RECYCLEURS_LIST   = ['Revo','AP','Triton','JJccr','Xccr','Megalodon','Shark','Submatix','Autre'];
 
 const emptyDiver = () => ({

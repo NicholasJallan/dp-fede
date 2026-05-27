@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 $NIVEAUX_PLONGEUR  = ['N1','N2','N3'];
 $NIVEAUX_ENCADRANT = ['N4','N5','E1','E2','E3','E4'];
-$DIPLOMES_PRO      = ['MF1','MF2','BEES1','DEJEPS','DESJEPS','Autre'];
+$DIPLOMES_PRO      = ['BEES1','DEJEPS','DESJEPS','Autre'];
 $RECYCLEURS_OK     = ['Revo','AP','Triton','JJccr','Xccr','Megalodon','Shark','Submatix','Autre'];
 
 // GET /api/divers
@@ -114,7 +114,8 @@ function buildQualifs(Validate $v, array $diplomes, array $recycleurs): array {
     $diplome   = in_array($v->str('diplome_pro'), $diplomes, true) ? $v->str('diplome_pro') : null;
     $rifap     = (bool)($v->nullable('rifap') ?? false);
     $tiv       = (bool)($v->nullable('tiv')   ?? false);
-    return compact('nitrox', 'trimix', 'recycleurs', 'diplome', 'rifap', 'tiv');
+    return ['nitrox' => $nitrox, 'trimix' => $trimix, 'recycleurs' => $recs,
+            'diplome' => $diplome, 'rifap' => $rifap, 'tiv' => $tiv];
 }
 
 function decodeDiver(array $row): array {

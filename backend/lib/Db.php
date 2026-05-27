@@ -23,14 +23,22 @@ class Db {
     private static function migrate(): void {
         $pdo = self::$pdo;
 
-        // Quick check — run migration only if users table absent
+        // Migration 001 — tables initiales
         $exists = $pdo->query("SHOW TABLES LIKE 'users'")->fetchColumn();
-        if ($exists) return;
+        if (!$exists) {
+            $sql = file_get_contents(__DIR__ . '/../migrations/001_init.sql');
+            foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
+                $pdo->exec($stmt);
+            }
+        }
 
-        $sql = file_get_contents(__DIR__ . '/../migrations/001_init.sql');
-        // Split on ; to execute statement by statement
-        foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
-            $pdo->exec($stmt);
+        // Migration 002 — colonnes v2 (idempotente grâce à IF NOT EXISTS)
+        $hasCol = $pdo->query("SHOW COLUMNS FROM divers LIKE 'niveau_plongeur'")->fetchColumn();
+        if (!$hasCol) {
+            $sql = file_get_contents(__DIR__ . '/../migrations/002_schema_v2.sql');
+            foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
+                $pdo->exec($stmt);
+            }
         }
     }
 

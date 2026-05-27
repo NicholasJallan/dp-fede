@@ -8,6 +8,7 @@ function ScreenAccount() {
     club_nom: user?.club_nom || '',
     club_numero: user?.club_numero || '',
     club_siret: user?.club_siret || '',
+    structure_type: user?.structure_type || '',
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -16,9 +17,7 @@ function ScreenAccount() {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const onSave = async () => {
-    setSaving(true);
-    setError('');
-    setSaved(false);
+    setSaving(true); setError(''); setSaved(false);
     try {
       const updated = await api.auth.update(form);
       setUser(updated);
@@ -31,12 +30,19 @@ function ScreenAccount() {
     }
   };
 
+  const STRUCTURE_TYPES = [
+    { value:'club',  label:'Club FFESSM associatif' },
+    { value:'sca',   label:'Structure Commerciale Agréée (SCA)' },
+    { value:'csa',   label:'Convention de Section d\'Activité (CSA)' },
+    { value:'autre', label:'Autre' },
+  ];
+
   return (
     <div>
       <div className="page-head">
         <div className="eyebrow">Paramètres</div>
         <h1>Mon compte</h1>
-        <p>Informations personnelles et club / association.</p>
+        <p>Informations personnelles et structure.</p>
       </div>
 
       <div className="card">
@@ -44,8 +50,8 @@ function ScreenAccount() {
           <h2>Identité</h2>
           <small className="muted">Connecté via Google · {user?.email}</small>
         </div>
-        <div className="card-body" style={{ display: 'grid', gap: 12 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="card-body" style={{ display:'grid', gap:12 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
             <div className="field">
               <label>Prénom</label>
               <input className="input" value={form.prenom} onChange={e => set('prenom', e.target.value)} />
@@ -58,15 +64,24 @@ function ScreenAccount() {
         </div>
       </div>
 
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="card-head"><h2>Club / Association</h2></div>
-        <div className="card-body" style={{ display: 'grid', gap: 12 }}>
+      <div className="card" style={{ marginTop:16 }}>
+        <div className="card-head"><h2>Structure</h2></div>
+        <div className="card-body" style={{ display:'grid', gap:12 }}>
+          <div className="field">
+            <label>Type de structure</label>
+            <div className="opt-group col-2" style={{ marginTop:4 }}>
+              {STRUCTURE_TYPES.map(t => (
+                <Opt key={t.value} label={t.label} checked={form.structure_type === t.value}
+                  onClick={() => set('structure_type', t.value)} />
+              ))}
+            </div>
+          </div>
           <div className="field">
             <label>Nom de la structure</label>
             <input className="input" value={form.club_nom} onChange={e => set('club_nom', e.target.value)}
               placeholder="Club de Plongée XYZ / ACSMJ 29" />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
             <div className="field">
               <label>Numéro de club FFESSM</label>
               <input className="input" value={form.club_numero} onChange={e => set('club_numero', e.target.value)}
@@ -81,10 +96,10 @@ function ScreenAccount() {
         </div>
       </div>
 
-      {error && <Alert tone="warn" style={{ marginTop: 12 }}>{error}</Alert>}
-      {saved && <Alert tone="ok" style={{ marginTop: 12 }}>Enregistré.</Alert>}
+      {error && <Alert tone="warn" style={{ marginTop:12 }}>{error}</Alert>}
+      {saved  && <Alert tone="ok"   style={{ marginTop:12 }}>Enregistré.</Alert>}
 
-      <div className="row" style={{ marginTop: 16, gap: 8 }}>
+      <div className="row" style={{ marginTop:16, gap:8 }}>
         <button className="btn primary" onClick={onSave} disabled={saving}>
           {saving ? 'Enregistrement…' : 'Enregistrer'}
         </button>

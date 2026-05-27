@@ -34,7 +34,7 @@ function ScreenChecklist({ answers, checked, setChecked, comments, setComment })
         {answers.nitrox && <Pill tone="kelp" className="lg">NITROX</Pill>}
         {answers.trimix && <Pill tone="sun" className="lg">TRIMIX</Pill>}
         {answers.recycleur && <Pill tone="coral" className="lg">RECYCLEUR</Pill>}
-        {answers.depart === "En bateau" && <Pill className="lg">BATEAU</Pill>}
+        {answers.depart_bateau && <Pill className="lg">BATEAU</Pill>}
         {answers.mineurs && <Pill className="lg">MINEURS</Pill>}
         {(answers.activite === "Enseignement" || answers.activite === "Mixte") && <Pill className="lg">ENSEIGNEMENT</Pill>}
         <span className="spacer"></span>

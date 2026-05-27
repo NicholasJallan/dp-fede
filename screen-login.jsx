@@ -40,7 +40,7 @@ function ScreenLogin() {
         <div className="login-btn-wrap" ref={btnRef}></div>
 
         <p className="login-legal">
-          Vos données sont hébergées sur votre propre Raspberry Pi.
+          Vos données sont hébergées sur votre serveur dédié, en Europe.
           Aucune donnée n'est transmise à des tiers.
         </p>
       </div>

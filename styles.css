@@ -1298,6 +1298,118 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 /* text-coral utility */
 .text-coral { color: var(--coral); }
 
+/* ===== Modal close button ===== */
+.x {
+  background: transparent;
+  border: 0;
+  color: var(--ink-3);
+  font-size: 22px;
+  line-height: 1;
+  width: 32px; height: 32px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.x:hover { background: var(--paper-2); color: var(--ink); }
+
+/* ===== Modal wide ===== */
+.modal-wide { max-width: 760px; }
+
+/* ===== Qualif sections (admin-divers modal) ===== */
+.qualif-section {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.qualif-section-label {
+  font-family: var(--t-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.qualif-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.qualif-toggle.locked {
+  opacity: 0.5;
+  cursor: default;
+}
+.qualif-toggle.locked input { cursor: default; }
+
+/* ===== Site info box ===== */
+.site-info-box {
+  background: var(--marine-50);
+  border: 1px solid var(--marine-100);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+/* ===== Palanquée type colors (pastel) ===== */
+.pal-explo   { background: oklch(97% 0.015 240); border-color: oklch(88% 0.04 240); }
+.pal-guidee  { background: oklch(97% 0.015 155); border-color: oklch(88% 0.04 155); }
+.pal-form    { background: oklch(97% 0.015 75);  border-color: oklch(88% 0.04 75);  }
+.pal-bapteme { background: oklch(97% 0.015 32);  border-color: oklch(88% 0.04 32);  }
+
+.pal-type-badge {
+  font-family: var(--t-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink-3);
+}
+.pal-type-badge.pal-explo   { background: oklch(92% 0.03 240); border-color: oklch(80% 0.06 240); color: oklch(38% 0.11 240); }
+.pal-type-badge.pal-guidee  { background: oklch(92% 0.03 155); border-color: oklch(80% 0.06 155); color: oklch(35% 0.08 155); }
+.pal-type-badge.pal-form    { background: oklch(92% 0.03 75);  border-color: oklch(80% 0.06 75);  color: oklch(40% 0.10 75);  }
+.pal-type-badge.pal-bapteme { background: oklch(92% 0.03 32);  border-color: oklch(80% 0.06 32);  color: oklch(40% 0.10 32);  }
+
+/* ===== Locked opt-group ===== */
+.locked-group { opacity: 0.6; pointer-events: none; }
+
+/* ===== Map picker (admin-sites & profil quick-add) ===== */
+.map-picker-wrap { display: flex; flex-direction: column; }
+.map-canvas {
+  height: 300px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-2);
+  overflow: hidden;
+}
+.map-placeholder {
+  height: 180px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.map-coords {
+  font-family: var(--t-mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-top: 6px;
+  letter-spacing: 0.04em;
+}
+
+/* ===== No-print (interactive elements hidden when printing) ===== */
+@media print {
+  .no-print { display: none !important; }
+}
+
 /* ===== Modal wide (sites + map) ===== */
 .modal-wide { max-width: 680px; }
 

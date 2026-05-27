@@ -20,17 +20,23 @@ if ($method === 'POST' && $path === '/api/sites') {
       ->inList('milieu', $MILIEUX, 'Milieu')
       ->abortIfErrors();
 
+    if (!$v->nullable('depart_bord') && !$v->nullable('depart_bateau')) {
+        Json::abort(422, 'Indiquer au moins un type de départ (bord ou bateau).');
+    }
+
     $coord = $v->arr('coordonnees');
     $id    = Db::uuid();
     Db::q(
-        'INSERT INTO sites (id, user_id, nom, milieu, profondeur_max, coordonnees, notes)
-         VALUES (?,?,?,?,?,?,?)',
+        'INSERT INTO sites (id, user_id, nom, milieu, profondeur_max, coordonnees, notes, depart_bord, depart_bateau)
+         VALUES (?,?,?,?,?,?,?,?,?)',
         [
             $id, $user['id'],
             $v->str('nom'), $v->str('milieu') ?: 'En mer',
             $v->float('profondeur_max'),
             $coord ? json_encode($coord, JSON_UNESCAPED_UNICODE) : null,
             $v->str('notes'),
+            (int)(bool)$v->nullable('depart_bord'),
+            (int)(bool)$v->nullable('depart_bateau'),
         ]
     );
     Json::ok(decodeSite(Db::row('SELECT * FROM sites WHERE id=?', [$id])), 201);
@@ -55,14 +61,22 @@ if ($method === 'PUT' && preg_match('#^/api/sites/([^/]+)$#', $path, $m)) {
       ->inList('milieu', $MILIEUX, 'Milieu')
       ->abortIfErrors();
 
+    if (!$v->nullable('depart_bord') && !$v->nullable('depart_bateau')) {
+        Json::abort(422, 'Indiquer au moins un type de départ (bord ou bateau).');
+    }
+
     $coord = $v->arr('coordonnees');
     Db::q(
-        'UPDATE sites SET nom=?, milieu=?, profondeur_max=?, coordonnees=?, notes=? WHERE id=?',
+        'UPDATE sites SET nom=?, milieu=?, profondeur_max=?, coordonnees=?, notes=?, depart_bord=?, depart_bateau=?
+         WHERE id=?',
         [
             $v->str('nom'), $v->str('milieu') ?: 'En mer',
             $v->float('profondeur_max'),
             $coord ? json_encode($coord, JSON_UNESCAPED_UNICODE) : null,
-            $v->str('notes'), $m[1],
+            $v->str('notes'),
+            (int)(bool)$v->nullable('depart_bord'),
+            (int)(bool)$v->nullable('depart_bateau'),
+            $m[1],
         ]
     );
     Json::ok(decodeSite(Db::row('SELECT * FROM sites WHERE id=?', [$m[1]])));
@@ -84,6 +98,8 @@ function siteOwnerOrAbort(int $userId, string $siteId): array {
 }
 
 function decodeSite(array $row): array {
-    $row['coordonnees'] = $row['coordonnees'] ? json_decode($row['coordonnees'], true) : null;
+    $row['coordonnees']  = $row['coordonnees'] ? json_decode($row['coordonnees'], true) : null;
+    $row['depart_bord']  = (bool)($row['depart_bord']   ?? false);
+    $row['depart_bateau']= (bool)($row['depart_bateau'] ?? false);
     return $row;
 }

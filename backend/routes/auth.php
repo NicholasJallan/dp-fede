@@ -38,6 +38,7 @@ if ($method === 'PATCH' && $path === '/api/auth/account') {
     Csrf::verify();
     $user = Auth::require();
     $v    = new Validate(Json::body());
+    $STRUCTURE_TYPES = ['club','sca','csa','autre'];
     $v->maxLen('nom', 100, 'Nom')
       ->maxLen('prenom', 100, 'Prénom')
       ->maxLen('club_nom', 200, 'Nom du club')
@@ -45,14 +46,18 @@ if ($method === 'PATCH' && $path === '/api/auth/account') {
       ->maxLen('club_siret', 50, 'SIRET')
       ->abortIfErrors();
 
+    $st = $v->nullable('structure_type');
+    if ($st && !in_array($st, $STRUCTURE_TYPES, true)) $st = null;
+
     Db::q(
-        'UPDATE users SET nom=?, prenom=?, club_nom=?, club_numero=?, club_siret=? WHERE id=?',
+        'UPDATE users SET nom=?, prenom=?, club_nom=?, club_numero=?, club_siret=?, structure_type=? WHERE id=?',
         [
             $v->str('nom', $user['nom']),
             $v->str('prenom', $user['prenom']),
             $v->str('club_nom', $user['club_nom']),
             $v->str('club_numero', $user['club_numero']),
             $v->str('club_siret', $user['club_siret']),
+            $st,
             $user['id'],
         ]
     );

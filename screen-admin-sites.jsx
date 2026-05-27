@@ -1,7 +1,11 @@
 // DP Assistant — Administration des sites de plongée
 
 const MILIEUX_LIST = ['En mer','Lac','Carrière','Piscine','Autre'];
-const emptySite = () => ({ nom: '', milieu: 'En mer', profondeur_max: '', coordonnees: null, notes: '' });
+const emptySite = () => ({
+  nom: '', milieu: 'En mer', profondeur_max: '',
+  coordonnees: null, notes: '',
+  depart_bord: false, depart_bateau: false,
+});
 
 // Default map center — Méditerranée française
 const MAP_DEFAULT = { lat: 43.3, lng: 5.4 };
@@ -161,6 +165,7 @@ function ScreenAdminSites() {
       nom: s.nom, milieu: s.milieu || 'En mer',
       profondeur_max: s.profondeur_max != null ? String(s.profondeur_max) : '',
       coordonnees: s.coordonnees || null, notes: s.notes || '',
+      depart_bord: !!s.depart_bord, depart_bateau: !!s.depart_bateau,
     });
     setEditing(s);
   };
@@ -169,6 +174,7 @@ function ScreenAdminSites() {
 
   const onSave = async () => {
     if (!form.nom.trim()) { setError('Le nom du site est requis'); return; }
+    if (!form.depart_bord && !form.depart_bateau) { setError('Indiquer au moins un type de départ (bord ou bateau)'); return; }
     setSaving(true); setError('');
     const payload = {
       ...form,
@@ -230,6 +236,8 @@ function ScreenAdminSites() {
               <b>{s.nom}</b>
               <div className="meta-row">
                 {s.milieu && <Pill>{s.milieu}</Pill>}
+                {s.depart_bord   && <Pill>Bord</Pill>}
+                {s.depart_bateau && <Pill>Bateau</Pill>}
                 {s.profondeur_max != null && <Pill tone="marine">max {s.profondeur_max} m</Pill>}
                 {s.coordonnees?.lat && (
                   <a
@@ -297,6 +305,19 @@ function ScreenAdminSites() {
                     }
                   }}
                 />
+              </div>
+
+              <div className="field" style={{ marginTop: 12 }}>
+                <label>Type de départ <span className="req">*</span></label>
+                <div className="qualif-row">
+                  {[['depart_bord','Du bord'],['depart_bateau','En bateau']].map(([k, label]) => (
+                    <label key={k} className={`qualif-toggle ${form[k] ? 'on' : ''}`}>
+                      <input type="checkbox" checked={!!form[k]}
+                        onChange={() => setField(k, !form[k])} />
+                      {label}
+                    </label>
+                  ))}
+                </div>
               </div>
 
               <div className="field" style={{ marginTop: 10 }}>

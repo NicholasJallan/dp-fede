@@ -1,18 +1,19 @@
 <?php
 declare(strict_types=1);
 
-$NIVEAUX = ['N1','N2','N3','N4','GP','E1','E2','E3','E4','P5','MF1','MF2','BEES1','DEJEPS','DESJEPS'];
-$QUALIFS  = ['PN','PN-C','PTH-70','PTH-120','REC-CCR','TEC-CCR','TIV','RIFAP','PSC1','DAEFR',
-             'PE-40','PE-60','Apnée','Chasse'];
+$NIVEAUX_PLONGEUR  = ['N1','N2','N3'];
+$NIVEAUX_ENCADRANT = ['N4','N5','E1','E2','E3','E4'];
+$DIPLOMES_PRO      = ['MF1','MF2','BEES1','DEJEPS','DESJEPS','Autre'];
+$RECYCLEURS_OK     = ['Revo','AP','Triton','JJccr','Xccr','Megalodon','Shark','Submatix','Autre'];
 
-// GET /api/divers — liste les plongeurs de l'utilisateur courant
+// GET /api/divers
 if ($method === 'GET' && $path === '/api/divers') {
-    $user  = Auth::require();
-    $rows  = Db::all('SELECT * FROM divers WHERE user_id=? ORDER BY nom, prenom', [$user['id']]);
+    $user = Auth::require();
+    $rows = Db::all('SELECT * FROM divers WHERE user_id=? ORDER BY nom, prenom', [$user['id']]);
     Json::ok(array_map('decodeDiver', $rows));
 }
 
-// POST /api/divers — créer un plongeur
+// POST /api/divers
 if ($method === 'POST' && $path === '/api/divers') {
     Csrf::verify();
     $user = Auth::require();
@@ -21,19 +22,22 @@ if ($method === 'POST' && $path === '/api/divers') {
       ->maxLen('nom', 100, 'Nom')
       ->maxLen('prenom', 100, 'Prénom')
       ->maxLen('licence', 50, 'Numéro de licence')
-      ->inList('niveau', $NIVEAUX, 'Niveau')
+      ->required('medical', 'Date du certificat médical')
       ->date('medical', 'Date du certificat médical')
       ->abortIfErrors();
 
-    $qualifs = array_values(array_intersect($v->arr('qualifs'), $QUALIFS));
     $id = Db::uuid();
     Db::q(
-        'INSERT INTO divers (id, user_id, nom, prenom, licence, niveau, qualifs, medical, notes)
-         VALUES (?,?,?,?,?,?,?,?,?)',
+        'INSERT INTO divers
+           (id, user_id, nom, prenom, licence, niveau, niveau_plongeur, niveau_encadrant, qualifs, aptitudes_sup, medical, notes)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
         [
             $id, $user['id'],
             $v->str('nom'), $v->str('prenom'), $v->str('licence'),
-            $v->str('niveau'), json_encode($qualifs, JSON_UNESCAPED_UNICODE),
+            buildLegacyNiveau($v),
+            $v->nullable('niveau_plongeur'), $v->nullable('niveau_encadrant'),
+            json_encode(buildQualifs($v, $DIPLOMES_PRO, $RECYCLEURS_OK), JSON_UNESCAPED_UNICODE),
+            json_encode($v->arr('aptitudes_sup'), JSON_UNESCAPED_UNICODE),
             $v->nullable('medical'), $v->str('notes'),
         ]
     );
@@ -58,17 +62,22 @@ if ($method === 'PUT' && preg_match('#^/api/divers/([^/]+)$#', $path, $m)) {
       ->maxLen('nom', 100, 'Nom')
       ->maxLen('prenom', 100, 'Prénom')
       ->maxLen('licence', 50, 'Numéro de licence')
-      ->inList('niveau', $NIVEAUX, 'Niveau')
+      ->required('medical', 'Date du certificat médical')
       ->date('medical', 'Date du certificat médical')
       ->abortIfErrors();
 
-    $qualifs = array_values(array_intersect($v->arr('qualifs'), $QUALIFS));
     Db::q(
-        'UPDATE divers SET nom=?, prenom=?, licence=?, niveau=?, qualifs=?, medical=?, notes=? WHERE id=?',
+        'UPDATE divers SET nom=?, prenom=?, licence=?, niveau=?,
+          niveau_plongeur=?, niveau_encadrant=?, qualifs=?, aptitudes_sup=?, medical=?, notes=?
+         WHERE id=?',
         [
-            $v->str('nom'), $v->str('prenom'), $v->str('licence'), $v->str('niveau'),
-            json_encode($qualifs, JSON_UNESCAPED_UNICODE),
-            $v->nullable('medical'), $v->str('notes'), $m[1],
+            $v->str('nom'), $v->str('prenom'), $v->str('licence'),
+            buildLegacyNiveau($v),
+            $v->nullable('niveau_plongeur'), $v->nullable('niveau_encadrant'),
+            json_encode(buildQualifs($v, $DIPLOMES_PRO, $RECYCLEURS_OK), JSON_UNESCAPED_UNICODE),
+            json_encode($v->arr('aptitudes_sup'), JSON_UNESCAPED_UNICODE),
+            $v->nullable('medical'), $v->str('notes'),
+            $m[1],
         ]
     );
     Json::ok(decodeDiver(Db::row('SELECT * FROM divers WHERE id=?', [$m[1]])));
@@ -83,13 +92,53 @@ if ($method === 'DELETE' && preg_match('#^/api/divers/([^/]+)$#', $path, $m)) {
     Json::ok(null);
 }
 
+// ── helpers ───────────────────────────────────────────────────────────────
+
 function ownerOrAbort(int $userId, string $diverId): array {
     $row = Db::row('SELECT * FROM divers WHERE id=? AND user_id=?', [$diverId, $userId]);
     if (!$row) Json::abort(404, 'Plongeur introuvable');
     return $row;
 }
 
+function buildLegacyNiveau(Validate $v): string {
+    // Keep niveau col for backward compat; prefer encadrant > plongeur
+    $ne = $v->nullable('niveau_encadrant');
+    $np = $v->nullable('niveau_plongeur');
+    return $ne ?: ($np ?: '');
+}
+
+function buildQualifs(Validate $v, array $diplomes, array $recycleurs): array {
+    $nitrox    = array_values(array_intersect($v->arr('nitrox'),    ['PN','PN-C']));
+    $trimix    = array_values(array_intersect($v->arr('trimix'),    ['PTH-70','PTH-120']));
+    $recs      = array_values(array_intersect($v->arr('recycleurs'), $recycleurs));
+    $diplome   = in_array($v->str('diplome_pro'), $diplomes, true) ? $v->str('diplome_pro') : null;
+    $rifap     = (bool)($v->nullable('rifap') ?? false);
+    $tiv       = (bool)($v->nullable('tiv')   ?? false);
+    return compact('nitrox', 'trimix', 'recycleurs', 'diplome', 'rifap', 'tiv');
+}
+
 function decodeDiver(array $row): array {
-    $row['qualifs'] = json_decode($row['qualifs'] ?? '[]', true) ?? [];
+    // Decode structured qualifs (new format) or legacy array
+    $raw = json_decode($row['qualifs'] ?? '[]', true) ?? [];
+    if (isset($raw['nitrox'])) {
+        // New structured format
+        $row['nitrox']    = $raw['nitrox']    ?? [];
+        $row['trimix']    = $raw['trimix']    ?? [];
+        $row['recycleurs']= $raw['recycleurs']?? [];
+        $row['diplome_pro']= $raw['diplome']  ?? null;
+        $row['rifap']     = (bool)($raw['rifap'] ?? false);
+        $row['tiv']       = (bool)($raw['tiv']   ?? false);
+    } else {
+        // Legacy flat array — map to new fields best-effort
+        $row['nitrox']    = array_values(array_intersect($raw, ['PN','PN-C']));
+        $row['trimix']    = array_values(array_intersect($raw, ['PTH-70','PTH-120']));
+        $row['recycleurs']= [];
+        $row['diplome_pro']= null;
+        $row['rifap']     = in_array('RIFAP', $raw, true);
+        $row['tiv']       = in_array('TIV',   $raw, true);
+    }
+    $row['aptitudes_sup'] = json_decode($row['aptitudes_sup'] ?? '[]', true) ?? [];
+    // Keep legacy qualifs for any old consumers
+    $row['qualifs'] = $raw;
     return $row;
 }

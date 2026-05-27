@@ -40,6 +40,15 @@ class Db {
                 $pdo->exec($stmt);
             }
         }
+
+        // Migration 003 — table archives
+        $hasArchives = $pdo->query("SHOW TABLES LIKE 'archives'")->fetchColumn();
+        if (!$hasArchives) {
+            $sql = file_get_contents(__DIR__ . '/../migrations/003_archives.sql');
+            foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
+                $pdo->exec($stmt);
+            }
+        }
     }
 
     public static function q(string $sql, array $params = []): PDOStatement {

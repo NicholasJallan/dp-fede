@@ -59,6 +59,11 @@ const api = {
     setRole:    (id, role)   => apiFetch(`/users/${id}/role`, { method: 'PATCH', body: { role } }),
     delete:     (id)         => apiFetch(`/users/${id}`, { method: 'DELETE', body: {} }),
   },
+  archives: {
+    list:   ()       => apiFetch('/archives'),
+    get:    (id)     => apiFetch(`/archives/${id}`),
+    create: (data)   => apiFetch('/archives', { method: 'POST', body: data }),
+  },
 };
 
 Object.assign(window, { api });

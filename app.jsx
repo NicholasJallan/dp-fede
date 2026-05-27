@@ -22,7 +22,7 @@ const STEPS = [
   { id:"archive",    num:"05", label:"Archiver la plongée",       sub:"Google Drive" },
 ];
 
-const ADMIN_SCREENS = ["admin-divers", "admin-sites", "admin-users", "account"];
+const ADMIN_SCREENS = ["admin-divers", "admin-sites", "admin-users", "account", "archives"];
 
 function AppInner() {
   const { user, loading: authLoading, logout } = useAuth();
@@ -199,6 +199,7 @@ function AppInner() {
           <button className="session-link" onClick={() => setScreen("account")} title="Mon compte">
             {displayName}
           </button>
+          <button className="session-link" onClick={() => setScreen("archives")}>Historique</button>
           {user.role === 'admin' && (
             <button className="session-link" onClick={() => setScreen("admin-divers")} title="Administration">
               Admin
@@ -231,6 +232,7 @@ function AppInner() {
       {isAdminScreen && (
         <div className="stepper" style={{ paddingTop:8, paddingBottom:8 }}>
           {[
+            { id:"archives",     label:"Historique" },
             { id:"admin-divers", label:"Annuaire plongeurs" },
             { id:"admin-sites",  label:"Sites de plongée" },
             ...(user.role === 'admin' ? [{ id:"admin-users", label:"Utilisateurs" }] : []),
@@ -275,6 +277,7 @@ function AppInner() {
           {screen === "archive" && (
             <ScreenArchive answers={answers} palanquees={palanquees} divers={divers} />
           )}
+          {screen === "archives" && <ScreenArchives />}
           {screen === "admin-divers" && <ScreenAdminDivers />}
           {screen === "admin-sites"  && <ScreenAdminSites />}
           {screen === "admin-users"  && user.role === 'admin' && <ScreenAdminUsers />}

@@ -334,3 +334,19 @@ window.STRUCTURE_LABELS = {
   csa:  'Convention de Section d\'Activité (CSA)',
   autre:'Autre',
 };
+
+// Tri des membres d'une palanquée pour la fiche (encadrant en tête, serre-file N4 en fin)
+window.sortMembresForFiche = function(membres) {
+  const priority = { E4:0, E3:1, E2:2, E1:3, N4:4, PA60:5, PA40:6, PA20:7, PE60:8, PE40:9, PE20:10, PTH120:11, PTH70:12, Baptême:13 };
+  const n4Count = membres.filter(m => m.aptitude === 'N4').length;
+  const isSerreFilePal = membres.length === 6 && n4Count >= 2;
+  const sorted = [...membres].sort((a, b) => (priority[a.aptitude] ?? 99) - (priority[b.aptitude] ?? 99));
+  if (isSerreFilePal) {
+    let sfIdx = -1;
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      if (sorted[i].aptitude === 'N4') { sfIdx = i; break; }
+    }
+    if (sfIdx !== -1) { const sf = sorted.splice(sfIdx, 1)[0]; sorted.push(sf); }
+  }
+  return sorted;
+};

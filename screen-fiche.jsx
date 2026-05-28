@@ -66,19 +66,35 @@ function ScreenFiche({ answers, palanquees, divers, setAnswer }) {
   // Téléchargement PDF côté serveur (wkhtmltopdf)
   const onPrintPdf = async () => {
     try {
-      const html = document.querySelector('.fiche')?.outerHTML;
-      if (!html) return;
+      const ficheEl = document.querySelector('.fiche');
+      if (!ficheEl) return;
+      // URL absolue pour que wkhtmltopdf puisse charger les feuilles de style
+      const styles = Array.from(document.querySelectorAll('link[rel=stylesheet]'))
+        .map(l => `<link rel="stylesheet" href="${l.href}">`).join('\n');
+      const html = `<!DOCTYPE html><html lang="fr"><head>
+<meta charset="utf-8">
+<title>Fiche de sécurité</title>
+${styles}
+<style>
+  body { background: white; padding: 0; margin: 0; }
+  .fiche { box-shadow: none; max-width: 100%; }
+  .no-print, .fiche-actions { display: none !important; }
+</style>
+</head><body>${ficheEl.outerHTML}</body></html>`;
+
       const csrf = document.cookie.split('; ').find(c => c.startsWith('dp_csrf='))?.split('=')[1];
       const res  = await fetch('/api/pdf/fiche', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf || '' },
         body: JSON.stringify({
-          html: `<!DOCTYPE html><html><head><meta charset="utf-8"><link rel="stylesheet" href="/styles.css"></head><body>${html}</body></html>`,
+          html,
           filename: `fiche-securite-${(answers.date || '').slice(0, 10)}.pdf`,
         }),
       });
       if (!res.ok) {
+        const t = await res.text();
+        alert('Erreur génération PDF serveur (HTTP ' + res.status + ') : ' + t.slice(0, 300) + '\n\nFallback : impression navigateur.');
         window.print();
         return;
       }
@@ -87,7 +103,8 @@ function ScreenFiche({ answers, palanquees, divers, setAnswer }) {
       a.href = URL.createObjectURL(blob);
       a.download = `fiche-securite-${(answers.date || '').slice(0, 10)}.pdf`;
       a.click();
-    } catch {
+    } catch (err) {
+      alert('Erreur PDF : ' + (err?.message || err) + '\n\nFallback : impression navigateur.');
       window.print();
     }
   };

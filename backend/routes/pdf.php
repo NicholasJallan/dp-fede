@@ -15,7 +15,7 @@ if ($method === 'POST' && $path === '/api/pdf/fiche') {
 
     // Sanitization du nom de fichier
     $name = preg_replace('/[^a-zA-Z0-9._-]/', '_', $name);
-    if (!str_ends_with($name, '.pdf')) $name .= '.pdf';
+    if (substr($name, -4) !== '.pdf') $name .= '.pdf';
 
     // Fichiers temporaires
     $tmpHtml = tempnam(sys_get_temp_dir(), 'fiche_') . '.html';

@@ -160,7 +160,12 @@ ${styles}
     });
     if (!res.ok) {
       const t = await res.text();
-      throw new Error('Génération serveur échouée : ' + t.slice(0, 200));
+      let detail = t.slice(0, 300);
+      try {
+        const j = JSON.parse(t);
+        if (j?.error) detail = j.error;
+      } catch {}
+      throw new Error(`HTTP ${res.status} — ${detail}`);
     }
     return await res.blob();
   };

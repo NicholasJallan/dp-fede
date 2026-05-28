@@ -353,10 +353,19 @@ function ScreenFiche({ answers, palanquees, divers, setAnswer }) {
                 <input className="input" type="number" min="1" max={finModal.elapsed ?? 240}
                   value={finForm.duree}
                   onChange={e => {
-                    const v = parseInt(e.target.value, 10);
+                    const raw = e.target.value;
+                    const v   = parseInt(raw, 10);
                     const max = finModal.elapsed;
-                    const clamped = max !== null && v > max ? String(max) : e.target.value;
-                    setFinForm(f => ({ ...f, duree: clamped }));
+                    const newDuree = (max !== null && v > max) ? String(max) : raw;
+                    // DTR ne peut pas dépasser la durée réelle de la plongée
+                    setFinForm(f => {
+                      const dtrInt   = parseInt(f.dtr, 10);
+                      const dureeInt = parseInt(newDuree, 10);
+                      const capDtr = (isFinite(dtrInt) && isFinite(dureeInt) && dtrInt > dureeInt)
+                        ? String(dureeInt)
+                        : f.dtr;
+                      return { ...f, duree: newDuree, dtr: capDtr };
+                    });
                   }}
                   placeholder="ex. 42" />
               </div>
@@ -367,10 +376,20 @@ function ScreenFiche({ answers, palanquees, divers, setAnswer }) {
                   placeholder="ex. 35" />
               </div>
               <div className="field">
-                <label>DTR réel (min)</label>
-                <input className="input" type="number" min="0" max="120"
-                  value={finForm.dtr} onChange={e => setFinForm(f => ({ ...f, dtr:e.target.value }))}
+                <label>DTR réel (min){finForm.duree ? ` — max ${finForm.duree} min` : ''}</label>
+                <input className="input" type="number" min="0"
+                  max={finForm.duree ? parseInt(finForm.duree, 10) : 120}
+                  value={finForm.dtr}
+                  onChange={e => {
+                    const raw = e.target.value;
+                    const v   = parseInt(raw, 10);
+                    const max = parseInt(finForm.duree, 10);
+                    // Capper DTR à la durée réelle de la plongée
+                    const clamped = (isFinite(max) && isFinite(v) && v > max) ? String(max) : raw;
+                    setFinForm(f => ({ ...f, dtr: clamped }));
+                  }}
                   placeholder="ex. 4" />
+                <div className="field-hint">La DTR ne peut pas excéder la durée réelle de la plongée.</div>
               </div>
             </div>
             <div className="modal-foot">

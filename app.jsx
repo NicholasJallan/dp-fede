@@ -36,7 +36,14 @@ function AppInner() {
   const [palanquees,   setPalanquees]   = useState([]);
   const [checked,      setCheckedState] = useState({});
   const [comments,     setCommentsState]= useState({});
-  const [hasDraft,     setHasDraft]     = useState(false);
+  const [pressions,    setPressions]    = useState({}); // { palId-diverId: '50' }
+  const [realises,     setRealises]     = useState({}); // { palId: { profMax, duree, dtr } }
+  const [heuresDebut,   setHeuresDebut]   = useState({}); // { palId: 'HH:MM' }
+  const [heuresFin,     setHeuresFin]     = useState({}); // { palId: 'HH:MM' }
+  const [plongeeFigee,  setPlongeeFigee]  = useState(false); // gel définitif après confirmation
+  const [confirmModal,  setConfirmModal]  = useState(false); // popup avant archivage
+  const [hasDraft,      setHasDraft]      = useState(false);
+  const [archiveDone,   setArchiveDone]   = useState(false);
 
   // Load divers once authenticated
   useEffect(() => {
@@ -64,14 +71,19 @@ function AppInner() {
       if (s.palanquees) setPalanquees(s.palanquees);
       if (s.checked)    setCheckedState(s.checked);
       if (s.comments)   setCommentsState(s.comments);
+      if (s.pressions)   setPressions(s.pressions);
+      if (s.realises)    setRealises(s.realises);
+      if (s.heuresDebut)  setHeuresDebut(s.heuresDebut);
+      if (s.heuresFin)    setHeuresFin(s.heuresFin);
+      if (s.plongeeFigee) setPlongeeFigee(s.plongeeFigee);
     }
   }, [user]);
 
   // Auto-save
   useEffect(() => {
     if (!user || screen === "home") return;
-    saveState({ answers, palanquees, checked, comments });
-  }, [answers, palanquees, checked, comments, screen, user]);
+    saveState({ answers, palanquees, checked, comments, pressions, realises, heuresDebut, heuresFin, plongeeFigee });
+  }, [answers, palanquees, checked, comments, pressions, realises, heuresDebut, heuresFin, plongeeFigee, screen, user]);
 
   const setAnswer  = useCallback((id, v) => setAnswers(prev => ({ ...prev, [id]: v })), []);
   const setChecked = useCallback((id, v) => setCheckedState(prev => ({ ...prev, [id]: v })), []);
@@ -95,32 +107,94 @@ function AppInner() {
     return { notes };
   }, [answers]);
 
-  const currentStepIdx = STEPS.findIndex(s => s.id === screen);
-  const isStepScreen   = currentStepIdx >= 0;
-  const isAdminScreen  = ADMIN_SCREENS.includes(screen);
+  const currentStepIdx  = STEPS.findIndex(s => s.id === screen);
+  const isStepScreen    = currentStepIdx >= 0;
+  const isAdminScreen   = ADMIN_SCREENS.includes(screen);
+  const divePlongeesEnCours = Object.keys(heuresDebut).length > 0;
+  const FICHE_IDX    = STEPS.findIndex(s => s.id === "fiche");
+  const ARCHIVE_IDX  = STEPS.findIndex(s => s.id === "archive");
+  // Toutes les palanquées qui ont démarré ont aussi une heure de fin
+  const allPalanqueesFinished = palanquees.length === 0
+    || palanquees.every(p => !heuresDebut[p.id] || heuresFin[p.id]);
 
   const goPrev = () => {
+    if (plongeeFigee) return; // gel définitif
+    if (divePlongeesEnCours && currentStepIdx <= FICHE_IDX) return;
     if (currentStepIdx <= 0) setScreen("home");
     else setScreen(STEPS[currentStepIdx - 1].id);
     window.scrollTo({ top:0, behavior:"smooth" });
   };
   const goNext = () => {
-    if (screen === "home") setScreen("profil");
-    else if (currentStepIdx < STEPS.length - 1) setScreen(STEPS[currentStepIdx + 1].id);
+    if (screen === "home") { setScreen("profil"); return; }
+    // Fiche → Archive : vérifications + gel
+    if (screen === "fiche") {
+      if (!allPalanqueesFinished) {
+        setConfirmModal("blocked"); // affiche alerte "palanquée encore sous l'eau"
+        return;
+      }
+      setConfirmModal("confirm"); // demande confirmation gel
+      return;
+    }
+    if (currentStepIdx < STEPS.length - 1) setScreen(STEPS[currentStepIdx + 1].id);
+    window.scrollTo({ top:0, behavior:"smooth" });
+  };
+  const confirmArchive = () => {
+    setPlongeeFigee(true);
+    setConfirmModal(false);
+    setScreen("archive");
     window.scrollTo({ top:0, behavior:"smooth" });
   };
 
   const startNew = () => {
-    setAnswers({});
+    const lastRappel = localStorage.getItem('dp-rappel-moyen') || '';
+    setAnswers(lastRappel ? { moyen_rappel: lastRappel } : {});
     setPalanquees([]);
     setCheckedState({});
     setCommentsState({});
+    setPressions({});
+    setRealises({});
+    setHeuresDebut({});
+    setHeuresFin({});
+    setPlongeeFigee(false);
+    setConfirmModal(false);
     localStorage.removeItem(STORAGE_KEY);
     setHasDraft(false);
     setScreen("profil");
     window.scrollTo({ top:0 });
   };
   const resumeDraft = () => { setScreen("profil"); window.scrollTo({ top:0 }); };
+
+  const cloneDive = async (archiveId) => {
+    try {
+      const data = await api.archives.get(archiveId);
+      const oldAnswers = typeof data.answers === 'string' ? JSON.parse(data.answers) : (data.answers || {});
+      const oldPals    = typeof data.palanquees === 'string' ? JSON.parse(data.palanquees) : (data.palanquees || []);
+
+      // Calcul prochaine heure pleine
+      const t = new Date();
+      t.setMinutes(0, 0, 0);
+      t.setHours(t.getHours() + 1);
+      const pad = n => String(n).padStart(2, '0');
+      const newDate = `${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}T${pad(t.getHours())}:00`;
+
+      setAnswers({ ...oldAnswers, date: newDate, meteo: '', fiche_observations: '', maree_heure: '', maree_coef: '' });
+      setPalanquees(oldPals);
+      setCheckedState({});
+      setCommentsState({});
+      setPressions({});
+      setRealises({});
+      setHeuresDebut({});
+      setHeuresFin({});
+      setPlongeeFigee(false);
+      setConfirmModal(false);
+      localStorage.removeItem(STORAGE_KEY);
+      setHasDraft(true);
+      setScreen("profil");
+      window.scrollTo({ top:0 });
+    } catch (err) {
+      alert('Impossible de charger l\'archive : ' + err.message);
+    }
+  };
 
   const total     = window.CHECKLIST_RULES.reduce((n, p) =>
     n + p.items.filter(it => window.matchCondition(it.when, answers)).length, 0);
@@ -194,7 +268,7 @@ function AppInner() {
         <span style={{ fontSize:13 }}>{user.club_nom || user.email}</span>
         <span className="meta">
           <span>AUTO-SAVE · <b>ON</b></span>
-          {(isStepScreen || isAdminScreen) &&
+          {(isStepScreen || isAdminScreen) && !divePlongeesEnCours &&
             <button className="session-link" onClick={() => setScreen("home")}>← Accueil</button>}
           <button className="session-link" onClick={() => setScreen("account")} title="Mon compte">
             {displayName}
@@ -212,13 +286,21 @@ function AppInner() {
       {isStepScreen && (
         <div className="stepper">
           {STEPS.map((s, i) => {
-            const isDone   = i < currentStepIdx;
-            const isActive = i === currentStepIdx;
+            const isDone    = i < currentStepIdx;
+            const isActive  = i === currentStepIdx;
+            const isLocked  = plongeeFigee
+              ? i < ARCHIVE_IDX  // gel définitif : seul archivage accessible
+              : (divePlongeesEnCours && i < FICHE_IDX); // plongée en cours : étapes 1-3 verrouillées
+            const lockTitle = plongeeFigee
+              ? "Plongée figée — consultation uniquement"
+              : "Verrouillé — plongée en cours";
             return (
               <button key={s.id}
-                className={`step ${isActive ? "active" : ""} ${isDone ? "done" : ""}`}
-                onClick={() => setScreen(s.id)}>
-                <span className="num">{isDone ? "✓" : (i + 1)}</span>
+                className={`step ${isActive ? "active" : ""} ${isDone ? "done" : ""} ${isLocked ? "locked" : ""}`}
+                onClick={() => !isLocked && setScreen(s.id)}
+                disabled={isLocked}
+                title={isLocked ? lockTitle : undefined}>
+                <span className="num">{isLocked ? "🔒" : isDone ? "✓" : (i + 1)}</span>
                 <span className="grp">
                   <span className="label-sub">{s.sub}</span>
                   <span>{s.label}</span>
@@ -250,7 +332,8 @@ function AppInner() {
       <div className={`main ${useSide ? "with-side" : ""}`}>
         <div>
           {screen === "home" && (
-            <ScreenHome hasDraft={hasDraft} onNew={startNew} onResume={resumeDraft} />
+            <ScreenHome hasDraft={hasDraft} onNew={startNew} onResume={resumeDraft}
+              plongeeFigee={plongeeFigee} onClone={cloneDive} />
           )}
           {screen === "profil" && (
             <ScreenProfil
@@ -268,15 +351,24 @@ function AppInner() {
           )}
           {screen === "checklist" && (
             <ScreenChecklist
-              answers={answers} checked={checked} setChecked={setChecked}
+              answers={answers} setAnswer={setAnswer}
+              checked={checked} setChecked={setChecked}
               comments={comments} setComment={setComment}
             />
           )}
           {screen === "fiche" && (
-            <ScreenFiche answers={answers} palanquees={palanquees} divers={divers} setAnswer={setAnswer} />
+            <ScreenFiche answers={answers} palanquees={palanquees} divers={divers} setAnswer={setAnswer}
+              pressions={pressions} setPressions={setPressions}
+              realises={realises} setRealises={setRealises}
+              heuresDebut={heuresDebut} setHeuresDebut={setHeuresDebut}
+              heuresFin={heuresFin} setHeuresFin={setHeuresFin} />
           )}
           {screen === "archive" && (
-            <ScreenArchive answers={answers} palanquees={palanquees} divers={divers} />
+            <ScreenArchive answers={answers} palanquees={palanquees} divers={divers} user={user}
+              pressions={pressions} realises={realises}
+              checked={checked} comments={comments}
+              plongeeFigee={plongeeFigee} onStartNew={startNew}
+              onArchiveDone={() => setArchiveDone(true)} />
           )}
           {screen === "archives" && <ScreenArchives />}
           {screen === "admin-divers" && (
@@ -294,7 +386,11 @@ function AppInner() {
 
       {isStepScreen && (
         <div className="footnav">
-          <button className="btn" onClick={goPrev}>← Précédent</button>
+          <button className="btn" onClick={goPrev}
+            disabled={plongeeFigee || (divePlongeesEnCours && currentStepIdx <= FICHE_IDX)}
+            title={plongeeFigee ? "Plongée figée" : (divePlongeesEnCours && currentStepIdx <= FICHE_IDX) ? "Verrouillé — plongée en cours" : undefined}>
+            ← Précédent
+          </button>
           <div className="progress">
             <div className="lbl">
               <span>Étape {currentStepIdx + 1} / {STEPS.length} — {STEPS[currentStepIdx]?.label}</span>
@@ -304,10 +400,48 @@ function AppInner() {
               <div style={{ width:`${total > 0 ? (doneCount / total * 100) : 0}%` }}></div>
             </div>
           </div>
-          <button className="btn primary" onClick={goNext}
-            disabled={currentStepIdx === STEPS.length - 1}>
+          <button className="btn primary"
+            onClick={currentStepIdx === STEPS.length - 1 && archiveDone ? startNew : goNext}
+            disabled={currentStepIdx === STEPS.length - 1 && !archiveDone}>
             {currentStepIdx === STEPS.length - 1 ? "Terminé" : "Suivant →"}
           </button>
+        </div>
+      )}
+
+      {/* Modale de confirmation / blocage avant archivage */}
+      {confirmModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', zIndex:1000,
+                      display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div style={{ background:'var(--surface)', borderRadius:12, padding:28, maxWidth:440, width:'100%',
+                        boxShadow:'0 8px 40px rgba(0,0,0,0.3)', display:'grid', gap:18 }}>
+            {confirmModal === "blocked" ? (
+              <>
+                <h2 style={{ margin:0, fontSize:18 }}>Plongée encore en cours</h2>
+                <p style={{ margin:0, color:'var(--ink-2)', lineHeight:1.6 }}>
+                  Une ou plusieurs palanquées n'ont pas encore de fin de plongée enregistrée.
+                  Terminez toutes les plongées (bouton <b>■ Fin</b> sur la fiche) avant de procéder à l'archivage.
+                </p>
+                <div style={{ display:'flex', justifyContent:'flex-end' }}>
+                  <button className="btn primary" onClick={() => setConfirmModal(false)}>Compris</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 style={{ margin:0, fontSize:18 }}>Confirmer et figer la plongée</h2>
+                <p style={{ margin:0, color:'var(--ink-2)', lineHeight:1.6 }}>
+                  Vous êtes sur le point de <b>figer définitivement</b> toutes les informations de cette plongée.
+                  Après confirmation, aucune modification ne sera possible sur les étapes précédentes.
+                </p>
+                <p style={{ margin:0, color:'var(--ink-3)', fontSize:13, lineHeight:1.5 }}>
+                  Confirmez-vous que toutes les informations (palanquées, heures, pressions, observations) sont complètes et correctes ?
+                </p>
+                <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+                  <button className="btn" onClick={() => setConfirmModal(false)}>Annuler</button>
+                  <button className="btn primary" onClick={confirmArchive}>Confirmer et archiver →</button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

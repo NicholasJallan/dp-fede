@@ -1,6 +1,6 @@
 // DP Assistant — Écran "Check-list opérationnelle"
 
-function ScreenChecklist({ answers, checked, setChecked, comments, setComment }) {
+function ScreenChecklist({ answers, setAnswer, checked, setChecked, comments, setComment }) {
   const phases = useMemo(() => {
     // Filter rules by conditions
     return window.CHECKLIST_RULES.map(phase => {
@@ -40,6 +40,28 @@ function ScreenChecklist({ answers, checked, setChecked, comments, setComment })
         <span className="spacer"></span>
         <button className="btn" onClick={() => window.print()}>🖨 Imprimer</button>
         <button className="btn">🔗 Partager</button>
+      </div>
+
+      <div className="card" style={{ marginBottom:18 }}>
+        <div className="card-head"><h2>Moyen de rappel des plongeurs</h2></div>
+        <div className="card-body">
+          <label style={{ display:'block', fontSize:13, marginBottom:8, color:'var(--ink-2)' }}>
+            Signal utilisé par le DP pour rappeler les plongeurs à la surface (communiqué avant la mise à l'eau)
+          </label>
+          <input
+            className="input"
+            type="text"
+            placeholder="ex. : sondeur, pétard acoustique, coup de coque, corde de liaison…"
+            value={answers.moyen_rappel || ''}
+            onChange={e => {
+              setAnswer('moyen_rappel', e.target.value);
+              try { localStorage.setItem('dp-rappel-moyen', e.target.value); } catch {}
+            }}
+          />
+          <p style={{ margin:'8px 0 0', fontSize:12, color:'var(--ink-3)' }}>
+            Mémorisé automatiquement — repris à la prochaine plongée.
+          </p>
+        </div>
       </div>
 
       {phases.map(p => {

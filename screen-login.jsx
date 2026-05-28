@@ -27,6 +27,8 @@ function ScreenLogin() {
   return (
     <div className="login-shell">
       <div className="login-card">
+        <img src="logo-ffessm.png" alt="FFESSM" className="login-ffessm-logo" />
+
         <div className="login-logo">
           <span className="dot"></span>
           <span>DP/ASSISTANT</span>

@@ -144,6 +144,8 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 .step.done .num { background: var(--kelp); color: white; border-color: var(--kelp); }
 .step.active { color: var(--ink); border-bottom-color: var(--marine); font-weight: 500; }
 .step.active .num { background: var(--marine); color: white; border-color: var(--marine); }
+.step.locked { opacity: 0.45; cursor: not-allowed; }
+.step.locked .num { background: var(--bg-3); border-color: var(--line); font-size: 12px; }
 .step .label-sub { color: var(--ink-4); font-family: var(--t-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; display: block; line-height: 1; margin-bottom: 3px;}
 .step .grp { display: flex; flex-direction: column; align-items: flex-start; }
 
@@ -1117,6 +1119,14 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 .home-hero .btn.primary:hover { background: oklch(56% 0.16 32); border-color: oklch(56% 0.16 32); }
 .home-hero .btn { background: transparent; border-color: #334559; color: var(--paper); }
 .home-hero .btn:hover { background: #15273C; }
+.home-ffessm-logo {
+  display: block;
+  height: 52px;
+  width: auto;
+  margin-bottom: 20px;
+  filter: brightness(0) invert(1);
+  opacity: 0.9;
+}
 .home-hero .corner {
   position: absolute;
   top: 18px;
@@ -1245,6 +1255,12 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   width: 100%;
   text-align: center;
   box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+}
+.login-ffessm-logo {
+  display: block;
+  margin: 0 auto 20px;
+  height: 56px;
+  width: auto;
 }
 .login-logo {
   display: flex;

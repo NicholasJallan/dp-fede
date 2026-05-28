@@ -371,6 +371,7 @@ window.CHECKLIST_RULES = [
     items:[
       { id:'p2_appel',         text:'Appel nominatif des plongeurs présents — vérification aptitudes' },
       { id:'p2_briefing',      text:'Briefing général : site, profil, paramètres, signes, consignes' },
+      { id:'p2_rappels_secu',  text:'Rappels de sécurité individuels communiqués : moyen de rappel, conduite à tenir en cas de perte de palanquée, procédure de remontée d\'urgence', ref:'CdS A322-72', tags:['fiche'] },
       { id:'p2_palanquees',    text:'Composition annoncée — GP / serre-files / autonomes identifiés' },
       { id:'p2_sec_surface',   text:'Sécurité surface en poste — relais identifiés si rotation', ref:'CdS A322-78', tags:['secours'], when:{sec_surface:true} },
       { id:'p2_fiche',         text:'Fiche de sécurité complétée et accessible sur site', ref:'CdS A322-72', tags:['fiche'] },

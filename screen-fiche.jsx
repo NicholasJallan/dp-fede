@@ -4,7 +4,7 @@ const PRESSION_SORTIE_OPTIONS = [
   'panne d\'air','20','30','40','50','60','70','80','90','100','100+',
 ];
 
-function ScreenFiche({ answers, palanquees, divers, setAnswer }) {
+function ScreenFiche({ answers, palanquees, divers, setAnswer, pressions, setPressions, realises, setRealises, heuresDebut, setHeuresDebut, heuresFin, setHeuresFin }) {
   const { user } = useAuth();
   const diversById = useMemo(() => {
     const m = {};
@@ -12,13 +12,11 @@ function ScreenFiche({ answers, palanquees, divers, setAnswer }) {
     return m;
   }, [divers]);
 
-  const [heuresDebut, setHeuresDebut] = useState({});
-  const [heuresFin,   setHeuresFin]   = useState({});
-  const [realises,    setRealises]    = useState({});
-  const [pressions,   setPressions]   = useState({}); // { palId-diverId: '50' }
-  const [finModal,    setFinModal]    = useState(null);
-  const [finForm,     setFinForm]     = useState({ duree:'', profMax:'', dtr:'' });
-  const [obs,         setObs]         = useState(answers.fiche_observations || '');
+  // heuresDebut, heuresFin, pressions, realises sont levés dans app.jsx
+  const [finModal,      setFinModal]      = useState(null);
+  const [finForm,       setFinForm]       = useState({ duree:'', profMax:'', dtr:'' });
+  const [obs,           setObs]           = useState(answers.fiche_observations || '');
+  const [confirmDepart, setConfirmDepart] = useState(null); // palId en attente de confirmation
 
   // Persister obs au global au blur
   useEffect(() => {
@@ -38,17 +36,31 @@ function ScreenFiche({ answers, palanquees, divers, setAnswer }) {
     return diff;
   };
 
-  const startDive = (palId) =>
-    setHeuresDebut(prev => ({ ...prev, [palId]: nowHHMM() }));
+  const startDive = (palId) => {
+    // Premier départ : demander confirmation avant de verrouiller les étapes précédentes
+    if (Object.keys(heuresDebut).length === 0) {
+      setConfirmDepart(palId);
+    } else {
+      setHeuresDebut(prev => ({ ...prev, [palId]: nowHHMM() }));
+    }
+  };
+
+  const confirmDepartAction = () => {
+    if (!confirmDepart) return;
+    setHeuresDebut(prev => ({ ...prev, [confirmDepart]: nowHHMM() }));
+    setConfirmDepart(null);
+  };
 
   const openFinModal = (palId, pal) => {
-    const endTime = nowHHMM();
-    const debut   = heuresDebut[palId];
-    const elapsed = debut ? diffMinutes(debut, endTime) : null;
+    const endTime  = nowHHMM();
+    const debut    = heuresDebut[palId];
+    const elapsed  = debut ? diffMinutes(debut, endTime) : null;
+    const dtrBrut  = pal.dtr || window.calcDTR(pal.profMax);
+    const dtrCapped = (elapsed !== null && dtrBrut > elapsed) ? elapsed : dtrBrut;
     setFinForm({
       duree:   elapsed !== null ? String(elapsed) : '',
       profMax: String(pal.profMax || ''),
-      dtr:     String(pal.dtr || window.calcDTR(pal.profMax)),
+      dtr:     String(dtrCapped),
     });
     setFinModal({ palId, endTime, elapsed });
   };
@@ -279,13 +291,18 @@ ${styles}
                           </>
                         )}
                         <td className="no-print" style={{ width: 110 }}>
-                          <select className="input small tight"
-                            value={pressions[presKey] || '50'}
-                            onChange={e => setPression(p.id, m.diverId || m.id, e.target.value)}>
-                            {PRESSION_SORTIE_OPTIONS.map(o => (
-                              <option key={o} value={o}>{o === 'panne d\'air' ? o : `${o} bar`}</option>
-                            ))}
-                          </select>
+                          {debut && !fin
+                            ? <span className="muted" style={{ fontSize:12 }}>— en cours</span>
+                            : (
+                              <select className="input small tight"
+                                value={pressions[presKey] || '50'}
+                                onChange={e => setPression(p.id, m.diverId || m.id, e.target.value)}>
+                                {PRESSION_SORTIE_OPTIONS.map(o => (
+                                  <option key={o} value={o}>{o === 'panne d\'air' ? o : `${o} bar`}</option>
+                                ))}
+                              </select>
+                            )
+                          }
                         </td>
                         {mi === 0 && (
                           <td rowSpan={sorted.length} style={{ verticalAlign:'top', minWidth:90 }} className="no-print">
@@ -327,7 +344,7 @@ ${styles}
           <div>• VHF : <b>{answers.vhf ? 'Embarquée et testée' : '—'}</b></div>
           <div>• Pavillon Alpha : <b>{answers.pavillon_alpha || answers.bouee_surface ? 'Hissé / présent' : '—'}</b></div>
           <div>• Eau douce potable : <b>{answers.eau_potable ? 'Oui' : 'Non'}</b></div>
-          <div>• Moyen de rappel : <b>{answers.rappel ? 'Oui' : '—'}</b></div>
+          <div>• Moyen de rappel : <b>{answers.moyen_rappel || (answers.rappel ? 'Oui' : '—')}</b></div>
           <div>• Numéro d'urgence : <b>{answers.urgence_num || user?.urgence_defaut || '18'}</b></div>
         </div>
 
@@ -413,6 +430,27 @@ ${styles}
               <button className="btn" onClick={() => setFinModal(null)}>Annuler</button>
               <button className="btn primary" onClick={confirmFin}
                 disabled={!finForm.duree || !finForm.profMax}>Valider</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation premier départ — verrouillage irréversible des étapes précédentes */}
+      {confirmDepart && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', zIndex:1000,
+                      display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div style={{ background:'var(--surface)', borderRadius:12, padding:28, maxWidth:420, width:'100%',
+                        boxShadow:'0 8px 40px rgba(0,0,0,0.3)', display:'grid', gap:18 }}>
+            <h2 style={{ margin:0, fontSize:18 }}>Confirmer le départ en plongée</h2>
+            <p style={{ margin:0, color:'var(--ink-2)', lineHeight:1.6 }}>
+              Dès que la première palanquée est mise à l'eau, <b>les étapes Profil, Palanquées et Check-list seront définitivement verrouillées</b> et ne pourront plus être modifiées.
+            </p>
+            <p style={{ margin:0, color:'var(--ink-3)', fontSize:13, lineHeight:1.5 }}>
+              Confirmez-vous que toutes les informations préalables sont complètes et validées ?
+            </p>
+            <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+              <button className="btn" onClick={() => setConfirmDepart(null)}>Annuler</button>
+              <button className="btn primary" onClick={confirmDepartAction}>▶ Confirmer le départ</button>
             </div>
           </div>
         </div>

@@ -166,18 +166,29 @@ function validatePal(pal, diversById, answers) {
     }
   }
 
+  // ─── PE sans encadrement : interdit ──────────────────────────────────
+  // Un Plongeur Encadré (PE) ne peut, par définition, plonger qu'avec un
+  // Guide de palanquée (GP) ou un Enseignant (E1→E4). On couvre ici les
+  // deux cas (palanquée 100 % PE, ou panachage PE + PA sans encadrement).
+  if (peMembers.length > 0 && gpMembers.length === 0 && ensMembers.length === 0) {
+    if (paMembers.length > 0) {
+      issues.push({ tone:'err',
+        text:'Panachage PE + PA sans encadrement : une palanquée est soit encadrée (GP ou Enseignant), soit 100 % autonome.' });
+    } else {
+      issues.push({ tone:'err',
+        text:'Plongeurs encadrés (PE) sans encadrement : un GP ou un Enseignant (E1→E4) est obligatoire.' });
+    }
+  }
+
   // ─── Règles PA — autonomes ────────────────────────────────────────────
   if (paMembers.length > 0 && gpMembers.length === 0 && ensMembers.length === 0) {
-    // Palanquée 100 % autonome
     if (paMembers.length > 3) {
       issues.push({ tone:'err', text:`Palanquée PA : max 3 plongeurs autonomes (${paMembers.length} actuellement).` });
     }
-    // Pas de panachage PA12/PA20/PA40
     const paLevels = [...new Set(paMembers.map(m => paLevel(m.aptitude)))];
     if (paLevels.length > 1) {
       issues.push({ tone:'err', text:'Palanquée PA : pas de panachage des prérogatives PA12/PA20/PA40.' });
     }
-    // Si baptême au sein → erreur
     if (baptMembers.length > 0) {
       issues.push({ tone:'err', text:'Baptême : un encadrant E1→E4 est obligatoire.' });
     }

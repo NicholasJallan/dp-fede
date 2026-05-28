@@ -451,15 +451,12 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 .cds-icon { font-weight: 700; font-size: 12px; line-height: 1; }
 .cds-art { font-size: inherit; }
 
-/* Tooltip CdS : par défaut en-dessous du badge (plus sûr — peu de risque
-   d'être coupé par le bord supérieur de la page ou d'un conteneur).
-   La classe .cds-tooltip est positionnée en absolute par rapport au badge
-   et restreinte par max-width pour ne pas déborder horizontalement. */
+/* Tooltip CdS : position: fixed, posée par JS (CdsBadge) au survol.
+   Sortie volontairement du flux DOM pour s'échapper de tout overflow:hidden
+   parent (cl-phase, card, modale, etc.). */
 .cds-tooltip {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
+  position: fixed;
+  top: 0; left: 0;
   width: max-content;
   max-width: min(320px, calc(100vw - 24px));
   padding: 10px 12px;
@@ -477,36 +474,34 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.18s 0.1s, visibility 0.18s 0.1s;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  transition: opacity 0.14s, visibility 0.14s;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+  --arrow-x: 50%;
 }
+.cds-tooltip.open { opacity: 1; visibility: visible; transition-delay: 80ms; }
+
+/* Flèche au-dessus du tooltip (par défaut : tooltip sous le badge) */
 .cds-tooltip::after {
   content: '';
   position: absolute;
-  bottom: 100%; left: 50%;
+  left: var(--arrow-x);
+  bottom: 100%;
   transform: translateX(-50%);
   border: 5px solid transparent;
   border-bottom-color: var(--ink);
 }
-.cds-tooltip b { display: block; font-size: 12.5px; margin-bottom: 4px; color: var(--paper); }
-.cds-tooltip small { display: block; font-size: 11.5px; color: oklch(85% 0 0); margin-bottom: 6px; }
-.cds-tooltip em { display: block; font-style: normal; font-size: 10.5px; color: var(--marine-100); }
-.cds-badge:hover .cds-tooltip,
-.cds-badge:focus .cds-tooltip { opacity: 1; visibility: visible; }
-
-/* Si le badge est en bas de la fenêtre, l'utilisateur peut ajouter
-   data-tooltip-pos="top" sur le badge pour basculer la flèche au-dessus.
-   Approche pure CSS sans JS : par défaut, on garde l'orientation "below". */
-.cds-badge[data-tooltip-pos="top"] .cds-tooltip {
-  top: auto;
-  bottom: calc(100% + 8px);
-}
-.cds-badge[data-tooltip-pos="top"] .cds-tooltip::after {
+/* Quand le tooltip est rendu AU-DESSUS du badge (data-arrow="below"),
+   la flèche pointe vers le bas. */
+.cds-tooltip[data-arrow="below"]::after {
   bottom: auto;
   top: 100%;
   border-bottom-color: transparent;
   border-top-color: var(--ink);
 }
+
+.cds-tooltip b { display: block; font-size: 12.5px; margin-bottom: 4px; color: var(--paper); }
+.cds-tooltip small { display: block; font-size: 11.5px; color: oklch(85% 0 0); margin-bottom: 6px; }
+.cds-tooltip em { display: block; font-style: normal; font-size: 10.5px; color: var(--marine-100); }
 
 /* ===== Buttons ===== */
 

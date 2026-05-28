@@ -142,51 +142,43 @@ window.getPalType = function(membres) {
 // CODE DU SPORT — Dictionnaire des articles cités
 // Tooltip de résumé + lien Légifrance
 // =========================================================================
+// LEGIARTI IDs vérifiés sur legifrance.gouv.fr (mai 2026).
+// Code du sport, Section 3 du Chapitre II (plongée subaquatique) : LEGISCTA000018751673.
 window.CDS_ARTICLES = {
   'A322-72': {
-    title: 'Fiche de sécurité',
-    summary: 'Le directeur de plongée établit une fiche de sécurité avant chaque plongée. Elle mentionne les conditions, la composition des palanquées, les paramètres prévus et réalisés. À conserver 1 an minimum.',
-    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045388881',
+    title: 'Directeur de plongée — responsabilités',
+    summary: 'La pratique de la plongée est placée sous la responsabilité d\'un directeur de plongée présent au lieu d\'entrée ou d\'immersion. Il fixe les caractéristiques de la plongée et est garant des conditions de sécurité.',
+    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025393876',
   },
   'A322-77': {
-    title: 'Aptitudes et brevets',
-    summary: 'Les pratiquants justifient d\'un brevet ou d\'une attestation correspondant à leur niveau. Les brevets étrangers doivent être évalués par un E3.',
-    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045388891',
+    title: 'Information des pratiquants',
+    summary: 'Le responsable de l\'établissement informe les plongeurs des conditions de pratique et leur fait connaître l\'existence des espaces d\'évolution.',
+    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025705105',
   },
   'A322-78': {
-    title: 'Matériel de sécurité — sécurité surface',
-    summary: 'L\'organisateur garantit la présence d\'une sécurité surface, du matériel d\'oxygénothérapie et des moyens de communication avec les secours.',
-    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045388895',
-  },
-  'A322-78-1': {
-    title: 'Trousse de secours et oxygène',
-    summary: 'Matériel d\'oxygénothérapie (15 L à 200 bar minimum, BAVU, masques tailles enfant/adulte) sur le site de plongée.',
-    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045388899',
+    title: 'Matériel de secours et d\'assistance',
+    summary: 'Sur le site : oxygénothérapie médicale normobare, BAVU avec masques toutes tailles, tables de décompression, eau douce potable, bouteille d\'air ou de mélange suralimentaire, moyens de communication avec les secours.',
+    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025393863',
   },
   'A322-86': {
     title: 'Espaces d\'évolution — profondeurs',
-    summary: 'Plongées limitées en fonction des qualifications : 6 m (espace de proche surface), 20 m (médian), 40 m (lointain), 60 m (profond), 80 m (très profond).',
-    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045388921',
+    summary: 'Plongées en milieu naturel à l\'air : profondeurs réparties par espaces de 0-6 m, 0-12 m, 0-20 m, 0-40 m, 0-60 m, supérieur à 60 m. Tableau par niveau du plongeur et de l\'encadrement.',
+    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025393833',
   },
   'A322-89': {
-    title: 'Plongée Nitrox',
-    summary: 'Chaque bloc Nitrox doit être analysé et étiqueté (% O₂, MOD, signature du plongeur). Au-delà de 40 % O₂, qualification PN-C requise.',
-    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045388933',
+    title: 'Plongée au Nitrox',
+    summary: 'Plongée avec mélanges suroxygénés : chaque bloc doit être analysé et étiqueté (% O₂, MOD). Qualifications PN ou PN-C requises selon la PpO2 du mélange utilisé.',
+    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025393827',
   },
   'A322-91': {
     title: 'Plongée Trimix / Héliox',
-    summary: 'Trimix/Héliox : analyse des mélanges, planification de décompression, ligne lestée et sécurité surface continue obligatoires.',
-    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045388941',
+    summary: 'Plongées avec mélanges Trimix ou Héliox : analyse des mélanges, planification de décompression, ligne lestée pour la descente/remontée et sécurité surface continue obligatoires.',
+    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025393819',
   },
   'A322-94': {
-    title: 'Recycleurs (CCR / SCR)',
-    summary: 'Check-list constructeur, pré-breathing, validation des aptitudes. Au-delà de 6 m, circuit ouvert de secours obligatoire par plongeur.',
-    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045388957',
-  },
-  'A322-113': {
-    title: 'Planification de décompression',
-    summary: 'Trimix et plongées profondes : remettre une copie de la planification décompression à chaque palanquée.',
-    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045389033',
+    title: 'Plongée en recycleur (CCR / SCR)',
+    summary: 'Check-list constructeur avant chaque plongée, pré-breathing, validation des aptitudes. Au-delà de 6 m : circuit ouvert de secours obligatoire pour chaque plongeur.',
+    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025393813',
   },
 };
 
@@ -330,7 +322,7 @@ window.QUESTIONS = [
       { id:'plan_secours',  label:'Plan de secours affiché et à jour ?', type:'bool' },
       { id:'coords_secours',label:'Coordonnées des secours disponibles ?', type:'bool',
         hint:'Numéros adaptés au pays du site (France : 15/18/112, mer : 196 ; Suisse : 144/117/1414).' },
-      { id:'o2',            label:'Matériel O₂ vérifié (pression, BAVU, masques) ?', type:'bool', ref:'CdS A322-78-1' },
+      { id:'o2',            label:'Matériel O₂ vérifié (pression, BAVU, masques) ?', type:'bool', ref:'CdS A322-78' },
       { id:'trousse',       label:'Trousse de secours + couverture isothermique vérifiées ?', type:'bool' },
       { id:'eau_potable',   label:'Eau douce potable disponible ?', type:'bool' },
       { id:'rappel',        label:'Moyen de rappel des plongeurs (pétard, sondeur) ?', type:'bool',
@@ -357,10 +349,10 @@ window.CHECKLIST_RULES = [
       { id:'p1_analyse_nx',    text:'Chaque bloc Nitrox analysé et étiqueté (% O₂, MOD, signature plongeur)', ref:'CdS A322-89', tags:['nitrox'], when:{nitrox:true} },
       { id:'p1_analyse_nx_sup', text:'Plongeurs Nx>40 % : qualification PN-C contrôlée + analyse signée', ref:'CdS A322-89', tags:['nitrox'],
         when:(a) => a.nitrox && Array.isArray(a.nitrox_kind) && a.nitrox_kind.includes('Nx > 40 %') },
-      { id:'p1_analyse_tx',    text:'Trimix/Héliox : analyse mélanges + planif décompression validée', ref:'CdS A322-91, A322-113', tags:['trimix'], when:{trimix:true} },
+      { id:'p1_analyse_tx',    text:'Trimix/Héliox : analyse mélanges + planif décompression validée', ref:'CdS A322-91', tags:['trimix'], when:{trimix:true} },
       { id:'p1_bloc_relais',   text:'Bloc(s) relais / déco analysés et étiquetés', ref:'CdS A322-89/91', tags:['materiel'], when:{bloc_relais:true} },
       { id:'p1_rec_check',     text:'Check-list constructeur de chaque recycleur — pré-breathing', ref:'CdS A322-94', tags:['recycleur'], when:{recycleur:true} },
-      { id:'p1_o2_secours',    text:'Oxygénothérapie : bouteille > 100 bar, BAVU, masques (adulte/enfant)', ref:'CdS A322-78-1', tags:['secours'] },
+      { id:'p1_o2_secours',    text:'Oxygénothérapie : bouteille > 100 bar, BAVU, masques (adulte/enfant)', ref:'CdS A322-78', tags:['secours'] },
       { id:'p1_trousse',       text:'Trousse de secours + couverture isothermique vérifiées', tags:['secours'] },
       { id:'p1_doc_plongeurs', text:'Brevets, licences, certificats médicaux à jour pour chaque plongeur', ref:'CdS A322-77', tags:['plongeurs'] },
       { id:'p1_etrangers',     text:'Évaluation par un E3 des plongeurs aux brevets étrangers', ref:'CdS A322-77', tags:['etrangers'], when:{etrangers:true} },
@@ -388,7 +380,7 @@ window.CHECKLIST_RULES = [
       { id:'p2_nx_signature',  text:'Plongeurs Nitrox : signature finale de l\'analyse de leur bloc', ref:'CdS A322-89', tags:['nitrox'], when:{nitrox:true} },
       { id:'p2_rec_aptitudes', text:'Aptitudes recycleur validées + circuit ouvert de secours pour > 6m', ref:'CdS A322-94', tags:['recycleur'], when:{recycleur:true} },
       { id:'p2_ligne_lestee',  text:'Ligne lestée descente/remontée obligatoire Trimix', ref:'CdS A322-91', tags:['trimix'], when:{trimix:true} },
-      { id:'p2_planifs',       text:'Copies des planifs déco remises à chaque palanquée Trimix', ref:'CdS A322-113', tags:['trimix'], when:{trimix:true} },
+      { id:'p2_planifs',       text:'Copies des planifs déco remises à chaque palanquée Trimix', ref:'CdS A322-91', tags:['trimix'], when:{trimix:true} },
       { id:'p2_bord_entree',   text:'Points d\'entrée/sortie de l\'eau identifiés et sécurisés', tags:['bord'], when:{depart_bord:true} },
       { id:'p2_go_decision',   text:'Décision finale du DP : conditions OK pour autoriser la mise à l\'eau', ref:'CdS A322-72', tags:['fiche'] },
     ]

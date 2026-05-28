@@ -38,8 +38,10 @@ function CdsLink({ art, label, refText, compact = false }) {
       {label && <span className="cds-label">{label}</span>}
       {arts.map(a => {
         const info = window.CDS_ARTICLES[a];
-        const title = info ? `${info.title} — ${info.summary}` : `Article ${a}`;
-        const href = info?.url || 'https://www.legifrance.gouv.fr/codes/section_lc/LEGITEXT000006071318';
+        const title = info ? `${info.title} — ${info.summary}` : `Article ${a} du Code du Sport`;
+        // Si on connaît l'article, lien direct ; sinon URL de recherche Légifrance.
+        const href = info?.url
+          || `https://www.legifrance.gouv.fr/search/code?searchField=ARTICLE&query=${encodeURIComponent(a)}&tab_selection=code`;
         return (
           <a key={a}
             href={href}
@@ -49,13 +51,11 @@ function CdsLink({ art, label, refText, compact = false }) {
             onClick={e => e.stopPropagation()}>
             <span className="cds-icon">§</span>
             <span className="cds-art">Art. {a}</span>
-            {info && (
-              <span className="cds-tooltip" role="tooltip">
-                <b>{info.title}</b>
-                <small>{info.summary}</small>
-                <em>Légifrance ↗</em>
-              </span>
-            )}
+            <span className="cds-tooltip" role="tooltip">
+              <b>{info?.title || `Article ${a}`}</b>
+              <small>{info?.summary || 'Voir le texte sur Légifrance.'}</small>
+              <em>Légifrance ↗</em>
+            </span>
           </a>
         );
       })}

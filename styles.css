@@ -153,7 +153,10 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   flex: 1;
   display: grid;
   grid-template-columns: 1fr;
-  padding: 28px 20px 120px;
+  padding: 28px 20px 140px;
+  /* Inclut la safe-area pour que le bas du contenu reste accessible
+     même avec un home indicator iOS ou une barre URL Safari basse. */
+  padding-bottom: calc(140px + env(safe-area-inset-bottom));
   gap: 28px;
 }
 @media (min-width: 980px) {
@@ -448,13 +451,17 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 .cds-icon { font-weight: 700; font-size: 12px; line-height: 1; }
 .cds-art { font-size: inherit; }
 
+/* Tooltip CdS : par défaut en-dessous du badge (plus sûr — peu de risque
+   d'être coupé par le bord supérieur de la page ou d'un conteneur).
+   La classe .cds-tooltip est positionnée en absolute par rapport au badge
+   et restreinte par max-width pour ne pas déborder horizontalement. */
 .cds-tooltip {
   position: absolute;
-  bottom: calc(100% + 6px);
+  top: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
   width: max-content;
-  max-width: 320px;
+  max-width: min(320px, calc(100vw - 24px));
   padding: 10px 12px;
   background: var(--ink);
   color: var(--paper);
@@ -469,22 +476,37 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   z-index: 1000;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.18s 0.1s;
+  visibility: hidden;
+  transition: opacity 0.18s 0.1s, visibility 0.18s 0.1s;
   box-shadow: 0 8px 24px rgba(0,0,0,0.18);
 }
 .cds-tooltip::after {
   content: '';
   position: absolute;
-  top: 100%; left: 50%;
+  bottom: 100%; left: 50%;
   transform: translateX(-50%);
   border: 5px solid transparent;
-  border-top-color: var(--ink);
+  border-bottom-color: var(--ink);
 }
 .cds-tooltip b { display: block; font-size: 12.5px; margin-bottom: 4px; color: var(--paper); }
 .cds-tooltip small { display: block; font-size: 11.5px; color: oklch(85% 0 0); margin-bottom: 6px; }
 .cds-tooltip em { display: block; font-style: normal; font-size: 10.5px; color: var(--marine-100); }
 .cds-badge:hover .cds-tooltip,
-.cds-badge:focus .cds-tooltip { opacity: 1; }
+.cds-badge:focus .cds-tooltip { opacity: 1; visibility: visible; }
+
+/* Si le badge est en bas de la fenêtre, l'utilisateur peut ajouter
+   data-tooltip-pos="top" sur le badge pour basculer la flèche au-dessus.
+   Approche pure CSS sans JS : par défaut, on garde l'orientation "below". */
+.cds-badge[data-tooltip-pos="top"] .cds-tooltip {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+.cds-badge[data-tooltip-pos="top"] .cds-tooltip::after {
+  bottom: auto;
+  top: 100%;
+  border-bottom-color: transparent;
+  border-top-color: var(--ink);
+}
 
 /* ===== Buttons ===== */
 
@@ -526,12 +548,15 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   bottom: 0; left: 0; right: 0;
   background: var(--surface);
   border-top: 1px solid var(--line);
-  padding: 14px 20px;
+  padding: 12px 20px;
+  /* Safe-area pour iOS/PWA — évite que le footnav soit caché par le home
+     indicator ou par la barre d'URL Safari sur mobile. */
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
   display: flex;
   align-items: center;
   gap: 12px;
-  box-shadow: 0 -2px 12px rgba(11,26,43,0.05);
-  z-index: 50;
+  box-shadow: 0 -2px 12px rgba(11,26,43,0.08);
+  z-index: 100;
 }
 .footnav .progress {
   flex: 1;
@@ -1186,11 +1211,26 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 @media (max-width: 720px) {
   .topbar { padding: 10px 14px; flex-wrap: wrap; gap: 10px; }
   .topbar .meta { gap: 10px; font-size: 10px; }
-  .main { padding: 18px 14px 140px; }
+  .main {
+    padding: 18px 14px 160px;
+    padding-bottom: calc(160px + env(safe-area-inset-bottom));
+  }
   .page-head h1 { font-size: 22px; }
   .fiche { padding: 18px 16px; }
   .fiche-grid { grid-template-columns: repeat(2, 1fr); }
   .fiche .signatures { grid-template-columns: 1fr; }
+
+  /* Footnav compact sur mobile : on cache le label de l'étape (le stepper
+     du haut le rappelle déjà), et on remonte la barre de progression
+     sous les boutons pour éviter qu'elle ne squish les boutons. */
+  .footnav {
+    flex-wrap: wrap;
+    padding: 10px 14px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    gap: 8px;
+  }
+  .footnav .progress { order: 3; flex-basis: 100%; max-width: none; }
+  .footnav .btn { min-height: 36px; font-size: 13px; padding: 6px 12px; }
 }
 
 /* ===== Login screen ===== */

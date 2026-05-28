@@ -191,25 +191,40 @@ function MeteoField({ value, onChange, site, date }) {
     const lat = parseFloat(coords?.lat);
     const lng = parseFloat(coords?.lng);
     if (!isFinite(lat) || !isFinite(lng)) {
-      setErr('Coordonnées GPS du site invalides');
+      const msg = `Coordonnées GPS invalides (lat=${coords?.lat}, lng=${coords?.lng})`;
+      setErr(msg);
+      onChange((value ? value + '\n' : '') + `[DEBUG METEO] ${msg}`);
       return;
     }
     setFetching(true);
     setErr('');
-    try {
-      // forecast_days=16 = couvre toute la plage permise par open-meteo
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
-        `&hourly=temperature_2m,windspeed_10m,windgusts_10m,weathercode,visibility` +
-        `&forecast_days=16&timezone=auto`;
 
+    // ---- Mode debug : on consigne chaque étape dans le textarea
+    const debug = [];
+    const log = (line) => debug.push(line);
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
+      `&hourly=temperature_2m,windspeed_10m,windgusts_10m,weathercode,visibility` +
+      `&forecast_days=16&timezone=auto`;
+    log(`URL : ${url}`);
+
+    try {
+      const t0  = Date.now();
       const res = await fetch(url);
+      log(`Réponse en ${Date.now() - t0}ms — HTTP ${res.status} ${res.statusText || ''}`);
+      log(`Content-Type : ${res.headers.get('content-type') || '?'}`);
+
+      const rawText = await res.text();
+      log(`Body (${rawText.length} octets, début) : ${rawText.slice(0, 200)}`);
+
       if (!res.ok) {
-        let reason = `HTTP ${res.status}`;
-        try { const j = await res.json(); if (j.reason) reason += ' — ' + j.reason; } catch {}
-        throw new Error(reason);
+        throw new Error(`HTTP ${res.status} ${res.statusText || ''}`);
       }
-      const data = await res.json();
-      if (data?.error) throw new Error(data.reason || 'erreur open-meteo');
+
+      let data;
+      try { data = JSON.parse(rawText); }
+      catch (parseErr) { throw new Error(`JSON invalide : ${parseErr.message}`); }
+
+      if (data?.error) throw new Error(`API open-meteo : ${data.reason || 'erreur inconnue'}`);
       if (!data?.hourly?.time?.length) throw new Error('Pas de données horaires retournées');
 
       const times = data.hourly.time;
@@ -219,7 +234,6 @@ function MeteoField({ value, onChange, site, date }) {
         return dt.getTime();
       })();
 
-      // Trouver l'index de l'heure la plus proche
       let bestIdx = 0;
       let bestDiff = Infinity;
       for (let k = 0; k < times.length; k++) {
@@ -228,7 +242,6 @@ function MeteoField({ value, onChange, site, date }) {
         if (diff < bestDiff) { bestDiff = diff; bestIdx = k; }
       }
 
-      // Si l'écart est > 24h, on signale que c'est la prévision la plus proche
       const offsetH = Math.round(bestDiff / 3_600_000);
       const offsetNote = offsetH > 24 ? ` — prévision décalée de ~${offsetH}h` : '';
 
@@ -246,8 +259,12 @@ function MeteoField({ value, onChange, site, date }) {
       onChange((value ? value + '\n' : '') + `Météo (open-meteo, ${when}${offsetNote}) : ${text}`);
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.warn('Open-meteo error:', e);
-      setErr(e?.message || 'erreur inconnue');
+      console.warn('Open-meteo error:', e, debug);
+      const msg = e?.message || 'erreur inconnue';
+      setErr(msg);
+      // Dump du debug dans le textarea pour faciliter le diagnostic
+      const dump = `[DEBUG METEO] ${msg}\n` + debug.map(l => '  · ' + l).join('\n');
+      onChange((value ? value + '\n' : '') + dump);
     } finally {
       setFetching(false);
     }

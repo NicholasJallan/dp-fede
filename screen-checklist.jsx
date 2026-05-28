@@ -24,9 +24,9 @@ function ScreenChecklist({ answers, checked, setChecked, comments, setComment })
   return (
     <div>
       <div className="page-head">
-        <div className="eyebrow">Étape 3 / 4 · Check-list opérationnelle</div>
-        <h1>Check-list générée pour cette plongée</h1>
-        <p>{total} actions organisées en 5 phases, dont {phases.reduce((n,p) => n + p.items.filter(i => i.when).length, 0)} déclenchées par les réponses au profilage. Cochez au fur et à mesure : l'état est sauvegardé automatiquement.</p>
+        <div className="eyebrow">Étape 3 / 5 · Check-list pré-plongée</div>
+        <h1>Avant d'autoriser la mise à l'eau</h1>
+        <p>{total} contrôles organisés en 2 phases (préparation + sur site), dont {phases.reduce((n,p) => n + p.items.filter(i => i.when).length, 0)} déclenchés par votre profilage. À la fin : décision finale du DP pour autoriser le départ.</p>
       </div>
 
       <div className="row" style={{ marginBottom: 18, gap: 8 }}>
@@ -68,7 +68,7 @@ function ScreenChecklist({ answers, checked, setChecked, comments, setComment })
                   <div className="cl-body">
                     <div className="title">{it.text}</div>
                     <div className="meta">
-                      {it.ref && <Ref>{it.ref}</Ref>}
+                      {it.ref && <CdsLink refText={it.ref} compact />}
                       {(it.tags || []).map(t => <Pill key={t}>{t}</Pill>)}
                       <span className="spacer"></span>
                       <button

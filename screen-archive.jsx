@@ -28,8 +28,10 @@ function FicheStatique({ ficheRef, answers, palanquees, divers }) {
         <div className="cell"><div className="k">Milieu</div><div className="v">{answers.milieu || '—'}</div></div>
         <div className="cell"><div className="k">Départ</div><div className="v">{depart}</div></div>
         <div className="cell">
-          <div className="k">Distance / Délai secours</div>
-          <div className="v">{answers.distance_cote ? `${answers.distance_cote} M · ` : ''}{answers.delai_secours || '—'}</div>
+          <div className="k">Mélanges</div>
+          <div className="v" style={{ fontSize: 12 }}>
+            {[answers.air && 'Air', answers.nitrox && 'Nitrox', answers.trimix && 'Trimix', answers.oxygene_pur && 'O₂'].filter(Boolean).join(' · ') || '—'}
+          </div>
         </div>
         <div className="cell">
           <div className="k">Conditions</div>
@@ -45,8 +47,8 @@ function FicheStatique({ ficheRef, answers, palanquees, divers }) {
             <th>Plongeur</th>
             <th>Aptitude</th>
             <th>Mélange</th>
-            <th>Prof. prévue</th>
-            <th>Durée prévue</th>
+            <th>Profondeur</th>
+            <th>Durée</th>
             <th>DTR</th>
           </tr>
         </thead>
@@ -132,32 +134,41 @@ function ScreenArchive({ answers, palanquees, divers }) {
     return `fiche-securite-${date}-${site}.pdf`;
   };
 
-  const generatePdf = async () => {
+  // Génération PDF côté serveur via wkhtmltopdf — récupère un Blob
+  const generatePdfBlob = async () => {
     const ficheEl = ficheRef.current;
     if (!ficheEl) throw new Error('Rendu fiche introuvable.');
-    if (!window.html2canvas) throw new Error('html2canvas non chargé.');
-    if (!window.jspdf?.jsPDF) throw new Error('jsPDF non chargé.');
+    const styles = Array.from(document.querySelectorAll('link[rel=stylesheet]'))
+      .map(l => `<link rel="stylesheet" href="${l.href}">`).join('\n');
+    const html = `<!DOCTYPE html><html lang="fr"><head>
+<meta charset="utf-8">
+<title>Fiche de sécurité</title>
+${styles}
+<style>
+  body { background: white; padding: 0; margin: 0; }
+  .fiche { box-shadow: none; max-width: 100%; }
+  .no-print, .fiche-actions { display: none !important; }
+</style>
+</head><body>${ficheEl.outerHTML}</body></html>`;
 
-    const canvas = await window.html2canvas(ficheEl, { scale:2, useCORS:true, logging:false });
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-    const MARGIN = 10, W = 210, H = 297;
-    const imgW  = W - MARGIN * 2;
-    const imgH  = (canvas.height / canvas.width) * imgW;
-    const pageH = H - MARGIN * 2;
-    let posY = 0;
-    while (posY < imgH) {
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.88), 'JPEG', MARGIN, MARGIN - posY, imgW, imgH);
-      posY += pageH;
-      if (posY < imgH) pdf.addPage();
+    const csrf = document.cookie.split('; ').find(c => c.startsWith('dp_csrf='))?.split('=')[1];
+    const res  = await fetch('/api/pdf/fiche', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf || '' },
+      body: JSON.stringify({ html, filename: buildFilename() }),
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error('Génération serveur échouée : ' + t.slice(0, 200));
     }
-    return pdf;
+    return await res.blob();
   };
 
   const onPrintPdf = async () => {
     try {
-      const pdf = await generatePdf();
-      window.open(pdf.output('bloburl'), '_blank');
+      const blob = await generatePdfBlob();
+      window.open(URL.createObjectURL(blob), '_blank');
     } catch (err) {
       alert('Erreur PDF : ' + err.message);
     }
@@ -210,8 +221,7 @@ function ScreenArchive({ answers, palanquees, divers }) {
         const token = resp.access_token;
         try {
           setStatus('generating');
-          const pdf = await generatePdf();
-          const pdfBlob = pdf.output('blob');
+          const pdfBlob = await generatePdfBlob();
 
           setStatus('uploading');
           const folderId = await getOrCreateFolder(token);

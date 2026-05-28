@@ -44,13 +44,17 @@ if ($method === 'PATCH' && $path === '/api/auth/account') {
       ->maxLen('club_nom', 200, 'Nom du club')
       ->maxLen('club_numero', 50, 'Numéro de club')
       ->maxLen('club_siret', 50, 'SIRET')
+      ->maxLen('president_prenom', 100, 'Prénom du président')
+      ->maxLen('president_nom', 100, 'Nom du président')
+      ->maxLen('president_tel', 30, 'Téléphone du président')
+      ->maxLen('urgence_defaut', 20, 'Numéro d\'urgence')
       ->abortIfErrors();
 
     $st = $v->nullable('structure_type');
     if ($st && !in_array($st, $STRUCTURE_TYPES, true)) $st = null;
 
     Db::q(
-        'UPDATE users SET nom=?, prenom=?, club_nom=?, club_numero=?, club_siret=?, structure_type=? WHERE id=?',
+        'UPDATE users SET nom=?, prenom=?, club_nom=?, club_numero=?, club_siret=?, structure_type=?, president_prenom=?, president_nom=?, president_tel=?, urgence_defaut=? WHERE id=?',
         [
             $v->str('nom', $user['nom']),
             $v->str('prenom', $user['prenom']),
@@ -58,6 +62,10 @@ if ($method === 'PATCH' && $path === '/api/auth/account') {
             $v->str('club_numero', $user['club_numero']),
             $v->str('club_siret', $user['club_siret']),
             $st,
+            $v->str('president_prenom', $user['president_prenom'] ?? null),
+            $v->str('president_nom',    $user['president_nom']    ?? null),
+            $v->str('president_tel',    $user['president_tel']    ?? null),
+            $v->str('urgence_defaut',   $user['urgence_defaut']   ?? '18'),
             $user['id'],
         ]
     );

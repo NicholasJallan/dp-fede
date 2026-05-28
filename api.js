@@ -56,6 +56,7 @@ const api = {
   },
   users: {
     list:       ()           => apiFetch('/users'),
+    stats:      ()           => apiFetch('/users/stats'),
     setRole:    (id, role)   => apiFetch(`/users/${id}/role`, { method: 'PATCH', body: { role } }),
     delete:     (id)         => apiFetch(`/users/${id}`, { method: 'DELETE', body: {} }),
   },

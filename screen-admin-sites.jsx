@@ -5,7 +5,39 @@ const emptySite = () => ({
   nom: '', milieu: 'En mer', profondeur_max: '',
   coordonnees: null, notes: '',
   depart_bord: false, depart_bateau: false,
+  shot_line: false,
+  ville: '', pays: '', pays_code: '', region: '',
 });
+
+// Mapping ISO code → emoji drapeau
+function flagEmoji(iso2) {
+  if (!iso2 || iso2.length !== 2) return '';
+  const A = 0x1F1E6 - 'A'.charCodeAt(0);
+  return String.fromCodePoint(iso2.toUpperCase().charCodeAt(0) + A,
+                              iso2.toUpperCase().charCodeAt(1) + A);
+}
+
+// Reverse geocoding via Google Geocoder (utilise l'API déjà chargée)
+async function reverseGeocode(lat, lng) {
+  if (!window.google?.maps) return null;
+  return new Promise(resolve => {
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+      if (status !== 'OK' || !results?.length) return resolve(null);
+      const components = results[0].address_components || [];
+      const find = (type) => components.find(c => c.types.includes(type));
+      const ville = find('locality') || find('postal_town') || find('administrative_area_level_2');
+      const pays  = find('country');
+      const region = find('administrative_area_level_1');
+      resolve({
+        ville: ville?.long_name || null,
+        pays: pays?.long_name || null,
+        pays_code: pays?.short_name || null,
+        region: region?.long_name || null,
+      });
+    });
+  });
+}
 
 // Default map center — Méditerranée française
 const MAP_DEFAULT = { lat: 43.3, lng: 5.4 };
@@ -166,6 +198,8 @@ function ScreenAdminSites() {
       profondeur_max: s.profondeur_max != null ? String(s.profondeur_max) : '',
       coordonnees: s.coordonnees || null, notes: s.notes || '',
       depart_bord: !!s.depart_bord, depart_bateau: !!s.depart_bateau,
+      shot_line: !!s.shot_line,
+      ville: s.ville || '', pays: s.pays || '', pays_code: s.pays_code || '', region: s.region || '',
     });
     setEditing(s);
   };
@@ -233,11 +267,19 @@ function ScreenAdminSites() {
         {filtered.map(s => (
           <div className="diver-admin-row" key={s.id}>
             <div className="info">
-              <b>{s.nom}</b>
+              <b>
+                {s.nom}
+                {s.ville && (
+                  <span className="muted" style={{ fontWeight: 400, marginLeft: 6, fontSize: 13 }}>
+                    {flagEmoji(s.pays_code)} {s.ville}{s.pays ? `, ${s.pays}` : ''}
+                  </span>
+                )}
+              </b>
               <div className="meta-row">
                 {s.milieu && <Pill>{s.milieu}</Pill>}
                 {s.depart_bord   && <Pill>Bord</Pill>}
                 {s.depart_bateau && <Pill>Bateau</Pill>}
+                {s.shot_line     && <Pill tone="kelp">Shot-line</Pill>}
                 {s.profondeur_max != null && <Pill tone="marine">max {s.profondeur_max} m</Pill>}
                 {s.coordonnees?.lat && (
                   <a
@@ -296,15 +338,31 @@ function ScreenAdminSites() {
                 <label>Localisation — cliquer sur la carte ou rechercher un lieu</label>
                 <MapPicker
                   coordonnees={form.coordonnees}
-                  onChange={coords => {
+                  onChange={async coords => {
                     setField('coordonnees', coords);
                     // Auto-fill name from Places search if still empty
                     if (!form.nom && window.__lastPlaceName) {
                       setField('nom', window.__lastPlaceName);
                       window.__lastPlaceName = null;
                     }
+                    // Reverse geocoding pour ville/pays
+                    const geo = await reverseGeocode(coords.lat, coords.lng);
+                    if (geo) {
+                      setForm(f => ({
+                        ...f,
+                        ville: geo.ville || f.ville,
+                        pays:  geo.pays  || f.pays,
+                        pays_code: geo.pays_code || f.pays_code,
+                        region: geo.region || f.region,
+                      }));
+                    }
                   }}
                 />
+                {form.ville && (
+                  <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+                    {flagEmoji(form.pays_code)} {form.ville}{form.region ? ` · ${form.region}` : ''}{form.pays ? ` · ${form.pays}` : ''}
+                  </div>
+                )}
               </div>
 
               <div className="field" style={{ marginTop: 12 }}>
@@ -317,6 +375,20 @@ function ScreenAdminSites() {
                       {label}
                     </label>
                   ))}
+                </div>
+              </div>
+
+              <div className="field" style={{ marginTop: 12 }}>
+                <label>Équipement habituel</label>
+                <div className="qualif-row">
+                  <label className={`qualif-toggle ${form.shot_line ? 'on' : ''}`}>
+                    <input type="checkbox" checked={!!form.shot_line}
+                      onChange={() => setField('shot_line', !form.shot_line)} />
+                    Shot-line usuellement disponible
+                  </label>
+                </div>
+                <div className="field-hint">
+                  Présence habituelle d'une ligne lestée pour descente/remontée. Le DP confirmera lors de chaque plongée.
                 </div>
               </div>
 

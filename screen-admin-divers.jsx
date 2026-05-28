@@ -117,6 +117,32 @@ function ScreenAdminDivers() {
     }));
   };
 
+  // Diplôme professionnel : DEJEPS → force E3 minimum + PN-C (donc PN)
+  // DESJEPS → E4 minimum + PN-C
+  const setDiplomePro = (val) => {
+    setForm(f => {
+      let ne = f.niveau_encadrant;
+      let nx = [...f.nitrox];
+      if (val === 'DEJEPS') {
+        if (!['E3','E4'].includes(ne)) ne = 'E3';
+        if (!nx.includes('PN'))   nx.push('PN');
+        if (!nx.includes('PN-C')) nx.push('PN-C');
+      } else if (val === 'DESJEPS') {
+        if (ne !== 'E4') ne = 'E4';
+        if (!nx.includes('PN'))   nx.push('PN');
+        if (!nx.includes('PN-C')) nx.push('PN-C');
+      }
+      return {
+        ...f,
+        diplome_pro: val,
+        niveau_encadrant: ne,
+        niveau_plongeur: ne ? 'N3' : f.niveau_plongeur,
+        rifap: ne ? true : f.rifap,
+        nitrox: nx,
+      };
+    });
+  };
+
   // Nitrox cascade : PN-C implique PN
   const toggleNitrox = (val) => {
     setForm(f => {
@@ -363,10 +389,12 @@ function ScreenAdminDivers() {
                 <div className="qualif-section">
                   <div className="qualif-section-label">Diplôme professionnel</div>
                   <select className="input" value={form.diplome_pro}
-                    onChange={e => setField('diplome_pro', e.target.value)}>
+                    onChange={e => setDiplomePro(e.target.value)}>
                     <option value="">— aucun —</option>
                     {DIPLOMES_PRO.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
+                  {form.diplome_pro === 'DEJEPS' && <div className="field-hint">DEJEPS → E3 min, PN + PN-C automatiques</div>}
+                  {form.diplome_pro === 'DESJEPS' && <div className="field-hint">DESJEPS → E4, PN + PN-C automatiques</div>}
                 </div>
 
                 <div className="qualif-section">

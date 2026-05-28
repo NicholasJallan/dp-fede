@@ -7,16 +7,16 @@
 // optional  : possible (aptitudes_sup dans le profil du plongeur)
 // =========================================================================
 window.APTITUDE_MAP = {
-  N1: { mandatory: ['PE20'],               optional: ['PA20'] },
-  N2: { mandatory: ['PA20','PE40'],         optional: ['PA40'] },
-  N3: { mandatory: ['PA40','PE60'],         optional: ['PA60'] },
-  // Encadrants ont toujours les aptitudes N3 + la leur
-  N4: { mandatory: ['PA40','PE60','PA60'],  optional: [] },
-  N5: { mandatory: ['PA40','PE60','PA60'],  optional: [] },
-  E1: { mandatory: ['PA40','PE60','PA60'],  optional: [] },
-  E2: { mandatory: ['PA40','PE60','PA60'],  optional: [] },
-  E3: { mandatory: ['PA40','PE60','PA60'],  optional: [] },
-  E4: { mandatory: ['PA40','PE60','PA60'],  optional: [] },
+  N1: { mandatory: ['PE20'],                       optional: ['PA12','PA20'] },
+  N2: { mandatory: ['PE20','PE40','PA12','PA20'],  optional: ['PA40'] },
+  N3: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40'], optional: [] },
+  // Encadrants ont toujours toutes les aptitudes plongeur N3
+  N4: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40','GP'], optional: [] },
+  N5: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40'],      optional: [] },
+  E1: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40'],      optional: ['GP','Enseignant'] },
+  E2: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40'],      optional: ['GP','Enseignant'] },
+  E3: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40','GP','Enseignant'], optional: [] },
+  E4: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40','GP','Enseignant'], optional: [] },
 };
 
 // Profondeurs max autorisées par qualification DP (Art. A322-86)
@@ -30,18 +30,40 @@ window.DP_DEPTH_RULES = {
   N5: { formation: 0,  exploration: 60 },
 };
 
-// Options prof_max disponibles selon DP × activité (Code du Sport Art. A322-86)
-window.getProfOptions = function(niveauEncadrant, activite) {
+// Options prof_max disponibles selon DP × activité × site × Trimix DP (Code du Sport Art. A322-86)
+// dp : { niveau_encadrant, trimix:[] } (optionnel)
+// site : { profondeur_max } (optionnel)
+window.getProfOptions = function(niveauEncadrant, activite, dp, site) {
   const isExplo = !activite || activite === 'Exploration';
   const rules = window.DP_DEPTH_RULES[niveauEncadrant] || { formation: 60, exploration: 60 };
   // Si exploration = 0 pour ce DP (E1, E2), fallback sur formation
-  const max = isExplo ? (rules.exploration || rules.formation) : rules.formation;
+  let max = isExplo ? (rules.exploration || rules.formation) : rules.formation;
   if (max === 0) return [];
-  const all = [6, 12, 20, 40, 60, 70, 80];
-  return all.filter(d => d <= max).map(d => d + ' m').concat(max >= 80 ? ['>80 m'] : []);
+
+  // Trimix DP : étendre les options 70 / 120 m
+  const trimix = dp?.trimix || [];
+  const pth120 = trimix.includes('PTH-120');
+  const pth70  = trimix.includes('PTH-70') || pth120;
+
+  // PTH70 + E3 → 70m, PTH120 + E4 → 120m
+  if (pth70 && (niveauEncadrant === 'E3' || niveauEncadrant === 'E4')) max = Math.max(max, 70);
+  if (pth120 && niveauEncadrant === 'E4') max = 120;
+
+  // Limite par profondeur du site (on accepte l'échelon juste au-dessus)
+  const siteMax = site?.profondeur_max || null;
+  let candidates = [6, 12, 20, 40, 60, 70, 80, 120];
+  if (siteMax) {
+    // Garder les options ≤ siteMax + 1 échelon au-dessus
+    const above = candidates.filter(d => d > siteMax);
+    const nextStep = above.length > 0 ? above[0] : null;
+    candidates = candidates.filter(d => d <= siteMax || d === nextStep);
+  }
+
+  return candidates.filter(d => d <= max).map(d => d + ' m');
 };
 
 // Aptitudes disponibles pour un plongeur sur une plongée donnée
+// Retourne la liste de prérogatives que ce plongeur peut avoir dans une palanquée.
 window.getDiverAptitudes = function(diver, isExploration) {
   const np  = diver.niveau_plongeur  || null;
   const ne  = diver.niveau_encadrant || null;
@@ -51,26 +73,60 @@ window.getDiverAptitudes = function(diver, isExploration) {
 
   if (!np && !ne) { apts.add('Baptême'); return [...apts]; }
 
-  // Aptitudes du niveau plongeur
-  if (np === 'N1') { apts.add('PE20'); if (sup.includes('PA20')) apts.add('PA20'); }
-  if (np === 'N2') { apts.add('PA20'); apts.add('PE40'); if (sup.includes('PA40')) apts.add('PA40'); }
-  if (np === 'N3') { apts.add('PA40'); apts.add('PE60'); if (sup.includes('PA60')) apts.add('PA60'); }
+  // Aptitudes du niveau plongeur (selon Annexes FFESSM / Code du Sport)
+  if (np === 'N1') {
+    apts.add('PE20');
+    if (sup.includes('PA12')) apts.add('PA12');
+    if (sup.includes('PA20')) apts.add('PA20');
+  }
+  if (np === 'N2') {
+    apts.add('PE20'); apts.add('PE40');
+    apts.add('PA12'); apts.add('PA20');
+    if (sup.includes('PA40')) apts.add('PA40');
+  }
+  if (np === 'N3') {
+    apts.add('PE20'); apts.add('PE40'); apts.add('PE60');
+    apts.add('PA12'); apts.add('PA20'); apts.add('PA40');
+  }
 
-  // Encadrant → aptitudes N3 complètes + aptitude encadrante
+  // Encadrants : aptitudes plongeur N3 + rôle encadrant
   if (ne) {
-    apts.add('PA40'); apts.add('PE60'); apts.add('PA60');
-    if (ne === 'N4') apts.add('N4');
-    else if (['E1','E2','E3','E4'].includes(ne) && !isExploration) apts.add(ne);
+    apts.add('PE20'); apts.add('PE40'); apts.add('PE60');
+    apts.add('PA12'); apts.add('PA20'); apts.add('PA40');
+
+    if (ne === 'N4') apts.add('GP');
+    else if (ne === 'N5') { /* N5 = DP plongeur, pas guide */ }
+    else if (['E1','E2'].includes(ne)) {
+      if (sup.includes('GP')) apts.add('GP');
+      apts.add(ne); // Enseignant
+    }
+    else if (['E3','E4'].includes(ne)) {
+      apts.add('GP');
+      apts.add(ne); // Enseignant
+    }
   }
 
   // Trimix
   if (trimix.includes('PTH-70') || trimix.includes('PTH-120')) apts.add('PTH70');
   if (trimix.includes('PTH-120')) apts.add('PTH120');
 
-  // Ordre canonique
-  const ORDER = ['Baptême','PE20','PA20','PE40','PA40','PE60','PA60',
-                 'PTH70','PTH120','N4','E1','E2','E3','E4'];
+  // Ordre canonique : Baptême < PE < PA < GP < Enseignant
+  const ORDER = ['Baptême','PE20','PE40','PE60','PA12','PA20','PA40',
+                 'PTH70','PTH120','GP','E1','E2','E3','E4'];
   return ORDER.filter(a => apts.has(a));
+};
+
+// Profondeur max accessible pour une aptitude donnée
+window.aptitudeMaxDepth = function(aptitude) {
+  const map = {
+    'Baptême': 6,
+    'PE20': 20, 'PE40': 40, 'PE60': 60,
+    'PA12': 12, 'PA20': 20, 'PA40': 40,
+    'GP':   60,
+    'E1':   6,  'E2': 20, 'E3': 40, 'E4': 60,
+    'PTH70': 70, 'PTH120': 120,
+  };
+  return map[aptitude] ?? 60;
 };
 
 // Type de palanquée pour la mise en forme (couleur)
@@ -78,8 +134,72 @@ window.getPalType = function(membres) {
   const apts = membres.map(m => m.aptitude || '');
   if (apts.includes('Baptême'))                        return 'bapteme';
   if (apts.some(a => ['E1','E2','E3','E4'].includes(a))) return 'formation';
-  if (apts.includes('N4') && apts.some(a => a.startsWith('PE'))) return 'guidee';
+  if (apts.includes('GP') && apts.some(a => a.startsWith('PE'))) return 'guidee';
   return 'exploration';
+};
+
+// =========================================================================
+// CODE DU SPORT — Dictionnaire des articles cités
+// Tooltip de résumé + lien Légifrance
+// =========================================================================
+window.CDS_ARTICLES = {
+  'A322-72': {
+    title: 'Fiche de sécurité',
+    summary: 'Le directeur de plongée établit une fiche de sécurité avant chaque plongée. Elle mentionne les conditions, la composition des palanquées, les paramètres prévus et réalisés. À conserver 1 an minimum.',
+    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045388881',
+  },
+  'A322-77': {
+    title: 'Aptitudes et brevets',
+    summary: 'Les pratiquants justifient d\'un brevet ou d\'une attestation correspondant à leur niveau. Les brevets étrangers doivent être évalués par un E3.',
+    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045388891',
+  },
+  'A322-78': {
+    title: 'Matériel de sécurité — sécurité surface',
+    summary: 'L\'organisateur garantit la présence d\'une sécurité surface, du matériel d\'oxygénothérapie et des moyens de communication avec les secours.',
+    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045388895',
+  },
+  'A322-78-1': {
+    title: 'Trousse de secours et oxygène',
+    summary: 'Matériel d\'oxygénothérapie (15 L à 200 bar minimum, BAVU, masques tailles enfant/adulte) sur le site de plongée.',
+    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045388899',
+  },
+  'A322-86': {
+    title: 'Espaces d\'évolution — profondeurs',
+    summary: 'Plongées limitées en fonction des qualifications : 6 m (espace de proche surface), 20 m (médian), 40 m (lointain), 60 m (profond), 80 m (très profond).',
+    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045388921',
+  },
+  'A322-89': {
+    title: 'Plongée Nitrox',
+    summary: 'Chaque bloc Nitrox doit être analysé et étiqueté (% O₂, MOD, signature du plongeur). Au-delà de 40 % O₂, qualification PN-C requise.',
+    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045388933',
+  },
+  'A322-91': {
+    title: 'Plongée Trimix / Héliox',
+    summary: 'Trimix/Héliox : analyse des mélanges, planification de décompression, ligne lestée et sécurité surface continue obligatoires.',
+    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045388941',
+  },
+  'A322-94': {
+    title: 'Recycleurs (CCR / SCR)',
+    summary: 'Check-list constructeur, pré-breathing, validation des aptitudes. Au-delà de 6 m, circuit ouvert de secours obligatoire par plongeur.',
+    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045388957',
+  },
+  'A322-113': {
+    title: 'Planification de décompression',
+    summary: 'Trimix et plongées profondes : remettre une copie de la planification décompression à chaque palanquée.',
+    url: 'https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000045389033',
+  },
+};
+
+// Parse "Art. A322-72" ou "CdS A322-89/91" → ['A322-72'] ou ['A322-89','A322-91']
+window.parseCdsRefs = function(text) {
+  if (!text) return [];
+  const refs = [];
+  const re = /A322-(\d+(?:-\d+)?)/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    refs.push('A322-' + m[1]);
+  }
+  return refs;
 };
 
 // DTR sans déco (règle opérationnelle FFESSM) : 1 min / 10 m
@@ -121,15 +241,27 @@ window.QUESTIONS = [
     questions:[
       { id:'site_id',    label:'Site de plongée', type:'site-picker', required:true,
         hint:'Choisir parmi les sites enregistrés, ou cliquer + pour en créer un.' },
+      { id:'shot_line',  label:'Shot-line installée pour cette plongée ?', type:'bool',
+        hint:'Ligne lestée pour la descente/remontée des plongeurs. Indépendant du site.' },
       { id:'meteo',      label:'Conditions météo / mer / courant / visibilité', type:'meteo-field',
-        placeholder:'Vent, état de la mer, courant, visibilité estimée…' },
+        placeholder:'Vent, état de la mer, courant, visibilité estimée…',
+        when:(a) => {
+          const m = window.getMilieuType(a.milieu);
+          return m !== 'piscine' && m !== 'fosse';
+        } },
+      { id:'maree_relevant', label:'Informations de marée pertinentes ?', type:'bool',
+        when:(a) => {
+          const m = window.getMilieuType(a.milieu);
+          return m === 'mer' && (a.site_atlantique === true || a.site_atlantique === undefined);
+        },
+        hint:'À cocher pour les plongées en Atlantique / Manche / Mer du Nord.' },
+      { id:'maree_horaire', label:'Heure et coefficient de marée', type:'text',
+        placeholder:'PM 14h12 · coef 87', when:{maree_relevant:true} },
       { id:'vhf',        label:'VHF à bord ?', type:'bool', when:{depart_bateau:true}, ref:'Bonne pratique' },
       { id:'chef_bord',  label:'Pilote / chef de bord désigné ?', type:'bool', when:{depart_bateau:true} },
       { id:'pavillon_alpha', label:'Pavillon Alpha hissé prévu ?', type:'bool', when:{depart_bateau:true} },
       { id:'distance_cote', label:'Distance prévue à la côte (M nautiques)', type:'number',
         suffix:'M nautiques', when:{depart_bateau:true} },
-      { id:'delai_secours', label:'Délai d\'évacuation estimé vers secours médicalisés',
-        type:'text', placeholder:'ex. 25 min', when:{depart_bateau:true} },
     ]
   },
   {
@@ -147,7 +279,10 @@ window.QUESTIONS = [
     questions:[
       { id:'air',         label:'Plongeurs à l\'air ?', type:'bool' },
       { id:'nitrox',      label:'Plongeurs au Nitrox ?', type:'bool', ref:'CdS A322-89' },
-      { id:'nitrox_details', label:'Mélanges Nitrox utilisés (% O₂, MOD, PpO2 max)', type:'textarea',
+      { id:'nitrox_kind', label:'Type de Nitrox utilisé (au moins une option requise)', type:'multi',
+        options:['Nx ≤ 40 %','Nx > 40 %'], cols:2, when:{nitrox:true},
+        hint:'Nx > 40 % nécessite la qualification PN-C.' },
+      { id:'nitrox_details', label:'Mélanges Nitrox précis (% O₂, MOD, PpO2 max)', type:'textarea',
         placeholder:'ex. EAN32 — MOD 40 m — PpO2 max 1.4', when:{nitrox:true} },
       { id:'trimix',      label:'Plongeurs au Trimix / Héliox ?', type:'bool', ref:'CdS A322-91' },
       { id:'trimix_kind', label:'Type de mélange', type:'choice',
@@ -175,10 +310,8 @@ window.QUESTIONS = [
     id:'F', title:'Public',
     questions:[
       { id:'mineurs',    label:'Présence de mineurs ?', type:'bool' },
-      { id:'formation',  label:'Plongeurs en formation ?', type:'bool' },
-      { id:'formation_niveaux', label:'Niveaux en formation (plusieurs choix possibles)', type:'multi',
-        options:['Baptême','N1','N2','N3','PA20','PA40','PA60','GP / N4','P5 / N5','MF1 / E3','MF2 / E4'],
-        cols:4, when:{formation:true} },
+      { id:'formation',  label:'Plongeurs en formation ?', type:'bool',
+        hint:'Les niveaux et exercices seront déduits de la composition des palanquées.' },
       { id:'etrangers',  label:'Brevets étrangers non français (PADI, SSI, CMAS étr.) ?', type:'bool',
         hint:'→ évaluation par un E3 prévue' },
       { id:'handisub',   label:'Plongeurs en situation de handicap (handisub) ?', type:'bool' },
@@ -187,10 +320,16 @@ window.QUESTIONS = [
   {
     id:'G', title:'Sécurité surface',
     questions:[
-      { id:'sec_surface',   label:'Sécurité surface identifiée (personne dédiée) ?', type:'bool', ref:'CdS A322-78' },
+      { id:'sec_surface',          label:'Sécurité surface identifiée (personne dédiée) ?', type:'bool', ref:'CdS A322-78' },
+      { id:'sec_surface_membres',  label:'Plongeur(s) en surveillance surface (rotation possible)', type:'divers-multi',
+        hint:'Choisir parmi les plongeurs présents — plusieurs peuvent se relayer.',
+        when:{sec_surface:true} },
+      { id:'sec_surface_externes', label:'Autres personnes en sécurité surface (non-plongeurs)', type:'text',
+        placeholder:'Noms / fonctions',
+        when:{sec_surface:true} },
       { id:'plan_secours',  label:'Plan de secours affiché et à jour ?', type:'bool' },
       { id:'coords_secours',label:'Coordonnées des secours disponibles ?', type:'bool',
-        hint:'Mer : CROSS 196 / SAMU 15 / Pompiers 18. Lac : SAMU 15 / Pompiers 18 / Gendarmerie 17.' },
+        hint:'Numéros adaptés au pays du site (France : 15/18/112, mer : 196 ; Suisse : 144/117/1414).' },
       { id:'o2',            label:'Matériel O₂ vérifié (pression, BAVU, masques) ?', type:'bool', ref:'CdS A322-78-1' },
       { id:'trousse',       label:'Trousse de secours + couverture isothermique vérifiées ?', type:'bool' },
       { id:'eau_potable',   label:'Eau douce potable disponible ?', type:'bool' },
@@ -201,17 +340,6 @@ window.QUESTIONS = [
         type:'info', when:{trimix:true} },
     ]
   },
-  {
-    id:'H', title:'Enseignement',
-    when:(a) => a.activite === 'Enseignement' || a.activite === 'Mixte',
-    questions:[
-      { id:'ens_niveaux', label:'Niveaux ou aptitudes enseignés (plusieurs choix)', type:'multi',
-        options:['Baptême','N1 / PE20','N2 / PE40','N3','PA20','PA40','PA60','GP / N4','P5 / N5','MF1 / E3','MF2 / E4'],
-        cols:4, ref:'Annexe III-16a' },
-      { id:'ens_exos',    label:'Exercices prévus', type:'textarea',
-        placeholder:'ex. RSE 0→6m, vidage masque, gilet, descente lestée…' },
-    ]
-  }
 ];
 
 // =========================================================================
@@ -219,72 +347,52 @@ window.QUESTIONS = [
 // =========================================================================
 window.CHECKLIST_RULES = [
   {
-    phase:1, phaseTitle:'Avant le départ (J-1 / matin)',
+    phase:1, phaseTitle:'Préparation — avant l\'arrivée sur site',
     items:[
-      { id:'p1_meteo',       text:'Consulter et imprimer le bulletin météo (vent, mer, courant, visibilité)', ref:'Bonne pratique', tags:['meteo'] },
-      { id:'p1_blocs',       text:'Vérification des dates de réépreuve TIV / requalif. blocs des plongeurs', ref:'Arrêté 18/11/86', tags:['materiel'] },
-      { id:'p1_gonflage',    text:'Gonflage des blocs, contrôle des pressions' },
-      { id:'p1_analyse_nx',  text:'Analyser et étiqueter chaque bloc Nitrox (% O₂, MOD, signature plongeur)', ref:'CdS A322-89', tags:['nitrox'], when:{nitrox:true} },
-      { id:'p1_analyse_tx',  text:'Analyser les mélanges Trimix/Héliox, valider planif décompression', ref:'CdS A322-91, A322-113', tags:['trimix'], when:{trimix:true} },
-      { id:'p1_bloc_relais_analyse', text:'Analyser et étiqueter le(s) bloc(s) relais / déco', ref:'CdS A322-89/91', tags:['materiel'], when:{bloc_relais:true} },
-      { id:'p1_rec_check',   text:'Check-list constructeur de chaque recycleur — pré-breathing', ref:'CdS A322-94', tags:['recycleur'], when:{recycleur:true} },
-      { id:'p1_o2_secours',  text:'Matériel O₂ + BAVU + masques contrôlés (pression > 100 bar, dates)', ref:'CdS A322-78-1', tags:['secours'] },
-      { id:'p1_doc_plongeurs', text:'Vérifier brevets, licences en cours, certificats médicaux à jour', ref:'CdS A322-77', tags:['plongeurs'] },
-      { id:'p1_etrangers',   text:'Évaluation des plongeurs avec brevets étrangers par un E3', ref:'CdS A322-77', tags:['etrangers'], when:{etrangers:true} },
-      { id:'p1_mineurs',     text:'Autorisations parentales signées récupérées pour les mineurs', tags:['mineurs'], when:{mineurs:true} },
-      { id:'p1_vhf_test',    text:'Tester la VHF à bord et vérifier piles secondaires', ref:'Code maritime', tags:['bateau'], when:{depart_bateau:true} },
-      { id:'p1_carburant',   text:'Carburant + niveaux + matériel de bord vérifiés', tags:['bateau'], when:{depart_bateau:true} },
+      { id:'p1_meteo',         text:'Bulletin météo consulté (vent, mer, courant, visibilité, alerte)', ref:'Bonne pratique', tags:['meteo'],
+        when:(a) => { const m = window.getMilieuType(a.milieu); return m !== 'piscine' && m !== 'fosse'; } },
+      { id:'p1_maree',         text:'Heure et coefficient de marée vérifiés', tags:['meteo'], when:{maree_relevant:true} },
+      { id:'p1_blocs',         text:'Dates de réépreuve TIV / requalif. blocs des plongeurs OK', ref:'Arrêté 18/11/86', tags:['materiel'] },
+      { id:'p1_gonflage',      text:'Gonflage des blocs effectué — pressions contrôlées' },
+      { id:'p1_analyse_nx',    text:'Chaque bloc Nitrox analysé et étiqueté (% O₂, MOD, signature plongeur)', ref:'CdS A322-89', tags:['nitrox'], when:{nitrox:true} },
+      { id:'p1_analyse_nx_sup', text:'Plongeurs Nx>40 % : qualification PN-C contrôlée + analyse signée', ref:'CdS A322-89', tags:['nitrox'],
+        when:(a) => a.nitrox && Array.isArray(a.nitrox_kind) && a.nitrox_kind.includes('Nx > 40 %') },
+      { id:'p1_analyse_tx',    text:'Trimix/Héliox : analyse mélanges + planif décompression validée', ref:'CdS A322-91, A322-113', tags:['trimix'], when:{trimix:true} },
+      { id:'p1_bloc_relais',   text:'Bloc(s) relais / déco analysés et étiquetés', ref:'CdS A322-89/91', tags:['materiel'], when:{bloc_relais:true} },
+      { id:'p1_rec_check',     text:'Check-list constructeur de chaque recycleur — pré-breathing', ref:'CdS A322-94', tags:['recycleur'], when:{recycleur:true} },
+      { id:'p1_o2_secours',    text:'Oxygénothérapie : bouteille > 100 bar, BAVU, masques (adulte/enfant)', ref:'CdS A322-78-1', tags:['secours'] },
+      { id:'p1_trousse',       text:'Trousse de secours + couverture isothermique vérifiées', tags:['secours'] },
+      { id:'p1_doc_plongeurs', text:'Brevets, licences, certificats médicaux à jour pour chaque plongeur', ref:'CdS A322-77', tags:['plongeurs'] },
+      { id:'p1_etrangers',     text:'Évaluation par un E3 des plongeurs aux brevets étrangers', ref:'CdS A322-77', tags:['etrangers'], when:{etrangers:true} },
+      { id:'p1_mineurs',       text:'Autorisations parentales signées récupérées', tags:['mineurs'], when:{mineurs:true} },
+      { id:'p1_vhf_test',      text:'VHF testée + piles secondaires + canal d\'urgence configuré', ref:'Code maritime', tags:['bateau'], when:{depart_bateau:true} },
+      { id:'p1_carburant',     text:'Carburant + matériel de bord (gilets, signaux, mouillage) OK', tags:['bateau'], when:{depart_bateau:true} },
+      { id:'p1_shot_line',     text:'Shot-line préparée + lest + parachutes/bouée de signalisation', tags:['materiel'], when:{shot_line:true} },
+      { id:'p1_secours_coord', text:'Coordonnées des secours affichées (pays-appropriées)', ref:'CdS A322-78', tags:['secours'] },
+      { id:'p1_fiche_init',    text:'Fiche de sécurité pré-remplie avec palanquées et paramètres prévus', ref:'CdS A322-72', tags:['fiche'] },
     ]
   },
   {
-    phase:2, phaseTitle:'Avant la mise à l\'eau',
+    phase:2, phaseTitle:'Sur site — avant la mise à l\'eau',
     items:[
-      { id:'p2_appel',       text:'Appel nominatif des plongeurs, vérification des aptitudes et licences' },
-      { id:'p2_briefing',    text:'Briefing : site, profil, paramètres, signes, consignes de sécurité' },
-      { id:'p2_palanquees',  text:'Présentation des palanquées, des guides et des autonomes' },
-      { id:'p2_fiche',       text:'Fiche de sécurité complétée et accessible sur site', ref:'CdS A322-72', tags:['fiche'] },
-      { id:'p2_pavillon',    text:'Pavillon Alpha hissé sur l\'embarcation', ref:'RIPAM règle 27', tags:['bateau'], when:{depart_bateau:true} },
-      { id:'p2_echelle',     text:'Échelle de remontée déployée, ancrage adapté', tags:['bateau'], when:{depart_bateau:true} },
-      { id:'p2_parachute',   text:'Vérifier qu\'un parachute de palier équipe chaque palanquée', tags:['materiel'], when:{parachute_obligatoire:true} },
-      { id:'p2_parachute_indiv', text:'Vérifier que chaque plongeur a son propre parachute', tags:['materiel'], when:{parachute_par_plongeur:true} },
-      { id:'p2_nx_signature',text:'Plongeurs Nitrox : signature finale de l\'analyse de leur bloc', ref:'CdS A322-89', tags:['nitrox'], when:{nitrox:true} },
-      { id:'p2_rec_aptitudes',text:'Validation aptitudes recycleur de chaque plongeur concerné', ref:'CdS A322-94', tags:['recycleur'], when:{recycleur:true} },
-      { id:'p2_secours_co',  text:'Recycleur > 6 m : circuit ouvert de secours obligatoire par plongeur', ref:'CdS A322-94', tags:['recycleur'], when:{recycleur:true} },
-      { id:'p2_ligne_lestee',text:'Ligne lestée descente/remontée installée (obligatoire Trimix)', ref:'CdS A322-91', tags:['trimix'], when:{trimix:true} },
-      { id:'p2_planifs',     text:'Distribuer copies des planifs décompression aux palanquées Trimix', ref:'CdS A322-113', tags:['trimix'], when:{trimix:true} },
-      { id:'p2_bord_entree', text:'Identifier le ou les points d\'entrée/sortie de l\'eau sécurisés', tags:['bord'], when:{depart_bord:true} },
+      { id:'p2_appel',         text:'Appel nominatif des plongeurs présents — vérification aptitudes' },
+      { id:'p2_briefing',      text:'Briefing général : site, profil, paramètres, signes, consignes' },
+      { id:'p2_palanquees',    text:'Composition annoncée — GP / serre-files / autonomes identifiés' },
+      { id:'p2_sec_surface',   text:'Sécurité surface en poste — relais identifiés si rotation', ref:'CdS A322-78', tags:['secours'], when:{sec_surface:true} },
+      { id:'p2_fiche',         text:'Fiche de sécurité complétée et accessible sur site', ref:'CdS A322-72', tags:['fiche'] },
+      { id:'p2_pavillon',      text:'Pavillon Alpha hissé sur l\'embarcation', ref:'RIPAM règle 27', tags:['bateau'], when:{depart_bateau:true} },
+      { id:'p2_echelle',       text:'Échelle de remontée déployée — ancrage adapté', tags:['bateau'], when:{depart_bateau:true} },
+      { id:'p2_shot_line_pose', text:'Shot-line installée et lestée correctement', tags:['materiel'], when:{shot_line:true} },
+      { id:'p2_parachute',     text:'Chaque palanquée a son parachute de palier', tags:['materiel'], when:{parachute_obligatoire:true} },
+      { id:'p2_parachute_indiv', text:'Chaque plongeur porte son parachute individuel', tags:['materiel'], when:{parachute_par_plongeur:true} },
+      { id:'p2_nx_signature',  text:'Plongeurs Nitrox : signature finale de l\'analyse de leur bloc', ref:'CdS A322-89', tags:['nitrox'], when:{nitrox:true} },
+      { id:'p2_rec_aptitudes', text:'Aptitudes recycleur validées + circuit ouvert de secours pour > 6m', ref:'CdS A322-94', tags:['recycleur'], when:{recycleur:true} },
+      { id:'p2_ligne_lestee',  text:'Ligne lestée descente/remontée obligatoire Trimix', ref:'CdS A322-91', tags:['trimix'], when:{trimix:true} },
+      { id:'p2_planifs',       text:'Copies des planifs déco remises à chaque palanquée Trimix', ref:'CdS A322-113', tags:['trimix'], when:{trimix:true} },
+      { id:'p2_bord_entree',   text:'Points d\'entrée/sortie de l\'eau identifiés et sécurisés', tags:['bord'], when:{depart_bord:true} },
+      { id:'p2_go_decision',   text:'Décision finale du DP : conditions OK pour autoriser la mise à l\'eau', ref:'CdS A322-72', tags:['fiche'] },
     ]
   },
-  {
-    phase:3, phaseTitle:'Pendant la plongée',
-    items:[
-      { id:'p3_secu_poste', text:'Sécurité surface en poste, à l\'écoute VHF / signaux visuels', ref:'CdS A322-78', tags:['secours'] },
-      { id:'p3_trimix_secu', text:'Trimix : sécurité surface continue opérationnelle pendant toute la plongée', ref:'CdS A322-91', tags:['trimix'], when:{trimix:true} },
-      { id:'p3_chrono',     text:'Démarrer le chronomètre — noter heures d\'immersion de chaque palanquée' },
-      { id:'p3_suivi',      text:'Suivi des bulles / parachutes / présence en surface des palanquées' },
-      { id:'p3_pavillon',   text:'Pavillon Alpha maintenu hissé jusqu\'à dernière palanquée sortie', tags:['bateau'], when:{depart_bateau:true} },
-    ]
-  },
-  {
-    phase:4, phaseTitle:'À la sortie de l\'eau',
-    items:[
-      { id:'p4_appel',      text:'Appel des palanquées — confirmation que tous les plongeurs sont sortis' },
-      { id:'p4_params',     text:'Recueillir paramètres réalisés (prof. max, durée, paliers, DTR, incidents)', ref:'CdS A322-72', tags:['fiche'] },
-      { id:'p4_dtr',        text:'Respecter le délai DTR avant nouvelle mise à l\'eau si applicable', tags:['securite'] },
-      { id:'p4_hydratation',text:'Hydratation des plongeurs — eau douce potable disponible' },
-      { id:'p4_surveillance',text:'Surveillance des plongeurs pendant 30 min minimum (signes ADD)' },
-      { id:'p4_blocs',      text:'Sécuriser les blocs (purges, fermetures, rangement)' },
-    ]
-  },
-  {
-    phase:5, phaseTitle:'Après la plongée / fin de journée',
-    items:[
-      { id:'p5_signature',  text:'Signature de la fiche de sécurité par le DP et les encadrants', ref:'CdS A322-72', tags:['fiche'] },
-      { id:'p5_archive',    text:'Archivage de la fiche (durée minimale : 1 an)', ref:'CdS A322-72', tags:['fiche','archivage'] },
-      { id:'p5_nettoyage',  text:'Nettoyage et rinçage du matériel (détendeurs, gilets, combinaisons)' },
-      { id:'p5_incident',   text:'Déclaration éventuelle d\'incident (DIRM, fédération)', ref:'CdS A322-72' },
-    ]
-  }
 ];
 
 // =========================================================================
@@ -335,16 +443,19 @@ window.STRUCTURE_LABELS = {
   autre:'Autre',
 };
 
-// Tri des membres d'une palanquée pour la fiche (encadrant en tête, serre-file N4 en fin)
+// Tri des membres d'une palanquée pour la fiche (encadrant en tête, serre-file GP en fin)
 window.sortMembresForFiche = function(membres) {
-  const priority = { E4:0, E3:1, E2:2, E1:3, N4:4, PA60:5, PA40:6, PA20:7, PE60:8, PE40:9, PE20:10, PTH120:11, PTH70:12, Baptême:13 };
-  const n4Count = membres.filter(m => m.aptitude === 'N4').length;
-  const isSerreFilePal = membres.length === 6 && n4Count >= 2;
+  const priority = { E4:0, E3:1, E2:2, E1:3, GP:4,
+                     PA40:5, PA20:6, PA12:7,
+                     PE60:8, PE40:9, PE20:10,
+                     PTH120:11, PTH70:12, Baptême:13 };
+  const gpCount = membres.filter(m => m.aptitude === 'GP').length;
+  const isSerreFilePal = membres.length === 6 && gpCount >= 2;
   const sorted = [...membres].sort((a, b) => (priority[a.aptitude] ?? 99) - (priority[b.aptitude] ?? 99));
   if (isSerreFilePal) {
     let sfIdx = -1;
     for (let i = sorted.length - 1; i >= 0; i--) {
-      if (sorted[i].aptitude === 'N4') { sfIdx = i; break; }
+      if (sorted[i].aptitude === 'GP') { sfIdx = i; break; }
     }
     if (sfIdx !== -1) { const sf = sorted.splice(sfIdx, 1)[0]; sorted.push(sf); }
   }

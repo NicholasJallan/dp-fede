@@ -1,24 +1,41 @@
-// DP Assistant — Administration des utilisateurs (admin seulement)
+// DP Assistant — Administration des utilisateurs (super-admin nicholas.jallan@gmail.com uniquement)
+
+const SUPER_ADMIN_EMAIL = 'nicholas.jallan@gmail.com';
 
 function ScreenAdminUsers() {
   const { user: me } = useAuth();
-  const [users, setUsers] = useState([]);
+  const [stats, setStats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
 
+  const isSuperAdmin = me?.email === SUPER_ADMIN_EMAIL;
+
   useEffect(() => {
-    api.users.list()
-      .then(setUsers)
+    if (!isSuperAdmin) { setLoading(false); return; }
+    api.users.stats()
+      .then(setStats)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [isSuperAdmin]);
+
+  if (!isSuperAdmin) {
+    return (
+      <div>
+        <div className="page-head">
+          <div className="eyebrow">Administration</div>
+          <h1>Utilisateurs</h1>
+        </div>
+        <Alert tone="info">Section réservée au super-administrateur.</Alert>
+      </div>
+    );
+  }
 
   const toggleRole = async (u) => {
     const newRole = u.role === 'admin' ? 'user' : 'admin';
     try {
       await api.users.setRole(u.id, newRole);
-      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, role: newRole } : x));
+      setStats(prev => prev.map(x => x.id === u.id ? { ...x, role: newRole } : x));
     } catch (err) {
       setError(err.message);
     }
@@ -27,26 +44,31 @@ function ScreenAdminUsers() {
   const onDelete = async (id) => {
     try {
       await api.users.delete(id);
-      setUsers(prev => prev.filter(u => u.id !== id));
+      setStats(prev => prev.filter(u => u.id !== id));
       setConfirmDelete(null);
     } catch (err) {
       setError(err.message);
     }
   };
 
+  // Totaux
+  const totalDivers = stats.reduce((s, u) => s + (u.nb_divers || 0), 0);
+  const totalSites  = stats.reduce((s, u) => s + (u.nb_sites  || 0), 0);
+  const totalFiches = stats.reduce((s, u) => s + (u.nb_fiches || 0), 0);
+
   return (
     <div>
       <div className="page-head">
         <div className="eyebrow">Administration</div>
         <h1>Utilisateurs</h1>
-        <p>{users.length} compte{users.length !== 1 ? 's' : ''} actif{users.length !== 1 ? 's' : ''}.</p>
+        <p>{stats.length} compte{stats.length !== 1 ? 's' : ''} · {totalFiches} fiche{totalFiches !== 1 ? 's' : ''} · {totalDivers} plongeur{totalDivers !== 1 ? 's' : ''} · {totalSites} site{totalSites !== 1 ? 's' : ''}.</p>
       </div>
 
       {error && <Alert tone="warn">{error}</Alert>}
       {loading && <div className="muted">Chargement…</div>}
 
       <div className="diver-admin-list">
-        {users.map(u => (
+        {stats.map(u => (
           <div className="diver-admin-row" key={u.id}>
             <div className="info">
               <b>{u.prenom ? `${u.prenom} ${u.nom}` : u.email}</b>
@@ -54,8 +76,15 @@ function ScreenAdminUsers() {
                 <Pill tone={u.role === 'admin' ? 'coral' : 'ink'}>{u.role}</Pill>
                 <span className="muted" style={{ fontSize: 12 }}>{u.email}</span>
               </div>
-              {u.club_nom && <small className="muted">{u.club_nom}{u.club_numero ? ` · ${u.club_numero}` : ''}</small>}
-              <small className="muted">Dernière connexion : {u.last_login ? new Date(u.last_login).toLocaleDateString('fr-FR') : 'jamais'}</small>
+              {u.club_nom && <small className="muted">{u.club_nom}</small>}
+              <div className="meta-row" style={{ marginTop: 6, gap: 12 }}>
+                <span><b>{u.nb_fiches || 0}</b> <span className="muted" style={{ fontSize: 11 }}>fiche{u.nb_fiches !== 1 ? 's' : ''}</span></span>
+                <span><b>{u.nb_divers || 0}</b> <span className="muted" style={{ fontSize: 11 }}>plongeur{u.nb_divers !== 1 ? 's' : ''}</span></span>
+                <span><b>{u.nb_sites || 0}</b> <span className="muted" style={{ fontSize: 11 }}>site{u.nb_sites !== 1 ? 's' : ''}</span></span>
+              </div>
+              <small className="muted" style={{ marginTop: 4 }}>
+                Dernière connexion : {u.last_login ? new Date(u.last_login).toLocaleDateString('fr-FR') : 'jamais'}
+              </small>
             </div>
             {u.id !== me?.id && (
               <div className="diver-admin-actions">
@@ -68,7 +97,7 @@ function ScreenAdminUsers() {
             {u.id === me?.id && <Pill tone="marine">Moi</Pill>}
           </div>
         ))}
-        {!loading && users.length === 0 && <div className="empty">Aucun utilisateur.</div>}
+        {!loading && stats.length === 0 && <div className="empty">Aucun utilisateur.</div>}
       </div>
 
       {confirmDelete && (
@@ -76,7 +105,7 @@ function ScreenAdminUsers() {
           <div className="modal" style={{ maxWidth: 400 }}>
             <div className="modal-head"><h3>Supprimer {confirmDelete.email} ?</h3></div>
             <div className="modal-body">
-              <p>Toutes les données de cet utilisateur (plongeurs, sites) seront supprimées.</p>
+              <p>Toutes les données de cet utilisateur (plongeurs, sites, archives) seront supprimées.</p>
             </div>
             <div className="modal-foot">
               <button className="btn" onClick={() => setConfirmDelete(null)}>Annuler</button>
@@ -89,4 +118,4 @@ function ScreenAdminUsers() {
   );
 }
 
-Object.assign(window, { ScreenAdminUsers });
+Object.assign(window, { ScreenAdminUsers, SUPER_ADMIN_EMAIL });

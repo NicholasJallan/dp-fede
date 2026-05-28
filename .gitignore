@@ -2,3 +2,6 @@ backend/config.php
 *.sqlite
 *.log
 .DS_Store
+
+# Pi-side scripts contain pCloud credentials — don't ship to public repo
+pi-scripts/

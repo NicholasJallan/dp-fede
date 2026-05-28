@@ -9,6 +9,10 @@ function ScreenAccount() {
     club_numero: user?.club_numero || '',
     club_siret: user?.club_siret || '',
     structure_type: user?.structure_type || '',
+    president_prenom: user?.president_prenom || '',
+    president_nom: user?.president_nom || '',
+    president_tel: user?.president_tel || '',
+    urgence_defaut: user?.urgence_defaut || '18',
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -36,6 +40,8 @@ function ScreenAccount() {
     { value:'csa',   label:'Convention de Section d\'Activité (CSA)' },
     { value:'autre', label:'Autre' },
   ];
+
+  const isClub = form.structure_type === 'club';
 
   return (
     <div>
@@ -77,7 +83,7 @@ function ScreenAccount() {
             </div>
           </div>
           <div className="field">
-            <label>Nom de la structure</label>
+            <label>Nom du club ou de la structure</label>
             <input className="input" value={form.club_nom} onChange={e => set('club_nom', e.target.value)}
               placeholder="Club de Plongée XYZ / ACSMJ 29" />
           </div>
@@ -92,6 +98,48 @@ function ScreenAccount() {
               <input className="input" value={form.club_siret} onChange={e => set('club_siret', e.target.value)}
                 placeholder="123 456 789 00012" />
             </div>
+          </div>
+        </div>
+      </div>
+
+      {isClub && (
+        <div className="card" style={{ marginTop:16 }}>
+          <div className="card-head">
+            <h2>Président du club</h2>
+            <small className="muted">Coordonnées pour fiches FFESSM</small>
+          </div>
+          <div className="card-body" style={{ display:'grid', gap:12 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              <div className="field">
+                <label>Prénom</label>
+                <input className="input" value={form.president_prenom}
+                  onChange={e => set('president_prenom', e.target.value)} />
+              </div>
+              <div className="field">
+                <label>Nom</label>
+                <input className="input" value={form.president_nom}
+                  onChange={e => set('president_nom', e.target.value)} />
+              </div>
+            </div>
+            <div className="field">
+              <label>Téléphone</label>
+              <input className="input" value={form.president_tel}
+                onChange={e => set('president_tel', e.target.value)}
+                placeholder="+33 6 12 34 56 78" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="card" style={{ marginTop:16 }}>
+        <div className="card-head"><h2>Sécurité</h2></div>
+        <div className="card-body" style={{ display:'grid', gap:12 }}>
+          <div className="field">
+            <label>Numéro d'urgence par défaut</label>
+            <input className="input" value={form.urgence_defaut}
+              onChange={e => set('urgence_defaut', e.target.value)}
+              placeholder="18 (France) · 144 (Suisse) · 112 (Europe)" />
+            <div className="field-hint">Pré-rempli avec ce numéro sur la fiche de sécurité (peut être modifié au cas par cas selon le pays du site).</div>
           </div>
         </div>
       </div>

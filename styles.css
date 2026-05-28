@@ -409,6 +409,83 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 }
 .ref:hover { color: var(--marine); border-color: var(--marine); }
 
+/* ===== Code du Sport badges ===== */
+.cds-refs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.cds-label {
+  font-size: 11px;
+  color: var(--ink-3);
+  font-style: italic;
+  margin-right: 2px;
+}
+.cds-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border: 1px solid var(--marine);
+  border-radius: 4px;
+  background: var(--marine-100);
+  color: var(--marine-2);
+  font-family: var(--t-mono);
+  font-size: 10.5px;
+  text-decoration: none;
+  cursor: help;
+  white-space: nowrap;
+  transition: background 0.15s, transform 0.1s;
+}
+.cds-badge:hover {
+  background: var(--marine);
+  color: var(--paper);
+  transform: translateY(-1px);
+}
+.cds-badge.compact { padding: 1px 5px; font-size: 10px; }
+.cds-icon { font-weight: 700; font-size: 12px; line-height: 1; }
+.cds-art { font-size: inherit; }
+
+.cds-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 320px;
+  padding: 10px 12px;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 6px;
+  font-family: var(--t-body);
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: normal;
+  text-transform: none;
+  letter-spacing: 0;
+  z-index: 1000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s 0.1s;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+}
+.cds-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%; left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--ink);
+}
+.cds-tooltip b { display: block; font-size: 12.5px; margin-bottom: 4px; color: var(--paper); }
+.cds-tooltip small { display: block; font-size: 11.5px; color: oklch(85% 0 0); margin-bottom: 6px; }
+.cds-tooltip em { display: block; font-style: normal; font-size: 10.5px; color: var(--marine-100); }
+.cds-badge:hover .cds-tooltip,
+.cds-badge:focus .cds-tooltip { opacity: 1; }
+
 /* ===== Buttons ===== */
 
 .btn {

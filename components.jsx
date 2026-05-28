@@ -18,6 +18,68 @@ function Ref({ children }) {
 }
 
 // =========================================================================
+// CdsLink — lien vers un article du Code du Sport
+// Affiche un badge cliquable avec tooltip de résumé + lien Légifrance.
+// Usage : <CdsLink art="A322-72" />  ou  <CdsLink ref="CdS A322-89, A322-91" />
+// =========================================================================
+function CdsLink({ art, label, refText, compact = false }) {
+  const arts = useMemo(() => {
+    if (art) return [art];
+    if (refText) return window.parseCdsRefs(refText);
+    return [];
+  }, [art, refText]);
+
+  if (arts.length === 0) {
+    return label ? <span className="cds-badge muted">{label}</span> : null;
+  }
+
+  return (
+    <span className="cds-refs">
+      {label && <span className="cds-label">{label}</span>}
+      {arts.map(a => {
+        const info = window.CDS_ARTICLES[a];
+        const title = info ? `${info.title} — ${info.summary}` : `Article ${a}`;
+        const href = info?.url || 'https://www.legifrance.gouv.fr/codes/section_lc/LEGITEXT000006071318';
+        return (
+          <a key={a}
+            href={href}
+            target="_blank" rel="noopener noreferrer"
+            className={`cds-badge ${compact ? 'compact' : ''}`}
+            title={title}
+            onClick={e => e.stopPropagation()}>
+            <span className="cds-icon">§</span>
+            <span className="cds-art">Art. {a}</span>
+            {info && (
+              <span className="cds-tooltip" role="tooltip">
+                <b>{info.title}</b>
+                <small>{info.summary}</small>
+                <em>Légifrance ↗</em>
+              </span>
+            )}
+          </a>
+        );
+      })}
+    </span>
+  );
+}
+
+// Helper — rend un libellé contenant "Art. A322-xxx" en remplaçant par un CdsLink
+function withCdsLinks(text) {
+  if (!text) return text;
+  const refs = window.parseCdsRefs(text);
+  if (refs.length === 0) return text;
+  // On garde le texte intact et on ajoute les badges après
+  // (plus simple que de découper en regex pour préserver la structure)
+  return (
+    <React.Fragment>
+      {text.replace(/\s*\(?(Art\.|CdS)\s*A322-\d+(?:-\d+)?(?:\s*[,/]\s*A322-\d+(?:-\d+)?)*\)?/g, '').trim()}
+      {' '}
+      <CdsLink refText={text} compact />
+    </React.Fragment>
+  );
+}
+
+// =========================================================================
 // Alert
 // =========================================================================
 function Alert({ tone = "info", title, children }) {
@@ -79,7 +141,7 @@ function Field({ label, hint, regRef, required, children, controls }) {
           {label}
           {required && <span className="req">*</span>}
         </label>
-        {regRef && <Ref>{regRef}</Ref>}
+        {regRef && <CdsLink refText={regRef} compact />}
         {controls}
       </div>
       {hint && <div className="field-hint">{hint}</div>}
@@ -206,6 +268,6 @@ function getDiver(diversById, id) {
 // Export to window for cross-file usage
 // =========================================================================
 Object.assign(window, {
-  Pill, Ref, Alert, Opt, Toggle, Field, Question,
+  Pill, Ref, CdsLink, withCdsLinks, Alert, Opt, Toggle, Field, Question,
   formatDateTime, diverFullName, getDiver
 });

@@ -1,28 +1,45 @@
 // DP Assistant — Profilage de la plongée (v2)
 
 // ── DPPicker ──────────────────────────────────────────────────────────────
-function DPPicker({ value, divers, onChange }) {
+function DPPicker({ value, divers, onChange, setDivers }) {
+  const [showAdd, setShowAdd] = useState(false);
+
   const candidates = useMemo(() => divers.filter(d => {
     const ne = d.niveau_encadrant;
     return ne && ['E1','E2','E3','E4','N5'].includes(ne);
   }), [divers]);
 
+  const onCreated = (newDiver) => {
+    setDivers(prev => [...prev, newDiver].sort((a, b) => a.nom.localeCompare(b.nom)));
+    if (newDiver.niveau_encadrant && ['E1','E2','E3','E4','N5'].includes(newDiver.niveau_encadrant)) {
+      onChange(newDiver.id);
+    }
+    setShowAdd(false);
+  };
+
   return (
     <div>
-      <select className="input" value={value || ''} onChange={e => onChange(e.target.value)}>
-        <option value="">— choisir le DP —</option>
-        {candidates.map(d => (
-          <option key={d.id} value={d.id}>
-            {diverFullName(d)} ({d.niveau_encadrant})
-            {d.diplome_pro ? ` — ${d.diplome_pro}` : ''}
-          </option>
-        ))}
-      </select>
+      <div className="row" style={{ gap: 8 }}>
+        <select className="input" value={value || ''} onChange={e => onChange(e.target.value)} style={{ flex: 1 }}>
+          <option value="">— choisir le DP —</option>
+          {candidates.map(d => (
+            <option key={d.id} value={d.id}>
+              {diverFullName(d)} ({d.niveau_encadrant})
+              {d.diplome_pro ? ` — ${d.diplome_pro}` : ''}
+            </option>
+          ))}
+        </select>
+        {setDivers && (
+          <button className="btn ghost" onClick={() => setShowAdd(true)} title="Nouveau plongeur">+</button>
+        )}
+      </div>
       {candidates.length === 0 && (
         <div className="field-hint" style={{ color:'var(--coral)' }}>
           Aucun plongeur avec qualification DP dans l'annuaire. Ajoutez un plongeur avec niveau encadrant E1→E4 ou N5.
         </div>
       )}
+
+      {showAdd && <DiverQuickAdd onCreated={onCreated} onClose={() => setShowAdd(false)} />}
     </div>
   );
 }
@@ -54,6 +71,18 @@ function SitePicker({ value, sites, setSites, onChange, answers }) {
     finally { setSaving(false); }
   };
 
+  // Filtrage selon qualité DP : E1 → piscine ≤6m, E2 → piscine/fosse ≤20m
+  const dpQual = answers?.dp_qual || null;
+  const filteredSites = useMemo(() => {
+    return sites.filter(s => {
+      const milieu = window.getMilieuType(s.milieu);
+      const profMax = s.profondeur_max || 999;
+      if (dpQual === 'E1') return milieu === 'piscine' && profMax <= 6;
+      if (dpQual === 'E2') return (milieu === 'piscine' || milieu === 'fosse') && profMax <= 20;
+      return true; // E3, E4, N5 : tous milieux
+    });
+  }, [sites, dpQual]);
+
   const selected = sites.find(s => s.id === value);
 
   return (
@@ -61,10 +90,25 @@ function SitePicker({ value, sites, setSites, onChange, answers }) {
       <div className="row" style={{ gap:8 }}>
         <select className="input" value={value || ''} onChange={e => onChange(e.target.value)} style={{ flex:1 }}>
           <option value="">— choisir un site —</option>
-          {sites.map(s => <option key={s.id} value={s.id}>{s.nom} ({s.milieu})</option>)}
+          {filteredSites.map(s => (
+            <option key={s.id} value={s.id}>
+              {s.nom}{s.ville ? `, ${s.ville}` : ''}{s.pays_code ? ` (${s.pays_code})` : ''} · {s.milieu}
+              {s.profondeur_max ? ` · ${s.profondeur_max}m` : ''}
+            </option>
+          ))}
         </select>
         <button className="btn ghost" onClick={() => setShowAdd(true)} title="Nouveau site">+</button>
       </div>
+      {dpQual === 'E1' && filteredSites.length < sites.length && (
+        <div className="field-hint" style={{ color:'var(--coral)' }}>
+          Un E1 ne peut diriger que des plongées en piscine (max 6m). {sites.length - filteredSites.length} site(s) masqué(s).
+        </div>
+      )}
+      {dpQual === 'E2' && filteredSites.length < sites.length && (
+        <div className="field-hint" style={{ color:'var(--coral)' }}>
+          Un E2 ne peut diriger qu'en piscine ou fosse (max 20m). {sites.length - filteredSites.length} site(s) masqué(s).
+        </div>
+      )}
 
       {selected && (
         <div className="site-info-box">
@@ -148,7 +192,7 @@ function MeteoField({ value, onChange, site, date }) {
       const day = dt.toISOString().slice(0,10);
       const hour = dt.getHours();
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lng}` +
-        `&hourly=temperature_2m,windspeed_10m,windgusts_10m,weathercode,visibility&` +
+        `&hourly=temperature_2m,windspeed_10m,windgusts_10m,weathercode,visibility` +
         `&start_date=${day}&end_date=${day}&timezone=auto`;
       const res = await fetch(url);
       const data = await res.json();
@@ -202,7 +246,7 @@ function meteoCode(code) {
 }
 
 // ── ScreenProfil ──────────────────────────────────────────────────────────
-function ScreenProfil({ answers, setAnswer, derived, divers, sites, setSites }) {
+function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, setSites }) {
   const { user } = useAuth();
   const sections = window.QUESTIONS;
   const [activeId, setActiveId] = useState(sections[0].id);
@@ -223,20 +267,51 @@ function ScreenProfil({ answers, setAnswer, derived, divers, sites, setSites }) 
     setAnswer('dp_nom', selectedDP ? diverFullName(selectedDP) : '');
   }, [answers.dp_id]);
 
-  // Quand site change → propager milieu + depart_bord/bateau
+  // Quand site change → propager milieu + depart_bord/bateau + shot_line par défaut + détection Atlantique
   useEffect(() => {
     if (selectedSite) {
       setAnswer('milieu',        selectedSite.milieu);
       setAnswer('depart_bord',   selectedSite.depart_bord);
       setAnswer('depart_bateau', selectedSite.depart_bateau);
       setAnswer('site_nom',      selectedSite.nom);
+      setAnswer('site_ville',    selectedSite.ville || '');
+      setAnswer('site_pays',     selectedSite.pays || '');
+      setAnswer('site_pays_code',selectedSite.pays_code || '');
+      setAnswer('site_prof_max', selectedSite.profondeur_max || null);
+      // Pré-cocher shot_line si dispo sur le site (toujours modifiable)
+      if (selectedSite.shot_line && answers.shot_line === undefined) {
+        setAnswer('shot_line', true);
+      }
+      // Atlantique / Manche / Mer du Nord : longitude < 7°E (suffisant pour France)
+      const lng = selectedSite.coordonnees?.lng;
+      const isAtlantique = typeof lng === 'number' && lng < 7;
+      setAnswer('site_atlantique', isAtlantique);
     }
   }, [answers.site_id]);
 
-  // Air activé par défaut dès la première session
+  // Air activé par défaut dès la première session + date/heure initialisée à la prochaine heure pleine
   useEffect(() => {
     if (answers.air === undefined) setAnswer('air', true);
+    if (!answers.date) {
+      const d = new Date();
+      d.setMinutes(0, 0, 0);
+      d.setHours(d.getHours() + 1);
+      // Format ISO local pour input datetime-local : YYYY-MM-DDTHH:MM
+      const pad = (n) => String(n).padStart(2, '0');
+      const iso = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      setAnswer('date', iso);
+    }
   }, []);
+
+  // Numéro d'urgence par défaut selon pays du site + compte utilisateur
+  useEffect(() => {
+    if (answers.urgence_num) return;
+    const code = selectedSite?.pays_code || '';
+    const userDefault = user?.urgence_defaut || '18';
+    if (code === 'CH') setAnswer('urgence_num', '144');
+    else if (code === 'FR') setAnswer('urgence_num', '18');
+    else setAnswer('urgence_num', userDefault);
+  }, [selectedSite?.pays_code, user?.urgence_defaut]);
 
   // Scroll-spy
   useEffect(() => {
@@ -259,8 +334,17 @@ function ScreenProfil({ answers, setAnswer, derived, divers, sites, setSites }) 
     window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 110, behavior:'smooth' });
   };
 
-  // Options prof_max dynamiques selon DP
-  const profOptions = useMemo(() => window.getProfOptions(dpQual, answers.activite), [dpQual, answers.activite]);
+  // Options prof_max dynamiques selon DP × activité × site × Trimix DP
+  const profOptions = useMemo(
+    () => window.getProfOptions(dpQual, answers.activite, selectedDP, selectedSite),
+    [dpQual, answers.activite, selectedDP, selectedSite]
+  );
+
+  // Forcer paliers obligatoires si prof ≥ 60m
+  useEffect(() => {
+    const prof = parseInt(String(answers.prof_max || '').replace(/\D/g, ''), 10);
+    if (prof >= 60 && !answers.paliers) setAnswer('paliers', true);
+  }, [answers.prof_max]);
 
   // Validation D : au moins un gaz
   const noGaz = !answers.air && !answers.nitrox && !answers.trimix && !answers.oxygene_pur;
@@ -279,7 +363,7 @@ function ScreenProfil({ answers, setAnswer, derived, divers, sites, setSites }) 
     if (q.id === 'dp_id') {
       return (
         <Field key={q.id} label={q.label} hint={q.hint} regRef={q.ref} required={q.required}>
-          <DPPicker value={val} divers={divers} onChange={set} />
+          <DPPicker value={val} divers={divers} setDivers={setDivers} onChange={set} />
           {selectedDP && (
             <div className="site-info-box" style={{ marginTop:6 }}>
               <b>{diverFullName(selectedDP)}</b> ·{' '}
@@ -340,7 +424,26 @@ function ScreenProfil({ answers, setAnswer, derived, divers, sites, setSites }) 
     }
 
     if (q.id === 'trimix_secu_note') {
-      return <Alert key={q.id} tone="info">Trimix : la sécurité surface continue est obligatoire pendant toute la durée de la plongée (Art. A322-91).</Alert>;
+      return <Alert key={q.id} tone="info">Trimix : la sécurité surface continue est obligatoire pendant toute la durée de la plongée <CdsLink art="A322-91" />.</Alert>;
+    }
+
+    if (q.type === 'divers-multi') {
+      const current = Array.isArray(val) ? val : [];
+      const toggle = (id) => {
+        const next = current.includes(id) ? current.filter(x => x !== id) : [...current, id];
+        set(next);
+      };
+      return (
+        <Field key={q.id} label={q.label} hint={q.hint} regRef={q.ref}>
+          <div className="opt-group col-3">
+            {divers.map(d => (
+              <Opt key={d.id} label={diverFullName(d)} multi
+                checked={current.includes(d.id)} onClick={() => toggle(d.id)} />
+            ))}
+            {divers.length === 0 && <span className="muted">Aucun plongeur dans l'annuaire.</span>}
+          </div>
+        </Field>
+      );
     }
 
     return <Question key={q.id} q={q} value={val} onChange={(_, v) => set(v)} />;

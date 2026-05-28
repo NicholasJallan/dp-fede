@@ -1,6 +1,11 @@
 // DP Assistant — Fiche de sécurité (Art. A322-72)
 
-function ScreenFiche({ answers, palanquees, divers }) {
+const PRESSION_SORTIE_OPTIONS = [
+  'panne d\'air','20','30','40','50','60','70','80','90','100','100+',
+];
+
+function ScreenFiche({ answers, palanquees, divers, setAnswer }) {
+  const { user } = useAuth();
   const diversById = useMemo(() => {
     const m = {};
     divers.forEach(d => m[d.id] = d);
@@ -10,8 +15,15 @@ function ScreenFiche({ answers, palanquees, divers }) {
   const [heuresDebut, setHeuresDebut] = useState({});
   const [heuresFin,   setHeuresFin]   = useState({});
   const [realises,    setRealises]    = useState({});
+  const [pressions,   setPressions]   = useState({}); // { palId-diverId: '50' }
   const [finModal,    setFinModal]    = useState(null);
   const [finForm,     setFinForm]     = useState({ duree:'', profMax:'', dtr:'' });
+  const [obs,         setObs]         = useState(answers.fiche_observations || '');
+
+  // Persister obs au global au blur
+  useEffect(() => {
+    if (setAnswer) setAnswer('fiche_observations', obs);
+  }, [obs]);
 
   const nowHHMM = () => {
     const d = new Date();
@@ -22,7 +34,7 @@ function ScreenFiche({ answers, palanquees, divers }) {
     const [sh, sm] = startHHMM.split(':').map(Number);
     const [eh, em] = endHHMM.split(':').map(Number);
     let diff = (eh * 60 + em) - (sh * 60 + sm);
-    if (diff < 0) diff += 24 * 60; // passage minuit
+    if (diff < 0) diff += 24 * 60;
     return diff;
   };
 
@@ -36,7 +48,7 @@ function ScreenFiche({ answers, palanquees, divers }) {
     setFinForm({
       duree:   elapsed !== null ? String(elapsed) : '',
       profMax: String(pal.profMax || ''),
-      dtr:     String(window.calcDTR(pal.profMax)),
+      dtr:     String(pal.dtr || window.calcDTR(pal.profMax)),
     });
     setFinModal({ palId, endTime, elapsed });
   };
@@ -48,13 +60,43 @@ function ScreenFiche({ answers, palanquees, divers }) {
     setFinModal(null);
   };
 
-  const onPrint = () => window.print();
+  const setPression = (palId, diverId, v) =>
+    setPressions(prev => ({ ...prev, [`${palId}-${diverId}`]: v }));
+
+  // Téléchargement PDF côté serveur (wkhtmltopdf)
+  const onPrintPdf = async () => {
+    try {
+      const html = document.querySelector('.fiche')?.outerHTML;
+      if (!html) return;
+      const csrf = document.cookie.split('; ').find(c => c.startsWith('dp_csrf='))?.split('=')[1];
+      const res  = await fetch('/api/pdf/fiche', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf || '' },
+        body: JSON.stringify({
+          html: `<!DOCTYPE html><html><head><meta charset="utf-8"><link rel="stylesheet" href="/styles.css"></head><body>${html}</body></html>`,
+          filename: `fiche-securite-${(answers.date || '').slice(0, 10)}.pdf`,
+        }),
+      });
+      if (!res.ok) {
+        window.print();
+        return;
+      }
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `fiche-securite-${(answers.date || '').slice(0, 10)}.pdf`;
+      a.click();
+    } catch {
+      window.print();
+    }
+  };
 
   const onExportJson = () => {
     const snapshot = {
-      answers, palanquees, realises,
+      answers, palanquees, realises, pressions, observations: obs,
       divers: divers.map(d => ({ id:d.id, nom:d.nom, prenom:d.prenom, niveau_plongeur:d.niveau_plongeur, niveau_encadrant:d.niveau_encadrant })),
-      exportedAt: new Date().toISOString()
+      exportedAt: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type:'application/json' });
     const a = document.createElement('a');
@@ -66,32 +108,64 @@ function ScreenFiche({ answers, palanquees, divers }) {
   const siteName = answers.site_nom || answers.site || '—';
   const depart   = [answers.depart_bord && 'Du bord', answers.depart_bateau && 'En bateau'].filter(Boolean).join(' / ') || '—';
 
+  // Structure : depuis le compte utilisateur
+  const structureLabels = {
+    club: 'Club FFESSM associatif',
+    sca:  'Structure Commerciale Agréée (SCA)',
+    csa:  'Convention de Section d\'Activité (CSA)',
+    autre:'Autre',
+  };
+  const structure = user?.club_nom
+    ? `${user.club_nom}${user.structure_type ? ' — ' + structureLabels[user.structure_type] : ''}${user.club_numero ? ' (' + user.club_numero + ')' : ''}`
+    : 'Structure non renseignée (à compléter dans Mon compte)';
+
+  // Mélanges agrégés par palanquée
+  const palMelange = (p) => {
+    const arr = p.melanges || [];
+    if (arr.length === 0) return p.melange || (answers.air ? 'Air' : '—');
+    return arr.join(' · ');
+  };
+
+  // Aptitudes utilisées (résumé pour la fiche)
+  const aptUsage = useMemo(() => {
+    const counts = {};
+    palanquees.forEach(p => p.membres.forEach(m => {
+      const a = m.aptitude || 'Sans';
+      counts[a] = (counts[a] || 0) + 1;
+    }));
+    return counts;
+  }, [palanquees]);
+
   return (
     <div>
       <div className="page-head">
         <div className="eyebrow">Étape 4 / 5 · Fiche de sécurité</div>
-        <h1>Fiche de sécurité — Art. A322-72</h1>
-        <p>Document à compléter avant la mise à l'eau, à conserver 1 an minimum par l'établissement. Imprimable A4 portrait, lisible en noir et blanc.</p>
+        <h1>Fiche de sécurité <CdsLink art="A322-72" /></h1>
+        <p>Document à compléter avant la mise à l'eau, à conserver 1 an minimum. Imprimable A4 portrait, lisible en noir et blanc.</p>
       </div>
 
       <div className="fiche-actions">
         <button className="btn" onClick={onExportJson}>⤓ Export JSON</button>
-        <button className="btn primary" onClick={onPrint}>Imprimer / PDF</button>
+        <button className="btn primary" onClick={onPrintPdf}>Imprimer / PDF</button>
       </div>
 
       <div className="fiche">
         <div className="fheader">
           <div className="left">
             <b>FICHE DE SÉCURITÉ — Art. A322-72 du Code du Sport</b>
-            <h1>{siteName}</h1>
+            <h1>{siteName}{answers.site_ville ? `, ${answers.site_ville}` : ''}{answers.site_pays ? `, ${answers.site_pays}` : ''}</h1>
             <div className="muted" style={{ fontFamily:'var(--t-mono)', fontSize:11 }}>
-              {answers.structure || 'Structure non renseignée'}
+              {structure}
+              {user?.president_nom && (
+                <div>Président : {user.president_prenom} {user.president_nom}{user.president_tel ? ` · ${user.president_tel}` : ''}</div>
+              )}
             </div>
           </div>
           <div className="right">
             <b>{formatDateTime(answers.date)}</b>
             <div>DP : {answers.dp_nom || '—'} ({answers.dp_qual || '—'})</div>
             <div>Activité : {answers.activite || '—'}</div>
+            <div>Urgences : <b>{answers.urgence_num || user?.urgence_defaut || '18'}</b></div>
           </div>
         </div>
 
@@ -102,11 +176,13 @@ function ScreenFiche({ answers, palanquees, divers }) {
           </div>
           <div className="cell">
             <div className="k">Départ</div>
-            <div className="v">{depart}</div>
+            <div className="v">{depart}{answers.shot_line ? ' · Shot-line' : ''}</div>
           </div>
           <div className="cell">
-            <div className="k">Distance / Délai secours</div>
-            <div className="v">{answers.distance_cote ? `${answers.distance_cote} M · ` : ''}{answers.delai_secours || '—'}</div>
+            <div className="k">Mélanges</div>
+            <div className="v" style={{ fontSize: 12 }}>
+              {[answers.air && 'Air', answers.nitrox && 'Nitrox', answers.trimix && 'Trimix', answers.oxygene_pur && 'O₂'].filter(Boolean).join(' · ') || '—'}
+            </div>
           </div>
           <div className="cell">
             <div className="k">Conditions</div>
@@ -122,39 +198,43 @@ function ScreenFiche({ answers, palanquees, divers }) {
               <th>Plongeur</th>
               <th>Aptitude</th>
               <th>Mélange</th>
-              <th>Prof. prévue</th>
-              <th>Durée prévue</th>
+              <th>Profondeur</th>
+              <th>Durée</th>
               <th>DTR</th>
+              <th>Pression sortie</th>
               <th className="no-print" style={{ width:100 }}>Suivi</th>
             </tr>
           </thead>
           <tbody>
             {palanquees.map((p, pi) => {
               const sorted  = window.sortMembresForFiche(p.membres || []);
-              const dtr      = window.calcDTR(p.profMax);
-              const n4Count  = sorted.filter(m => m.aptitude === 'N4').length;
-              const isSFPal  = sorted.length === 6 && n4Count >= 2;
-              const debut    = heuresDebut[p.id];
-              const fin      = heuresFin[p.id];
-              const real     = realises[p.id];
+              const debut   = heuresDebut[p.id];
+              const fin     = heuresFin[p.id];
+              const real    = realises[p.id];
+              const gpCount = sorted.filter(m => m.aptitude === 'GP').length;
+              const isSFPal = sorted.length === 6 && gpCount >= 2;
 
               return (
                 <React.Fragment key={p.id}>
                   {sorted.map((m, mi) => {
-                    const d      = diversById[m.diverId] || {};
+                    const d      = m._bapteme ? m : (diversById[m.diverId] || {});
+                    const fullName = m._bapteme ? `${m.prenom || ''} ${(m.nom || '').toUpperCase()}` : diverFullName(d);
                     const isLast = mi === sorted.length - 1;
-                    const isSF   = isSFPal && isLast && m.aptitude === 'N4';
+                    const isSF   = isSFPal && isLast && m.aptitude === 'GP';
+                    const presKey = `${p.id}-${m.diverId || m.id}`;
                     return (
-                      <tr key={`${p.id}-${m.diverId}-${mi}`}>
+                      <tr key={`${p.id}-${mi}`}>
                         {mi === 0 && (
                           <td rowSpan={sorted.length} style={{ verticalAlign:'top', fontWeight:700, fontFamily:'var(--t-mono)' }}>
                             P{pi + 1}
                           </td>
                         )}
                         <td>
-                          <b>{diverFullName(d)}</b>
+                          <b>{fullName}</b>
                           <br />
-                          <span className="muted" style={{ fontFamily:'var(--t-mono)', fontSize:10 }}>{d.licence || '—'}</span>
+                          <span className="muted" style={{ fontFamily:'var(--t-mono)', fontSize:10 }}>
+                            {m._bapteme ? 'Baptême' : (d.licence || '—')}
+                          </span>
                         </td>
                         <td style={{ fontFamily:'var(--t-mono)', fontSize:11, whiteSpace:'nowrap' }}>
                           {m.aptitude || '—'}
@@ -163,33 +243,46 @@ function ScreenFiche({ answers, palanquees, divers }) {
                         {mi === 0 && (
                           <>
                             <td rowSpan={sorted.length} style={{ verticalAlign:'top' }}>
-                              {p.melange || (answers.air ? 'Air' : '—')}
+                              {palMelange(p)}
+                              {p.shot_line && <><br /><small className="muted">+ shot-line</small></>}
+                              {p.no_deco && <><br /><small className="muted">no déco</small></>}
                             </td>
                             <td rowSpan={sorted.length} style={{ verticalAlign:'top', fontVariantNumeric:'tabular-nums' }}>
-                              {p.profMax} m
-                              {real && <><br /><small className="muted">réel : {real.profMax} m</small></>}
+                              <div>prévu : <b>{p.profMax} m</b></div>
+                              <div className="muted">réalisé : {real ? <b>{real.profMax} m</b> : '—'}</div>
                             </td>
                             <td rowSpan={sorted.length} style={{ verticalAlign:'top', fontVariantNumeric:'tabular-nums' }}>
-                              {p.duree} min
-                              {real && <><br /><small className="muted">réel : {real.duree} min</small></>}
+                              <div>prévu : <b>{p.duree} min</b></div>
+                              <div className="muted">réalisé : {real ? <b>{real.duree} min</b> : '—'}</div>
                             </td>
                             <td rowSpan={sorted.length} style={{ verticalAlign:'top', fontVariantNumeric:'tabular-nums' }}>
-                              {dtr} min
-                              {real && <><br /><small className="muted">réel : {real.dtr} min</small></>}
-                            </td>
-                            <td rowSpan={sorted.length} style={{ verticalAlign:'top', minWidth:90 }} className="no-print">
-                              {!debut
-                                ? <button className="btn" style={{ fontSize:11, minHeight:28, padding:'3px 8px', display:'block', marginBottom:4 }}
-                                    onClick={() => startDive(p.id)}>▶ Début</button>
-                                : <div style={{ fontFamily:'var(--t-mono)', fontSize:11, marginBottom:4 }}>Entrée : <b>{debut}</b></div>
-                              }
-                              {debut && !fin && (
-                                <button className="btn" style={{ fontSize:11, minHeight:28, padding:'3px 8px', display:'block' }}
-                                  onClick={() => openFinModal(p.id, p)}>■ Fin</button>
-                              )}
-                              {fin && <div style={{ fontFamily:'var(--t-mono)', fontSize:11 }}>Sortie : <b>{fin}</b></div>}
+                              <div>prévu : <b>{p.dtr || window.calcDTR(p.profMax)} min</b></div>
+                              <div className="muted">réalisé : {real ? <b>{real.dtr} min</b> : '—'}</div>
                             </td>
                           </>
+                        )}
+                        <td className="no-print" style={{ width: 110 }}>
+                          <select className="input small tight"
+                            value={pressions[presKey] || '50'}
+                            onChange={e => setPression(p.id, m.diverId || m.id, e.target.value)}>
+                            {PRESSION_SORTIE_OPTIONS.map(o => (
+                              <option key={o} value={o}>{o === 'panne d\'air' ? o : `${o} bar`}</option>
+                            ))}
+                          </select>
+                        </td>
+                        {mi === 0 && (
+                          <td rowSpan={sorted.length} style={{ verticalAlign:'top', minWidth:90 }} className="no-print">
+                            {!debut
+                              ? <button className="btn" style={{ fontSize:11, minHeight:28, padding:'3px 8px', display:'block', marginBottom:4 }}
+                                  onClick={() => startDive(p.id)}>▶ Début</button>
+                              : <div style={{ fontFamily:'var(--t-mono)', fontSize:11, marginBottom:4 }}>Entrée : <b>{debut}</b></div>
+                            }
+                            {debut && !fin && (
+                              <button className="btn" style={{ fontSize:11, minHeight:28, padding:'3px 8px', display:'block' }}
+                                onClick={() => openFinModal(p.id, p)}>■ Fin</button>
+                            )}
+                            {fin && <div style={{ fontFamily:'var(--t-mono)', fontSize:11 }}>Sortie : <b>{fin}</b></div>}
+                          </td>
                         )}
                       </tr>
                     );
@@ -203,6 +296,14 @@ function ScreenFiche({ answers, palanquees, divers }) {
         <h2>Sécurité surface</h2>
         <div style={{ fontSize:12, columns:2, columnGap:24 }}>
           <div>• Sécurité surface : <b>{answers.sec_surface ? 'Présente' : 'Non identifiée'}</b></div>
+          {Array.isArray(answers.sec_surface_membres) && answers.sec_surface_membres.length > 0 && (
+            <div>• Plongeurs surveillance : <b>{answers.sec_surface_membres.map(id => {
+              const d = diversById[id]; return d ? diverFullName(d) : id;
+            }).join(', ')}</b></div>
+          )}
+          {answers.sec_surface_externes && (
+            <div>• Non-plongeurs : <b>{answers.sec_surface_externes}</b></div>
+          )}
           <div>• Plan de secours : <b>{answers.plan_secours ? 'Affiché et à jour' : 'À vérifier'}</b></div>
           <div>• Matériel O₂ vérifié : <b>{answers.o2 ? 'Oui' : 'Non'}</b></div>
           <div>• Trousse de secours + couv. iso : <b>{answers.trousse ? 'Oui' : 'Non'}</b></div>
@@ -210,7 +311,22 @@ function ScreenFiche({ answers, palanquees, divers }) {
           <div>• Pavillon Alpha : <b>{answers.pavillon_alpha || answers.bouee_surface ? 'Hissé / présent' : '—'}</b></div>
           <div>• Eau douce potable : <b>{answers.eau_potable ? 'Oui' : 'Non'}</b></div>
           <div>• Moyen de rappel : <b>{answers.rappel ? 'Oui' : '—'}</b></div>
+          <div>• Numéro d'urgence : <b>{answers.urgence_num || user?.urgence_defaut || '18'}</b></div>
         </div>
+
+        <h2>Aptitudes mises en œuvre</h2>
+        <div style={{ fontSize: 12, display:'flex', gap:8, flexWrap:'wrap' }}>
+          {Object.entries(aptUsage).map(([apt, n]) => (
+            <span key={apt} className="pill outline">{apt} × {n}</span>
+          ))}
+          {Object.keys(aptUsage).length === 0 && <span className="muted">—</span>}
+        </div>
+
+        <h2>Observations générales</h2>
+        <textarea className="textarea"
+          style={{ width: '100%', minHeight: 80, fontSize: 12 }}
+          value={obs} onChange={e => setObs(e.target.value)}
+          placeholder={(answers.shot_line ? 'Shot-line installée. ' : '') + 'Conditions particulières, incidents, points d\'attention, signature des plongeurs…'} />
 
         <div className="signatures">
           <div className="sig"><div className="area"></div><div className="k">Signature DP — {answers.dp_nom || '—'}</div></div>
@@ -219,7 +335,7 @@ function ScreenFiche({ answers, palanquees, divers }) {
         </div>
 
         <div className="legal">
-          Document à conserver 1 an minimum par l'établissement (Art. A322-72 du Code du Sport).
+          Document à conserver 1 an minimum par l'établissement <CdsLink art="A322-72" compact />.
           Outil d'aide à la décision — la responsabilité personnelle du Directeur de Plongée demeure pleine et entière.
         </div>
       </div>

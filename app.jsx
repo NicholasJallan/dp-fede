@@ -235,7 +235,7 @@ function AppInner() {
             { id:"archives",     label:"Historique" },
             { id:"admin-divers", label:"Annuaire plongeurs" },
             { id:"admin-sites",  label:"Sites de plongée" },
-            ...(user.role === 'admin' ? [{ id:"admin-users", label:"Utilisateurs" }] : []),
+            ...(user.email === 'nicholas.jallan@gmail.com' ? [{ id:"admin-users", label:"Utilisateurs" }] : []),
             { id:"account",      label:"Mon compte" },
           ].map(item => (
             <button key={item.id}
@@ -255,7 +255,8 @@ function AppInner() {
           {screen === "profil" && (
             <ScreenProfil
               answers={answers} setAnswer={setAnswer} derived={derived}
-              divers={divers} sites={sites} setSites={setSites}
+              divers={divers} setDivers={setDivers}
+              sites={sites} setSites={setSites}
             />
           )}
           {screen === "palanquees" && (
@@ -272,7 +273,7 @@ function AppInner() {
             />
           )}
           {screen === "fiche" && (
-            <ScreenFiche answers={answers} palanquees={palanquees} divers={divers} />
+            <ScreenFiche answers={answers} palanquees={palanquees} divers={divers} setAnswer={setAnswer} />
           )}
           {screen === "archive" && (
             <ScreenArchive answers={answers} palanquees={palanquees} divers={divers} />
@@ -280,7 +281,7 @@ function AppInner() {
           {screen === "archives" && <ScreenArchives />}
           {screen === "admin-divers" && <ScreenAdminDivers />}
           {screen === "admin-sites"  && <ScreenAdminSites />}
-          {screen === "admin-users"  && user.role === 'admin' && <ScreenAdminUsers />}
+          {screen === "admin-users"  && user.email === 'nicholas.jallan@gmail.com' && <ScreenAdminUsers />}
           {screen === "account"      && <ScreenAccount />}
         </div>
 

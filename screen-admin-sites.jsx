@@ -382,7 +382,7 @@ function ScreenAdminSites({ sites, setSites, sitesLoaded }) {
                   </label>
                 </div>
                 <div className="field-hint">
-                  Présence habituelle d'une ligne lestée pour descente/remontée. Le DP confirmera lors de chaque plongée.
+                  Shot-line habituellement présente sur ce site (ligne lestée pour descente/remontée). Le DP confirmera lors de chaque plongée.
                 </div>
               </div>
 

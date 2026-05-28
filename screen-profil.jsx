@@ -180,68 +180,74 @@ function SitePicker({ value, sites, setSites, onChange, answers }) {
 }
 
 // ── MeteoField ────────────────────────────────────────────────────────────
-// Open-meteo Forecast API : plage acceptée = aujourd'hui ± ~14 jours.
-// Si la plongée est planifiée hors plage, on précompléte avec la météo du jour
-// le plus proche dans la plage et on l'indique clairement.
-const isoDay = (d) => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const j = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${j}`;
-};
-
+// Open-meteo Forecast : on récupère les 16 jours de prévisions horaires
+// et on choisit le créneau le plus proche de l'heure planifiée.
 function MeteoField({ value, onChange, site, date }) {
   const [fetching, setFetching] = useState(false);
   const [err, setErr]           = useState('');
 
   const fetchMeteo = async () => {
     const coords = site?.coordonnees;
-    if (!coords?.lat) return;
+    const lat = parseFloat(coords?.lat);
+    const lng = parseFloat(coords?.lng);
+    if (!isFinite(lat) || !isFinite(lng)) {
+      setErr('Coordonnées GPS du site invalides');
+      return;
+    }
     setFetching(true);
     setErr('');
     try {
-      let dt = date ? new Date(date) : new Date();
-      if (isNaN(dt.getTime())) dt = new Date();
-
-      // Clamp à la plage open-meteo (aujourd'hui + 14 jours max)
-      const now    = new Date();
-      const today  = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const maxDay = new Date(today); maxDay.setDate(today.getDate() + 14);
-      let clamped = false;
-      if (dt < today)  { dt = today;  clamped = true; }
-      if (dt > maxDay) { dt = maxDay; clamped = true; }
-
-      const day  = isoDay(dt);
-      const hour = dt.getHours();
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lng}` +
+      // forecast_days=16 = couvre toute la plage permise par open-meteo
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
         `&hourly=temperature_2m,windspeed_10m,windgusts_10m,weathercode,visibility` +
-        `&start_date=${day}&end_date=${day}&timezone=auto`;
+        `&forecast_days=16&timezone=auto`;
 
       const res = await fetch(url);
+      if (!res.ok) {
+        let reason = `HTTP ${res.status}`;
+        try { const j = await res.json(); if (j.reason) reason += ' — ' + j.reason; } catch {}
+        throw new Error(reason);
+      }
       const data = await res.json();
+      if (data?.error) throw new Error(data.reason || 'erreur open-meteo');
+      if (!data?.hourly?.time?.length) throw new Error('Pas de données horaires retournées');
 
-      if (data?.error) {
-        throw new Error(data.reason || 'API open-meteo : erreur');
+      const times = data.hourly.time;
+      const targetMs = (() => {
+        let dt = date ? new Date(date) : new Date();
+        if (isNaN(dt.getTime())) dt = new Date();
+        return dt.getTime();
+      })();
+
+      // Trouver l'index de l'heure la plus proche
+      let bestIdx = 0;
+      let bestDiff = Infinity;
+      for (let k = 0; k < times.length; k++) {
+        const tMs = new Date(times[k]).getTime();
+        const diff = Math.abs(tMs - targetMs);
+        if (diff < bestDiff) { bestDiff = diff; bestIdx = k; }
       }
-      if (!data?.hourly?.time?.length) {
-        throw new Error('Données horaires absentes pour ce point/date');
-      }
+
+      // Si l'écart est > 24h, on signale que c'est la prévision la plus proche
+      const offsetH = Math.round(bestDiff / 3_600_000);
+      const offsetNote = offsetH > 24 ? ` — prévision décalée de ~${offsetH}h` : '';
 
       const h = data.hourly;
-      const i = Math.min(hour, h.time.length - 1);
-      const wc    = h.weathercode?.[i];
-      const wind  = h.windspeed_10m?.[i];
-      const gusts = h.windgusts_10m?.[i];
-      const temp  = h.temperature_2m?.[i];
-      const vis   = h.visibility?.[i];
+      const chosenTime = new Date(h.time[bestIdx]);
+      const wc    = h.weathercode?.[bestIdx];
+      const wind  = h.windspeed_10m?.[bestIdx];
+      const gusts = h.windgusts_10m?.[bestIdx];
+      const temp  = h.temperature_2m?.[bestIdx];
+      const vis   = h.visibility?.[bestIdx];
       const desc  = meteoCode(wc);
-      const prefix = clamped
-        ? `Météo (open-meteo, ${dt.toLocaleDateString('fr-FR')} ${dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}, prévision la plus proche)`
-        : `Météo (open-meteo, ${dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})})`;
+
+      const when = `${chosenTime.toLocaleDateString('fr-FR')} ${chosenTime.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`;
       const text = `${desc} — vent ${wind != null ? wind.toFixed(0) : '?'} km/h (rafales ${gusts != null ? gusts.toFixed(0) : '?'} km/h) — temp. ${temp != null ? temp.toFixed(1) : '?'}°C — visibilité ${vis != null ? (vis/1000).toFixed(1) : '?'} km`;
-      onChange((value ? value + '\n' : '') + `${prefix} : ${text}`);
+      onChange((value ? value + '\n' : '') + `Météo (open-meteo, ${when}${offsetNote}) : ${text}`);
     } catch (e) {
-      setErr(e.message || 'erreur inconnue');
+      // eslint-disable-next-line no-console
+      console.warn('Open-meteo error:', e);
+      setErr(e?.message || 'erreur inconnue');
     } finally {
       setFetching(false);
     }
@@ -259,7 +265,11 @@ function MeteoField({ value, onChange, site, date }) {
         {!site?.coordonnees?.lat && (
           <span className="muted" style={{ fontSize:12 }}>Saisir les coordonnées GPS du site pour la précomplétion météo.</span>
         )}
-        {err && <span className="muted" style={{ fontSize:12, color:'var(--coral)' }}>Météo indisponible : {err}</span>}
+        {err && (
+          <span style={{ fontSize:12, color:'var(--coral)', fontWeight:600 }}>
+            ⚠ Météo indisponible : {err}
+          </span>
+        )}
       </div>
       <textarea className="textarea" rows={3}
         placeholder="Vent, état de la mer, courant, visibilité estimée…"

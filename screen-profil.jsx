@@ -180,41 +180,76 @@ function SitePicker({ value, sites, setSites, onChange, answers }) {
 }
 
 // ── MeteoField ────────────────────────────────────────────────────────────
+// Open-meteo Forecast API : plage acceptée = aujourd'hui ± ~14 jours.
+// Si la plongée est planifiée hors plage, on précompléte avec la météo du jour
+// le plus proche dans la plage et on l'indique clairement.
+const isoDay = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const j = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${j}`;
+};
+
 function MeteoField({ value, onChange, site, date }) {
   const [fetching, setFetching] = useState(false);
+  const [err, setErr]           = useState('');
 
   const fetchMeteo = async () => {
     const coords = site?.coordonnees;
     if (!coords?.lat) return;
     setFetching(true);
+    setErr('');
     try {
-      const dt = date ? new Date(date) : new Date();
-      const day = dt.toISOString().slice(0,10);
+      let dt = date ? new Date(date) : new Date();
+      if (isNaN(dt.getTime())) dt = new Date();
+
+      // Clamp à la plage open-meteo (aujourd'hui + 14 jours max)
+      const now    = new Date();
+      const today  = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const maxDay = new Date(today); maxDay.setDate(today.getDate() + 14);
+      let clamped = false;
+      if (dt < today)  { dt = today;  clamped = true; }
+      if (dt > maxDay) { dt = maxDay; clamped = true; }
+
+      const day  = isoDay(dt);
       const hour = dt.getHours();
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lng}` +
         `&hourly=temperature_2m,windspeed_10m,windgusts_10m,weathercode,visibility` +
         `&start_date=${day}&end_date=${day}&timezone=auto`;
+
       const res = await fetch(url);
       const data = await res.json();
-      if (!data.hourly) throw new Error('Données indisponibles');
+
+      if (data?.error) {
+        throw new Error(data.reason || 'API open-meteo : erreur');
+      }
+      if (!data?.hourly?.time?.length) {
+        throw new Error('Données horaires absentes pour ce point/date');
+      }
+
       const h = data.hourly;
       const i = Math.min(hour, h.time.length - 1);
-      const wc = h.weathercode?.[i];
-      const wind = h.windspeed_10m?.[i];
+      const wc    = h.weathercode?.[i];
+      const wind  = h.windspeed_10m?.[i];
       const gusts = h.windgusts_10m?.[i];
-      const temp = h.temperature_2m?.[i];
-      const vis  = h.visibility?.[i];
-      const desc = meteoCode(wc);
-      const text = `${desc} — vent ${wind ? wind.toFixed(0) : '?'} km/h (rafales ${gusts ? gusts.toFixed(0) : '?'} km/h) — temp. ${temp ? temp.toFixed(1) : '?'}°C — visibilité ${vis ? (vis/1000).toFixed(1) : '?'} km`;
-      onChange((value ? value + '\n' : '') + `Météo (open-meteo, ${dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}) : ${text}`);
-    } catch {
-      onChange((value || '') + '\n[Météo non disponible — renseigner manuellement]');
-    } finally { setFetching(false); }
+      const temp  = h.temperature_2m?.[i];
+      const vis   = h.visibility?.[i];
+      const desc  = meteoCode(wc);
+      const prefix = clamped
+        ? `Météo (open-meteo, ${dt.toLocaleDateString('fr-FR')} ${dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}, prévision la plus proche)`
+        : `Météo (open-meteo, ${dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})})`;
+      const text = `${desc} — vent ${wind != null ? wind.toFixed(0) : '?'} km/h (rafales ${gusts != null ? gusts.toFixed(0) : '?'} km/h) — temp. ${temp != null ? temp.toFixed(1) : '?'}°C — visibilité ${vis != null ? (vis/1000).toFixed(1) : '?'} km`;
+      onChange((value ? value + '\n' : '') + `${prefix} : ${text}`);
+    } catch (e) {
+      setErr(e.message || 'erreur inconnue');
+    } finally {
+      setFetching(false);
+    }
   };
 
   return (
     <div>
-      <div style={{ display:'flex', gap:8, marginBottom:6, alignItems:'center' }}>
+      <div style={{ display:'flex', gap:8, marginBottom:6, alignItems:'center', flexWrap:'wrap' }}>
         {site?.coordonnees?.lat && (
           <button className="btn ghost" style={{ fontSize:12, padding:'3px 10px' }}
             onClick={fetchMeteo} disabled={fetching}>
@@ -224,6 +259,7 @@ function MeteoField({ value, onChange, site, date }) {
         {!site?.coordonnees?.lat && (
           <span className="muted" style={{ fontSize:12 }}>Saisir les coordonnées GPS du site pour la précomplétion météo.</span>
         )}
+        {err && <span className="muted" style={{ fontSize:12, color:'var(--coral)' }}>Météo indisponible : {err}</span>}
       </div>
       <textarea className="textarea" rows={3}
         placeholder="Vent, état de la mer, courant, visibilité estimée…"

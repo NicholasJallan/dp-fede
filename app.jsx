@@ -279,8 +279,12 @@ function AppInner() {
             <ScreenArchive answers={answers} palanquees={palanquees} divers={divers} />
           )}
           {screen === "archives" && <ScreenArchives />}
-          {screen === "admin-divers" && <ScreenAdminDivers />}
-          {screen === "admin-sites"  && <ScreenAdminSites />}
+          {screen === "admin-divers" && (
+            <ScreenAdminDivers divers={divers} setDivers={setDivers} diversLoaded={diversLoaded} />
+          )}
+          {screen === "admin-sites"  && (
+            <ScreenAdminSites sites={sites} setSites={setSites} sitesLoaded={sitesLoaded} />
+          )}
           {screen === "admin-users"  && user.email === 'nicholas.jallan@gmail.com' && <ScreenAdminUsers />}
           {screen === "account"      && <ScreenAccount />}
         </div>

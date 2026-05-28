@@ -70,9 +70,7 @@ function AptitudesGroup({ form, setField }) {
   );
 }
 
-function ScreenAdminDivers() {
-  const [divers, setDivers] = useState([]);
-  const [loading, setLoading] = useState(true);
+function ScreenAdminDivers({ divers, setDivers, diversLoaded }) {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('');
   const [editing, setEditing] = useState(null);
@@ -80,12 +78,8 @@ function ScreenAdminDivers() {
   const [form, setForm] = useState(emptyDiver());
   const [confirmDelete, setConfirmDelete] = useState(null);
 
-  useEffect(() => {
-    api.divers.list()
-      .then(setDivers)
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+  // Le store divers est désormais partagé via app.jsx ; pas de fetch local.
+  const loading = !diversLoaded;
 
   const openNew  = () => { setForm(emptyDiver()); setEditing('new'); setError(''); };
   const openEdit = (d) => {

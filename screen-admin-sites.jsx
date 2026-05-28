@@ -174,9 +174,7 @@ function MapPicker({ coordonnees, onChange }) {
 }
 
 // ── ScreenAdminSites ───────────────────────────────────────────────────────
-function ScreenAdminSites() {
-  const [sites, setSites] = useState([]);
-  const [loading, setLoading] = useState(true);
+function ScreenAdminSites({ sites, setSites, sitesLoaded }) {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('');
   const [editing, setEditing] = useState(null);
@@ -184,12 +182,8 @@ function ScreenAdminSites() {
   const [form, setForm] = useState(emptySite());
   const [confirmDelete, setConfirmDelete] = useState(null);
 
-  useEffect(() => {
-    api.sites.list()
-      .then(setSites)
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+  // Le store sites est désormais partagé via app.jsx ; pas de fetch local.
+  const loading = !sitesLoaded;
 
   const openNew = () => { setForm(emptySite()); setEditing('new'); };
   const openEdit = (s) => {

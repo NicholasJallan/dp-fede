@@ -68,6 +68,20 @@ ssh pi@bullesenvalais.ch "sudo chown -R www-data:www-data /var/www/dp-fede-api"
 ssh pi@bullesenvalais.ch "sudo nginx -t && sudo systemctl reload nginx"
 ```
 
+### CSP — origines whitelistées dans `connect-src`
+
+Toute nouvelle API externe appelée via `fetch()` doit être ajoutée à
+`connect-src` dans `/etc/nginx/sites-available/bullesenvalais` du bloc
+dp-fede. Sans ça, le navigateur émet « Failed to fetch » silencieusement.
+
+État au 28/05/2026 :
+- `'self'`
+- `https://maps.googleapis.com`, `https://maps.gstatic.com` (Maps + Places)
+- `https://api.open-meteo.com` (bouton « Précompléter depuis météo »)
+- `https://www.googleapis.com` (Google Drive : list/create/upload files)
+- `https://oauth2.googleapis.com`, `https://accounts.google.com`
+  (token endpoints — OAuth Drive scope)
+
 ## Données métier
 
 Tout est dans `data.js` (aucun build requis) :

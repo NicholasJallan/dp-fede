@@ -384,6 +384,9 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
     );
   }, [divers, filter]);
 
+  // Réordonne automatiquement les membres après toute attribution d'aptitude.
+  const sortMembres = (membres) => window.sortMembresForFiche(membres);
+
   // ── CRUD palanquées ─────────────────────────────────────────────────
   const addToPal = (palId, diverId) => {
     setPalanquees(prev => prev.map(p => {
@@ -391,14 +394,14 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
       const d = diversById[diverId];
       const apts = d ? window.getDiverAptitudes(d, isExploration) : [];
       const aptitude = apts.length === 1 ? apts[0] : '';
-      return { ...p, membres: [...p.membres, { diverId, aptitude }] };
+      return { ...p, membres: sortMembres([...p.membres, { diverId, aptitude }]) };
     }));
   };
 
   const addBaptemeToPal = (palId, bapteme) => {
     setPalanquees(prev => prev.map(p =>
       p.id === palId
-        ? { ...p, membres: [...p.membres, { ...bapteme, aptitude: 'Baptême', _bapteme: true }] }
+        ? { ...p, membres: sortMembres([...p.membres, { ...bapteme, aptitude: 'Baptême', _bapteme: true }]) }
         : p));
   };
 
@@ -416,11 +419,11 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
   const setAptitude = (palId, key, aptitude, isBapt = false) => {
     setPalanquees(prev => prev.map(p =>
       p.id === palId
-        ? { ...p, membres: p.membres.map(m => {
+        ? { ...p, membres: sortMembres(p.membres.map(m => {
             if (isBapt && m._bapteme && m.id === key) return { ...m, aptitude };
             if (!isBapt && !m._bapteme && m.diverId === key) return { ...m, aptitude };
             return m;
-          }) }
+          })) }
         : p));
   };
 
@@ -671,7 +674,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
               const lastIdx = prev.length - 1;
               return prev.map((p, i) =>
                 i === lastIdx
-                  ? { ...p, membres: [...p.membres, { ...bap, aptitude:'Baptême', _bapteme:true }] }
+                  ? { ...p, membres: sortMembres([...p.membres, { ...bap, aptitude:'Baptême', _bapteme:true }]) }
                   : p);
             });
           }}

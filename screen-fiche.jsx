@@ -241,7 +241,8 @@ ${styles}
               const fin     = heuresFin[p.id];
               const real    = realises[p.id];
               const gpCount = sorted.filter(m => m.aptitude === 'GP').length;
-              const isSFPal = sorted.length === 6 && gpCount >= 2;
+              // Serre-file dès qu'il y a 2 GP (cohérent avec sortMembresForFiche)
+              const isSFPal = gpCount >= 2;
               const palType = window.getPalType(p.membres || []);
               const rowCls  = `row-${palType}`;
 

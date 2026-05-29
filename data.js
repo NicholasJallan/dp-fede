@@ -470,21 +470,47 @@ window.STRUCTURE_LABELS = {
   autre:'Autre',
 };
 
-// Tri des membres d'une palanquée pour la fiche (encadrant en tête, serre-file GP en fin)
+// Tri des membres d'une palanquée — appliqué à la fois sur l'écran de
+// constitution (au fur et à mesure de l'attribution des aptitudes) et sur
+// la fiche de sécurité. Ordre canonique :
+//   Enseignants par niveau décroissant (E4 > E3 > E2 > E1)
+//   → GP
+//   → PE par profondeur décroissante (PE60 > PE40 > PE20)
+//   → PTH (PTH120 > PTH70) — rare dans la composition d'une palanquée
+//   → PA (tous niveaux confondus, ordre d'insertion préservé via tri stable)
+//   → Baptême
+// Cas particulier : 2 GP (ou plus) → le second GP devient serre-file (en fin).
 window.sortMembresForFiche = function(membres) {
-  const priority = { E4:0, E3:1, E2:2, E1:3, GP:4,
-                     PA60:5, PA40:6, PA20:7, PA12:8,
-                     PE60:9, PE40:10, PE20:11,
-                     PTH120:12, PTH70:13, Baptême:14 };
-  const gpCount = membres.filter(m => m.aptitude === 'GP').length;
-  const isSerreFilePal = membres.length === 6 && gpCount >= 2;
-  const sorted = [...membres].sort((a, b) => (priority[a.aptitude] ?? 99) - (priority[b.aptitude] ?? 99));
-  if (isSerreFilePal) {
-    let sfIdx = -1;
-    for (let i = sorted.length - 1; i >= 0; i--) {
-      if (sorted[i].aptitude === 'GP') { sfIdx = i; break; }
+  const priorityOf = (apt) => {
+    switch (apt) {
+      case 'E4': return 0;
+      case 'E3': return 1;
+      case 'E2': return 2;
+      case 'E1': return 3;
+      case 'GP': return 4;
+      case 'PE60': return 5;
+      case 'PE40': return 6;
+      case 'PE20': return 7;
+      case 'PTH120': return 8;
+      case 'PTH70': return 9;
+      case 'PA12': case 'PA20': case 'PA40': case 'PA60': return 10; // pas de tri interne
+      case 'Baptême': return 11;
+      default: return 99;
     }
-    if (sfIdx !== -1) { const sf = sorted.splice(sfIdx, 1)[0]; sorted.push(sf); }
+  };
+  const sorted = [...membres].sort((a, b) =>
+    priorityOf(a.aptitude || '') - priorityOf(b.aptitude || '')
+  );
+  // 2 GP : le dernier GP du bloc devient serre-file (déplacé en queue)
+  const gpCount = sorted.filter(m => m.aptitude === 'GP').length;
+  if (gpCount >= 2) {
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      if (sorted[i].aptitude === 'GP') {
+        const sf = sorted.splice(i, 1)[0];
+        sorted.push(sf);
+        break;
+      }
+    }
   }
   return sorted;
 };

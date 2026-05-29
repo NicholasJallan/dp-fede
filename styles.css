@@ -1480,11 +1480,17 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   font-size: 13px;
 }
 
-/* ===== Palanquée type colors (pastel) ===== */
-.pal-explo   { background: oklch(97% 0.015 240); border-color: oklch(88% 0.04 240); }
-.pal-guidee  { background: oklch(97% 0.015 155); border-color: oklch(88% 0.04 155); }
-.pal-form    { background: oklch(97% 0.015 75);  border-color: oklch(88% 0.04 75);  }
-.pal-bapteme { background: oklch(97% 0.015 32);  border-color: oklch(88% 0.04 32);  }
+/* ===== Palanquée type colors (pastel) =====
+   Palette harmonisée (cohérente écran palanquées + fiche de sécurité) :
+   - exploration autonome (PA12/20/40/60 max 3)   → vert clair
+   - exploration guidée   (GP + PE20/40)          → bleu clair
+   - formation            (E1→E4 + élèves PE)     → rouge saumon clair
+   - baptême              (Baptême + E1→E4)       → corail saturé (existant)
+*/
+.pal-explo   { background: oklch(97% 0.018 155); border-color: oklch(86% 0.06 155); }
+.pal-guidee  { background: oklch(97% 0.018 240); border-color: oklch(86% 0.06 240); }
+.pal-form    { background: oklch(96% 0.025 32);  border-color: oklch(85% 0.07 32);  }
+.pal-bapteme { background: oklch(94% 0.05 32);   border-color: oklch(80% 0.10 32);  }
 
 .pal-type-badge {
   font-family: var(--t-mono);
@@ -1497,10 +1503,21 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   background: var(--paper);
   color: var(--ink-3);
 }
-.pal-type-badge.pal-explo   { background: oklch(92% 0.03 240); border-color: oklch(80% 0.06 240); color: oklch(38% 0.11 240); }
-.pal-type-badge.pal-guidee  { background: oklch(92% 0.03 155); border-color: oklch(80% 0.06 155); color: oklch(35% 0.08 155); }
-.pal-type-badge.pal-form    { background: oklch(92% 0.03 75);  border-color: oklch(80% 0.06 75);  color: oklch(40% 0.10 75);  }
-.pal-type-badge.pal-bapteme { background: oklch(92% 0.03 32);  border-color: oklch(80% 0.06 32);  color: oklch(40% 0.10 32);  }
+.pal-type-badge.pal-explo   { background: oklch(92% 0.04 155); border-color: oklch(78% 0.08 155); color: oklch(35% 0.10 155); }
+.pal-type-badge.pal-guidee  { background: oklch(92% 0.04 240); border-color: oklch(78% 0.08 240); color: oklch(38% 0.11 240); }
+.pal-type-badge.pal-form    { background: oklch(91% 0.06 32);  border-color: oklch(78% 0.10 32);  color: oklch(42% 0.14 32);  }
+.pal-type-badge.pal-bapteme { background: oklch(88% 0.10 32);  border-color: oklch(72% 0.14 32);  color: oklch(38% 0.16 32);  }
+
+/* ===== Couleur de fond par type — fiche de sécurité ===== */
+.fiche tr.row-exploration > td { background: oklch(97% 0.020 155); }
+.fiche tr.row-guidee      > td { background: oklch(97% 0.020 240); }
+.fiche tr.row-formation   > td { background: oklch(96% 0.028 32);  }
+.fiche tr.row-bapteme     > td { background: oklch(93% 0.055 32);  }
+.fiche tr[class^="row-"] > td,
+.fiche tr[class*=" row-"] > td {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
 
 /* ===== Locked opt-group ===== */
 .locked-group { opacity: 0.6; pointer-events: none; }

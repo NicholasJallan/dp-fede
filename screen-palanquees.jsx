@@ -7,8 +7,6 @@ const PAL_COLORS = {
   bapteme:     'pal-bapteme',
 };
 
-const MELANGES_LIST = ['Air','Nx ≤ 40%','Nx > 40%','Tx'];
-
 // ── AptitudeSelect ────────────────────────────────────────────────────────
 function AptitudeSelect({ diver, value, isExploration, onChange }) {
   const available = window.getDiverAptitudes(diver, isExploration);
@@ -37,7 +35,7 @@ function paLevel(apt) {
 
 // ── Validation complète d'une palanquée ───────────────────────────────────
 // Règles compilées depuis MFT FFESSM + Code du Sport (Art. A322-72→97).
-function validatePal(pal, diversById, answers) {
+function validatePal(pal, diversById, answers, dp) {
   const issues = [];
   const membres = pal.membres
     .map(m => ({ ...m, diver: m._bapteme ? m : diversById[m.diverId] }))
@@ -122,6 +120,10 @@ function validatePal(pal, diversById, answers) {
 
   // ─── Règles encadrants E1/E2/E3/E4 (formation) ───────────────────────
   if (ensMembers.length > 0) {
+    // Taille max formation : 5 personnes (encadrant inclus)
+    if (membres.length > 5) {
+      issues.push({ tone:'err', text:`Palanquée formation : max 5 personnes (${membres.length} actuellement).` });
+    }
     if (ensMembers.length > 1) {
       // Plusieurs encadrants = formation d'encadrants — tolérée si tous E3 ou E4
       const nonE3E4 = ensMembers.filter(m => !['E3','E4'].includes(m.aptitude));
@@ -226,6 +228,24 @@ function validatePal(pal, diversById, answers) {
     issues.push({ tone:'warn', text:'Aucun mélange respiratoire sélectionné pour cette palanquée.' });
   }
 
+  // Cohérence mélange ↔ qualifications du DP
+  const dpNitrox = dp?.nitrox || [];
+  const dpTrimix = dp?.trimix || [];
+  const dpNe     = dp?.niveau_encadrant || '';
+  const dpHasPNC    = dpNitrox.includes('PN-C');
+  const dpHasPTH120 = dpTrimix.includes('PTH-120');
+  if ((mlx.includes('Nx ≤ 40%') || mlx.includes('Nx > 40%')) && !dpHasPNC) {
+    issues.push({ tone:'err', text:'Mélange Nitrox sélectionné : le DP doit être PN-C.' });
+  }
+  if (mlx.includes('Tx')) {
+    if (!dpHasPTH120) {
+      issues.push({ tone:'err', text:'Mélange Trimix sélectionné : le DP doit être PTH-120.' });
+    }
+    if (!['E3','E4'].includes(dpNe)) {
+      issues.push({ tone:'err', text:'Mélange Trimix sélectionné : le DP doit être E3 ou E4 (E1/E2 interdits).' });
+    }
+  }
+
   if (issues.filter(i => i.tone === 'err').length === 0) {
     const t = window.getPalType(pal.membres);
     issues.push({ tone:'ok', text:`Composition conforme — type : ${t}.` });
@@ -241,6 +261,31 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
   // N5 → exploration uniquement
   const isExploration = answers.dp_qual === 'N5';
   const dpQual = answers.dp_qual || '';
+
+  // DP courant (objet plongeur complet — nécessaire pour les contrôles gaz)
+  const dpDiver = useMemo(
+    () => divers.find(d => d.id === answers.dp_id) || null,
+    [divers, answers.dp_id]
+  );
+  const melangesCatalog = useMemo(
+    () => window.getAvailableMelanges(dpDiver),
+    [dpDiver]
+  );
+  const allowedMelangeValues = useMemo(
+    () => new Set(melangesCatalog.filter(m => m.allowed).map(m => m.value)),
+    [melangesCatalog]
+  );
+
+  // Nettoyer automatiquement les mélanges devenus interdits quand le DP change
+  useEffect(() => {
+    setPalanquees(prev => prev.map(p => {
+      const cur = p.melanges || [];
+      const next = cur.filter(m => allowedMelangeValues.has(m));
+      if (next.length === cur.length) return p;
+      // si on a tout retiré, on rebascule sur Air (toujours autorisé)
+      return { ...p, melanges: next.length > 0 ? next : ['Air'] };
+    }));
+  }, [allowedMelangeValues]);
 
   // Dériver activité depuis les aptitudes utilisées
   useEffect(() => {
@@ -414,7 +459,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
         {/* Palanquées */}
         <div className="pal-list">
           {palanquees.map((p, idx) => {
-            const issues  = validatePal(p, diversById, answers);
+            const issues  = validatePal(p, diversById, answers, dpDiver);
             const palType = window.getPalType(p.membres);
             const colorClass = PAL_COLORS[palType] || '';
             const melanges = p.melanges || [];
@@ -449,13 +494,19 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
 
                 <div className="pal-options">
                   <div className="qualif-row" style={{ gap: 8 }}>
-                    {MELANGES_LIST.map(m => (
-                      <label key={m} className={`qualif-toggle ${melanges.includes(m) ? 'on' : ''}`}>
-                        <input type="checkbox" checked={melanges.includes(m)}
-                          onChange={() => toggleMelange(p.id, m)} />
-                        {m}
-                      </label>
-                    ))}
+                    {melangesCatalog.map(({ value, allowed, reason }) => {
+                      const on = melanges.includes(value);
+                      return (
+                        <label key={value}
+                          className={`qualif-toggle ${on ? 'on' : ''} ${allowed ? '' : 'locked'}`}
+                          title={!allowed ? reason : ''}>
+                          <input type="checkbox" checked={on}
+                            disabled={!allowed}
+                            onChange={() => allowed && toggleMelange(p.id, value)} />
+                          {value}
+                        </label>
+                      );
+                    })}
                   </div>
                   <div className="qualif-row" style={{ gap: 8, marginTop: 6 }}>
                     <label className={`qualif-toggle ${p.no_deco ? 'on' : ''}`}>

@@ -242,6 +242,8 @@ ${styles}
               const real    = realises[p.id];
               const gpCount = sorted.filter(m => m.aptitude === 'GP').length;
               const isSFPal = sorted.length === 6 && gpCount >= 2;
+              const palType = window.getPalType(p.membres || []);
+              const rowCls  = `row-${palType}`;
 
               return (
                 <React.Fragment key={p.id}>
@@ -252,7 +254,7 @@ ${styles}
                     const isSF   = isSFPal && isLast && m.aptitude === 'GP';
                     const presKey = `${p.id}-${m.diverId || m.id}`;
                     return (
-                      <tr key={`${p.id}-${mi}`}>
+                      <tr key={`${p.id}-${mi}`} className={rowCls}>
                         {mi === 0 && (
                           <td rowSpan={sorted.length} style={{ verticalAlign:'top', fontWeight:700, fontFamily:'var(--t-mono)' }}>
                             P{pi + 1}

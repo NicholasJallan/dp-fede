@@ -9,14 +9,15 @@
 window.APTITUDE_MAP = {
   N1: { mandatory: ['PE20'],                       optional: ['PA12','PA20'] },
   N2: { mandatory: ['PE20','PE40','PA12','PA20'],  optional: ['PA40'] },
-  N3: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40'], optional: [] },
-  // Encadrants ont toujours toutes les aptitudes plongeur N3
-  N4: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40','GP'], optional: [] },
-  N5: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40'],      optional: [] },
-  E1: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40'],      optional: ['GP','Enseignant'] },
-  E2: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40'],      optional: ['GP','Enseignant'] },
-  E3: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40','GP','Enseignant'], optional: [] },
-  E4: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40','GP','Enseignant'], optional: [] },
+  // N3 = autonome 60 m → PA60 inclus de droit
+  N3: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40','PA60'], optional: [] },
+  // Encadrants : toutes les aptitudes plongeur N3 (PA60 inclus) + rôle encadrant
+  N4: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40','PA60','GP'], optional: [] },
+  N5: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40','PA60'],      optional: [] },
+  E1: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40','PA60'],      optional: ['GP','Enseignant'] },
+  E2: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40','PA60'],      optional: ['GP','Enseignant'] },
+  E3: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40','PA60','GP','Enseignant'], optional: [] },
+  E4: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40','PA60','GP','Enseignant'], optional: [] },
 };
 
 // Profondeurs max autorisées par qualification DP (Art. A322-86)
@@ -33,6 +34,11 @@ window.DP_DEPTH_RULES = {
 // Options prof_max disponibles selon DP × activité × site × Trimix DP (Code du Sport Art. A322-86)
 // dp : { niveau_encadrant, trimix:[] } (optionnel)
 // site : { profondeur_max } (optionnel)
+//
+// Règle stricte Trimix : seul un DP PTH-120 (et E3 ou E4) peut diriger une
+// plongée trimix. PTH-70 ne donne aucune extension de profondeur côté DP.
+//   E3 + PTH-120 → 40 m formation, 70 m exploration
+//   E4 + PTH-120 → 80 m formation, 120 m exploration
 window.getProfOptions = function(niveauEncadrant, activite, dp, site) {
   const isExplo = !activite || activite === 'Exploration';
   const rules = window.DP_DEPTH_RULES[niveauEncadrant] || { formation: 60, exploration: 60 };
@@ -40,14 +46,16 @@ window.getProfOptions = function(niveauEncadrant, activite, dp, site) {
   let max = isExplo ? (rules.exploration || rules.formation) : rules.formation;
   if (max === 0) return [];
 
-  // Trimix DP : étendre les options 70 / 120 m
   const trimix = dp?.trimix || [];
   const pth120 = trimix.includes('PTH-120');
-  const pth70  = trimix.includes('PTH-70') || pth120;
 
-  // PTH70 + E3 → 70m, PTH120 + E4 → 120m
-  if (pth70 && (niveauEncadrant === 'E3' || niveauEncadrant === 'E4')) max = Math.max(max, 70);
-  if (pth120 && niveauEncadrant === 'E4') max = 120;
+  // Extensions trimix : PTH-120 requis, E3/E4 uniquement
+  if (pth120 && niveauEncadrant === 'E3') {
+    max = isExplo ? Math.max(max, 70) : max;       // 40 form, 70 explo
+  }
+  if (pth120 && niveauEncadrant === 'E4') {
+    max = isExplo ? Math.max(max, 120) : Math.max(max, 80); // 80 form, 120 explo
+  }
 
   // Limite par profondeur du site (on accepte l'échelon juste au-dessus)
   const siteMax = site?.profondeur_max || null;
@@ -86,13 +94,13 @@ window.getDiverAptitudes = function(diver, isExploration) {
   }
   if (np === 'N3') {
     apts.add('PE20'); apts.add('PE40'); apts.add('PE60');
-    apts.add('PA12'); apts.add('PA20'); apts.add('PA40');
+    apts.add('PA12'); apts.add('PA20'); apts.add('PA40'); apts.add('PA60');
   }
 
   // Encadrants : aptitudes plongeur N3 + rôle encadrant
   if (ne) {
     apts.add('PE20'); apts.add('PE40'); apts.add('PE60');
-    apts.add('PA12'); apts.add('PA20'); apts.add('PA40');
+    apts.add('PA12'); apts.add('PA20'); apts.add('PA40'); apts.add('PA60');
 
     if (ne === 'N4') apts.add('GP');
     else if (ne === 'N5') { /* N5 = DP plongeur, pas guide */ }
@@ -111,7 +119,7 @@ window.getDiverAptitudes = function(diver, isExploration) {
   if (trimix.includes('PTH-120')) apts.add('PTH120');
 
   // Ordre canonique : Baptême < PE < PA < GP < Enseignant
-  const ORDER = ['Baptême','PE20','PE40','PE60','PA12','PA20','PA40',
+  const ORDER = ['Baptême','PE20','PE40','PE60','PA12','PA20','PA40','PA60',
                  'PTH70','PTH120','GP','E1','E2','E3','E4'];
   return ORDER.filter(a => apts.has(a));
 };
@@ -121,7 +129,7 @@ window.aptitudeMaxDepth = function(aptitude) {
   const map = {
     'Baptême': 6,
     'PE20': 20, 'PE40': 40, 'PE60': 60,
-    'PA12': 12, 'PA20': 20, 'PA40': 40,
+    'PA12': 12, 'PA20': 20, 'PA40': 40, 'PA60': 60,
     'GP':   60,
     'E1':   6,  'E2': 20, 'E3': 40, 'E4': 60,
     'PTH70': 70, 'PTH120': 120,
@@ -136,6 +144,27 @@ window.getPalType = function(membres) {
   if (apts.some(a => ['E1','E2','E3','E4'].includes(a))) return 'formation';
   if (apts.includes('GP') && apts.some(a => a.startsWith('PE'))) return 'guidee';
   return 'exploration';
+};
+
+// Mélanges disponibles selon les qualifications du Directeur de Plongée.
+// Air        : toujours autorisé.
+// Nx ≤ 40 %  : DP doit être PN-C (règle interne stricte).
+// Nx > 40 %  : DP doit être PN-C.
+// Tx (trimix): DP doit être PTH-120 ET de niveau E3 ou E4
+//              (E1/E2 ne peuvent jamais diriger une plongée trimix).
+window.getAvailableMelanges = function(dp) {
+  const nitrox    = dp?.nitrox || [];
+  const trimix    = dp?.trimix || [];
+  const ne        = dp?.niveau_encadrant || '';
+  const hasPNC    = nitrox.includes('PN-C');
+  const hasPTH120 = trimix.includes('PTH-120');
+  const canTrimix = hasPTH120 && (ne === 'E3' || ne === 'E4');
+  return [
+    { value:'Air',      allowed:true,      reason:null },
+    { value:'Nx ≤ 40%', allowed:hasPNC,    reason:'DP doit être PN-C' },
+    { value:'Nx > 40%', allowed:hasPNC,    reason:'DP doit être PN-C' },
+    { value:'Tx',       allowed:canTrimix, reason:'DP doit être PTH-120 (E3/E4)' },
+  ];
 };
 
 // =========================================================================
@@ -442,9 +471,9 @@ window.STRUCTURE_LABELS = {
 // Tri des membres d'une palanquée pour la fiche (encadrant en tête, serre-file GP en fin)
 window.sortMembresForFiche = function(membres) {
   const priority = { E4:0, E3:1, E2:2, E1:3, GP:4,
-                     PA40:5, PA20:6, PA12:7,
-                     PE60:8, PE40:9, PE20:10,
-                     PTH120:11, PTH70:12, Baptême:13 };
+                     PA60:5, PA40:6, PA20:7, PA12:8,
+                     PE60:9, PE40:10, PE20:11,
+                     PTH120:12, PTH70:13, Baptême:14 };
   const gpCount = membres.filter(m => m.aptitude === 'GP').length;
   const isSerreFilePal = membres.length === 6 && gpCount >= 2;
   const sorted = [...membres].sort((a, b) => (priority[a.aptitude] ?? 99) - (priority[b.aptitude] ?? 99));

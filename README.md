@@ -18,6 +18,7 @@ Profilage de la plongée, check-list conditionnelle, composition des palanquées
 - [Authentification](#authentification)
 - [Flux de plongée](#flux-de-plongée)
 - [Déploiement](#déploiement)
+- **[Règles métier détaillées → RULES.md](RULES.md)**
 
 ---
 

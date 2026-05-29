@@ -177,9 +177,7 @@ function ScreenAdminDivers({ divers, setDivers, diversLoaded }) {
   const onSave = async () => {
     if (!form.nom.trim())   { setError('Le nom est requis'); return; }
     if (!form.medical)      { setError('La date du certificat médical est obligatoire'); return; }
-    if (!form.niveau_plongeur && !form.niveau_encadrant) {
-      setError('Indiquer au moins un niveau (plongeur ou encadrant)'); return;
-    }
+    // Pas de niveau = licencié débutant (Baptême ou PE20, en formation uniquement).
     setSaving(true); setError('');
     try {
       const payload = {
@@ -222,7 +220,9 @@ function ScreenAdminDivers({ divers, setDivers, diversLoaded }) {
   const diverLabel = (d) => {
     const ne = d.niveau_encadrant;
     const np = d.niveau_plongeur;
-    return ne ? `${ne}` : (np ? np : '?');
+    if (ne) return ne;
+    if (np) return np;
+    return 'Débutant';
   };
 
   const medExpired = (d) => d.medical && new Date(d.medical) < new Date();
@@ -328,6 +328,13 @@ function ScreenAdminDivers({ divers, setDivers, diversLoaded }) {
               </div>
 
               <AptitudesGroup form={form} setField={setField} />
+
+              {!form.niveau_plongeur && !form.niveau_encadrant && (
+                <div className="field-hint" style={{ marginTop:6, color:'var(--coral)' }}>
+                  Sans niveau = licencié débutant — autorisé en Baptême ou PE20, uniquement
+                  dans une palanquée de formation (avec un enseignant E1→E4).
+                </div>
+              )}
 
               <hr />
 

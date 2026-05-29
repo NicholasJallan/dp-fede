@@ -25,11 +25,14 @@ Synthèse exhaustive des règles métier appliquées par l'outil. Source : Code 
 
 | Niveau | Aptitudes encadrées (PE) | Aptitudes autonomes (PA) | Rôle encadrement |
 |---|---|---|---|
+| **Débutant** (aucun brevet) | PE20 (en formation) ou Baptême | — | — |
 | **N1** | PE20 | PA12, PA20 (optionnelles) | — |
 | **N2** | PE20, PE40 | PA12, PA20 ; PA40 optionnelle | — |
 | **N3** | PE20, PE40, PE60 | PA12, PA20, PA40, **PA60** | — |
 | **N4** (GP) | PE20, PE40, PE60 | PA12, PA20, PA40, PA60 | GP (guide de palanquée) |
 | **N5** (DP plongeur) | PE20, PE40, PE60 | PA12, PA20, PA40, PA60 | DP exploration seulement |
+
+> **Licencié débutant** : un plongeur enregistré dans l'annuaire **sans aucun niveau** (ni plongeur, ni encadrant) est considéré comme totalement débutant. Il peut uniquement faire un Baptême (≤ 6 m) ou être PE20 (≤ 20 m), exclusivement dans une palanquée de **formation** (présence obligatoire d'un enseignant E1→E4).
 
 ### Niveaux encadrant fédéraux
 
@@ -193,6 +196,17 @@ Appel nominatif, briefing, rappels sécurité (moyen de rappel, perte palanquée
 | **A322-89** | Plongée au Nitrox | [LEGIARTI000025393827](https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025393827) |
 | **A322-91** | Plongée Trimix / Héliox | [LEGIARTI000025393819](https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025393819) |
 | **A322-94** | Plongée en recycleur (CCR / SCR) | [LEGIARTI000025393813](https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025393813) |
+
+---
+
+## Fraîcheur des données
+
+Les annuaires plongeurs et sites sont rafraîchis automatiquement depuis le backend à chaque démarrage d'une plongée :
+- création d'une nouvelle plongée (« Nouvelle plongée » depuis l'accueil),
+- reprise d'un brouillon,
+- clonage d'une archive.
+
+Une évolution de niveau ou d'aptitude saisie depuis un autre poste, ou par un autre utilisateur, est donc immédiatement visible sans redémarrer l'application.
 
 ---
 

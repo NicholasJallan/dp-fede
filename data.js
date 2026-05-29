@@ -79,7 +79,9 @@ window.getDiverAptitudes = function(diver, isExploration) {
   const sup    = diver.aptitudes_sup || [];
   const apts   = new Set();
 
-  if (!np && !ne) { apts.add('Baptême'); return [...apts]; }
+  // Licencié débutant (sans aucun niveau) : Baptême ou PE20 (en formation uniquement).
+  // La validation palanquée garantit la présence d'un enseignant E1→E4.
+  if (!np && !ne) { apts.add('Baptême'); apts.add('PE20'); return [...apts]; }
 
   // Aptitudes du niveau plongeur (selon Annexes FFESSM / Code du Sport)
   if (np === 'N1') {

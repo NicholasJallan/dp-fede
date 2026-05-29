@@ -212,6 +212,26 @@ function validatePal(pal, diversById, answers, dp) {
     if (profMax > 6) issues.push({ tone:'err', text:'Baptême : profondeur max 6 m.' });
   }
 
+  // ─── Licenciés débutants (sans niveau) ───────────────────────────────
+  // Un licencié sans brevet (ni niveau plongeur, ni niveau encadrant) doit :
+  //  - être en Baptême ou PE20 (aucune autre aptitude possible)
+  //  - être dans une palanquée FORMATION (présence d'un enseignant E1→E4).
+  const debutants = membres.filter(m =>
+    !m._bapteme && m.diver
+    && !m.diver.niveau_plongeur && !m.diver.niveau_encadrant);
+  if (debutants.length > 0) {
+    if (ensMembers.length === 0) {
+      issues.push({ tone:'err',
+        text:`Licencié débutant : un enseignant E1→E4 est obligatoire (plongée de formation).` });
+    }
+    debutants.forEach(m => {
+      if (m.aptitude && !['Baptême','PE20'].includes(m.aptitude)) {
+        issues.push({ tone:'err',
+          text:`Débutant ${diverFullName(m.diver)} : aptitude limitée à Baptême ou PE20.` });
+      }
+    });
+  }
+
   // ─── Certificats médicaux ────────────────────────────────────────────
   const eventDate = answers.date ? new Date(answers.date) : new Date();
   membres.forEach(m => {
@@ -433,7 +453,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
                   <small>
                     {ne ? <span className="pill ink" style={{ fontSize:11, padding:'1px 6px', borderRadius:3, marginRight:4 }}>{ne}</span> : null}
                     {np && !ne ? <span style={{ marginRight:4 }}>{np}</span> : null}
-                    {!ne && !np ? <span className="muted">Sans niveau</span> : null}
+                    {!ne && !np ? <span className="pill coral" style={{ fontSize:11, padding:'1px 6px', borderRadius:3, marginRight:4 }}>Débutant</span> : null}
                     {(d.nitrox||[]).includes('PN-C') && <span className="muted"> · PN-C</span>}
                     {(d.trimix||[]).includes('PTH-120') && <span className="muted"> · PTH-120</span>}
                     {(d.recycleurs||[]).length > 0 && <span className="muted"> · CCR</span>}

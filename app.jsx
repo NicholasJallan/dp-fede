@@ -89,6 +89,20 @@ function AppInner() {
   const setChecked = useCallback((id, v) => setCheckedState(prev => ({ ...prev, [id]: v })), []);
   const setComment = useCallback((id, v) => setCommentsState(prev => ({ ...prev, [id]: v })), []);
 
+  // Rafraîchit l'annuaire plongeurs + sites depuis le backend.
+  // Indispensable à chaque démarrage de plongée pour que les évolutions de
+  // niveaux/aptitudes survenues entre deux sessions soient prises en compte
+  // sans redémarrer l'application.
+  const refreshDiversAndSites = useCallback(async () => {
+    try {
+      const [d, s] = await Promise.all([api.divers.list(), api.sites.list()]);
+      setDivers(d);
+      setSites(s);
+    } catch {
+      // On garde le cache local en cas d'échec réseau.
+    }
+  }, []);
+
   const derived = useMemo(() => {
     const notes = [];
     const profNum = parseFloat(answers.prof_max);
@@ -159,10 +173,15 @@ function AppInner() {
     setConfirmModal(false);
     localStorage.removeItem(STORAGE_KEY);
     setHasDraft(false);
+    refreshDiversAndSites();
     setScreen("profil");
     window.scrollTo({ top:0 });
   };
-  const resumeDraft = () => { setScreen("profil"); window.scrollTo({ top:0 }); };
+  const resumeDraft = () => {
+    refreshDiversAndSites();
+    setScreen("profil");
+    window.scrollTo({ top:0 });
+  };
 
   const cloneDive = async (archiveId) => {
     try {
@@ -189,6 +208,7 @@ function AppInner() {
       setConfirmModal(false);
       localStorage.removeItem(STORAGE_KEY);
       setHasDraft(true);
+      refreshDiversAndSites();
       setScreen("profil");
       window.scrollTo({ top:0 });
     } catch (err) {

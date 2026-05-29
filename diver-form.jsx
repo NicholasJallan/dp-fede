@@ -144,9 +144,7 @@ function DiverQuickAdd({ onCreated, onClose, initialName = '', allowBapteme = fa
     if (!form.nom.trim() && !isBapteme) { setErr('Le nom est requis'); return; }
     if (isBapteme && !form.prenom.trim() && !form.nom.trim()) { setErr('Saisir au moins le prénom ou le nom du baptisé'); return; }
     if (!isBapteme && !form.medical) { setErr('La date du certificat médical est obligatoire'); return; }
-    if (!isBapteme && !form.niveau_plongeur && !form.niveau_encadrant) {
-      setErr('Indiquer au moins un niveau (plongeur ou encadrant)'); return;
-    }
+    // Pas de niveau = licencié débutant (Baptême ou PE20 en formation uniquement).
     setErr('');
     setSaving(true);
     try {
@@ -246,6 +244,13 @@ function DiverQuickAdd({ onCreated, onClose, initialName = '', allowBapteme = fa
               </div>
 
               <AptitudesGroupQuick form={form} setField={setField} />
+
+              {!form.niveau_plongeur && !form.niveau_encadrant && (
+                <div className="field-hint" style={{ marginTop:6, color:'var(--coral)' }}>
+                  Sans niveau = licencié débutant — autorisé en Baptême ou PE20, uniquement
+                  dans une palanquée de formation (avec un enseignant E1→E4).
+                </div>
+              )}
 
               <hr />
 

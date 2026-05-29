@@ -648,4 +648,4 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
   );
 }
 
-Object.assign(window, { ScreenPalanquees });
+Object.assign(window, { ScreenPalanquees, validatePal });

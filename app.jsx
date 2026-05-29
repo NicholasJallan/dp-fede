@@ -138,8 +138,29 @@ function AppInner() {
     else setScreen(STEPS[currentStepIdx - 1].id);
     window.scrollTo({ top:0, behavior:"smooth" });
   };
+  // Calcul des palanquées avec des erreurs bloquantes (utilisé pour confirmer
+  // le passage à la check-list en cas d'infractions résiduelles)
+  const blockingPalSummary = useMemo(() => {
+    if (typeof window.validatePal !== 'function') return [];
+    const diversById = {};
+    divers.forEach(d => { diversById[d.id] = d; });
+    const dp = divers.find(d => d.id === answers.dp_id) || null;
+    return palanquees
+      .map((p, idx) => {
+        const issues = window.validatePal(p, diversById, answers, dp);
+        const errs = issues.filter(i => i.tone === 'err').map(i => i.text);
+        return { id: p.id, nom: p.nom || `Palanquée ${idx + 1}`, errs };
+      })
+      .filter(s => s.errs.length > 0);
+  }, [palanquees, divers, answers]);
+
   const goNext = () => {
     if (screen === "home") { setScreen("profil"); return; }
+    // Palanquées → Check-list : alerter si infractions bloquantes résiduelles
+    if (screen === "palanquees" && blockingPalSummary.length > 0) {
+      setConfirmModal("pal_blocking");
+      return;
+    }
     // Fiche → Archive : vérifications + gel
     if (screen === "fiche") {
       if (!allPalanqueesFinished) {
@@ -149,6 +170,12 @@ function AppInner() {
       setConfirmModal("confirm"); // demande confirmation gel
       return;
     }
+    if (currentStepIdx < STEPS.length - 1) setScreen(STEPS[currentStepIdx + 1].id);
+    window.scrollTo({ top:0, behavior:"smooth" });
+  };
+
+  const overridePalBlocking = () => {
+    setConfirmModal(false);
     if (currentStepIdx < STEPS.length - 1) setScreen(STEPS[currentStepIdx + 1].id);
     window.scrollTo({ top:0, behavior:"smooth" });
   };
@@ -443,6 +470,46 @@ function AppInner() {
                 </p>
                 <div style={{ display:'flex', justifyContent:'flex-end' }}>
                   <button className="btn primary" onClick={() => setConfirmModal(false)}>Compris</button>
+                </div>
+              </>
+            ) : confirmModal === "pal_blocking" ? (
+              <>
+                <h2 style={{ margin:0, fontSize:18, color:'var(--coral)' }}>
+                  ⚠ Infractions au Code du Sport
+                </h2>
+                <p style={{ margin:0, color:'var(--ink-2)', lineHeight:1.6 }}>
+                  {blockingPalSummary.length === 1
+                    ? 'Une palanquée présente '
+                    : `${blockingPalSummary.length} palanquées présentent `}
+                  des erreurs bloquantes. Passer outre signifie que vous engagez votre
+                  responsabilité personnelle de Directeur de Plongée et que vous
+                  enfreignez probablement le Code du Sport.
+                </p>
+                <div style={{
+                  maxHeight:200, overflowY:'auto',
+                  background:'var(--paper-2)',
+                  border:'1px solid var(--line)',
+                  borderRadius:6,
+                  padding:'10px 12px',
+                  fontSize:13, lineHeight:1.45,
+                }}>
+                  {blockingPalSummary.map(s => (
+                    <div key={s.id} style={{ marginBottom:8 }}>
+                      <b style={{ color:'var(--ink)' }}>{s.nom}</b>
+                      <ul style={{ margin:'4px 0 0 18px', padding:0, color:'var(--ink-2)' }}>
+                        {s.errs.map((e, i) => <li key={i}>{e}</li>)}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display:'flex', gap:10, justifyContent:'flex-end', flexWrap:'wrap' }}>
+                  <button className="btn" onClick={overridePalBlocking}
+                    style={{ color:'var(--coral)' }}>
+                    Continuer sous ma responsabilité
+                  </button>
+                  <button className="btn primary" autoFocus onClick={() => setConfirmModal(false)}>
+                    Rester et éditer
+                  </button>
                 </div>
               </>
             ) : (

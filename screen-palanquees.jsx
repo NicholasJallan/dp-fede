@@ -264,6 +264,23 @@ function validatePal(pal, diversById, answers, dp) {
     if (!['E3','E4'].includes(dpNe)) {
       issues.push({ tone:'err', text:'Mélange Trimix sélectionné : le DP doit être E3 ou E4 (E1/E2 interdits).' });
     }
+    // Trimix interdit pour N1, N2, débutants et baptêmes (même en formation vers N3).
+    const trimixForbidden = membres.filter(m => {
+      if (m._bapteme) return true;
+      if (!m.diver)  return false;
+      const np = m.diver.niveau_plongeur;
+      const ne = m.diver.niveau_encadrant;
+      // OK = encadrant OU plongeur niveau N3
+      return !ne && np !== 'N3';
+    });
+    if (trimixForbidden.length > 0) {
+      const names = trimixForbidden.map(m =>
+        m._bapteme ? `${m.prenom || ''} ${(m.nom || '').toUpperCase()}`.trim()
+                   : diverFullName(m.diver)
+      ).join(', ');
+      issues.push({ tone:'err',
+        text:`Trimix interdit pour N1, N2, débutants et baptêmes : ${names}.` });
+    }
   }
 
   if (issues.filter(i => i.tone === 'err').length === 0) {

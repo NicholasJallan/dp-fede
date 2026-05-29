@@ -47,13 +47,17 @@ Synthèse exhaustive des règles métier appliquées par l'outil. Source : Code 
 
 ### Aptitudes complémentaires
 
-| Aptitude | Condition | Profondeur max |
+| Aptitude | Condition / pré-requis | Profondeur max |
 |---|---|---|
 | **PN** | Plongeur Nitrox | dépend du mélange ≤40 % O₂ |
 | **PN-C** | Nitrox Confirmé (>40 % O₂) | dépend du mélange |
-| **PTH-70** | Trimix élémentaire (plongeur) | 70 m |
-| **PTH-120** | Trimix confirmé (plongeur / DP trimix) | 120 m |
+| **PTH-70** | **PN-C + niveau N3 (ou encadrant)** | 70 m |
+| **PTH-120** | **PN-C + niveau N3 (ou encadrant)** | 120 m |
 | **CCR / SCR** | Recycleur (modèle déclaré) | selon constructeur |
+
+> **Règle stricte Trimix** : un plongeur ne peut détenir PTH-70 ou PTH-120 qu'à condition d'être PN-C **et** d'avoir le niveau N3 (ou être encadrant E1→E4 / N4 / N5, qui héritent des aptitudes N3). L'application verrouille ces cases tant que les pré-requis ne sont pas réunis et nettoie automatiquement les qualifications devenues invalides si l'on retire PN-C ou si l'on change le niveau.
+
+> **Plongée trimix interdite aux N1 et N2** : aucun plongeur N1, N2, débutant ou baptême ne peut être membre d'une palanquée utilisant le mélange Tx, **même en formation vers le N3**. La palanquée doit être composée exclusivement de N3 et/ou d'encadrants, tous détenteurs de PTH-70 ou PTH-120.
 
 ---
 
@@ -117,6 +121,7 @@ Le sélecteur de mélanges par palanquée filtre automatiquement les options sel
 - Cases mélanges interdites = grisées + tooltip explicatif.
 - Si le DP change et qu'une palanquée avait un mélange devenu interdit → nettoyage automatique (fallback sur Air).
 - Validation bloquante au moment de l'enregistrement si une palanquée a un mélange incompatible avec le DP.
+- Validation bloquante si une palanquée Trimix contient un membre N1, N2, débutant ou baptême (interdiction stricte, même en formation vers le N3).
 
 ---
 

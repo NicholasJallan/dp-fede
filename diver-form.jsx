@@ -133,6 +133,17 @@ function DiverQuickAdd({ onCreated, onClose, initialName = '', allowBapteme = fa
     return { ...f, trimix: tx };
   });
 
+  // PTH-70 / PTH-120 nécessitent PN-C + (N3 ou encadrant).
+  const canHoldTrimix = form.nitrox.includes('PN-C')
+    && (form.niveau_plongeur === 'N3' || !!form.niveau_encadrant);
+
+  // Nettoyage automatique si les pré-requis disparaissent
+  useEffect(() => {
+    if (form.trimix.length > 0 && !canHoldTrimix) {
+      setForm(f => ({ ...f, trimix: [] }));
+    }
+  }, [canHoldTrimix, form.trimix.length]);
+
   const toggleRecycleur = (val) => setForm(f => ({
     ...f,
     recycleurs: f.recycleurs.includes(val)
@@ -275,15 +286,27 @@ function DiverQuickAdd({ onCreated, onClose, initialName = '', allowBapteme = fa
                 <div className="qualif-row">
                   {['PTH-70','PTH-120'].map(q => {
                     const on = form.trimix.includes(q);
-                    const locked = q === 'PTH-70' && form.trimix.includes('PTH-120');
+                    const lockedByImpl = q === 'PTH-70' && form.trimix.includes('PTH-120');
+                    const locked = lockedByImpl || !canHoldTrimix;
+                    const reason = !canHoldTrimix
+                      ? 'PTH-70 / PTH-120 requièrent PN-C et niveau N3 (ou encadrant)'
+                      : (lockedByImpl ? 'PTH-70 implicite via PTH-120' : '');
                     return (
-                      <label key={q} className={`qualif-toggle ${on ? 'on' : ''} ${locked ? 'locked' : ''}`}>
-                        <input type="checkbox" checked={on} onChange={() => toggleTrimix(q)} disabled={locked} />
+                      <label key={q}
+                        className={`qualif-toggle ${on ? 'on' : ''} ${locked ? 'locked' : ''}`}
+                        title={reason}>
+                        <input type="checkbox" checked={on}
+                          onChange={() => !locked && toggleTrimix(q)} disabled={locked} />
                         {q}
                       </label>
                     );
                   })}
                 </div>
+                {!canHoldTrimix && (
+                  <div className="field-hint" style={{ marginTop:4 }}>
+                    Trimix verrouillé : pré-requis = PN-C + niveau N3 (ou encadrant).
+                  </div>
+                )}
               </div>
 
               <div className="qualif-section">

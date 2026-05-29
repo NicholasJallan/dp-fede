@@ -116,12 +116,31 @@ Le sélecteur de mélanges par palanquée filtre automatiquement les options sel
 
 > Règle interne stricte : tout mélange suroxygéné (même ≤ 40 %) impose un DP PN-C. C'est plus strict que la règle CdS minimale (PN suffit pour Nx ≤ 40 %).
 
+### Qualifications individuelles requises (exploration & guidée)
+
+En **plongée d'exploration** ou **plongée guidée**, chaque plongeur doit individuellement détenir la qualification correspondant au mélange respiré :
+
+| Mélange dans la palanquée | Qualification individuelle requise |
+|---|---|
+| **Nx ≤ 40 %** | PN (ou PN-C) |
+| **Nx > 40 %** | PN-C |
+| **Tx** | PTH-70 (ou PTH-120) |
+
+> Un plongeur ne peut pas faire plus que ce qu'il est déclaré savoir faire (aptitudes, niveau, PN/PNC, PTH-70/120). En **formation** (palanquée avec un E1→E4), cette règle est levée : l'élève peut apprendre un mélange qu'il ne maîtrise pas encore, sous la responsabilité de l'enseignant.
+
+### Trimix interdit en plongée guidée
+
+Une palanquée dont la composition comporte un **GP** (palanquée guidée, ou toute palanquée incluant un guide) ne peut **jamais** mobiliser le mélange **Tx**, même si tous les autres pré-requis sont remplis. Le trimix n'est autorisé qu'en exploration autonome ou en formation dirigée par un E3/E4 PTH-120.
+
 ### Comportement de l'outil
 
-- Cases mélanges interdites = grisées + tooltip explicatif.
+- Cases mélanges interdites au niveau DP = grisées + tooltip explicatif.
 - Si le DP change et qu'une palanquée avait un mélange devenu interdit → nettoyage automatique (fallback sur Air).
-- Validation bloquante au moment de l'enregistrement si une palanquée a un mélange incompatible avec le DP.
-- Validation bloquante si une palanquée Trimix contient un membre N1, N2, débutant ou baptême (interdiction stricte, même en formation vers le N3).
+- Validation bloquante au moment de l'enregistrement si :
+  - une palanquée a un mélange incompatible avec le DP,
+  - une palanquée Trimix contient un membre N1, N2, débutant ou baptême (même en formation vers N3),
+  - une palanquée avec GP contient le mélange Tx,
+  - en exploration ou guidée, un membre n'a pas la qualification nitrox/trimix requise par le mélange sélectionné.
 
 ---
 

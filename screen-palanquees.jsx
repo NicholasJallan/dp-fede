@@ -281,11 +281,44 @@ function validatePal(pal, diversById, answers, dp) {
       issues.push({ tone:'err',
         text:`Trimix interdit pour N1, N2, débutants et baptêmes : ${names}.` });
     }
+    // Plongée avec GP : Trimix toujours interdit (même si les autres conditions sont remplies)
+    if (apts.includes('GP')) {
+      issues.push({ tone:'err',
+        text:'Plongée avec GP (palanquée guidée) : Trimix interdit.' });
+    }
+  }
+
+  // ─── Qualifications individuelles vs mélanges (explo & guidée) ───────
+  // En exploration ou plongée guidée, chaque plongeur doit individuellement
+  // détenir la qualification correspondant au mélange respiré. La formation
+  // (palanquée avec un E1→E4) est exemptée : un élève peut apprendre.
+  const palType = window.getPalType(pal.membres);
+  if (palType === 'exploration' || palType === 'guidee') {
+    const needsPN  = mlx.includes('Nx ≤ 40%');
+    const needsPNC = mlx.includes('Nx > 40%');
+    const needsPTH = mlx.includes('Tx');
+    membres.forEach(m => {
+      if (m._bapteme || !m.diver) return;
+      const nx   = m.diver.nitrox || [];
+      const tx   = m.diver.trimix || [];
+      const name = diverFullName(m.diver);
+      const hasPN  = nx.includes('PN')  || nx.includes('PN-C');
+      const hasPNC = nx.includes('PN-C');
+      const hasPTH = tx.includes('PTH-70') || tx.includes('PTH-120');
+      if (needsPN && !hasPN) {
+        issues.push({ tone:'err', text:`${name} : Nx ≤ 40% nécessite la qualification PN.` });
+      }
+      if (needsPNC && !hasPNC) {
+        issues.push({ tone:'err', text:`${name} : Nx > 40% nécessite la qualification PN-C.` });
+      }
+      if (needsPTH && !hasPTH) {
+        issues.push({ tone:'err', text:`${name} : Trimix nécessite au minimum PTH-70.` });
+      }
+    });
   }
 
   if (issues.filter(i => i.tone === 'err').length === 0) {
-    const t = window.getPalType(pal.membres);
-    issues.push({ tone:'ok', text:`Composition conforme — type : ${t}.` });
+    issues.push({ tone:'ok', text:`Composition conforme — type : ${palType}.` });
   }
   return issues;
 }

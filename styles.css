@@ -127,6 +127,8 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   border-right: 0;
   border-top: 0;
   margin-bottom: -1px;
+  cursor: default;
+  user-select: none;
 }
 .step .num {
   width: 24px; height: 24px;
@@ -144,7 +146,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 .step.done .num { background: var(--kelp); color: white; border-color: var(--kelp); }
 .step.active { color: var(--ink); border-bottom-color: var(--marine); font-weight: 500; }
 .step.active .num { background: var(--marine); color: white; border-color: var(--marine); }
-.step.locked { opacity: 0.45; cursor: not-allowed; }
+.step.locked { opacity: 0.45; }
 .step.locked .num { background: var(--bg-3); border-color: var(--line); font-size: 12px; }
 .step .label-sub { color: var(--ink-4); font-family: var(--t-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; display: block; line-height: 1; margin-bottom: 3px;}
 .step .grp { display: flex; flex-direction: column; align-items: flex-start; }

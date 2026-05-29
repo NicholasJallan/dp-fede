@@ -332,27 +332,29 @@ function AppInner() {
 
       {isStepScreen && (
         <div className="stepper">
+          {/* Indicateur visuel uniquement — la navigation se fait par les
+              boutons Précédent / Suivant en bas de page, qui appliquent les
+              contrôles métier (validatePal, confirmation, gel). */}
           {STEPS.map((s, i) => {
             const isDone    = i < currentStepIdx;
             const isActive  = i === currentStepIdx;
             const isLocked  = plongeeFigee
-              ? i < ARCHIVE_IDX  // gel définitif : seul archivage accessible
-              : (divePlongeesEnCours && i < FICHE_IDX); // plongée en cours : étapes 1-3 verrouillées
+              ? i < ARCHIVE_IDX
+              : (divePlongeesEnCours && i < FICHE_IDX);
             const lockTitle = plongeeFigee
               ? "Plongée figée — consultation uniquement"
               : "Verrouillé — plongée en cours";
             return (
-              <button key={s.id}
+              <div key={s.id}
                 className={`step ${isActive ? "active" : ""} ${isDone ? "done" : ""} ${isLocked ? "locked" : ""}`}
-                onClick={() => !isLocked && setScreen(s.id)}
-                disabled={isLocked}
-                title={isLocked ? lockTitle : undefined}>
+                title={isLocked ? lockTitle : undefined}
+                aria-current={isActive ? "step" : undefined}>
                 <span className="num">{isLocked ? "🔒" : isDone ? "✓" : (i + 1)}</span>
                 <span className="grp">
                   <span className="label-sub">{s.sub}</span>
                   <span>{s.label}</span>
                 </span>
-              </button>
+              </div>
             );
           })}
         </div>

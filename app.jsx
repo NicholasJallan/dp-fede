@@ -317,14 +317,13 @@ function AppInner() {
       <div className="topbar">
         <button
           className="wordmark"
-          onClick={() => { if (!divePlongeesEnCours) setScreen("home"); }}
-          disabled={divePlongeesEnCours}
-          title={divePlongeesEnCours ? "Plongée en cours" : "Retour à l'accueil"}
-          style={{ background:'transparent', border:0, color:'inherit', cursor: divePlongeesEnCours ? 'default' : 'pointer', padding:0 }}>
+          onClick={() => setScreen("home")}
+          title="Retour à l'accueil"
+          style={{ background:'transparent', border:0, color:'inherit', cursor:'pointer', padding:0 }}>
           <span className="dot"></span>
           DP/ASSISTANT
         </button>
-        {(isStepScreen || isAdminScreen) && !divePlongeesEnCours && (
+        {(isStepScreen || isAdminScreen) && (
           <button className="session-link" onClick={() => setScreen("home")}
             style={{ marginLeft: 4 }}>
             ← Accueil

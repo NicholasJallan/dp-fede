@@ -91,6 +91,7 @@ ${styles}
   body { background: white; padding: 0; margin: 0; }
   .fiche { box-shadow: none; max-width: 100%; }
   .no-print, .fiche-actions { display: none !important; }
+  .print-only { display: block !important; }
 </style>
 </head><body>${ficheEl.outerHTML}</body></html>`;
 
@@ -286,6 +287,7 @@ ${styles}
                             <td rowSpan={sorted.length} style={{ verticalAlign:'top', fontVariantNumeric:'tabular-nums' }}>
                               <div>prévu : <b>{p.duree} min</b></div>
                               <div className="muted">réalisé : {real ? <b>{real.duree} min</b> : '—'}</div>
+                              {debut && <div className="muted" style={{ fontSize:10, marginTop:2, fontFamily:'var(--t-mono)' }}>{debut}{fin ? ` → ${fin}` : ' →…'}</div>}
                             </td>
                             <td rowSpan={sorted.length} style={{ verticalAlign:'top', fontVariantNumeric:'tabular-nums' }}>
                               <div>prévu : <b>{p.dtr || window.calcDTR(p.profMax)} min</b></div>
@@ -294,19 +296,26 @@ ${styles}
                             </td>
                           </>
                         )}
-                        <td className="no-print" style={{ width: 110 }}>
-                          {fin
-                            ? (
-                              <select className="input small tight"
-                                value={pressions[presKey] || '50'}
-                                onChange={e => setPression(p.id, m.diverId || m.id, e.target.value)}>
-                                {PRESSION_SORTIE_OPTIONS.map(o => (
-                                  <option key={o} value={o}>{o === 'panne d\'air' ? o : `${o} bar`}</option>
-                                ))}
-                              </select>
-                            )
-                            : <span className="muted" style={{ fontSize:12 }}>{debut ? '— en cours' : '—'}</span>
-                          }
+                        <td style={{ width: 110 }}>
+                          <div className="no-print">
+                            {fin
+                              ? (
+                                <select className="input small tight"
+                                  value={pressions[presKey] || '50'}
+                                  onChange={e => setPression(p.id, m.diverId || m.id, e.target.value)}>
+                                  {PRESSION_SORTIE_OPTIONS.map(o => (
+                                    <option key={o} value={o}>{o === 'panne d\'air' ? o : `${o} bar`}</option>
+                                  ))}
+                                </select>
+                              )
+                              : <span className="muted" style={{ fontSize:12 }}>{debut ? '— en cours' : '—'}</span>
+                            }
+                          </div>
+                          <div className="print-only" style={{ fontFamily:'var(--t-mono)', fontSize:11 }}>
+                            {pressions[presKey]
+                              ? (pressions[presKey] === "panne d'air" ? "panne d'air" : `${pressions[presKey]} bar`)
+                              : '—'}
+                          </div>
                         </td>
                         {mi === 0 && (
                           <td rowSpan={sorted.length} style={{ verticalAlign:'top', minWidth:90 }} className="no-print">

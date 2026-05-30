@@ -1651,6 +1651,9 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   .no-print { display: none !important; }
 }
 
+/* ===== Print-only (hidden on screen, visible in PDF/print) ===== */
+.print-only { display: none; }
+
 /* ===== Modal wide (sites + map) ===== */
 .modal-wide { max-width: 680px; }
 

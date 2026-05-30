@@ -31,37 +31,36 @@ window.DP_DEPTH_RULES = {
   N5: { formation: 0,  exploration: 60 },
 };
 
-// Options prof_max disponibles selon DP × activité × site × Trimix DP (Code du Sport Art. A322-86)
+// Options prof_max disponibles selon DP × site × Trimix DP (Code du Sport Art. A322-86)
 // dp : { niveau_encadrant, trimix:[] } (optionnel)
 // site : { profondeur_max } (optionnel)
 //
+// On affiche toutes les profondeurs accessibles au DP (union formation + exploration).
+// La restriction par type d'activité s'applique à la validation des palanquées,
+// pas au choix de la profondeur de session.
+//
 // Règle stricte Trimix : seul un DP PTH-120 (et E3 ou E4) peut diriger une
 // plongée trimix. PTH-70 ne donne aucune extension de profondeur côté DP.
-//   E3 + PTH-120 → 40 m formation, 70 m exploration
-//   E4 + PTH-120 → 80 m formation, 120 m exploration
+//   E3 + PTH-120 → 40 m formation, 70 m exploration  → max affiché : 70 m
+//   E4 + PTH-120 → 80 m formation, 120 m exploration → max affiché : 120 m
 window.getProfOptions = function(niveauEncadrant, activite, dp, site) {
-  const isExplo = !activite || activite === 'Exploration';
   const rules = window.DP_DEPTH_RULES[niveauEncadrant] || { formation: 60, exploration: 60 };
-  // Si exploration = 0 pour ce DP (E1, E2), fallback sur formation
-  let max = isExplo ? (rules.exploration || rules.formation) : rules.formation;
+  // Profondeur max = meilleure des deux (formation ou exploration)
+  let max = Math.max(rules.formation || 0, rules.exploration || 0);
   if (max === 0) return [];
 
   const trimix = dp?.trimix || [];
   const pth120 = trimix.includes('PTH-120');
 
   // Extensions trimix : PTH-120 requis, E3/E4 uniquement
-  if (pth120 && niveauEncadrant === 'E3') {
-    max = isExplo ? Math.max(max, 70) : max;       // 40 form, 70 explo
-  }
-  if (pth120 && niveauEncadrant === 'E4') {
-    max = isExplo ? Math.max(max, 120) : Math.max(max, 80); // 80 form, 120 explo
-  }
+  // On prend le maximum des deux contextes (formation et exploration)
+  if (pth120 && niveauEncadrant === 'E3') max = Math.max(max, 70);   // explo
+  if (pth120 && niveauEncadrant === 'E4') max = Math.max(max, 120);  // explo (80 formation inclus car ≤ 120)
 
   // Limite par profondeur du site (on accepte l'échelon juste au-dessus)
   const siteMax = site?.profondeur_max || null;
   let candidates = [6, 12, 20, 40, 60, 70, 80, 120];
   if (siteMax) {
-    // Garder les options ≤ siteMax + 1 échelon au-dessus
     const above = candidates.filter(d => d > siteMax);
     const nextStep = above.length > 0 ? above[0] : null;
     candidates = candidates.filter(d => d <= siteMax || d === nextStep);

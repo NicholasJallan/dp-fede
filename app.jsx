@@ -134,9 +134,10 @@ function AppInner() {
   const divePlongeesEnCours = Object.keys(heuresDebut).length > 0;
   const FICHE_IDX    = STEPS.findIndex(s => s.id === "fiche");
   const ARCHIVE_IDX  = STEPS.findIndex(s => s.id === "archive");
-  // Toutes les palanquées qui ont démarré ont aussi une heure de fin
-  const allPalanqueesFinished = palanquees.length === 0
-    || palanquees.every(p => !heuresDebut[p.id] || heuresFin[p.id]);
+  // Toutes les palanquées doivent avoir été mises à l'eau ET être ressorties.
+  // Une palanquée jamais démarrée bloque aussi le passage à l'archivage.
+  const allPalanqueesFinished = palanquees.length > 0
+    && palanquees.every(p => heuresDebut[p.id] && heuresFin[p.id]);
 
   const goPrev = () => {
     if (plongeeFigee) return; // gel définitif

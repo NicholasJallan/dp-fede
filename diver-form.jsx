@@ -350,7 +350,7 @@ function DiverQuickAdd({ onCreated, onClose, initialName = '', allowBapteme = fa
               <hr />
 
               <div className="field" style={{ marginTop: 10 }}>
-                <label>Certificat médical (date d'expiration) *</label>
+                <label>Certificat médical (date d'émission) *</label>
                 <input className="input" type="date" value={form.medical}
                   onChange={e => setField('medical', e.target.value)} />
               </div>

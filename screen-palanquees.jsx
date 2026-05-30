@@ -236,9 +236,13 @@ function validatePal(pal, diversById, answers, dp) {
   const eventDate = answers.date ? new Date(answers.date) : new Date();
   membres.forEach(m => {
     if (m._bapteme) return;
-    if (m.diver?.medical && new Date(m.diver.medical) < eventDate) {
-      issues.push({ tone:'err',
-        text:`Certificat médical de ${diverFullName(m.diver)} expiré (${m.diver.medical}).` });
+    if (m.diver?.medical) {
+      const expiryDate = new Date(m.diver.medical);
+      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+      if (expiryDate < eventDate) {
+        issues.push({ tone:'err',
+          text:`Certificat médical de ${diverFullName(m.diver)} expiré (émis le ${m.diver.medical}, valable jusqu'au ${expiryDate.toLocaleDateString('fr-FR')}).` });
+      }
     }
   });
 

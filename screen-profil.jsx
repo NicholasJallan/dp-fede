@@ -248,6 +248,59 @@ function meteoCode(code) {
   return 'Variable';
 }
 
+// ── MareeField ─────────────────────────────────────────────────────────────
+// Proxy PHP → maree.shom.fr : port le plus proche + coefficients et heures du jour.
+function MareeField({ value, onChange, site, date }) {
+  const [fetching, setFetching] = useState(false);
+  const [err, setErr]           = useState('');
+
+  const fetchMaree = async () => {
+    const coords = site?.coordonnees;
+    const lat = parseFloat(coords?.lat);
+    const lng = parseFloat(coords?.lng);
+    if (!isFinite(lat) || !isFinite(lng)) {
+      setErr('Coordonnées GPS manquantes sur le site.');
+      return;
+    }
+    const diveDate = date ? date.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    setFetching(true);
+    setErr('');
+    try {
+      const data = await apiFetch(`/proxy/maree?lat=${lat}&lng=${lng}&date=${encodeURIComponent(diveDate)}`);
+      // data = { harbor, date, tides }
+      const text = `Marées ${data.harbor} (${data.date.split('-').reverse().join('/')}) : ${data.tides}`;
+      onChange(text);
+    } catch (e) {
+      setErr(e?.message || 'Erreur inconnue');
+    } finally {
+      setFetching(false);
+    }
+  };
+
+  return (
+    <div>
+      <div style={{ display:'flex', gap:8, marginBottom:6, alignItems:'center', flexWrap:'wrap' }}>
+        {site?.coordonnees?.lat
+          ? (
+            <button className="btn ghost" style={{ fontSize:12, padding:'3px 10px' }}
+              onClick={fetchMaree} disabled={fetching}>
+              {fetching ? 'Récupération…' : '🌊 Précompléter depuis SHOM'}
+            </button>
+          ) : (
+            <span className="muted" style={{ fontSize:12 }}>Saisir les coordonnées GPS du site pour la précomplétion des marées.</span>
+          )
+        }
+        {err && (
+          <span style={{ fontSize:12, color:'var(--coral)', fontWeight:600 }}>⚠ {err}</span>
+        )}
+      </div>
+      <input className="input" type="text"
+        placeholder="PM 14h12 · coef 87"
+        value={value || ''} onChange={e => onChange(e.target.value)} />
+    </div>
+  );
+}
+
 // ── ScreenProfil ──────────────────────────────────────────────────────────
 function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, setSites }) {
   const { user } = useAuth();
@@ -403,6 +456,14 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
       return (
         <Field key={q.id} label={q.label} hint={q.hint}>
           <MeteoField value={val} onChange={set} site={selectedSite} date={answers.date} />
+        </Field>
+      );
+    }
+
+    if (q.id === 'maree_horaire') {
+      return (
+        <Field key={q.id} label={q.label} hint={q.hint} regRef={q.ref}>
+          <MareeField value={val} onChange={set} site={selectedSite} date={answers.date} />
         </Field>
       );
     }

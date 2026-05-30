@@ -38,7 +38,7 @@ if ($method === 'POST' && $path === '/api/auth/google') {
 
 // Router — load matching route file
 $routed = false;
-foreach (['auth','divers','sites','users','archives','pdf'] as $r) {
+foreach (['auth','divers','sites','users','archives','pdf','proxy'] as $r) {
     $file = __DIR__ . "/routes/{$r}.php";
     require $file;
 }

@@ -390,10 +390,12 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
   const filteredPool = useMemo(() => {
     const f = filter.toLowerCase();
     return divers.filter(d =>
-      !f || d.nom.toLowerCase().includes(f) || (d.prenom||'').toLowerCase().includes(f) ||
-      (d.niveau_encadrant||d.niveau_plongeur||'').toLowerCase().includes(f)
+      !assignedIds.has(d.id) && (
+        !f || d.nom.toLowerCase().includes(f) || (d.prenom||'').toLowerCase().includes(f) ||
+        (d.niveau_encadrant||d.niveau_plongeur||'').toLowerCase().includes(f)
+      )
     );
-  }, [divers, filter]);
+  }, [divers, filter, assignedIds]);
 
   // Réordonne automatiquement les membres après toute attribution d'aptitude.
   const sortMembres = (membres) => window.sortMembresForFiche(membres);
@@ -572,14 +574,13 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
       <div className="divers-grid">
         {/* Annuaire */}
         <div className="diver-pool">
-          <h4>Annuaire — {divers.length} plongeurs</h4>
+          <h4>Annuaire — {filteredPool.length} disponible{filteredPool.length !== 1 ? 's' : ''} / {divers.length}</h4>
           <input className="input small" type="text" placeholder="Rechercher…"
             value={filter} onChange={e => setFilter(e.target.value)} style={{ marginBottom:10 }} />
           {filteredPool.map(d => {
-            const assigned = assignedIds.has(d.id);
             const ne = d.niveau_encadrant, np = d.niveau_plongeur;
             return (
-              <div className={`diver-card ${assigned ? 'assigned' : ''}`} key={d.id}>
+              <div className="diver-card" key={d.id}>
                 <div className="info">
                   <b>{diverFullName(d)}</b>
                   <small>
@@ -591,20 +592,18 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
                     {(d.recycleurs||[]).length > 0 && <span className="muted"> · CCR</span>}
                   </small>
                 </div>
-                {!assigned && (
-                  <select className="role-sel"
-                    onChange={e => {
-                      const v = e.target.value;
-                      if (v === '__new__') addPalAndAddDiver(d.id);
-                      else if (v) addToPal(v, d.id);
-                      e.target.value = '';
-                    }}
-                    value="">
-                    <option value="">+ Ajouter à…</option>
-                    {palanquees.map(p => <option key={p.id} value={p.id}>{p.nom}</option>)}
-                    <option value="__new__">— Nouvelle palanquée</option>
-                  </select>
-                )}
+                <select className="role-sel"
+                  onChange={e => {
+                    const v = e.target.value;
+                    if (v === '__new__') addPalAndAddDiver(d.id);
+                    else if (v) addToPal(v, d.id);
+                    e.target.value = '';
+                  }}
+                  value="">
+                  <option value="">+ Ajouter à…</option>
+                  {palanquees.map(p => <option key={p.id} value={p.id}>{p.nom}</option>)}
+                  <option value="__new__">— Nouvelle palanquée</option>
+                </select>
               </div>
             );
           })}
@@ -731,7 +730,10 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
               </div>
             );
           })}
-          <button className="pal-add" onClick={addPal}>+ Ajouter une palanquée</button>
+          <button className="pal-add" onClick={addPal}
+            disabled={divers.every(d => assignedIds.has(d.id))}>
+            + Ajouter une palanquée
+          </button>
         </div>
       </div>
 

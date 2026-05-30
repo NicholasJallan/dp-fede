@@ -315,16 +315,25 @@ function AppInner() {
   return (
     <div className="app">
       <div className="topbar">
-        <div className="wordmark">
+        <button
+          className="wordmark"
+          onClick={() => { if (!divePlongeesEnCours) setScreen("home"); }}
+          disabled={divePlongeesEnCours}
+          title={divePlongeesEnCours ? "Plongée en cours" : "Retour à l'accueil"}
+          style={{ background:'transparent', border:0, color:'inherit', cursor: divePlongeesEnCours ? 'default' : 'pointer', padding:0 }}>
           <span className="dot"></span>
           DP/ASSISTANT
-        </div>
+        </button>
+        {(isStepScreen || isAdminScreen) && !divePlongeesEnCours && (
+          <button className="session-link" onClick={() => setScreen("home")}
+            style={{ marginLeft: 4 }}>
+            ← Accueil
+          </button>
+        )}
         <span className="muted" style={{ color:"var(--ink-4)" }}>·</span>
         <span style={{ fontSize:13 }}>{user.club_nom || user.email}</span>
         <span className="meta">
           <span>AUTO-SAVE · <b>ON</b></span>
-          {(isStepScreen || isAdminScreen) && !divePlongeesEnCours &&
-            <button className="session-link" onClick={() => setScreen("home")}>← Accueil</button>}
           <button className="session-link" onClick={() => setScreen("account")} title="Mon compte">
             {displayName}
           </button>

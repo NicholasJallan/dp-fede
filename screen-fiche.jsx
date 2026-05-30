@@ -14,7 +14,7 @@ function ScreenFiche({ answers, palanquees, divers, setAnswer, pressions, setPre
 
   // heuresDebut, heuresFin, pressions, realises sont levés dans app.jsx
   const [finModal,      setFinModal]      = useState(null);
-  const [finForm,       setFinForm]       = useState({ duree:'', profMax:'', dtr:'' });
+  const [finForm,       setFinForm]       = useState({ duree:'', profMax:'', dtr:'', commentaire:'' });
   const [obs,           setObs]           = useState(answers.fiche_observations || '');
   const [confirmDepart, setConfirmDepart] = useState(null); // palId en attente de confirmation
 
@@ -57,10 +57,14 @@ function ScreenFiche({ answers, palanquees, divers, setAnswer, pressions, setPre
     const elapsed  = debut ? diffMinutes(debut, endTime) : null;
     const dtrBrut  = pal.dtr || window.calcDTR(pal.profMax);
     const dtrCapped = (elapsed !== null && dtrBrut > elapsed) ? elapsed : dtrBrut;
+    // Pré-charger un éventuel commentaire saisi lors d'une précédente fin
+    // (cas où l'utilisateur rouvre la modale via la même action)
+    const previous = realises[palId];
     setFinForm({
-      duree:   elapsed !== null ? String(elapsed) : '',
-      profMax: String(pal.profMax || ''),
-      dtr:     String(dtrCapped),
+      duree:       elapsed !== null ? String(elapsed) : '',
+      profMax:     String(pal.profMax || ''),
+      dtr:         String(dtrCapped),
+      commentaire: previous?.commentaire || '',
     });
     setFinModal({ palId, endTime, elapsed });
   };
@@ -373,6 +377,16 @@ ${styles}
                       </tr>
                     );
                   })}
+                  {real?.commentaire && (
+                    <tr className={rowCls}>
+                      <td colSpan={99} style={{ padding:'6px 10px', fontSize:11, color:'var(--ink-2)',
+                                                borderTop:'1px dashed var(--line)', whiteSpace:'pre-wrap' }}>
+                        <b style={{ fontFamily:'var(--t-mono)', fontSize:9.5, textTransform:'uppercase',
+                                    letterSpacing:'0.04em', color:'#888', marginRight:8 }}>Commentaire</b>
+                        {real.commentaire}
+                      </td>
+                    </tr>
+                  )}
                 </React.Fragment>
               );
             })}
@@ -481,6 +495,13 @@ ${styles}
                   }}
                   placeholder="ex. 4" />
                 <div className="field-hint">La DTR ne peut pas excéder la durée réelle de la plongée.</div>
+              </div>
+              <div className="field">
+                <label>Commentaires <span className="muted" style={{ fontWeight:400 }}>(optionnel)</span></label>
+                <textarea className="textarea" rows={3}
+                  value={finForm.commentaire}
+                  onChange={e => setFinForm(f => ({ ...f, commentaire: e.target.value }))}
+                  placeholder="Incidents, observations, conditions particulières…" />
               </div>
             </div>
             <div className="modal-foot">

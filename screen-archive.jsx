@@ -194,6 +194,16 @@ function FicheStatique({ ficheRef, answers, palanquees, divers, user, pressions,
                     </tr>
                   );
                 })}
+                {real?.commentaire && (
+                  <tr className={rowCls}>
+                    <td colSpan={99} style={{ padding:'6px 10px', fontSize:11, color:'#333',
+                                              borderTop:'1px dashed #ddd', whiteSpace:'pre-wrap' }}>
+                      <b style={{ fontFamily:'var(--t-mono)', fontSize:9.5, textTransform:'uppercase',
+                                  letterSpacing:'0.04em', color:'#888', marginRight:8 }}>Commentaire</b>
+                      {real.commentaire}
+                    </td>
+                  </tr>
+                )}
               </React.Fragment>
             );
           })}

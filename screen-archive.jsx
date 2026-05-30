@@ -3,48 +3,88 @@
 // ---------------------------------------------------------------------------
 // Composant fiche de sécurité rendu hors-écran pour la capture PDF
 // ---------------------------------------------------------------------------
-function FicheStatique({ ficheRef, answers, palanquees, divers, user, pressions }) {
+function FicheStatique({ ficheRef, answers, palanquees, divers, user, pressions, realises, heuresDebut, heuresFin }) {
   const diversById = {};
   divers.forEach(d => { diversById[d.id] = d; });
 
   const siteName = answers.site_nom || answers.site || '—';
   const depart   = [answers.depart_bord && 'Du bord', answers.depart_bateau && 'En bateau'].filter(Boolean).join(' / ') || '—';
-  const STRUCTURE_LABELS = { club: 'Club FFESSM associatif', sca: 'Structure Commerciale Agréée (SCA)' };
+  const STRUCTURE_LABELS = {
+    club: 'Club FFESSM associatif',
+    sca:  'Structure Commerciale Agréée (SCA)',
+    csa:  'Convention de Section d\'Activité (CSA)',
+    autre:'Autre',
+  };
   const structure = user?.club_nom
     ? `${user.club_nom}${user.structure_type ? ' — ' + (STRUCTURE_LABELS[user.structure_type] || user.structure_type) : ''}${user.club_numero ? ' (' + user.club_numero + ')' : ''}`
     : 'Structure non renseignée';
+
+  const palMelange = (p) => {
+    const arr = p.melanges || [];
+    return arr.length > 0 ? arr.join(' · ') : 'Air';
+  };
+
+  const allMelanges = (() => {
+    const all = new Set();
+    palanquees.forEach(p => (p.melanges || []).forEach(m => all.add(m)));
+    return all.size > 0 ? [...all].join(' · ') : '—';
+  })();
+
+  const aptUsage = (() => {
+    const counts = {};
+    palanquees.forEach(p => (p.membres || []).forEach(m => {
+      const a = m.aptitude || 'Sans';
+      counts[a] = (counts[a] || 0) + 1;
+    }));
+    return counts;
+  })();
+
+  const obs = answers.fiche_observations || '';
+  const sortFn = window.sortMembresForFiche || ((arr) => arr);
+
+  const cellLabel = { fontSize:9, color:'#888', textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:1 };
 
   return (
     <div className="fiche" ref={ficheRef} style={{ background:'white' }}>
       <div className="fheader">
         <div className="left">
           <b>FICHE DE SÉCURITÉ — Art. A322-72 du Code du Sport</b>
-          <h1>{siteName}</h1>
-          <div className="muted" style={{ fontFamily:'var(--t-mono)', fontSize:11 }}>{structure}</div>
+          <h1>{siteName}{answers.site_ville ? `, ${answers.site_ville}` : ''}{answers.site_pays ? `, ${answers.site_pays}` : ''}</h1>
+          <div className="muted" style={{ fontFamily:'var(--t-mono)', fontSize:11 }}>
+            {structure}
+            {user?.president_nom && (
+              <div>Président : {user.president_prenom} {user.president_nom}{user.president_tel ? ` · ${user.president_tel}` : ''}</div>
+            )}
+          </div>
         </div>
         <div className="right">
           <b>{formatDateTime(answers.date)}</b>
           <div>DP : {answers.dp_nom || '—'} ({answers.dp_qual || '—'})</div>
           <div>Activité : {answers.activite || '—'}</div>
+          <div>Urgences : <b>{answers.urgence_num || user?.urgence_defaut || '18'}</b></div>
         </div>
       </div>
 
-      <div className="fiche-grid">
-        <div className="cell"><div className="k">Milieu</div><div className="v">{answers.milieu || '—'}</div></div>
-        <div className="cell"><div className="k">Départ</div><div className="v">{depart}</div></div>
-        <div className="cell">
-          <div className="k">Mélanges</div>
-          <div className="v" style={{ fontSize:12 }}>
-            {[answers.air && 'Air', answers.nitrox && 'Nitrox', answers.trimix && 'Trimix', answers.oxygene_pur && 'O₂'].filter(Boolean).join(' · ') || '—'}
-          </div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:12, margin:'12px 0 6px' }}>
+        <div style={{ padding:'2px 0' }}>
+          <div style={{ fontFamily:'var(--t-mono)', fontSize:9.5, letterSpacing:'0.06em', textTransform:'uppercase', color:'#888' }}>Milieu</div>
+          <div style={{ fontWeight:600, fontSize:13 }}>{answers.milieu || '—'}</div>
         </div>
-        <div className="cell">
-          <div className="k">Conditions</div>
-          <div className="v" style={{ fontSize:12, fontWeight:500 }}>{answers.meteo || '—'}</div>
+        <div style={{ padding:'2px 0' }}>
+          <div style={{ fontFamily:'var(--t-mono)', fontSize:9.5, letterSpacing:'0.06em', textTransform:'uppercase', color:'#888' }}>Départ</div>
+          <div style={{ fontWeight:600, fontSize:13 }}>{depart}{answers.shot_line ? ' · Shot-line' : ''}</div>
+        </div>
+        <div style={{ padding:'2px 0' }}>
+          <div style={{ fontFamily:'var(--t-mono)', fontSize:9.5, letterSpacing:'0.06em', textTransform:'uppercase', color:'#888' }}>Mélanges</div>
+          <div style={{ fontWeight:600, fontSize:12 }}>{allMelanges}</div>
         </div>
       </div>
+      <div style={{ margin:'0 0 18px', padding:'2px 0' }}>
+        <div style={{ fontFamily:'var(--t-mono)', fontSize:9.5, letterSpacing:'0.06em', textTransform:'uppercase', color:'#888' }}>Conditions</div>
+        <div style={{ fontWeight:500, fontSize:12 }}>{answers.meteo || '—'}</div>
+      </div>
 
-      <h2>Palanquées — paramètres prévus</h2>
+      <h2>Palanquées — paramètres prévus et réalisés</h2>
       <table>
         <thead>
           <tr>
@@ -55,34 +95,51 @@ function FicheStatique({ ficheRef, answers, palanquees, divers, user, pressions 
             <th>Profondeur</th>
             <th>Durée</th>
             <th>DTR</th>
-            <th>P. sortie</th>
+            <th>Pression sortie</th>
           </tr>
         </thead>
         <tbody>
           {palanquees.map((p, pi) => {
-            const sorted  = window.sortMembresForFiche(p.membres || []);
-            const dtr     = window.calcDTR(p.profMax);
-            const n4Count = sorted.filter(m => m.aptitude === 'N4').length;
-            const isSFPal = sorted.length === 6 && n4Count >= 2;
+            const sorted  = sortFn(p.membres || []);
+            const debut   = heuresDebut && heuresDebut[p.id];
+            const fin     = heuresFin   && heuresFin[p.id];
+            const real    = realises    && realises[p.id];
+            const gpCount = sorted.filter(m => m.aptitude === 'GP').length;
+            const isSFPal = gpCount >= 2;
+            const palType = window.getPalType ? window.getPalType(p.membres || []) : '';
+            const rowCls  = palType ? `row-${palType}` : '';
+            const dtrPrevu = p.dtr || window.calcDTR(p.profMax);
+
             return (
               <React.Fragment key={p.id || pi}>
                 {sorted.map((m, mi) => {
-                  const d       = diversById[m.diverId] || {};
-                  const isSF    = isSFPal && mi === sorted.length - 1 && m.aptitude === 'N4';
-                  const presKey = `${p.id}-${m.diverId || m.id}`;
-                  const pres    = (pressions && pressions[presKey]) || '50';
-                  const presLabel = pres === 'panne d\'air' ? 'panne d\'air' : `${pres} bar`;
+                  const d        = m._bapteme ? m : (diversById[m.diverId] || {});
+                  const fullName = m._bapteme ? `${m.prenom || ''} ${(m.nom || '').toUpperCase()}` : diverFullName(d);
+                  const isLast   = mi === sorted.length - 1;
+                  const isSF     = isSFPal && isLast && m.aptitude === 'GP';
+                  const presKey  = `${p.id}-${m.diverId || m.id}`;
+                  // Si la palanquée est terminée mais qu'aucune pression n'a été
+                  // explicitement saisie, on retombe sur la valeur par défaut 50 bar
+                  // affichée dans le sélecteur de l'écran fiche (sécurité au cas où
+                  // l'état serait antérieur à la matérialisation automatique).
+                  const presRaw  = pressions && pressions[presKey];
+                  const pres     = presRaw !== undefined ? presRaw : (fin ? '50' : null);
+                  const presLabel = pres
+                    ? (pres === "panne d'air" ? "panne d'air" : `${pres} bar`)
+                    : '—';
                   return (
-                    <tr key={`${p.id}-${m.diverId}-${mi}`}>
+                    <tr key={`${p.id}-${mi}`} className={rowCls}>
                       {mi === 0 && (
                         <td rowSpan={sorted.length} style={{ verticalAlign:'top', fontWeight:700, fontFamily:'var(--t-mono)' }}>
                           P{pi + 1}
                         </td>
                       )}
                       <td>
-                        <b>{diverFullName(d)}</b>
+                        <b>{fullName}</b>
                         <br />
-                        <span className="muted" style={{ fontFamily:'var(--t-mono)', fontSize:10 }}>{d.licence || '—'}</span>
+                        <span className="muted" style={{ fontFamily:'var(--t-mono)', fontSize:10 }}>
+                          {m._bapteme ? 'Baptême' : (d.licence || '—')}
+                        </span>
                       </td>
                       <td style={{ fontFamily:'var(--t-mono)', fontSize:11, whiteSpace:'nowrap' }}>
                         {m.aptitude || '—'}
@@ -90,10 +147,47 @@ function FicheStatique({ ficheRef, answers, palanquees, divers, user, pressions 
                       </td>
                       {mi === 0 && (
                         <>
-                          <td rowSpan={sorted.length} style={{ verticalAlign:'top' }}>{p.melange || (answers.air ? 'Air' : '—')}</td>
-                          <td rowSpan={sorted.length} style={{ verticalAlign:'top', fontVariantNumeric:'tabular-nums' }}>{p.profMax} m</td>
-                          <td rowSpan={sorted.length} style={{ verticalAlign:'top', fontVariantNumeric:'tabular-nums' }}>{p.duree} min</td>
-                          <td rowSpan={sorted.length} style={{ verticalAlign:'top', fontVariantNumeric:'tabular-nums' }}>{dtr} min</td>
+                          <td rowSpan={sorted.length} style={{ verticalAlign:'top' }}>
+                            {palMelange(p)}
+                            {p.shot_line && <><br /><small className="muted">+ shot-line</small></>}
+                            {p.no_deco   && <><br /><small className="muted">no déco</small></>}
+                          </td>
+                          <td rowSpan={sorted.length} style={{ verticalAlign:'top' }}>
+                            <div style={{ paddingBottom:3, marginBottom:4, borderBottom:'1px solid #ddd' }}>
+                              <div style={cellLabel}>Prévu</div>
+                              <b>{p.profMax} m</b>
+                            </div>
+                            <div>
+                              <div style={cellLabel}>Réalisé</div>
+                              <b style={{ color: real ? 'inherit' : '#bbb' }}>{real ? `${real.profMax} m` : '—'}</b>
+                            </div>
+                          </td>
+                          <td rowSpan={sorted.length} style={{ verticalAlign:'top' }}>
+                            <div style={{ paddingBottom:3, marginBottom:4, borderBottom:'1px solid #ddd' }}>
+                              <div style={cellLabel}>Prévu</div>
+                              <b>{p.duree} min</b>
+                            </div>
+                            <div>
+                              <div style={cellLabel}>Réalisé</div>
+                              <b style={{ color: real ? 'inherit' : '#bbb' }}>{real ? `${real.duree} min` : '—'}</b>
+                              {debut && (
+                                <div style={{ fontSize:10, color:'#888', marginTop:2, fontFamily:'monospace' }}>
+                                  {debut}{fin ? ` → ${fin}` : ' →…'}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td rowSpan={sorted.length} style={{ verticalAlign:'top' }}>
+                            <div style={{ paddingBottom:3, marginBottom:4, borderBottom:'1px solid #ddd' }}>
+                              <div style={cellLabel}>Prévu</div>
+                              <b>{dtrPrevu} min</b>
+                              {p.no_deco && <div style={{ fontSize:9, color:'#2d8653', fontWeight:600, marginTop:2 }}>▲ no déco</div>}
+                            </div>
+                            <div>
+                              <div style={cellLabel}>Réalisé</div>
+                              <b style={{ color: real ? 'inherit' : '#bbb' }}>{real ? `${real.dtr} min` : '—'}</b>
+                            </div>
+                          </td>
                         </>
                       )}
                       <td style={{ fontFamily:'var(--t-mono)', fontSize:11, whiteSpace:'nowrap' }}>{presLabel}</td>
@@ -109,14 +203,40 @@ function FicheStatique({ ficheRef, answers, palanquees, divers, user, pressions 
       <h2>Sécurité surface</h2>
       <div style={{ fontSize:12, columns:2, columnGap:24 }}>
         <div>• Sécurité surface : <b>{answers.sec_surface ? 'Présente' : 'Non identifiée'}</b></div>
+        {Array.isArray(answers.sec_surface_membres) && answers.sec_surface_membres.length > 0 && (
+          <div>• Plongeurs surveillance : <b>{answers.sec_surface_membres.map(id => {
+            const d = diversById[id]; return d ? diverFullName(d) : id;
+          }).join(', ')}</b></div>
+        )}
+        {answers.sec_surface_externes && (
+          <div>• Non-plongeurs : <b>{answers.sec_surface_externes}</b></div>
+        )}
         <div>• Plan de secours : <b>{answers.plan_secours ? 'Affiché et à jour' : 'À vérifier'}</b></div>
         <div>• Matériel O₂ vérifié : <b>{answers.o2 ? 'Oui' : 'Non'}</b></div>
         <div>• Trousse de secours + couv. iso : <b>{answers.trousse ? 'Oui' : 'Non'}</b></div>
         <div>• VHF : <b>{answers.vhf ? 'Embarquée et testée' : '—'}</b></div>
         <div>• Pavillon Alpha : <b>{answers.pavillon_alpha || answers.bouee_surface ? 'Hissé / présent' : '—'}</b></div>
         <div>• Eau douce potable : <b>{answers.eau_potable ? 'Oui' : 'Non'}</b></div>
-        <div>• Moyen de rappel : <b>{answers.rappel ? 'Oui' : '—'}</b></div>
+        <div>• Moyen de rappel : <b>{answers.moyen_rappel || (answers.rappel ? 'Oui' : '—')}</b></div>
+        <div>• Numéro d'urgence : <b>{answers.urgence_num || user?.urgence_defaut || '18'}</b></div>
       </div>
+
+      <h2>Aptitudes mises en œuvre</h2>
+      <div style={{ fontSize:12, display:'flex', gap:8, flexWrap:'wrap' }}>
+        {Object.entries(aptUsage).map(([apt, n]) => (
+          <span key={apt} className="pill outline">{apt} × {n}</span>
+        ))}
+        {Object.keys(aptUsage).length === 0 && <span className="muted">—</span>}
+      </div>
+
+      {obs && (
+        <>
+          <h2>Observations générales</h2>
+          <div style={{ fontSize:12, whiteSpace:'pre-wrap', padding:'8px 10px', border:'1px solid #ddd', borderRadius:4, background:'#fafafa' }}>
+            {obs}
+          </div>
+        </>
+      )}
 
       <div className="signatures">
         <div className="sig"><div className="area"></div><div className="k">Signature DP — {answers.dp_nom || '—'}</div></div>
@@ -221,7 +341,7 @@ function ChecklistStatique({ checklistRef, answers, checked, comments, user }) {
 // ---------------------------------------------------------------------------
 // Écran d'archivage principal
 // ---------------------------------------------------------------------------
-function ScreenArchive({ answers, palanquees, divers, user, pressions, realises, checked, comments, plongeeFigee, onStartNew, onArchiveDone }) {
+function ScreenArchive({ answers, palanquees, divers, user, pressions, realises, heuresDebut, heuresFin, checked, comments, plongeeFigee, onStartNew, onArchiveDone }) {
   const ficheRef     = useRef(null);
   const checklistRef = useRef(null);
   const [status,     setStatus]     = useState('idle');
@@ -478,7 +598,8 @@ ${styles}
       {/* Rendu hors-écran pour capture PDF */}
       <div style={{ position:'fixed', left:'-9999px', top:0, width:794, overflow:'visible', zIndex:-1, pointerEvents:'none' }}>
         <FicheStatique ficheRef={ficheRef} answers={answers} palanquees={palanquees}
-          divers={divers} user={user} pressions={pressions} />
+          divers={divers} user={user} pressions={pressions} realises={realises}
+          heuresDebut={heuresDebut} heuresFin={heuresFin} />
       </div>
       <div style={{ position:'fixed', left:'-9999px', top:0, width:794, overflow:'visible', zIndex:-1, pointerEvents:'none' }}>
         <ChecklistStatique checklistRef={checklistRef} answers={answers}

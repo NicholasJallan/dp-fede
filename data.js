@@ -31,6 +31,35 @@ window.DP_DEPTH_RULES = {
   N5: { formation: 0,  exploration: 60 },
 };
 
+// Profondeur max autorisée pour le DP dans un contexte donné (formation / exploration / guidée / baptême).
+// Prend en compte les extensions Trimix (PTH-120) uniquement pour E3 et E4.
+//
+//   E3 + PTH-120 → formation 40 m (pas d'extension), exploration 70 m
+//   E4 + PTH-120 → formation 80 m, exploration 120 m
+//
+// PTH-70 ne donne aucune extension de profondeur côté DP.
+// `palType` : 'formation' | 'bapteme' | 'exploration' | 'guidee'.
+window.getDpMaxDepth = function(palType, dp) {
+  const ne = dp?.niveau_encadrant || '';
+  const rules = window.DP_DEPTH_RULES[ne] || { formation: 0, exploration: 0 };
+  const isTraining = palType === 'formation' || palType === 'bapteme';
+  const base = isTraining ? (rules.formation || 0) : (rules.exploration || 0);
+  if (base === 0 && !isTraining) {
+    // Fallback : si pas de droit explo (E1/E2), on retombe sur la formation
+    // pour permettre le calcul (la palanquée sera de toute façon de type formation).
+    // Aucun impact pratique : E1/E2 ne dirigent pas d'exploration.
+  }
+  const pth120 = (dp?.trimix || []).includes('PTH-120');
+  if (!pth120) return base;
+  if (isTraining) {
+    if (ne === 'E4') return Math.max(base, 80);
+    return base; // E3 formation : pas d'extension PTH-120
+  }
+  if (ne === 'E3') return Math.max(base, 70);
+  if (ne === 'E4') return Math.max(base, 120);
+  return base;
+};
+
 // Options prof_max disponibles selon DP × site × Trimix DP (Code du Sport Art. A322-86)
 // dp : { niveau_encadrant, trimix:[] } (optionnel)
 // site : { profondeur_max } (optionnel)
@@ -38,24 +67,13 @@ window.DP_DEPTH_RULES = {
 // On affiche toutes les profondeurs accessibles au DP (union formation + exploration).
 // La restriction par type d'activité s'applique à la validation des palanquées,
 // pas au choix de la profondeur de session.
-//
-// Règle stricte Trimix : seul un DP PTH-120 (et E3 ou E4) peut diriger une
-// plongée trimix. PTH-70 ne donne aucune extension de profondeur côté DP.
-//   E3 + PTH-120 → 40 m formation, 70 m exploration  → max affiché : 70 m
-//   E4 + PTH-120 → 80 m formation, 120 m exploration → max affiché : 120 m
 window.getProfOptions = function(niveauEncadrant, activite, dp, site) {
-  const rules = window.DP_DEPTH_RULES[niveauEncadrant] || { formation: 60, exploration: 60 };
-  // Profondeur max = meilleure des deux (formation ou exploration)
-  let max = Math.max(rules.formation || 0, rules.exploration || 0);
+  // dp peut être absent : on simule un DP avec juste le niveau encadrant
+  const dpForMax = { niveau_encadrant: niveauEncadrant, trimix: dp?.trimix || [] };
+  const maxForm = window.getDpMaxDepth('formation',   dpForMax);
+  const maxExp  = window.getDpMaxDepth('exploration', dpForMax);
+  let max = Math.max(maxForm || 0, maxExp || 0);
   if (max === 0) return [];
-
-  const trimix = dp?.trimix || [];
-  const pth120 = trimix.includes('PTH-120');
-
-  // Extensions trimix : PTH-120 requis, E3/E4 uniquement
-  // On prend le maximum des deux contextes (formation et exploration)
-  if (pth120 && niveauEncadrant === 'E3') max = Math.max(max, 70);   // explo
-  if (pth120 && niveauEncadrant === 'E4') max = Math.max(max, 120);  // explo (80 formation inclus car ≤ 120)
 
   // Limite par profondeur du site (on accepte l'échelon juste au-dessus)
   const siteMax = site?.profondeur_max || null;

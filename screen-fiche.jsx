@@ -69,6 +69,20 @@ function ScreenFiche({ answers, palanquees, divers, setAnswer, pressions, setPre
     if (!finModal) return;
     setHeuresFin(prev => ({ ...prev, [finModal.palId]: finModal.endTime }));
     setRealises(prev => ({ ...prev, [finModal.palId]: { ...finForm } }));
+    // Matérialise la valeur de pression par défaut (50 bar) pour chaque membre
+    // afin qu'elle soit présente dans l'export PDF même si l'utilisateur ne touche
+    // pas au sélecteur. Les valeurs déjà saisies sont préservées.
+    const pal = palanquees.find(p => p.id === finModal.palId);
+    if (pal) {
+      setPressions(prev => {
+        const next = { ...prev };
+        (pal.membres || []).forEach(m => {
+          const key = `${pal.id}-${m.diverId || m.id}`;
+          if (next[key] === undefined) next[key] = '50';
+        });
+        return next;
+      });
+    }
     setFinModal(null);
   };
 

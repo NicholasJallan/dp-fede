@@ -169,12 +169,11 @@ function AppInner() {
       return;
     }
     // Fiche → Archive : vérifications + gel
+    // (le bouton Suivant est désactivé tant que toutes les plongées ne sont pas terminées,
+    //  cette garde reste comme filet de sécurité pour les chemins clavier/programmatique).
     if (screen === "fiche") {
-      if (!allPalanqueesFinished) {
-        setConfirmModal("blocked"); // affiche alerte "palanquée encore sous l'eau"
-        return;
-      }
-      setConfirmModal("confirm"); // demande confirmation gel
+      if (!allPalanqueesFinished) return;
+      setConfirmModal("confirm");
       return;
     }
     if (currentStepIdx < STEPS.length - 1) setScreen(STEPS[currentStepIdx + 1].id);
@@ -424,6 +423,7 @@ function AppInner() {
           {screen === "archive" && (
             <ScreenArchive answers={answers} palanquees={palanquees} divers={divers} user={user}
               pressions={pressions} realises={realises}
+              heuresDebut={heuresDebut} heuresFin={heuresFin}
               checked={checked} comments={comments}
               plongeeFigee={plongeeFigee} onStartNew={startNew}
               onArchiveDone={() => setArchiveDone(true)} />
@@ -458,11 +458,22 @@ function AppInner() {
               <div style={{ width:`${total > 0 ? (doneCount / total * 100) : 0}%` }}></div>
             </div>
           </div>
-          <button className="btn primary"
-            onClick={currentStepIdx === STEPS.length - 1 && archiveDone ? startNew : goNext}
-            disabled={currentStepIdx === STEPS.length - 1 && !archiveDone}>
-            {currentStepIdx === STEPS.length - 1 ? "Terminé" : "Suivant →"}
-          </button>
+          {(() => {
+            const isLast       = currentStepIdx === STEPS.length - 1;
+            const ficheBlocked = screen === "fiche" && !allPalanqueesFinished;
+            const disabled     = (isLast && !archiveDone) || ficheBlocked;
+            const title        = ficheBlocked
+              ? "Terminez toutes les plongées (bouton ■ Fin sur la fiche) avant de continuer."
+              : undefined;
+            return (
+              <button className="btn primary"
+                onClick={isLast && archiveDone ? startNew : goNext}
+                disabled={disabled}
+                title={title}>
+                {isLast ? "Terminé" : "Suivant →"}
+              </button>
+            );
+          })()}
         </div>
       )}
 
@@ -476,18 +487,7 @@ function AppInner() {
                       display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
           <div style={{ background:'var(--surface)', borderRadius:12, padding:28, maxWidth:440, width:'100%',
                         boxShadow:'0 8px 40px rgba(0,0,0,0.3)', display:'grid', gap:18 }}>
-            {confirmModal === "blocked" ? (
-              <>
-                <h2 style={{ margin:0, fontSize:18 }}>Plongée encore en cours</h2>
-                <p style={{ margin:0, color:'var(--ink-2)', lineHeight:1.6 }}>
-                  Une ou plusieurs palanquées n'ont pas encore de fin de plongée enregistrée.
-                  Terminez toutes les plongées (bouton <b>■ Fin</b> sur la fiche) avant de procéder à l'archivage.
-                </p>
-                <div style={{ display:'flex', justifyContent:'flex-end' }}>
-                  <button className="btn primary" onClick={() => setConfirmModal(false)}>Compris</button>
-                </div>
-              </>
-            ) : confirmModal === "pal_blocking" ? (
+            {confirmModal === "pal_blocking" ? (
               <>
                 <h2 style={{ margin:0, fontSize:18, color:'var(--coral)' }}>
                   ⚠ Infractions au Code du Sport

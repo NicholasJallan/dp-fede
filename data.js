@@ -297,22 +297,6 @@ window.QUESTIONS = [
     ]
   },
   {
-    id:'D', title:'Mélanges respiratoires',
-    questions:[
-      { id:'air',         label:'Plongeurs à l\'air ?', type:'bool' },
-      { id:'nitrox',      label:'Plongeurs au Nitrox ?', type:'bool', ref:'CdS A322-89' },
-      { id:'nitrox_kind', label:'Type de Nitrox utilisé (au moins une option requise)', type:'multi',
-        options:['Nx ≤ 40 %','Nx > 40 %'], cols:2, when:{nitrox:true},
-        hint:'Nx > 40 % nécessite la qualification PN-C.' },
-      { id:'nitrox_details', label:'Mélanges Nitrox précis (% O₂, MOD, PpO2 max)', type:'textarea',
-        placeholder:'ex. EAN32 — MOD 40 m — PpO2 max 1.4', when:{nitrox:true} },
-      { id:'trimix',      label:'Plongeurs au Trimix / Héliox ?', type:'bool', ref:'CdS A322-91' },
-      { id:'trimix_kind', label:'Type de mélange', type:'choice',
-        options:['Trimix élémentaire','Trimix','Héliox'], cols:3, when:{trimix:true} },
-      { id:'oxygene_pur', label:'Plongeurs à l\'oxygène pur (paliers O₂) ?', type:'bool' },
-    ]
-  },
-  {
     id:'E', title:'Matériel particulier',
     questions:[
       { id:'recycleur',   label:'Recycleurs (CCR / SCR) ?', type:'bool', ref:'CdS A322-94' },
@@ -378,7 +362,7 @@ window.CHECKLIST_RULES = [
       { id:'p1_gonflage',      text:'Gonflage des blocs effectué — pressions contrôlées' },
       { id:'p1_analyse_nx',    text:'Chaque bloc Nitrox analysé et étiqueté (% O₂, MOD, signature plongeur)', ref:'CdS A322-89', tags:['nitrox'], when:{nitrox:true} },
       { id:'p1_analyse_nx_sup', text:'Plongeurs Nx>40 % : qualification PN-C contrôlée + analyse signée', ref:'CdS A322-89', tags:['nitrox'],
-        when:(a) => a.nitrox && Array.isArray(a.nitrox_kind) && a.nitrox_kind.includes('Nx > 40 %') },
+        when:(a) => a.nitrox_sup_40 },
       { id:'p1_analyse_tx',    text:'Trimix/Héliox : analyse mélanges + planif décompression validée', ref:'CdS A322-91', tags:['trimix'], when:{trimix:true} },
       { id:'p1_bloc_relais',   text:'Bloc(s) relais / déco analysés et étiquetés', ref:'CdS A322-89/91', tags:['materiel'], when:{bloc_relais:true} },
       { id:'p1_rec_check',     text:'Check-list constructeur de chaque recycleur — pré-breathing', ref:'CdS A322-94', tags:['recycleur'], when:{recycleur:true} },

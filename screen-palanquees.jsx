@@ -376,6 +376,16 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
     setAnswer('activite', (hasEns && hasExp) ? 'Mixte' : hasEns ? 'Enseignement' : 'Exploration');
   }, [palanquees]);
 
+  // Dériver mélanges depuis les palanquées (remplace section D du questionnaire)
+  useEffect(() => {
+    const all = new Set();
+    palanquees.forEach(p => (p.melanges || []).forEach(m => all.add(m)));
+    setAnswer('air',          all.has('Air'));
+    setAnswer('nitrox',       all.has('Nx ≤ 40%') || all.has('Nx > 40%'));
+    setAnswer('nitrox_sup_40', all.has('Nx > 40%'));
+    setAnswer('trimix',       all.has('Tx'));
+  }, [palanquees]);
+
   // Ranger plongeurs assignés
   const diversById = useMemo(() => {
     const m = {}; divers.forEach(d => m[d.id] = d); return m;

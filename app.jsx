@@ -295,7 +295,6 @@ function AppInner() {
             {answers.air           && <Pill tone="marine">AIR</Pill>}
             {answers.nitrox        && <Pill tone="kelp">NITROX</Pill>}
             {answers.trimix        && <Pill tone="sun">TRIMIX</Pill>}
-            {answers.oxygene_pur   && <Pill tone="coral">O₂ PUR</Pill>}
             {answers.recycleur     && <Pill tone="coral">RECYCLEUR</Pill>}
             {answers.depart_bateau && <Pill>BATEAU</Pill>}
             {answers.depart_bord   && <Pill>BORD</Pill>}

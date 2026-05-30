@@ -156,8 +156,7 @@ ${styles}
   // Mélanges agrégés par palanquée
   const palMelange = (p) => {
     const arr = p.melanges || [];
-    if (arr.length === 0) return p.melange || (answers.air ? 'Air' : '—');
-    return arr.join(' · ');
+    return arr.length > 0 ? arr.join(' · ') : 'Air';
   };
 
   // Aptitudes utilisées (résumé pour la fiche)

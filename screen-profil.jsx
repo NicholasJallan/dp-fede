@@ -345,9 +345,8 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
     }
   }, [answers.site_id]);
 
-  // Air activé par défaut dès la première session + date/heure initialisée à la prochaine heure pleine
+  // Date/heure initialisée à la prochaine heure pleine
   useEffect(() => {
-    if (answers.air === undefined) setAnswer('air', true);
     if (!answers.date) {
       const d = new Date();
       d.setMinutes(0, 0, 0);
@@ -401,9 +400,6 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
     const prof = parseInt(String(answers.prof_max || '').replace(/\D/g, ''), 10);
     if (prof >= 60 && !answers.paliers) setAnswer('paliers', true);
   }, [answers.prof_max]);
-
-  // Validation D : au moins un gaz
-  const noGaz = !answers.air && !answers.nitrox && !answers.trimix && !answers.oxygene_pur;
 
   // Structure type display
   const structureLabel = user?.structure_type
@@ -530,10 +526,6 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
           </a>
         ))}
       </div>
-
-      {noGaz && (
-        <Alert tone="warn">Section D — Au moins un mélange respiratoire doit être sélectionné.</Alert>
-      )}
 
       {visibleSections.map(s => (
         <div className="card" key={s.id} id={`sect-${s.id}`}>

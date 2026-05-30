@@ -106,11 +106,11 @@ if ($method === 'GET' && $path === '/api/proxy/maree') {
         foreach ($dayTides as $t) {
             $raw  = $t['datetime'] ?? $t['date'] ?? $t['time'] ?? '';
             $type = strtoupper((string) ($t['type'] ?? $t['kind'] ?? ''));
-            $type = match ($type) {
-                'HIGH', 'HIGHWATER', 'PM' => 'PM',
-                'LOW',  'LOWWATER',  'BM' => 'BM',
-                default => $type,
-            };
+            if (in_array($type, ['HIGH', 'HIGHWATER', 'PM'], true)) {
+                $type = 'PM';
+            } elseif (in_array($type, ['LOW', 'LOWWATER', 'BM'], true)) {
+                $type = 'BM';
+            }
             $dt = new DateTime($raw);
             $dt->setTimezone($tz);
             $hhmm   = $dt->format('H\hi');

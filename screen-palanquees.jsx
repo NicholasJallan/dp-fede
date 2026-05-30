@@ -492,6 +492,27 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
       );
     });
 
+  const addPalAndAddDiver = (diverId) => {
+    setPalanquees(prev => {
+      const newIdx = prev.length;
+      const newId = 'p' + (Math.max(0, ...prev.map(p => parseInt(p.id.slice(1)) || 0)) + 1);
+      const d = diversById[diverId];
+      const apts = d ? window.getDiverAptitudes(d, isExploration) : [];
+      const aptitude = apts.length === 1 ? apts[0] : '';
+      const newMembres = [{ diverId, aptitude }];
+      return [...prev, {
+        id: newId,
+        nom: derivePalNom(newIdx, newMembres),
+        nomAuto: true,
+        membres: newMembres,
+        profMax: 20, duree: 35, dtr: 2,
+        melanges: ['Air'],
+        no_deco: !answers.paliers,
+        shot_line: !!answers.shot_line,
+      }];
+    });
+  };
+
   // ── DP validation ───────────────────────────────────────────────────
   const dpQualOK = useMemo(() => {
     if (!dpQual) return { tone:'warn', text:'Aucun Directeur de Plongée sélectionné (section A).' };
@@ -535,12 +556,18 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
                     {(d.recycleurs||[]).length > 0 && <span className="muted"> · CCR</span>}
                   </small>
                 </div>
-                {!assigned && palanquees.length > 0 && (
+                {!assigned && (
                   <select className="role-sel"
-                    onChange={e => { if (e.target.value) addToPal(e.target.value, d.id); e.target.value = ''; }}
+                    onChange={e => {
+                      const v = e.target.value;
+                      if (v === '__new__') addPalAndAddDiver(d.id);
+                      else if (v) addToPal(v, d.id);
+                      e.target.value = '';
+                    }}
                     value="">
                     <option value="">+ Ajouter à…</option>
                     {palanquees.map(p => <option key={p.id} value={p.id}>{p.nom}</option>)}
+                    <option value="__new__">— Nouvelle palanquée</option>
                   </select>
                 )}
               </div>

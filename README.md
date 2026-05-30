@@ -134,6 +134,7 @@ sequenceDiagram
 │
 ├── screen-home.jsx         ← Accueil — historique archives + clone plongée
 ├── screen-login.jsx        ← Mire de connexion Google
+├── screen-splash.jsx       ← Splash de bienvenue — rappel aptitudes (une fois par session)
 ├── screen-profil.jsx       ← Étape 1 — Questionnaire profil de plongée
 ├── screen-palanquees.jsx   ← Étape 2 — Composition palanquées par aptitude
 ├── screen-checklist.jsx    ← Étape 3 — Check-list conditionnelle 2 phases
@@ -186,7 +187,7 @@ graph LR
 | `PAL_RULES` | Règles composition palanquée (`maxEnc`, `maxPA`) |
 | `STRUCTURE_LABELS` | Labels lisibles pour les types de structure |
 | `getMilieuType(milieu)` | Normalise → `'mer'|'lac'|'piscine'|'fosse'` |
-| `getProfOptions(dpQual, activite)` | Profondeurs disponibles selon qual. DP |
+| `getProfOptions(niveauEncadrant, activite, dp, site)` | Profondeurs disponibles selon qual. encadrant, activité, PTH-120 et profondeur du site |
 | `getDiverAptitudes(diver, isExploration)` | Aptitudes selon niveau + contexte |
 | `getPalType(membres)` | Type palanquée : `'bapteme'|'formation'|'guidee'|'exploration'` |
 | `calcDTR(profMax)` | DTR sans déco : `Math.ceil(profMax / 10)` |
@@ -442,7 +443,7 @@ erDiagram
 | `niveau_encadrant` | VARCHAR(4) | Niveau encadrant : `E1`→`E4`, `N4`, `N5`, `GP` |
 | `qualifs` | JSON | Tableau de qualifications : `["PN","RIFAP","PADI-OW",…]` |
 | `aptitudes_sup` | JSON | Aptitudes supplémentaires (recycleur, trimix…) |
-| `medical` | DATE | Date du certificat médical |
+| `medical` | DATE | Date d'émission du certificat médical (validité 1 an) |
 | `notes` | TEXT | Notes libres du DP |
 
 **Niveaux encadrants reconnus :** `N4` (PA40 guide), `N5` (exploration seule), `E1`→`E4` (moniteurs fédéraux), `GP` (Guide de Palanquée).
@@ -531,7 +532,7 @@ erDiagram
     "profMax": 35,
     "duree": 40,
     "dtr": 4,
-    "melange": "Air",
+    "melanges": ["Air"],
     "no_deco": true,
     "shot_line": false,
     "membres": [
@@ -580,7 +581,9 @@ sequenceDiagram
 stateDiagram-v2
     [*] --> Accueil
     Accueil --> Profil : Nouvelle plongée
-    Accueil --> Profil : Reprendre brouillon
+    Accueil --> Profil : Reprendre brouillon (aucune plongée en cours)
+    Accueil --> Fiche : Reprendre brouillon (plongée en cours)
+    Accueil --> Archive : Reprendre brouillon (plongée figée)
     Accueil --> Profil : Cloner une archive
 
     Profil --> Palanquees : Suivant

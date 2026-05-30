@@ -365,7 +365,7 @@ window.QUESTIONS = [
 ];
 
 // =========================================================================
-// CHECK-LIST RULES (5 phases, items conditionnels)
+// CHECK-LIST RULES (2 phases, items conditionnels)
 // =========================================================================
 window.CHECKLIST_RULES = [
   {

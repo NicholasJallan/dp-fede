@@ -166,6 +166,8 @@ Une palanquée dont la composition comporte un **GP** (palanquée guidée, ou to
 - **E2** : enseignement piscine ou fosse, max 20 m.
 - **E3** : tous environnements, formation max 40 m. Ne peut pas encadrer un PE60 (réservé E4).
 - **E4** : tous environnements, formation max 60 m (80 m en trimix).
+
+> **Limite formation du DP** : la profondeur de formation maximale est celle **du DP**, pas de l'encadrant de la palanquée. Si le DP est E3 (max 40 m en formation), une palanquée de formation reste limitée à 40 m même si son encadrant est E4. L'outil valide cette règle au moment de l'enregistrement de chaque palanquée.
 - **PE sans encadrement** : interdit. Un PE doit toujours être accompagné d'un GP ou d'un E.
 - **PA autonomes** : palanquée 100 % PA, max 3, pas de panachage PA12/PA20/PA40/PA60.
 - **Baptême en milieu naturel** : E3 ou E4 obligatoire (E1/E2 limités à la piscine).
@@ -174,9 +176,17 @@ Une palanquée dont la composition comporte un **GP** (palanquée guidée, ou to
 
 La profondeur prévue de la palanquée est comparée à la profondeur max de chaque aptitude (`aptitudeMaxDepth`). Tout dépassement → erreur bloquante.
 
+### Propagation automatique des aptitudes
+
+Quand le DP choisit une aptitude pour un membre, l'outil tente de l'appliquer automatiquement à tous les autres membres **dont l'aptitude n'a pas encore été saisie**, à condition que l'aptitude choisie figure parmi leurs aptitudes disponibles (`getDiverAptitudes`). La profondeur max de la palanquée est recalculée après chaque changement.
+
+### Baptêmes — no déco obligatoire
+
+Toute palanquée comportant au moins un baptisé est automatiquement marquée `no_deco = true`. Le toggle no déco est verrouillé en lecture seule pour ces palanquées. Ce statut est propagé à l'étape 4 (fiche) où un rappel visible est affiché pour les palanquées planifiées sans déco obligatoire.
+
 ### Certificat médical
 
-Chaque plongeur (hors baptême) doit avoir un certificat médical en cours de validité à la date prévue de la plongée. Sinon → erreur bloquante.
+Chaque plongeur (hors baptême) doit avoir un certificat médical en cours de validité à la date prévue de la plongée (validité 1 an à compter de la date d'émission). Sinon → erreur bloquante.
 
 ---
 

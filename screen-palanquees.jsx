@@ -166,6 +166,13 @@ function validatePal(pal, diversById, answers, dp) {
     if (apts.includes('E4')) {
       if (profMax > 60) issues.push({ tone:'err', text:'E4 (formation) : profondeur max 60 m (sauf PTH).' });
     }
+
+    // Limite formation du DP (indépendante de l'encadrant en palanquée)
+    const dpFormMax = (window.DP_DEPTH_RULES[answers.dp_qual] || {}).formation;
+    if (typeof dpFormMax === 'number' && dpFormMax > 0 && profMax > dpFormMax) {
+      issues.push({ tone:'err',
+        text:`DP ${answers.dp_qual} : formation max ${dpFormMax} m.` });
+    }
   }
 
   // ─── PE sans encadrement : interdit ──────────────────────────────────
@@ -408,7 +415,11 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
       const newMembres = sortMembres([...p.membres, { diverId, aptitude }]);
       const nom = p.nomAuto ? derivePalNom(i, newMembres) : p.nom;
       const aptLimit = Math.min(...newMembres.map(m => window.aptitudeMaxDepth(m.aptitude)));
-      const profMax = Number.isFinite(aptLimit) && p.profMax > aptLimit ? aptLimit : p.profMax;
+      const palTypeNew = window.getPalType(newMembres);
+      const dpRulesAdd = window.DP_DEPTH_RULES[dpQual] || {};
+      const dpLimitAdd = palTypeNew === 'formation' ? (dpRulesAdd.formation || Infinity) : (dpRulesAdd.exploration || Infinity);
+      const hardLimitAdd = Number.isFinite(aptLimit) ? Math.min(aptLimit, dpLimitAdd) : dpLimitAdd;
+      const profMax = Number.isFinite(hardLimitAdd) && p.profMax > hardLimitAdd ? hardLimitAdd : p.profMax;
       const dtr = (p.no_deco && profMax !== p.profMax) ? window.calcDTR(profMax) : p.dtr;
       return { ...p, membres: newMembres, nom, profMax, dtr };
     }));
@@ -451,9 +462,12 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
       });
       newMembres = sortMembres(newMembres);
       const nom = p.nomAuto ? derivePalNom(i, newMembres) : p.nom;
-      // Limiter profMax à l'aptitude la plus restrictive + profMax de session
+      // Limiter profMax : aptitude la plus restrictive + profMax de session + limite formation DP
       const aptLimit = Math.min(...newMembres.map(m => window.aptitudeMaxDepth(m.aptitude)));
-      const hardLimit = Number.isFinite(aptLimit) ? Math.min(aptLimit, sessionMax) : sessionMax;
+      const palTypeNew = window.getPalType(newMembres);
+      const dpRules = window.DP_DEPTH_RULES[dpQual] || {};
+      const dpLimit = palTypeNew === 'formation' ? (dpRules.formation || Infinity) : (dpRules.exploration || Infinity);
+      const hardLimit = Number.isFinite(aptLimit) ? Math.min(aptLimit, sessionMax, dpLimit) : Math.min(sessionMax, dpLimit);
       const profMax = Number.isFinite(hardLimit) && p.profMax > hardLimit ? hardLimit : p.profMax;
       const dtr = (p.no_deco && profMax !== p.profMax) ? window.calcDTR(profMax) : p.dtr;
       return { ...p, membres: newMembres, nom, profMax, dtr };

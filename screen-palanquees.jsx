@@ -391,14 +391,23 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
   // Réordonne automatiquement les membres après toute attribution d'aptitude.
   const sortMembres = (membres) => window.sortMembresForFiche(membres);
 
+  // Dérive le nom automatique d'une palanquée selon sa position et son encadrant.
+  const derivePalNom = (index, membres) => {
+    const enc = membres.find(m => m.aptitude === 'GP' || ['E1','E2','E3','E4'].includes(m.aptitude));
+    const prenom = enc && !enc._bapteme ? (diversById[enc.diverId]?.prenom || null) : null;
+    return `Palanquée ${index + 1}${prenom ? ` ${prenom}` : ''}`;
+  };
+
   // ── CRUD palanquées ─────────────────────────────────────────────────
   const addToPal = (palId, diverId) => {
-    setPalanquees(prev => prev.map(p => {
+    setPalanquees(prev => prev.map((p, i) => {
       if (p.id !== palId || p.membres.find(m => m.diverId === diverId)) return p;
       const d = diversById[diverId];
       const apts = d ? window.getDiverAptitudes(d, isExploration) : [];
       const aptitude = apts.length === 1 ? apts[0] : '';
-      return { ...p, membres: sortMembres([...p.membres, { diverId, aptitude }]) };
+      const newMembres = sortMembres([...p.membres, { diverId, aptitude }]);
+      const nom = p.nomAuto ? derivePalNom(i, newMembres) : p.nom;
+      return { ...p, membres: newMembres, nom };
     }));
   };
 
@@ -410,29 +419,34 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
   };
 
   const removeFromPal = (palId, idOrIdx) => {
-    setPalanquees(prev => prev.map(p => {
+    setPalanquees(prev => prev.map((p, i) => {
       if (p.id !== palId) return p;
-      return {
-        ...p,
-        membres: p.membres.filter((m, i) =>
-          m._bapteme ? m.id !== idOrIdx : m.diverId !== idOrIdx),
-      };
+      const newMembres = p.membres.filter(m =>
+        m._bapteme ? m.id !== idOrIdx : m.diverId !== idOrIdx);
+      const nom = p.nomAuto ? derivePalNom(i, newMembres) : p.nom;
+      return { ...p, membres: newMembres, nom };
     }));
   };
 
   const setAptitude = (palId, key, aptitude, isBapt = false) => {
-    setPalanquees(prev => prev.map(p =>
-      p.id === palId
-        ? { ...p, membres: sortMembres(p.membres.map(m => {
-            if (isBapt && m._bapteme && m.id === key) return { ...m, aptitude };
-            if (!isBapt && !m._bapteme && m.diverId === key) return { ...m, aptitude };
-            return m;
-          })) }
-        : p));
+    setPalanquees(prev => prev.map((p, i) => {
+      if (p.id !== palId) return p;
+      const newMembres = sortMembres(p.membres.map(m => {
+        if (isBapt && m._bapteme && m.id === key) return { ...m, aptitude };
+        if (!isBapt && !m._bapteme && m.diverId === key) return { ...m, aptitude };
+        return m;
+      }));
+      const nom = p.nomAuto ? derivePalNom(i, newMembres) : p.nom;
+      return { ...p, membres: newMembres, nom };
+    }));
   };
 
   const setPalField = (palId, field, value) =>
-    setPalanquees(prev => prev.map(p => p.id === palId ? { ...p, [field]: value } : p));
+    setPalanquees(prev => prev.map(p =>
+      p.id === palId
+        ? { ...p, [field]: value, ...(field === 'nom' ? { nomAuto: false } : {}) }
+        : p
+    ));
 
   const toggleMelange = (palId, m) => {
     setPalanquees(prev => prev.map(p => {
@@ -462,7 +476,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
   const addPal = () => {
     const id = 'p' + (Math.max(0, ...palanquees.map(p => parseInt(p.id.slice(1)) || 0)) + 1);
     setPalanquees(prev => [...prev, {
-      id, nom: `Palanquée ${prev.length + 1}`,
+      id, nom: `Palanquée ${prev.length + 1}`, nomAuto: true,
       membres: [], profMax: 20, duree: 35, dtr: 2,
       melanges: ['Air'],
       no_deco: !answers.paliers,
@@ -471,7 +485,12 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
   };
 
   const removePal = (palId) =>
-    setPalanquees(prev => prev.filter(p => p.id !== palId));
+    setPalanquees(prev => {
+      const filtered = prev.filter(p => p.id !== palId);
+      return filtered.map((p, i) =>
+        p.nomAuto ? { ...p, nom: derivePalNom(i, p.membres) } : p
+      );
+    });
 
   // ── DP validation ───────────────────────────────────────────────────
   const dpQualOK = useMemo(() => {

@@ -236,7 +236,13 @@ function ScreenAdminDivers({ divers, setDivers, diversLoaded }) {
     return 'Débutant';
   };
 
-  const medExpired = (d) => d.medical && new Date(d.medical) < new Date();
+  const medExpiry = (d) => {
+    if (!d.medical) return null;
+    const exp = new Date(d.medical);
+    exp.setFullYear(exp.getFullYear() + 1);
+    return exp;
+  };
+  const medExpired = (d) => { const e = medExpiry(d); return e && e < new Date(); };
 
   return (
     <div>
@@ -274,7 +280,8 @@ function ScreenAdminDivers({ divers, setDivers, diversLoaded }) {
               </div>
               {d.medical && (
                 <small className={medExpired(d) ? 'text-coral' : 'muted'}>
-                  Certificat médical : {d.medical}{medExpired(d) ? ' ⚠ Expiré' : ''}
+                  Certificat médical : émis le {d.medical}
+                  {' '}(valable jusqu'au {medExpiry(d).toLocaleDateString('fr-FR')}){medExpired(d) ? ' ⚠ Expiré' : ''}
                 </small>
               )}
             </div>
@@ -438,7 +445,7 @@ function ScreenAdminDivers({ divers, setDivers, diversLoaded }) {
               <hr />
 
               <div className="field" style={{ marginTop:10 }}>
-                <label>Certificat médical (date d'expiration) *</label>
+                <label>Certificat médical (date d'émission) *</label>
                 <input className="input" type="date" value={form.medical}
                   onChange={e => setField('medical', e.target.value)} required />
               </div>

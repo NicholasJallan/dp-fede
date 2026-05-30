@@ -422,7 +422,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
       const dpLimitAdd = palTypeNew === 'formation' ? (dpRulesAdd.formation || Infinity) : (dpRulesAdd.exploration || Infinity);
       const hardLimitAdd = Number.isFinite(aptLimit) ? Math.min(aptLimit, dpLimitAdd) : dpLimitAdd;
       const profMax = Number.isFinite(hardLimitAdd) && p.profMax > hardLimitAdd ? hardLimitAdd : p.profMax;
-      const dtr = (p.no_deco && profMax !== p.profMax) ? window.calcDTR(profMax) : p.dtr;
+      const dtr = profMax !== p.profMax ? window.calcDTR(profMax) : p.dtr;
       return { ...p, membres: newMembres, nom, profMax, dtr };
     }));
   };
@@ -471,7 +471,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
       const dpLimit = palTypeNew === 'formation' ? (dpRules.formation || Infinity) : (dpRules.exploration || Infinity);
       const hardLimit = Number.isFinite(aptLimit) ? Math.min(aptLimit, sessionMax, dpLimit) : Math.min(sessionMax, dpLimit);
       const profMax = Number.isFinite(hardLimit) && p.profMax > hardLimit ? hardLimit : p.profMax;
-      const dtr = (p.no_deco && profMax !== p.profMax) ? window.calcDTR(profMax) : p.dtr;
+      const dtr = profMax !== p.profMax ? window.calcDTR(profMax) : p.dtr;
       return { ...p, membres: newMembres, nom, profMax, dtr };
     }));
   };
@@ -496,8 +496,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
   const updateProfMax = (palId, profMax) => {
     setPalanquees(prev => prev.map(p => {
       if (p.id !== palId) return p;
-      const dtr = p.no_deco ? window.calcDTR(profMax) : p.dtr;
-      return { ...p, profMax, dtr };
+      return { ...p, profMax, dtr: window.calcDTR(profMax) };
     }));
   };
   const toggleNoDeco = (palId) => {

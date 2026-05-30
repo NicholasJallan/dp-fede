@@ -417,7 +417,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
   const addBaptemeToPal = (palId, bapteme) => {
     setPalanquees(prev => prev.map(p =>
       p.id === palId
-        ? { ...p, membres: sortMembres([...p.membres, { ...bapteme, aptitude: 'Baptême', _bapteme: true }]) }
+        ? { ...p, no_deco: true, membres: sortMembres([...p.membres, { ...bapteme, aptitude: 'Baptême', _bapteme: true }]) }
         : p));
   };
 
@@ -432,17 +432,29 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
   };
 
   const setAptitude = (palId, key, aptitude, isBapt = false) => {
+    const sessionMax = parseInt(answers.prof_max) || Infinity;
     setPalanquees(prev => prev.map((p, i) => {
       if (p.id !== palId) return p;
-      const newMembres = sortMembres(p.membres.map(m => {
+      // Mettre à jour le membre ciblé
+      let newMembres = p.membres.map(m => {
         if (isBapt && m._bapteme && m.id === key) return { ...m, aptitude };
         if (!isBapt && !m._bapteme && m.diverId === key) return { ...m, aptitude };
         return m;
-      }));
+      });
+      // Propager l'aptitude aux membres sans aptitude si compatible
+      newMembres = newMembres.map(m => {
+        if (m.aptitude || m._bapteme) return m;
+        const d = diversById[m.diverId];
+        if (!d) return m;
+        const avail = window.getDiverAptitudes(d, isExploration);
+        return avail.includes(aptitude) ? { ...m, aptitude } : m;
+      });
+      newMembres = sortMembres(newMembres);
       const nom = p.nomAuto ? derivePalNom(i, newMembres) : p.nom;
-      // Limiter profMax à l'aptitude la plus restrictive parmi les membres
+      // Limiter profMax à l'aptitude la plus restrictive + profMax de session
       const aptLimit = Math.min(...newMembres.map(m => window.aptitudeMaxDepth(m.aptitude)));
-      const profMax = Number.isFinite(aptLimit) && p.profMax > aptLimit ? aptLimit : p.profMax;
+      const hardLimit = Number.isFinite(aptLimit) ? Math.min(aptLimit, sessionMax) : sessionMax;
+      const profMax = Number.isFinite(hardLimit) && p.profMax > hardLimit ? hardLimit : p.profMax;
       const dtr = (p.no_deco && profMax !== p.profMax) ? window.calcDTR(profMax) : p.dtr;
       return { ...p, membres: newMembres, nom, profMax, dtr };
     }));
@@ -641,9 +653,10 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
                     })}
                   </div>
                   <div className="qualif-row" style={{ gap: 8, marginTop: 6 }}>
-                    <label className={`qualif-toggle ${p.no_deco ? 'on' : ''}`}>
-                      <input type="checkbox" checked={!!p.no_deco}
-                        onChange={() => toggleNoDeco(p.id)} />
+                    <label className={`qualif-toggle ${(p.no_deco || palType === 'bapteme') ? 'on' : ''} ${palType === 'bapteme' ? 'locked' : ''}`}>
+                      <input type="checkbox" checked={!!(p.no_deco || palType === 'bapteme')}
+                        onChange={() => palType !== 'bapteme' && toggleNoDeco(p.id)}
+                        disabled={palType === 'bapteme'} />
                       No déco (DTR auto = ⌈prof/10⌉)
                     </label>
                     {siteShotLine && (
@@ -733,7 +746,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
               const lastIdx = prev.length - 1;
               return prev.map((p, i) =>
                 i === lastIdx
-                  ? { ...p, membres: sortMembres([...p.membres, { ...bap, aptitude:'Baptême', _bapteme:true }]) }
+                  ? { ...p, no_deco: true, membres: sortMembres([...p.membres, { ...bap, aptitude:'Baptême', _bapteme:true }]) }
                   : p);
             });
           }}

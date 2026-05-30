@@ -437,7 +437,11 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
         return m;
       }));
       const nom = p.nomAuto ? derivePalNom(i, newMembres) : p.nom;
-      return { ...p, membres: newMembres, nom };
+      // Limiter profMax à l'aptitude la plus restrictive parmi les membres
+      const aptLimit = Math.min(...newMembres.map(m => window.aptitudeMaxDepth(m.aptitude)));
+      const profMax = Number.isFinite(aptLimit) && p.profMax > aptLimit ? aptLimit : p.profMax;
+      const dtr = (p.no_deco && profMax !== p.profMax) ? window.calcDTR(profMax) : p.dtr;
+      return { ...p, membres: newMembres, nom, profMax, dtr };
     }));
   };
 

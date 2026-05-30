@@ -213,7 +213,10 @@ function AppInner() {
   };
   const resumeDraft = () => {
     refreshDiversAndSites();
-    setScreen("profil");
+    let target = "profil";
+    if (plongeeFigee) target = "archive";
+    else if (Object.keys(heuresDebut).length > 0) target = "fiche";
+    setScreen(target);
     window.scrollTo({ top:0 });
   };
 

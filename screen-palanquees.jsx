@@ -407,7 +407,10 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
       const aptitude = apts.length === 1 ? apts[0] : '';
       const newMembres = sortMembres([...p.membres, { diverId, aptitude }]);
       const nom = p.nomAuto ? derivePalNom(i, newMembres) : p.nom;
-      return { ...p, membres: newMembres, nom };
+      const aptLimit = Math.min(...newMembres.map(m => window.aptitudeMaxDepth(m.aptitude)));
+      const profMax = Number.isFinite(aptLimit) && p.profMax > aptLimit ? aptLimit : p.profMax;
+      const dtr = (p.no_deco && profMax !== p.profMax) ? window.calcDTR(profMax) : p.dtr;
+      return { ...p, membres: newMembres, nom, profMax, dtr };
     }));
   };
 
@@ -481,7 +484,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
     const id = 'p' + (Math.max(0, ...palanquees.map(p => parseInt(p.id.slice(1)) || 0)) + 1);
     setPalanquees(prev => [...prev, {
       id, nom: `Palanquée ${prev.length + 1}`, nomAuto: true,
-      membres: [], profMax: 20, duree: 35, dtr: 2,
+      membres: [], profMax: 60, duree: 35, dtr: 2,
       melanges: ['Air'],
       no_deco: !answers.paliers,
       shot_line: !!answers.shot_line,
@@ -504,12 +507,14 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
       const apts = d ? window.getDiverAptitudes(d, isExploration) : [];
       const aptitude = apts.length === 1 ? apts[0] : '';
       const newMembres = [{ diverId, aptitude }];
+      const aptLimit = Math.min(...newMembres.map(m => window.aptitudeMaxDepth(m.aptitude)));
+      const initProfMax = Number.isFinite(aptLimit) ? aptLimit : 60;
       return [...prev, {
         id: newId,
         nom: derivePalNom(newIdx, newMembres),
         nomAuto: true,
         membres: newMembres,
-        profMax: 20, duree: 35, dtr: 2,
+        profMax: initProfMax, duree: 35, dtr: 2,
         melanges: ['Air'],
         no_deco: !answers.paliers,
         shot_line: !!answers.shot_line,

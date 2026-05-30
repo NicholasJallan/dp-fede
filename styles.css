@@ -1444,6 +1444,103 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 /* ===== Modal wide ===== */
 .modal-wide { max-width: 760px; }
 
+/* ===== Splash screen ===== */
+.splash-overlay {
+  background: rgba(11,26,43,0.72);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+}
+.splash-modal {
+  max-width: 680px;
+  overflow: hidden;
+}
+.splash-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 28px 28px 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--marine-50);
+}
+.splash-ffessm-logo {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.splash-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--marine);
+  margin-bottom: 4px;
+  font-family: var(--t-mono);
+}
+.splash-welcome {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.2;
+}
+.splash-intro {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-3);
+  line-height: 1.5;
+}
+.splash-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 20px 28px;
+}
+@media (max-width: 560px) {
+  .splash-cards { grid-template-columns: 1fr; }
+  .splash-head { flex-direction: column; gap: 12px; }
+}
+.splash-card {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.splash-card-badge {
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--t-mono);
+  letter-spacing: .06em;
+  padding: 6px 12px;
+  color: #fff;
+}
+.splash-card--marine .splash-card-badge { background: var(--marine); }
+.splash-card--kelp   .splash-card-badge { background: var(--kelp); }
+.splash-card--coral  .splash-card-badge { background: var(--coral); }
+.splash-card-body {
+  padding: 12px;
+  background: var(--surface);
+}
+.splash-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.splash-card-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.5;
+}
+.splash-card-text strong { color: var(--ink-2); }
+.splash-foot {
+  border-top: 1px solid var(--line);
+  padding: 16px 28px;
+  justify-content: center;
+}
+.splash-foot .btn.primary { min-width: 160px; }
+
 /* ===== Qualif sections (admin-divers modal) ===== */
 .qualif-section {
   margin-top: 12px;

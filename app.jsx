@@ -44,6 +44,17 @@ function AppInner() {
   const [confirmModal,  setConfirmModal]  = useState(false); // popup avant archivage
   const [hasDraft,      setHasDraft]      = useState(false);
   const [archiveDone,   setArchiveDone]   = useState(false);
+  const [showSplash,    setShowSplash]    = useState(false);
+
+  // Splash de bienvenue — une fois par session
+  useEffect(() => {
+    if (!user) return;
+    const key = `dp_splash_seen_${user.id}`;
+    if (!sessionStorage.getItem(key)) {
+      setShowSplash(true);
+      sessionStorage.setItem(key, '1');
+    }
+  }, [user?.id]);
 
   // Load divers once authenticated
   useEffect(() => {
@@ -458,6 +469,10 @@ function AppInner() {
       )}
 
       {/* Modale de confirmation / blocage avant archivage */}
+      {showSplash && (
+        <SplashScreen user={user} onClose={() => setShowSplash(false)} />
+      )}
+
       {confirmModal && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', zIndex:1000,
                       display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 // GET /api/proxy/maree — Données de marée SHOM pour un point GPS et une date
-// Proxy server-side : évite les restrictions CORS de l'API maree.shom.fr
+// Proxy server-side : évite les restrictions CORS + Referer de l'API services.data.shom.fr
 if ($method === 'GET' && $path === '/api/proxy/maree') {
     Auth::require();
 
@@ -17,9 +17,6 @@ if ($method === 'GET' && $path === '/api/proxy/maree') {
         Json::abort(400, 'Date manquante');
     }
 
-    // Clé API publique embarquée dans l'app officielle maree.shom.fr
-    $SHOM_KEY = 'hmkWfT79hfJqLMzZUqOT4v8zQtJWLANO';
-
     // Parsing de la date (on accepte YYYY-MM-DD ou ISO datetime)
     $diveDate = DateTime::createFromFormat('Y-m-d', substr($date, 0, 10), new DateTimeZone('Europe/Paris'));
     if ($diveDate === false) {
@@ -27,10 +24,19 @@ if ($method === 'GET' && $path === '/api/proxy/maree') {
     }
     $diveDate->setTime(0, 0, 0);
 
+    // Offset UTC en heures entières (ex: +02:00 → 2, +01:00 → 1)
+    $offsetStr = $diveDate->format('P'); // "+02:00"
+    $utcHours  = (int) round((int) str_replace(':', '', $offsetStr) / 100);
+
+    $diveDayStr = $diveDate->format('Y-m-d');
+
+    // Tous les appels SHOM nécessitent ce Referer (authentification par origine)
+    $SHOM_REFERER = 'https://maree.shom.fr/';
+
     /**
      * @throws RuntimeException
      */
-    $shomFetch = function (string $url): array {
+    $shomFetch = function (string $url) use ($SHOM_REFERER): array {
         if (!function_exists('curl_init')) {
             throw new RuntimeException('curl non disponible sur ce serveur');
         }
@@ -40,7 +46,10 @@ if ($method === 'GET' && $path === '/api/proxy/maree') {
             CURLOPT_TIMEOUT        => 10,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_USERAGENT      => 'DP-Assistant/1.0',
-            CURLOPT_HTTPHEADER     => ['Accept: application/json'],
+            CURLOPT_HTTPHEADER     => [
+                'Accept: application/json',
+                'Referer: ' . $SHOM_REFERER,
+            ],
         ]);
         $body    = curl_exec($ch);
         $code    = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -61,70 +70,102 @@ if ($method === 'GET' && $path === '/api/proxy/maree') {
     };
 
     try {
-        // 1. Port de référence le plus proche
-        $harborUrl  = sprintf(
-            'https://maree.shom.fr/%s/harbor/nearest/latlon?latitude=%s&longitude=%s',
-            $SHOM_KEY, $lat, $lng
-        );
-        $harbor     = $shomFetch($harborUrl);
-        $harborCode = $harbor['code'] ?? $harbor['codeHarbor'] ?? null;
-        $harborName = $harbor['name'] ?? $harbor['libelle']     ?? $harborCode;
-        if (!$harborCode) {
+        // 1. Liste des ports de référence SHOM (WFS) — mise en cache APCu 24h si disponible
+        $WFS_URL = 'https://services.data.shom.fr/x13f1b4faeszdyinv9zqxmx1/wfs'
+                 . '?service=WFS&version=1.0.0&srsName=EPSG:3857&request=GetFeature'
+                 . '&typeName=SPM_PORTS_WFS:liste_ports_spm_h2m&outputFormat=application/json';
+
+        $harbors = null;
+        $cacheKey = 'shom_harbors_v1';
+        if (extension_loaded('apcu') && apcu_enabled()) {
+            $cached = apcu_fetch($cacheKey, $ok);
+            if ($ok) {
+                $harbors = $cached;
+            }
+        }
+        if ($harbors === null) {
+            $wfsData = $shomFetch($WFS_URL);
+            $harbors = $wfsData['features'] ?? [];
+            if (empty($harbors)) {
+                throw new RuntimeException('Liste des ports SHOM vide ou invalide');
+            }
+            if (extension_loaded('apcu') && apcu_enabled()) {
+                apcu_store($cacheKey, $harbors, 86400); // cache 24h
+            }
+        }
+
+        // 2. Port le plus proche (distance haversine en degrés carrés — suffisant pour un tri)
+        $best     = null;
+        $bestDist = PHP_FLOAT_MAX;
+        foreach ($harbors as $f) {
+            $props = $f['properties'] ?? [];
+            // Ignorer ports sans données de marée (nota=6) ou sans décalage UTC
+            if (($props['nota'] ?? 0) === 6 || $props['ut'] === null) {
+                continue;
+            }
+            $pLat = (float) ($props['lat'] ?? 0);
+            $pLon = (float) ($props['lon'] ?? 0);
+            $dLat = $pLat - (float) $lat;
+            $dLon = $pLon - (float) $lng;
+            $dist = $dLat * $dLat + $dLon * $dLon;
+            if ($dist < $bestDist) {
+                $bestDist = $dist;
+                $best     = $props;
+            }
+        }
+        if ($best === null) {
             throw new RuntimeException('Aucun port de référence SHOM trouvé à proximité');
         }
 
-        // 2. Prédictions de marée pour la journée (P2D = 2 jours pour couvrir le décalage UTC)
-        $tz        = new DateTimeZone('Europe/Paris');
-        $offsetStr = $diveDate->format('P');              // +02:00 ou +01:00
-        $tsISO     = $diveDate->format('Y-m-d\T00:00:00P');
+        $harborCode = (string) $best['cst'];
+        $harborName = (string) ($best['toponyme'] ?? $harborCode);
+        $correlation = (int) ($best['coeff'] ?? 1);
 
-        $tidesUrl = sprintf(
-            'https://maree.shom.fr/%s/tidestation/%s/tides?duration=P2D&timestamp=%s&utcOffset=%s',
-            $SHOM_KEY, $harborCode, urlencode($tsISO), urlencode($offsetStr)
-        );
-        $tidesData = $shomFetch($tidesUrl);
+        // 3. Prédictions de marée HLT (P+1 jour pour couvrir les décalages)
+        $HLT_URL = 'https://services.data.shom.fr/b2q8lrcdl4s04cbabsj4nhcb/hdm/spm/hlt'
+                 . '?harborName=' . urlencode($harborCode)
+                 . '&duration=2'
+                 . '&date=' . urlencode($diveDayStr)
+                 . '&utc=' . $utcHours
+                 . '&correlation=' . $correlation;
 
-        // Normaliser : datums ou tides selon version de l'API
-        $tides = $tidesData['datums'] ?? $tidesData['tides'] ?? (is_array($tidesData) ? $tidesData : []);
-        if (!is_array($tides) || empty($tides)) {
-            throw new RuntimeException('Aucune donnée de marée retournée par SHOM');
-        }
+        $tidesData = $shomFetch($HLT_URL);
 
-        // Filtrer sur le jour de plongée
-        $diveDayStr = $diveDate->format('Y-m-d');
-        $dayTides   = array_values(array_filter($tides, static function (array $t) use ($diveDayStr): bool {
-            $raw = $t['datetime'] ?? $t['date'] ?? $t['time'] ?? '';
-            return $raw !== '' && substr((string) $raw, 0, 10) === $diveDayStr;
-        }));
-
-        if (empty($dayTides)) {
+        // La clé est la date YYYY-MM-DD
+        $dayTides = $tidesData[$diveDayStr] ?? null;
+        if (!is_array($dayTides) || empty($dayTides)) {
             throw new RuntimeException("Aucune marée trouvée pour le {$diveDayStr}");
         }
 
-        // Formater en "PM 14h12 coef 87 (6.2m) · BM 20h30 (1.1m)"
+        // 4. Formater en "PM 05h10 coef 70 (6.2m) · BM 11h31 (1.9m)"
+        // Format réponse : [type, "HH:MM", "height", "coeff_or_---"]
         $parts = [];
         foreach ($dayTides as $t) {
-            $raw  = $t['datetime'] ?? $t['date'] ?? $t['time'] ?? '';
-            $type = strtoupper((string) ($t['type'] ?? $t['kind'] ?? ''));
-            if (in_array($type, ['HIGH', 'HIGHWATER', 'PM'], true)) {
-                $type = 'PM';
-            } elseif (in_array($type, ['LOW', 'LOWWATER', 'BM'], true)) {
-                $type = 'BM';
+            if (!is_array($t) || count($t) < 3) {
+                continue;
             }
-            $dt = new DateTime($raw);
-            $dt->setTimezone($tz);
-            $hhmm   = $dt->format('H\hi');
-            $coef   = isset($t['coefficient']) && $t['coefficient'] !== null
-                      ? ' coef ' . (int) $t['coefficient']
-                      : '';
-            $height = isset($t['height'])
-                      ? ' (' . number_format((float) $t['height'], 1, '.', '') . 'm)'
-                      : '';
-            $parts[] = "{$type} {$hhmm}{$coef}{$height}";
+            $type   = (string) $t[0]; // "tide.high" | "tide.low" | "tide.none"
+            $time   = (string) $t[1]; // "HH:MM" ou "--:--"
+            $height = (string) $t[2]; // "6.20" ou "---"
+            $coef   = (string) ($t[3] ?? '');
+
+            if ($type === 'tide.none' || $time === '--:--' || $height === '---') {
+                continue;
+            }
+
+            $label  = $type === 'tide.high' ? 'PM' : 'BM';
+            $hhmm   = str_replace(':', 'h', $time); // "05h10"
+            $coefStr = ($coef !== '---' && $coef !== '') ? " coef {$coef}" : '';
+            $heightStr = ' (' . number_format((float) $height, 1, '.', '') . 'm)';
+            $parts[] = "{$label} {$hhmm}{$coefStr}{$heightStr}";
+        }
+
+        if (empty($parts)) {
+            throw new RuntimeException("Aucune marée valide pour le {$diveDayStr}");
         }
 
         Json::ok([
-            'harbor' => (string) $harborName,
+            'harbor' => $harborName,
             'date'   => $diveDayStr,
             'tides'  => implode(' · ', $parts),
         ]);

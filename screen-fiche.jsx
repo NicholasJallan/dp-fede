@@ -294,9 +294,8 @@ ${styles}
                           </>
                         )}
                         <td className="no-print" style={{ width: 110 }}>
-                          {debut && !fin
-                            ? <span className="muted" style={{ fontSize:12 }}>— en cours</span>
-                            : (
+                          {fin
+                            ? (
                               <select className="input small tight"
                                 value={pressions[presKey] || '50'}
                                 onChange={e => setPression(p.id, m.diverId || m.id, e.target.value)}>
@@ -305,6 +304,7 @@ ${styles}
                                 ))}
                               </select>
                             )
+                            : <span className="muted" style={{ fontSize:12 }}>{debut ? '— en cours' : '—'}</span>
                           }
                         </td>
                         {mi === 0 && (

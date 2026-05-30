@@ -92,6 +92,10 @@ ${styles}
   .fiche { box-shadow: none; max-width: 100%; }
   .no-print, .fiche-actions { display: none !important; }
   .print-only { display: block !important; }
+  /* wkhtmltopdf (Qt WebKit 538) ne supporte pas les CSS custom properties :
+     on injecte les valeurs résolues pour que les classes CSS fonctionnent. */
+  .muted { color: #5A6B7E !important; }
+  small.muted { color: #5A6B7E !important; }
 </style>
 </head><body>${ficheEl.outerHTML}</body></html>`;
 
@@ -280,19 +284,37 @@ ${styles}
                               {p.shot_line && <><br /><small className="muted">+ shot-line</small></>}
                               {p.no_deco && <><br /><small className="muted">no déco</small></>}
                             </td>
-                            <td rowSpan={sorted.length} style={{ verticalAlign:'top', fontVariantNumeric:'tabular-nums' }}>
-                              <div>prévu : <b>{p.profMax} m</b></div>
-                              <div className="muted">réalisé : {real ? <b>{real.profMax} m</b> : '—'}</div>
+                            <td rowSpan={sorted.length} style={{ verticalAlign:'top' }}>
+                              <div style={{ paddingBottom:3, marginBottom:4, borderBottom:'1px solid #ddd' }}>
+                                <div style={{ fontSize:9, color:'#888', textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:1 }}>Prévu</div>
+                                <b>{p.profMax} m</b>
+                              </div>
+                              <div>
+                                <div style={{ fontSize:9, color:'#888', textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:1 }}>Réalisé</div>
+                                <b style={{ color: real ? 'inherit' : '#bbb' }}>{real ? `${real.profMax} m` : '—'}</b>
+                              </div>
                             </td>
-                            <td rowSpan={sorted.length} style={{ verticalAlign:'top', fontVariantNumeric:'tabular-nums' }}>
-                              <div>prévu : <b>{p.duree} min</b></div>
-                              <div className="muted">réalisé : {real ? <b>{real.duree} min</b> : '—'}</div>
-                              {debut && <div className="muted" style={{ fontSize:10, marginTop:2, fontFamily:'var(--t-mono)' }}>{debut}{fin ? ` → ${fin}` : ' →…'}</div>}
+                            <td rowSpan={sorted.length} style={{ verticalAlign:'top' }}>
+                              <div style={{ paddingBottom:3, marginBottom:4, borderBottom:'1px solid #ddd' }}>
+                                <div style={{ fontSize:9, color:'#888', textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:1 }}>Prévu</div>
+                                <b>{p.duree} min</b>
+                              </div>
+                              <div>
+                                <div style={{ fontSize:9, color:'#888', textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:1 }}>Réalisé</div>
+                                <b style={{ color: real ? 'inherit' : '#bbb' }}>{real ? `${real.duree} min` : '—'}</b>
+                                {debut && <div style={{ fontSize:10, color:'#888', marginTop:2, fontFamily:'monospace' }}>{debut}{fin ? ` → ${fin}` : ' →…'}</div>}
+                              </div>
                             </td>
-                            <td rowSpan={sorted.length} style={{ verticalAlign:'top', fontVariantNumeric:'tabular-nums' }}>
-                              <div>prévu : <b>{p.dtr || window.calcDTR(p.profMax)} min</b></div>
-                              {p.no_deco && <div style={{ fontSize:10, color:'var(--kelp)', fontWeight:600, marginTop:2 }}>▲ NO DÉCO planifié</div>}
-                              <div className="muted">réalisé : {real ? <b>{real.dtr} min</b> : '—'}</div>
+                            <td rowSpan={sorted.length} style={{ verticalAlign:'top' }}>
+                              <div style={{ paddingBottom:3, marginBottom:4, borderBottom:'1px solid #ddd' }}>
+                                <div style={{ fontSize:9, color:'#888', textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:1 }}>Prévu</div>
+                                <b>{p.dtr || window.calcDTR(p.profMax)} min</b>
+                                {p.no_deco && <div style={{ fontSize:9, color:'#2d8653', fontWeight:600, marginTop:2 }}>▲ no déco</div>}
+                              </div>
+                              <div>
+                                <div style={{ fontSize:9, color:'#888', textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:1 }}>Réalisé</div>
+                                <b style={{ color: real ? 'inherit' : '#bbb' }}>{real ? `${real.dtr} min` : '—'}</b>
+                              </div>
                             </td>
                           </>
                         )}

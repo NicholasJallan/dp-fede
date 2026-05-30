@@ -215,7 +215,11 @@ ${styles}
           <div className="cell">
             <div className="k">Mélanges</div>
             <div className="v" style={{ fontSize: 12 }}>
-              {[answers.air && 'Air', answers.nitrox && 'Nitrox', answers.trimix && 'Trimix', answers.oxygene_pur && 'O₂'].filter(Boolean).join(' · ') || '—'}
+              {(() => {
+                const all = new Set();
+                palanquees.forEach(p => (p.melanges || []).forEach(m => all.add(m)));
+                return all.size > 0 ? [...all].join(' · ') : '—';
+              })()}
             </div>
           </div>
           <div className="cell">

@@ -41,7 +41,7 @@ function SplashScreen({ user, onClose }) {
               <div className="splash-card-title">Plongeur Encadré</div>
               <p className="splash-card-text">
                 Les aptitudes <strong>PE</strong> couvrent les plongées
-                en <strong>formation</strong> ou les plongées guidées où
+                en <strong>formation</strong> ou les <strong>plongées guidées</strong> où
                 un guide de palanquée prend en charge l'encadrement.
               </p>
             </div>

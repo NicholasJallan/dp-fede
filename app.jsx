@@ -46,14 +46,10 @@ function AppInner() {
   const [archiveDone,   setArchiveDone]   = useState(false);
   const [showSplash,    setShowSplash]    = useState(false);
 
-  // Splash de bienvenue — une fois par session
+  // Splash de bienvenue — à chaque connexion
   useEffect(() => {
     if (!user) return;
-    const key = `dp_splash_seen_${user.id}`;
-    if (!sessionStorage.getItem(key)) {
-      setShowSplash(true);
-      sessionStorage.setItem(key, '1');
-    }
+    setShowSplash(true);
   }, [user?.id]);
 
   // Load divers once authenticated

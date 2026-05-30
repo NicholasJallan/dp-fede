@@ -42,7 +42,7 @@ function ScreenLogin() {
         <div className="login-btn-wrap" ref={btnRef}></div>
 
         <p className="login-legal">
-          Vos données sont hébergées sur votre serveur dédié, en Europe.
+          Vos données sont hébergées sur nos serveurs, en Europe.
           Aucune donnée n'est transmise à des tiers.
         </p>
       </div>

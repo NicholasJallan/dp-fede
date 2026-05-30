@@ -289,6 +289,7 @@ ${styles}
                             </td>
                             <td rowSpan={sorted.length} style={{ verticalAlign:'top', fontVariantNumeric:'tabular-nums' }}>
                               <div>prévu : <b>{p.dtr || window.calcDTR(p.profMax)} min</b></div>
+                              {p.no_deco && <div style={{ fontSize:10, color:'var(--kelp)', fontWeight:600, marginTop:2 }}>▲ NO DÉCO planifié</div>}
                               <div className="muted">réalisé : {real ? <b>{real.dtr} min</b> : '—'}</div>
                             </td>
                           </>
@@ -412,6 +413,11 @@ ${styles}
                   value={finForm.profMax} onChange={e => setFinForm(f => ({ ...f, profMax:e.target.value }))}
                   placeholder="ex. 35" />
               </div>
+              {palanquees.find(p => p.id === finModal.palId)?.no_deco && (
+                <Alert tone="info">
+                  Palanquée prévue en no déco — saisissez la DTR réelle constatée (toute valeur acceptée).
+                </Alert>
+              )}
               <div className="field">
                 <label>DTR réel (min){finForm.duree ? ` — max ${finForm.duree} min` : ''}</label>
                 <input className="input" type="number" min="0"

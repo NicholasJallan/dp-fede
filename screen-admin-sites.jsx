@@ -50,7 +50,6 @@ function MapPicker({ coordonnees, onChange }) {
   const searchRef    = React.useRef(null);
   const [ready, setReady] = useState(!!window.__gmapsLoaded);
 
-  // Wait for Maps API to load
   useEffect(() => {
     if (window.__gmapsLoaded) { setReady(true); return; }
     const onReady = () => setReady(true);
@@ -58,7 +57,6 @@ function MapPicker({ coordonnees, onChange }) {
     return () => window.removeEventListener('gmaps:ready', onReady);
   }, []);
 
-  // Init map once API + DOM are ready
   useEffect(() => {
     if (!ready || !containerRef.current) return;
 
@@ -80,7 +78,6 @@ function MapPicker({ coordonnees, onChange }) {
     });
     mapRef.current = map;
 
-    // Initial marker if editing existing site
     if (coordonnees?.lat && coordonnees?.lng) {
       const m = new google.maps.Marker({ position: center, map, draggable: true });
       m.addListener('dragend', e =>
@@ -89,7 +86,6 @@ function MapPicker({ coordonnees, onChange }) {
       markerRef.current = m;
     }
 
-    // Click to place/move marker
     map.addListener('click', e => {
       const lat = e.latLng.lat();
       const lng = e.latLng.lng();
@@ -105,7 +101,6 @@ function MapPicker({ coordonnees, onChange }) {
       onChange({ lat, lng });
     });
 
-    // Search box (Places Autocomplete)
     if (searchRef.current) {
       const ac = new google.maps.places.Autocomplete(searchRef.current, {
         types: ['geocode', 'establishment'],
@@ -130,7 +125,6 @@ function MapPicker({ coordonnees, onChange }) {
           markerRef.current = m;
         }
         onChange({ lat, lng });
-        // Autofill name if field is empty — caller handles this via onNameSuggest
         if (place.name) window.__lastPlaceName = place.name;
       });
     }
@@ -173,54 +167,165 @@ function MapPicker({ coordonnees, onChange }) {
   );
 }
 
+// ── SiteFormModal — formulaire complet, réutilisé depuis l'admin et le profil ──
+function SiteFormModal({ initial, title, onSave, onClose }) {
+  const [form, setForm] = useState(initial ?? emptySite());
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const setField = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSave = async () => {
+    if (!form.nom.trim()) { setError('Le nom du site est requis'); return; }
+    if (!form.depart_bord && !form.depart_bateau) { setError('Indiquer au moins un type de départ (bord ou bateau)'); return; }
+    setSaving(true); setError('');
+    try {
+      const payload = {
+        ...form,
+        profondeur_max: form.profondeur_max !== '' ? parseFloat(form.profondeur_max) : null,
+      };
+      await onSave(payload);
+      onClose();
+    } catch (e) {
+      setError(e.message);
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal modal-wide">
+        <div className="modal-head">
+          <h3>{title}</h3>
+          <button className="x" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body">
+          {error && <Alert tone="warn" style={{ marginBottom: 10 }}>{error}</Alert>}
+
+          <div className="field">
+            <label>Nom du site *</label>
+            <input className="input" value={form.nom} onChange={e => setField('nom', e.target.value)}
+              placeholder="Épave du Rhône, Lac de Salanfe, Sec de…" />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+            <div className="field">
+              <label>Milieu</label>
+              <select className="input" value={form.milieu} onChange={e => setField('milieu', e.target.value)}>
+                {MILIEUX_LIST.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Profondeur max (m)</label>
+              <input className="input" type="number" min="0" max="300" step="0.5"
+                value={form.profondeur_max} onChange={e => setField('profondeur_max', e.target.value)}
+                placeholder="40" />
+            </div>
+          </div>
+
+          <div className="field" style={{ marginTop: 12 }}>
+            <label>Localisation — cliquer sur la carte ou rechercher un lieu</label>
+            <MapPicker
+              coordonnees={form.coordonnees}
+              onChange={async coords => {
+                setField('coordonnees', coords);
+                if (!form.nom && window.__lastPlaceName) {
+                  setField('nom', window.__lastPlaceName);
+                  window.__lastPlaceName = null;
+                }
+                const geo = await reverseGeocode(coords.lat, coords.lng);
+                if (geo) {
+                  setForm(f => ({
+                    ...f,
+                    ville: geo.ville || f.ville,
+                    pays:  geo.pays  || f.pays,
+                    pays_code: geo.pays_code || f.pays_code,
+                    region: geo.region || f.region,
+                  }));
+                }
+              }}
+            />
+            {form.ville && (
+              <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+                {flagEmoji(form.pays_code)} {form.ville}{form.region ? ` · ${form.region}` : ''}{form.pays ? ` · ${form.pays}` : ''}
+              </div>
+            )}
+          </div>
+
+          <div className="field" style={{ marginTop: 12 }}>
+            <label>Type de départ <span className="req">*</span></label>
+            <div className="qualif-row">
+              {[['depart_bord','Du bord'],['depart_bateau','En bateau']].map(([k, label]) => (
+                <label key={k} className={`qualif-toggle ${form[k] ? 'on' : ''}`}>
+                  <input type="checkbox" checked={!!form[k]}
+                    onChange={() => setField(k, !form[k])} />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="field" style={{ marginTop: 12 }}>
+            <label>Équipement habituel</label>
+            <div className="qualif-row">
+              <label className={`qualif-toggle ${form.shot_line ? 'on' : ''}`}>
+                <input type="checkbox" checked={!!form.shot_line}
+                  onChange={() => setField('shot_line', !form.shot_line)} />
+                Shot-line usuellement disponible
+              </label>
+            </div>
+            <div className="field-hint">
+              Shot-line habituellement présente sur ce site (ligne lestée pour descente/remontée). Le DP confirmera lors de chaque plongée.
+            </div>
+          </div>
+
+          <div className="field" style={{ marginTop: 10 }}>
+            <label>Notes</label>
+            <textarea className="textarea" rows={2} value={form.notes}
+              onChange={e => setField('notes', e.target.value)}
+              placeholder="Accès, conditions habituelles, points d'attention…" />
+          </div>
+        </div>
+        <div className="modal-foot">
+          <button className="btn" onClick={onClose}>Annuler</button>
+          <button className="btn primary" onClick={handleSave} disabled={saving}>
+            {saving ? 'Enregistrement…' : 'Enregistrer'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── ScreenAdminSites ───────────────────────────────────────────────────────
 function ScreenAdminSites({ sites, setSites, sitesLoaded }) {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('');
   const [editing, setEditing] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState(emptySite());
   const [confirmDelete, setConfirmDelete] = useState(null);
 
-  // Le store sites est désormais partagé via app.jsx ; pas de fetch local.
   const loading = !sitesLoaded;
 
-  const openNew = () => { setForm(emptySite()); setEditing('new'); };
-  const openEdit = (s) => {
-    setForm({
-      nom: s.nom, milieu: s.milieu || 'En mer',
-      profondeur_max: s.profondeur_max != null ? String(s.profondeur_max) : '',
-      coordonnees: s.coordonnees || null, notes: s.notes || '',
-      depart_bord: !!s.depart_bord, depart_bateau: !!s.depart_bateau,
-      shot_line: !!s.shot_line,
-      ville: s.ville || '', pays: s.pays || '', pays_code: s.pays_code || '', region: s.region || '',
-    });
-    setEditing(s);
-  };
-  const closeModal = () => { setEditing(null); setSaving(false); setError(''); };
-  const setField = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const openNew  = () => setEditing('new');
+  const openEdit = (s) => setEditing(s);
+  const closeModal = () => { setEditing(null); setError(''); };
 
-  const onSave = async () => {
-    if (!form.nom.trim()) { setError('Le nom du site est requis'); return; }
-    if (!form.depart_bord && !form.depart_bateau) { setError('Indiquer au moins un type de départ (bord ou bateau)'); return; }
-    setSaving(true); setError('');
-    const payload = {
-      ...form,
-      profondeur_max: form.profondeur_max !== '' ? parseFloat(form.profondeur_max) : null,
-    };
-    try {
-      if (editing === 'new') {
-        const s = await api.sites.create(payload);
-        setSites(prev => [...prev, s].sort((a, b) => a.nom.localeCompare(b.nom)));
-      } else {
-        const s = await api.sites.update(editing.id, payload);
-        setSites(prev => prev.map(x => x.id === s.id ? s : x));
-      }
-      closeModal();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSaving(false);
+  const siteToForm = (s) => ({
+    nom: s.nom, milieu: s.milieu || 'En mer',
+    profondeur_max: s.profondeur_max != null ? String(s.profondeur_max) : '',
+    coordonnees: s.coordonnees || null, notes: s.notes || '',
+    depart_bord: !!s.depart_bord, depart_bateau: !!s.depart_bateau,
+    shot_line: !!s.shot_line,
+    ville: s.ville || '', pays: s.pays || '', pays_code: s.pays_code || '', region: s.region || '',
+  });
+
+  const onSave = async (payload) => {
+    if (editing === 'new') {
+      const s = await api.sites.create(payload);
+      setSites(prev => [...prev, s].sort((a, b) => a.nom.localeCompare(b.nom)));
+    } else {
+      const s = await api.sites.update(editing.id, payload);
+      setSites(prev => prev.map(x => x.id === s.id ? s : x));
     }
   };
 
@@ -296,111 +401,13 @@ function ScreenAdminSites({ sites, setSites, sitesLoaded }) {
         {!loading && filtered.length === 0 && <div className="empty">Aucun site trouvé.</div>}
       </div>
 
-      {/* Modal édition */}
       {editing !== null && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
-          <div className="modal modal-wide">
-            <div className="modal-head">
-              <h3>{editing === 'new' ? 'Nouveau site' : `Modifier ${editing.nom}`}</h3>
-              <button className="x" onClick={closeModal}>×</button>
-            </div>
-            <div className="modal-body">
-              {error && <Alert tone="warn" style={{ marginBottom: 10 }}>{error}</Alert>}
-
-              <div className="field">
-                <label>Nom du site *</label>
-                <input className="input" value={form.nom} onChange={e => setField('nom', e.target.value)}
-                  placeholder="Épave du Rhône, Lac de Salanfe, Sec de…" />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
-                <div className="field">
-                  <label>Milieu</label>
-                  <select className="input" value={form.milieu} onChange={e => setField('milieu', e.target.value)}>
-                    {MILIEUX_LIST.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </div>
-                <div className="field">
-                  <label>Profondeur max (m)</label>
-                  <input className="input" type="number" min="0" max="300" step="0.5"
-                    value={form.profondeur_max} onChange={e => setField('profondeur_max', e.target.value)}
-                    placeholder="40" />
-                </div>
-              </div>
-
-              <div className="field" style={{ marginTop: 12 }}>
-                <label>Localisation — cliquer sur la carte ou rechercher un lieu</label>
-                <MapPicker
-                  coordonnees={form.coordonnees}
-                  onChange={async coords => {
-                    setField('coordonnees', coords);
-                    // Auto-fill name from Places search if still empty
-                    if (!form.nom && window.__lastPlaceName) {
-                      setField('nom', window.__lastPlaceName);
-                      window.__lastPlaceName = null;
-                    }
-                    // Reverse geocoding pour ville/pays
-                    const geo = await reverseGeocode(coords.lat, coords.lng);
-                    if (geo) {
-                      setForm(f => ({
-                        ...f,
-                        ville: geo.ville || f.ville,
-                        pays:  geo.pays  || f.pays,
-                        pays_code: geo.pays_code || f.pays_code,
-                        region: geo.region || f.region,
-                      }));
-                    }
-                  }}
-                />
-                {form.ville && (
-                  <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-                    {flagEmoji(form.pays_code)} {form.ville}{form.region ? ` · ${form.region}` : ''}{form.pays ? ` · ${form.pays}` : ''}
-                  </div>
-                )}
-              </div>
-
-              <div className="field" style={{ marginTop: 12 }}>
-                <label>Type de départ <span className="req">*</span></label>
-                <div className="qualif-row">
-                  {[['depart_bord','Du bord'],['depart_bateau','En bateau']].map(([k, label]) => (
-                    <label key={k} className={`qualif-toggle ${form[k] ? 'on' : ''}`}>
-                      <input type="checkbox" checked={!!form[k]}
-                        onChange={() => setField(k, !form[k])} />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="field" style={{ marginTop: 12 }}>
-                <label>Équipement habituel</label>
-                <div className="qualif-row">
-                  <label className={`qualif-toggle ${form.shot_line ? 'on' : ''}`}>
-                    <input type="checkbox" checked={!!form.shot_line}
-                      onChange={() => setField('shot_line', !form.shot_line)} />
-                    Shot-line usuellement disponible
-                  </label>
-                </div>
-                <div className="field-hint">
-                  Shot-line habituellement présente sur ce site (ligne lestée pour descente/remontée). Le DP confirmera lors de chaque plongée.
-                </div>
-              </div>
-
-              <div className="field" style={{ marginTop: 10 }}>
-                <label>Notes</label>
-                <textarea className="textarea" rows={2} value={form.notes}
-                  onChange={e => setField('notes', e.target.value)}
-                  placeholder="Accès, conditions habituelles, points d'attention…" />
-              </div>
-            </div>
-            <div className="modal-foot">
-              <button className="btn" onClick={closeModal}>Annuler</button>
-              <button className="btn primary" onClick={onSave} disabled={saving}>
-                {saving ? 'Enregistrement…' : 'Enregistrer'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <SiteFormModal
+          initial={editing === 'new' ? undefined : siteToForm(editing)}
+          title={editing === 'new' ? 'Nouveau site' : `Modifier ${editing.nom}`}
+          onSave={onSave}
+          onClose={closeModal}
+        />
       )}
 
       {confirmDelete && (
@@ -419,4 +426,4 @@ function ScreenAdminSites({ sites, setSites, sitesLoaded }) {
   );
 }
 
-Object.assign(window, { ScreenAdminSites, MILIEUX_LIST });
+Object.assign(window, { ScreenAdminSites, SiteFormModal, emptySite, MILIEUX_LIST });

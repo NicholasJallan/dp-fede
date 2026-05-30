@@ -354,6 +354,12 @@ function DiverQuickAdd({ onCreated, onClose, initialName = '', allowBapteme = fa
                 <input className="input" type="date" value={form.medical}
                   onChange={e => setField('medical', e.target.value)} />
               </div>
+
+              <div className="field" style={{ marginTop: 10 }}>
+                <label>Notes</label>
+                <textarea className="textarea" rows={2} value={form.notes}
+                  onChange={e => setField('notes', e.target.value)} />
+              </div>
             </>
           )}
         </div>

@@ -47,29 +47,6 @@ function DPPicker({ value, divers, onChange, setDivers }) {
 // ── SitePicker + quick-add ────────────────────────────────────────────────
 function SitePicker({ value, sites, setSites, onChange, answers }) {
   const [showAdd, setShowAdd] = useState(false);
-  const [quickForm, setQuickForm] = useState({ nom:'', milieu:'En mer', profondeur_max:'',
-    coordonnees:null, notes:'', depart_bord:false, depart_bateau:false });
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState('');
-
-  const sf = (k, v) => setQuickForm(f => ({ ...f, [k]: v }));
-
-  const createSite = async () => {
-    if (!quickForm.nom.trim()) { setErr('Nom requis'); return; }
-    if (!quickForm.depart_bord && !quickForm.depart_bateau) { setErr('Indiquer au moins un type de départ'); return; }
-    setSaving(true); setErr('');
-    try {
-      const s = await api.sites.create({
-        ...quickForm,
-        profondeur_max: quickForm.profondeur_max !== '' ? parseFloat(quickForm.profondeur_max) : null,
-      });
-      setSites(prev => [...prev, s].sort((a,b) => a.nom.localeCompare(b.nom)));
-      onChange(s.id);
-      setShowAdd(false);
-      setQuickForm({ nom:'', milieu:'En mer', profondeur_max:'', coordonnees:null, notes:'', depart_bord:false, depart_bateau:false });
-    } catch (e) { setErr(e.message); }
-    finally { setSaving(false); }
-  };
 
   // Filtrage selon qualité DP : E1 → piscine ≤6m, E2 → piscine/fosse ≤20m
   const dpQual = answers?.dp_qual || null;
@@ -128,52 +105,15 @@ function SitePicker({ value, sites, setSites, onChange, answers }) {
       )}
 
       {showAdd && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowAdd(false)}>
-          <div className="modal" style={{ maxWidth:460 }}>
-            <div className="modal-head">
-              <h3>Nouveau site (création rapide)</h3>
-              <button className="x" onClick={() => setShowAdd(false)}>×</button>
-            </div>
-            <div className="modal-body">
-              {err && <Alert tone="warn" style={{ marginBottom:8 }}>{err}</Alert>}
-              <div className="field">
-                <label>Nom du site *</label>
-                <input className="input" value={quickForm.nom}
-                  onChange={e => sf('nom', e.target.value)} placeholder="Épave du Rhône, Sec de…" />
-              </div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginTop:10 }}>
-                <div className="field">
-                  <label>Milieu</label>
-                  <select className="input" value={quickForm.milieu} onChange={e => sf('milieu', e.target.value)}>
-                    {['En mer','Lac','Carrière','Piscine','Autre'].map(m => <option key={m}>{m}</option>)}
-                  </select>
-                </div>
-                <div className="field">
-                  <label>Prof. max (m)</label>
-                  <input className="input" type="number" min="0" max="300" step="0.5"
-                    value={quickForm.profondeur_max} onChange={e => sf('profondeur_max', e.target.value)} />
-                </div>
-              </div>
-              <div className="field" style={{ marginTop:10 }}>
-                <label>Type de départ *</label>
-                <div className="qualif-row">
-                  {[['depart_bord','Du bord'],['depart_bateau','En bateau']].map(([k, label]) => (
-                    <label key={k} className={`qualif-toggle ${quickForm[k] ? 'on' : ''}`}>
-                      <input type="checkbox" checked={!!quickForm[k]} onChange={() => sf(k, !quickForm[k])} />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="modal-foot">
-              <button className="btn" onClick={() => setShowAdd(false)}>Annuler</button>
-              <button className="btn primary" onClick={createSite} disabled={saving}>
-                {saving ? 'Création…' : 'Créer et sélectionner'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <SiteFormModal
+          title="Nouveau site"
+          onSave={async (payload) => {
+            const s = await api.sites.create(payload);
+            setSites(prev => [...prev, s].sort((a,b) => a.nom.localeCompare(b.nom)));
+            onChange(s.id);
+          }}
+          onClose={() => setShowAdd(false)}
+        />
       )}
     </div>
   );

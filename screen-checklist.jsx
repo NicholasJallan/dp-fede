@@ -53,14 +53,29 @@ function ScreenChecklist({ answers, setAnswer, checked, setChecked, comments, se
             type="text"
             placeholder="ex. : sondeur, pétard acoustique, coup de coque, corde de liaison…"
             value={answers.moyen_rappel || ''}
+            disabled={!!answers.rappel_impossible}
+            style={answers.rappel_impossible ? { opacity:0.4 } : undefined}
             onChange={e => {
               setAnswer('moyen_rappel', e.target.value);
               try { localStorage.setItem('dp-rappel-moyen', e.target.value); } catch {}
             }}
           />
-          <p style={{ margin:'8px 0 0', fontSize:12, color:'var(--ink-3)' }}>
-            Mémorisé automatiquement — repris à la prochaine plongée.
-          </p>
+          <label style={{ display:'flex', alignItems:'center', gap:8, marginTop:10, fontSize:13, cursor:'pointer' }}>
+            <input
+              type="checkbox"
+              checked={!!answers.rappel_impossible}
+              onChange={e => {
+                setAnswer('rappel_impossible', e.target.checked || undefined);
+                if (e.target.checked) setAnswer('moyen_rappel', '');
+              }}
+            />
+            Pas de rappel possible (départ du bord sans moyen acoustique)
+          </label>
+          {!answers.rappel_impossible && (
+            <p style={{ margin:'8px 0 0', fontSize:12, color:'var(--ink-3)' }}>
+              Mémorisé automatiquement — repris à la prochaine plongée.
+            </p>
+          )}
         </div>
       </div>
 

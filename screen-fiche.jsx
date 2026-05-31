@@ -405,6 +405,7 @@ ${styles}
             <div>• Non-plongeurs : <b>{answers.sec_surface_externes}</b></div>
           )}
           <div>• Plan de secours : <b>{answers.plan_secours ? 'Affiché et à jour' : 'À vérifier'}</b></div>
+          <div>• Coordonnées secours : <b>{answers.coords_secours ? 'Disponibles et affichées' : 'À vérifier'}</b></div>
           <div>• Matériel O₂ vérifié : <b>{answers.o2 ? 'Oui' : 'Non'}</b></div>
           <div>• Trousse de secours + couv. iso : <b>{answers.trousse ? 'Oui' : 'Non'}</b></div>
           <div>• VHF : <b>{answers.vhf ? 'Embarquée et testée' : '—'}</b></div>
@@ -420,6 +421,36 @@ ${styles}
             <span key={apt} className="pill outline">{apt} × {n}</span>
           ))}
           {Object.keys(aptUsage).length === 0 && <span className="muted">—</span>}
+        </div>
+
+        <h2>Paramètres complémentaires</h2>
+        <div style={{ fontSize:12, columns:2, columnGap:24 }}>
+          {answers.prof_max && <div>• Profondeur max autorisée : <b>{answers.prof_max}</b></div>}
+          <div>• Paliers décompression : <b>{answers.paliers ? 'Autorisés' : 'Non autorisés'}</b></div>
+          {answers.successive && <div>• Plongée successive dans la journée : <b>Prévue</b></div>}
+          {answers.maree_relevant && answers.maree_horaire && (
+            <div>• Marées : <b>{answers.maree_horaire}</b></div>
+          )}
+          {answers.depart_bateau && (
+            <div>• Chef de bord : <b>{answers.chef_bord ? 'Désigné' : 'Non désigné'}</b></div>
+          )}
+          {answers.depart_bateau && answers.distance_cote && (
+            <div>• Distance côte : <b>{answers.distance_cote} M nautiques</b></div>
+          )}
+          {answers.recycleur && (
+            <div>• Recycleurs : <b>Oui{answers.recycleur_modeles ? ` — ${answers.recycleur_modeles.replace(/\n/g, ' / ')}` : ''}</b>
+              {answers.mixage_co_rec && <span className="muted"> · CO+OC mixés</span>}
+            </div>
+          )}
+          {answers.bloc_relais && (
+            <div>• Bloc relais / déco : <b>{Array.isArray(answers.bloc_relais_gaz) && answers.bloc_relais_gaz.length > 0
+              ? answers.bloc_relais_gaz.join(' · ') : 'Oui'}</b></div>
+          )}
+          {answers.parachute_obligatoire && <div>• Parachute de palier : <b>Obligatoire par palanquée</b></div>}
+          {answers.parachute_par_plongeur && <div>• Parachute individuel : <b>Requis — chaque plongeur</b></div>}
+          {answers.mineurs && <div>• Mineurs : <b>Présents</b></div>}
+          {answers.etrangers && <div>• Brevets étrangers : <b>Présents — évaluation E3</b></div>}
+          {answers.handisub && <div>• Handisub : <b>Présent(s)</b></div>}
         </div>
 
         <h2>Observations générales</h2>

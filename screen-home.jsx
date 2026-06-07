@@ -4,6 +4,107 @@ function ScreenHome({ onNew, onResume, hasDraft, plongeeFigee, onClone }) {
   const [archives,  setArchives]  = useState(null);
   const [cloningId, setCloningId] = useState(null);
   const [cloneErr,  setCloneErr]  = useState('');
+  const online = window.useOnline ? window.useOnline() : true;
+  const { user } = useAuth();
+  const { showToast } = useToasts();
+
+  // Pré-autorisation Google Drive — obtient le token avant la plongée pour que
+  // l'archivage offline→online fonctionne sans geste user à la reconnexion.
+  // 'pending'          : tentative silencieuse en cours (pas d'UI)
+  // 'idle'             : tentative silencieuse échouée/timeout → affiche bouton
+  // 'pending-explicit' : l'utilisateur a cliqué le bouton, popup en cours
+  // 'ok'               : token valide stocké dans window.dp_driveToken
+  const [driveAuth, setDriveAuth] = useState('pending');
+
+  const requestDriveAccess = useCallback((explicit = false) => {
+    if (!window.google?.accounts?.oauth2) { setDriveAuth('idle'); return; }
+    setDriveAuth(explicit ? 'pending-explicit' : 'pending');
+    // Timeout court pour la tentative silencieuse (4 s), long pour le popup explicit (2 min).
+    const tid = setTimeout(() => setDriveAuth('idle'), explicit ? 120000 : 4000);
+    const tc = google.accounts.oauth2.initTokenClient({
+      client_id: window.GOOGLE_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/drive.file',
+      callback: (resp) => {
+        clearTimeout(tid);
+        if (resp.error) { setDriveAuth('idle'); return; }
+        window.dp_driveToken = {
+          access_token: resp.access_token,
+          expires_at: Date.now() + 55 * 60 * 1000, // 55 min (conservateur)
+        };
+        setDriveAuth('ok');
+      },
+    });
+    tc.requestAccessToken({ prompt: explicit ? 'consent' : '' });
+  }, []);
+
+  // Tentative silencieuse au montage (si online). Si le scope a déjà été accordé,
+  // GIS répond immédiatement ; sinon le timeout de 4 s bascule en 'idle'.
+  useEffect(() => {
+    if (!online) { setDriveAuth('idle'); return; }
+    requestDriveAccess(false);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Retry silencieux à la reconnexion (utile si le composant a monté offline).
+  useEffect(() => {
+    if (online && driveAuth === 'idle') requestDriveAccess(false);
+  }, [online]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Drive en attente : archives synced=true mais drive_synced=false.
+  // Récupéré depuis le store local (cf. offline-api).
+  const [pendingDrive, setPendingDrive] = useState([]);
+  const [finalizing,   setFinalizing]   = useState(false);
+  const [finalizeMsg,  setFinalizeMsg]  = useState('');
+
+  const refreshPending = useCallback(async () => {
+    if (window.api?.archives?.pendingDrive) {
+      const list = await window.api.archives.pendingDrive();
+      setPendingDrive(list);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshPending();
+    const on = () => refreshPending();
+    window.addEventListener('dp:dataChanged', on);
+    window.addEventListener('dp:syncDone',    on);
+    return () => {
+      window.removeEventListener('dp:dataChanged', on);
+      window.removeEventListener('dp:syncDone',    on);
+    };
+  }, [refreshPending]);
+
+  // Lance la finalisation Drive séquentielle pour les archives pendantes.
+  // Si une étape échoue (token refusé, réseau), on stoppe et on conserve
+  // ce qui reste pour un nouveau clic plus tard.
+  const finalizeAll = useCallback(async () => {
+    if (finalizing) return;
+    setFinalizing(true); setFinalizeMsg('');
+    // Récupère la liste fraîche des plongeurs (annuaire local).
+    let divers = [];
+    try { divers = await window.offlineStore.all('divers'); } catch {}
+    let ok = 0, fail = 0;
+    for (const archive of pendingDrive) {
+      try {
+        setFinalizeMsg(`${ok + fail + 1}/${pendingDrive.length} — ${archive.site_nom || 'plongée'}`);
+        await window.finalizePendingDrive(archive, divers, user, (step) => {
+          setFinalizeMsg(`${ok + fail + 1}/${pendingDrive.length} — ${archive.site_nom || 'plongée'} · ${step}`);
+        });
+        ok++;
+      } catch (err) {
+        fail++;
+        showToast({ tone: 'err', title: 'Drive — échec', body: err.message });
+        break; // on stoppe à la première erreur pour ne pas multiplier les prompts Google
+      }
+    }
+    setFinalizing(false);
+    setFinalizeMsg('');
+    if (ok > 0) {
+      showToast({ tone: 'ok', title: 'Drive synchronisé', body: `${ok} plongée${ok > 1 ? 's' : ''} déposée${ok > 1 ? 's' : ''}.` });
+    }
+    refreshPending();
+    // Rafraîchir aussi la liste d'archives affichée juste en dessous.
+    api.archives.list().then(rows => setArchives(rows)).catch(() => {});
+  }, [pendingDrive, user, finalizing, showToast, refreshPending]);
 
   useEffect(() => {
     api.archives.list()
@@ -35,12 +136,59 @@ function ScreenHome({ onNew, onResume, hasDraft, plongeeFigee, onClone }) {
           <button className="btn primary lg" onClick={onNew}>+ Nouvelle plongée</button>
           {canResume && <button className="btn lg" onClick={onResume}>Reprendre le brouillon</button>}
         </div>
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:10, minHeight:28 }}>
+          {driveAuth === 'ok' && (
+            <span style={{ fontSize:13, color:'var(--kelp,#2d8653)', fontWeight:500 }}>
+              ✓ Google Drive autorisé
+            </span>
+          )}
+          {driveAuth === 'idle' && online && (
+            <button className="btn" style={{ fontSize:13 }}
+              onClick={() => requestDriveAccess(true)}
+              title="Nécessaire pour l'archivage hors ligne — autorisez avant de couper la connexion">
+              Autoriser Google Drive
+            </button>
+          )}
+          {driveAuth === 'pending-explicit' && (
+            <span style={{ fontSize:13, color:'var(--ink-3)' }}>↻ Autorisation Drive…</span>
+          )}
+        </div>
         {plongeeFigee && (
           <p style={{ marginTop:12, fontSize:13, color:'var(--ink-3)' }}>
             La dernière plongée est figée et archivée. Commencez une nouvelle plongée ou reprenez les paramètres d'une plongée précédente ci-dessous.
           </p>
         )}
       </div>
+
+      {pendingDrive.length > 0 && (
+        <div style={{
+          marginTop: 18, padding: '14px 18px', borderRadius: 10,
+          background: 'rgba(226,162,58,0.10)', border: '1px solid rgba(226,162,58,0.45)',
+          display: 'grid', gap: 10,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 18 }}>△</span>
+            <b>{pendingDrive.length} plongée{pendingDrive.length > 1 ? 's' : ''} sans dépôt Drive</b>
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>
+            {pendingDrive.length === 1 ? 'Une plongée a été' : `${pendingDrive.length} plongées ont été`} enregistrée{pendingDrive.length > 1 ? 's' : ''} hors ligne.
+            La fiche de sécurité PDF et le dépôt Google Drive peuvent maintenant
+            être produits.
+          </div>
+          {finalizeMsg && (
+            <div style={{ fontSize: 12, color: 'var(--ink-3)', fontFamily: 'var(--t-mono)' }}>
+              {finalizeMsg}
+            </div>
+          )}
+          <div>
+            <button className="btn primary" onClick={finalizeAll}
+              disabled={!online || finalizing}
+              title={!online ? 'Hors ligne — impossible pour le moment' : undefined}>
+              {finalizing ? '↻ Finalisation en cours…' : '↑ Finaliser sur Google Drive'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Liste des plongées archivées */}
       <div style={{ marginTop:28 }}>

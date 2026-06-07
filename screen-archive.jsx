@@ -358,6 +358,46 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
   const [status,     setStatus]     = useState('idle');
   const [driveLinks, setDriveLinks] = useState({ fiche:'', checklist:'' });
   const [error,      setError]      = useState('');
+  const [queuedClientUuid, setQueuedClientUuid] = useState(null);
+  // Détection online — utilisée pour ne pas tenter Drive/PDF hors ligne.
+  // Offline → on enqueue via api.archives.create (outbox) ; le PDF + Drive
+  // se feront depuis ScreenHome au retour de la connexion (PendingDriveBanner).
+  const online = window.useOnline ? window.useOnline() : true;
+
+  // Enqueue offline : enregistre l'archive localement (passe via offline-api
+  // qui pose un client_uuid et déclenche le sync). Le rendu PDF a besoin de
+  // pressions/realises/heuresDebut/heuresFin/checked/comments — on les passe
+  // dans _render pour rejouer le rendu plus tard.
+  const saveOffline = useCallback(async () => {
+    setError('');
+    try {
+      const diversById = {};
+      divers.forEach(d => { diversById[d.id] = d; });
+      const enrichedPals = palanquees.map(p => ({
+        ...p,
+        membres: (p.membres || []).map(m => {
+          const d = diversById[m.diverId] || {};
+          return { ...m, nom: d.nom || '?', prenom: d.prenom || '', licence: d.licence || '' };
+        })
+      }));
+      const res = await api.archives.create({
+        site_nom:     answers.site_nom || answers.site || '',
+        date_plongee: (answers.date || '').slice(0, 10),
+        dp_nom:       answers.dp_nom || '',
+        dp_qual:      answers.dp_qual || '',
+        activite:     answers.activite || '',
+        answers,
+        palanquees:   enrichedPals,
+        drive_link:   '',
+        _render: { pressions, realises, heuresDebut, heuresFin, checked, comments },
+      });
+      setQueuedClientUuid(res.client_uuid);
+      setStatus('queued');
+      if (onArchiveDone) onArchiveDone();
+    } catch (err) {
+      setError(err.message);
+    }
+  }, [answers, palanquees, divers, pressions, realises, heuresDebut, heuresFin, checked, comments, onArchiveDone]);
 
   // Nom de fichier : date-heure en premier pour tri naturel
   const buildFilename = (type = 'fiche-securite') => {
@@ -458,6 +498,49 @@ ${styles}
     return data;
   };
 
+  // Logique d'archivage une fois le token Drive obtenu (pré-stocké ou frais via GIS).
+  const proceedWithToken = async (token) => {
+    try {
+      setStatus('generating');
+      const fichePdf     = await generatePdfBlob('fiche');
+      const checklistPdf = await generatePdfBlob('checklist');
+
+      setStatus('uploading');
+      const folderId  = await getOrCreateFolder(token);
+      const ficheFile = await uploadFile(token, fichePdf,     buildFilename('fiche-securite'), folderId);
+      const clFile    = await uploadFile(token, checklistPdf, buildFilename('checklist'),      folderId);
+
+      setStatus('saving');
+      const diversById = {};
+      divers.forEach(d => { diversById[d.id] = d; });
+      const enrichedPals = palanquees.map(p => ({
+        ...p,
+        membres: (p.membres || []).map(m => {
+          const d = diversById[m.diverId] || {};
+          return { ...m, nom: d.nom || '?', prenom: d.prenom || '', licence: d.licence || '' };
+        })
+      }));
+
+      await api.archives.create({
+        site_nom:     answers.site_nom || answers.site || '',
+        date_plongee: (answers.date || '').slice(0, 10),
+        dp_nom:       answers.dp_nom || '',
+        dp_qual:      answers.dp_qual || '',
+        activite:     answers.activite || '',
+        answers,
+        palanquees:   enrichedPals,
+        drive_link:   ficheFile.webViewLink || '',
+      });
+
+      setDriveLinks({ fiche: ficheFile.webViewLink || '', checklist: clFile.webViewLink || '' });
+      setStatus('done');
+      if (onArchiveDone) onArchiveDone();
+    } catch (err) {
+      setError(err.message);
+      setStatus('error');
+    }
+  };
+
   const doArchive = () => {
     if (!window.google?.accounts?.oauth2) {
       setError('Google Identity Services non disponible — recharger la page.');
@@ -466,58 +549,49 @@ ${styles}
     }
     setStatus('requesting'); setError('');
 
+    // Token pré-obtenu sur l'écran d'accueil encore valide → on le réutilise
+    // directement, pas besoin de repasser par GIS.
+    const cached = window.dp_driveToken;
+    if (cached?.access_token && cached.expires_at > Date.now()) {
+      proceedWithToken(cached.access_token);
+      return;
+    }
+
+    // Sans geste utilisateur (auto-reprise après reconnexion), le navigateur
+    // peut bloquer silencieusement le popup GIS si le token n'est pas en cache.
+    // Ce timeout évite le hang infini : après 15 s sans réponse, on passe en
+    // erreur et le bouton réapparaît — le clic (geste user) débloque le popup.
+    const gisTimeout = setTimeout(() => {
+      setError('Autorisation Google Drive expirée — cliquez sur « Archiver » pour réessayer.');
+      setStatus('error');
+    }, 15000);
+
     const tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: window.GOOGLE_CLIENT_ID,
       scope: 'https://www.googleapis.com/auth/drive.file',
       callback: async (resp) => {
+        clearTimeout(gisTimeout);
         if (resp.error) { setError(resp.error); setStatus('error'); return; }
-        const token = resp.access_token;
-        try {
-          setStatus('generating');
-          const fichePdf     = await generatePdfBlob('fiche');
-          const checklistPdf = await generatePdfBlob('checklist');
-
-          setStatus('uploading');
-          const folderId      = await getOrCreateFolder(token);
-          const ficheFile     = await uploadFile(token, fichePdf,     buildFilename('fiche-securite'), folderId);
-          const clFile        = await uploadFile(token, checklistPdf,  buildFilename('checklist'),      folderId);
-
-          setStatus('saving');
-          const diversById = {};
-          divers.forEach(d => { diversById[d.id] = d; });
-          const enrichedPals = palanquees.map(p => ({
-            ...p,
-            membres: (p.membres || []).map(m => {
-              const d = diversById[m.diverId] || {};
-              return { ...m, nom: d.nom || '?', prenom: d.prenom || '', licence: d.licence || '' };
-            })
-          }));
-
-          await api.archives.create({
-            site_nom:     answers.site_nom || answers.site || '',
-            date_plongee: (answers.date || '').slice(0, 10),
-            dp_nom:       answers.dp_nom || '',
-            dp_qual:      answers.dp_qual || '',
-            activite:     answers.activite || '',
-            answers,
-            palanquees:   enrichedPals,
-            drive_link:   ficheFile.webViewLink || '',
-          });
-
-          setDriveLinks({ fiche: ficheFile.webViewLink || '', checklist: clFile.webViewLink || '' });
-          setStatus('done');
-          if (onArchiveDone) onArchiveDone();
-        } catch (err) {
-          setError(err.message);
-          setStatus('error');
-        }
+        proceedWithToken(resp.access_token);
       }
     });
     tokenClient.requestAccessToken({ prompt:'' });
   };
 
-  // Déclencher l'archivage automatiquement à l'arrivée sur l'écran
-  useEffect(() => { doArchive(); }, []);
+  // Déclencher l'archivage automatiquement à l'arrivée sur l'écran — sauf
+  // si on est hors ligne. Dans ce cas, on attend la reconnexion : un useEffect
+  // ci-dessous se charge de relancer dès que `online` repasse à true.
+  useEffect(() => {
+    if (online) doArchive();
+  }, []);
+
+  // Reprise automatique de l'archivage quand la connexion revient.
+  useEffect(() => {
+    if (online && (status === 'idle' || status === 'error')) {
+      doArchive();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [online]);
 
   const STATUS_MSGS = {
     requesting: '1/4 · Autorisation Google Drive…',
@@ -553,10 +627,52 @@ ${styles}
 
           {status === 'error' && <Alert tone="warn">Erreur : {error}</Alert>}
 
-          {status === 'idle' && (
+          {status === 'idle' && online && (
             <p style={{ margin:0, color:'var(--ink-3)', fontSize:14 }}>
               Autorisez l'accès à Google Drive pour générer les deux PDFs et les archiver dans <code>dp-fede</code>.
             </p>
+          )}
+
+          {!online && status === 'idle' && (
+            <div style={{
+              display:'grid', gap:10, padding:'14px 16px',
+              background:'rgba(224,120,86,0.08)', border:'1px solid rgba(224,120,86,0.35)',
+              borderRadius:8, fontSize:14, color:'var(--ink-2)',
+            }}>
+              <div style={{ fontWeight:600, color:'var(--coral, #e07856)' }}>
+                ● Hors ligne
+              </div>
+              <div>
+                Le dépôt sur Google Drive et la génération PDF nécessitent
+                internet. Vous pouvez <b>enregistrer la plongée en file d'attente</b>
+                — tout sera produit automatiquement à la reconnexion.
+              </div>
+              <div>
+                <button className="btn primary" onClick={saveOffline}>
+                  ✓ Enregistrer la plongée (Drive plus tard)
+                </button>
+              </div>
+            </div>
+          )}
+
+          {status === 'queued' && (
+            <div style={{
+              display:'grid', gap:10, padding:'14px 16px',
+              background:'rgba(45,134,83,0.06)', border:'1px solid rgba(45,134,83,0.3)',
+              borderRadius:8, fontSize:14, color:'var(--ink-2)',
+            }}>
+              <div style={{ fontWeight:600, color:'var(--kelp, #2d8653)' }}>
+                ✓ Plongée enregistrée localement
+              </div>
+              <div>
+                La fiche PDF et le dépôt Drive seront produits dès que la
+                connexion revient. Vous retrouverez cette plongée dans l'Historique
+                avec la mention <em>△ Drive en attente</em>.
+              </div>
+              <div style={{ display:'flex', gap:10 }}>
+                <button className="btn primary" onClick={onStartNew}>↩ Nouvelle plongée</button>
+              </div>
+            </div>
           )}
 
           {status === 'done' && plongeeFigee ? (
@@ -577,11 +693,22 @@ ${styles}
             </div>
           ) : (
             <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center' }}>
-              <button className="btn primary" onClick={doArchive} disabled={busy || status === 'done'}>
-                {status === 'done' ? '✓ Archivée' : '↑ Archiver sur Google Drive'}
+              <button className="btn primary"
+                onClick={online ? doArchive : () => window.print()}
+                disabled={busy || status === 'done'}
+                title={online ? undefined : 'Hors ligne — l\'archivage Drive démarrera à la reconnexion'}>
+                {!online ? '🖨 Imprimer (hors ligne)'
+                  : status === 'done' ? '✓ Archivée'
+                  : '↑ Archiver sur Google Drive'}
               </button>
-              <button className="btn" onClick={onPrintFiche}>⎙ Fiche de sécurité</button>
-              <button className="btn" onClick={onPrintChecklist}>⎙ Check-list</button>
+              <button className="btn" onClick={onPrintFiche} disabled={!online}
+                title={online ? undefined : 'Génération PDF serveur indisponible hors ligne'}>
+                ⎙ Fiche de sécurité
+              </button>
+              <button className="btn" onClick={onPrintChecklist} disabled={!online}
+                title={online ? undefined : 'Génération PDF serveur indisponible hors ligne'}>
+                ⎙ Check-list
+              </button>
               {status === 'done' && (
                 <button className="btn" style={{ fontSize:12 }}
                   onClick={() => { setStatus('idle'); setDriveLinks({ fiche:'', checklist:'' }); setError(''); }}>
@@ -627,4 +754,171 @@ ${styles}
   );
 }
 
-Object.assign(window, { ScreenArchive });
+// ---------------------------------------------------------------------------
+// finalizePendingDrive — pour les plongées enregistrées hors ligne dont le
+// PDF + Drive doivent être produits a posteriori. Appelé depuis ScreenHome
+// (banner « Finaliser sur Drive ») ou ScreenArchives.
+//
+// archive : entrée offlineStore.archives (synced=true, drive_synced=false)
+//   doit contenir : answers, palanquees, divers (enrichis), client_uuid,
+//   server_id, et _render = { pressions, realises, heuresDebut, heuresFin,
+//   checked, comments }
+// divers  : annuaire courant (pour résoudre les noms si non enrichis)
+// user    : utilisateur courant
+//
+// Rend les deux templates offscreen, appelle /api/pdf/fiche pour chacun,
+// upload Drive, PATCH server. Une erreur propage (caller affiche).
+// ---------------------------------------------------------------------------
+async function finalizePendingDrive(archive, divers, user, onProgress) {
+  if (!window.google?.accounts?.oauth2) {
+    throw new Error('Google Identity Services indisponible — recharger la page.');
+  }
+  if (!archive.server_id) {
+    throw new Error('Archive non encore synchronisée côté serveur — relancer plus tard.');
+  }
+  const r = archive._render || {};
+  const answers     = archive.answers     || {};
+  const palanquees  = archive.palanquees  || [];
+
+  // Rendu offscreen des deux templates dans un conteneur DOM temporaire.
+  // On utilise ReactDOM.createRoot pour rendre, puis on lit outerHTML.
+  const host = document.createElement('div');
+  host.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;pointer-events:none;z-index:-1';
+  document.body.appendChild(host);
+
+  const ficheEl     = document.createElement('div');
+  const checklistEl = document.createElement('div');
+  host.appendChild(ficheEl);
+  host.appendChild(checklistEl);
+
+  const root = ReactDOM.createRoot(host);
+  await new Promise(resolve => {
+    root.render(
+      React.createElement(React.Fragment, null,
+        React.createElement(FicheStatique, {
+          ficheRef: { current: ficheEl },
+          answers, palanquees, divers, user,
+          pressions:    r.pressions    || {},
+          realises:     r.realises     || {},
+          heuresDebut:  r.heuresDebut  || {},
+          heuresFin:    r.heuresFin    || {},
+        }),
+        React.createElement(ChecklistStatique, {
+          checklistRef: { current: checklistEl },
+          answers,
+          checked:  r.checked  || {},
+          comments: r.comments || {},
+          user,
+        }),
+      )
+    );
+    // Laisse React le temps de mounter le DOM avant de lire outerHTML.
+    setTimeout(resolve, 50);
+  });
+
+  try {
+    const styles = Array.from(document.querySelectorAll('link[rel=stylesheet]'))
+      .map(l => `<link rel="stylesheet" href="${l.href}">`).join('\n');
+    const buildHtml = (title, el) => `<!DOCTYPE html><html lang="fr"><head>
+<meta charset="utf-8"><title>${title}</title>${styles}
+<style>body{background:white;padding:0;margin:0}.fiche{box-shadow:none;max-width:100%}.no-print,.fiche-actions{display:none!important}</style>
+</head><body>${el.firstChild?.outerHTML || el.outerHTML}</body></html>`;
+
+    const buildFilename = (kind) => {
+      const dt   = answers.date || '';
+      const date = dt.slice(0, 10);
+      const time = dt.length >= 16 ? dt.slice(11, 16).replace(':', 'h') : '';
+      const site = (archive.site_nom || 'site').replace(/[^a-zA-Z0-9]/g, '-').slice(0, 30);
+      return `${date}${time ? '-' + time : ''}-${kind}-${site}.pdf`;
+    };
+
+    const csrf = (document.cookie.match(/(?:^|; )dp_csrf=([^;]+)/) || [])[1] || '';
+    async function genPdf(kind, html, filename) {
+      const res = await fetch('/api/pdf/fiche', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': decodeURIComponent(csrf) },
+        body: JSON.stringify({ html, filename }),
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`PDF ${kind} HTTP ${res.status} : ${t.slice(0, 200)}`);
+      }
+      return await res.blob();
+    }
+
+    if (onProgress) onProgress('generating');
+    const fichePdf     = await genPdf('fiche',
+      buildHtml('Fiche de sécurité', ficheEl),     buildFilename('fiche-securite'));
+    const checklistPdf = await genPdf('checklist',
+      buildHtml('Check-list',         checklistEl), buildFilename('checklist'));
+
+    if (onProgress) onProgress('requesting');
+    // Token pré-stocké depuis l'écran d'accueil encore valide → skip GIS.
+    const cachedTok = window.dp_driveToken;
+    const token = (cachedTok?.access_token && cachedTok.expires_at > Date.now())
+      ? cachedTok.access_token
+      : await new Promise((resolve, reject) => {
+          // Même garde timeout que dans doArchive : sans geste user, le popup GIS
+          // peut être bloqué silencieusement. 15 s → reject → caller affiche erreur.
+          const gisTimeout = setTimeout(
+            () => reject(new Error('Autorisation Google Drive expirée — réessayez depuis l\'Historique.')),
+            15000,
+          );
+          const tc = google.accounts.oauth2.initTokenClient({
+            client_id: window.GOOGLE_CLIENT_ID,
+            scope: 'https://www.googleapis.com/auth/drive.file',
+            callback: (resp) => {
+              clearTimeout(gisTimeout);
+              resp.error ? reject(new Error(resp.error)) : resolve(resp.access_token);
+            },
+          });
+          tc.requestAccessToken({ prompt: '' });
+        });
+
+    if (onProgress) onProgress('uploading');
+    async function getFolder() {
+      const q = encodeURIComponent("name='dp-fede' and mimeType='application/vnd.google-apps.folder' and trashed=false");
+      const r1 = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (r1.ok) {
+        const d = await r1.json();
+        if (d.files?.length) return d.files[0].id;
+      }
+      const r2 = await fetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'dp-fede', mimeType: 'application/vnd.google-apps.folder' }),
+      });
+      const f = await r2.json();
+      if (!f.id) throw new Error('Création dossier dp-fede impossible');
+      return f.id;
+    }
+    async function up(blob, filename, folderId) {
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify({ name: filename, parents: [folderId] })], { type: 'application/json' }));
+      form.append('file', blob, filename);
+      const r1 = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form,
+      });
+      const d = await r1.json();
+      if (!d.id) throw new Error('Upload Drive échoué : ' + JSON.stringify(d).slice(0, 200));
+      return d;
+    }
+    const folderId  = await getFolder();
+    const ficheFile = await up(fichePdf,     buildFilename('fiche-securite'), folderId);
+    await up(checklistPdf, buildFilename('checklist'), folderId);
+
+    if (onProgress) onProgress('saving');
+    await window.api.archives.markDriveDone(archive.client_uuid, ficheFile.webViewLink || '');
+    return ficheFile.webViewLink || '';
+  } finally {
+    root.unmount();
+    host.remove();
+  }
+}
+
+Object.assign(window, {
+  ScreenArchive, FicheStatique, ChecklistStatique,
+  finalizePendingDrive,
+});

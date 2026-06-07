@@ -242,7 +242,7 @@ function ScreenHome({ onNew, onResume, hasDraft, plongeeFigee, onClone }) {
                     <b style={{ color:'var(--ink-2)' }}>{fmtArchiveDate(row.date_plongee)}</b>
                     {' · DP : '}{row.dp_nom || '—'}{' ('}{row.dp_qual || '—'}{')'}{' · '}{row.activite || '—'}
                     {row.nb_palanquees > 0 && (
-                      <>{' · '}{row.nb_palanquees} pal. · {row.nb_plongeurs} plongeur{row.nb_plongeurs > 1 ? 's' : ''}</>
+                      <>{' · '}{row.nb_palanquees} palanquée{row.nb_palanquees > 1 ? 's' : ''} · {row.nb_plongeurs} plongeur{row.nb_plongeurs > 1 ? 's' : ''}</>
                     )}
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 // DP Assistant — Fiche de sécurité (Art. A322-72)
 
 const PRESSION_SORTIE_OPTIONS = [
-  'panne d\'air','20','30','40','50','60','70','80','90','100','100+',
+  'panne d\'air','20','30','40','50','60','70','80','90','100+',
 ];
 
 function ScreenFiche({ answers, palanquees, divers, setAnswer, pressions, setPressions, realises, setRealises, heuresDebut, setHeuresDebut, heuresFin, setHeuresFin }) {

@@ -51,15 +51,25 @@ class Db {
         }
 
         // Migration 006 — archives.date_plongee VARCHAR(50) → DATETIME
-        // Détectée par l'absence de la colonne backup date_plongee_legacy
+        // Complète : date_plongee = DATETIME, date_plongee_legacy = VARCHAR backup.
+        // Gère l'état partiel si date_plongee_dt existe déjà mais date_plongee_legacy non.
         $hasLegacy = $pdo->query("SHOW COLUMNS FROM archives LIKE 'date_plongee_legacy'")->fetchColumn();
         if (!$hasLegacy) {
-            $colType = $pdo->query("SHOW COLUMNS FROM archives LIKE 'date_plongee'")->fetch();
-            if ($colType && stripos($colType['Type'] ?? '', 'varchar') !== false) {
-                $sql = file_get_contents(__DIR__ . '/../migrations/006_archives_datetime.sql');
-                foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
-                    $pdo->exec($stmt);
+            $hasDt = $pdo->query("SHOW COLUMNS FROM archives LIKE 'date_plongee_dt'")->fetchColumn();
+            if (!$hasDt) {
+                $colType = $pdo->query("SHOW COLUMNS FROM archives LIKE 'date_plongee'")->fetch();
+                if ($colType && stripos($colType['Type'] ?? '', 'varchar') !== false) {
+                    $pdo->exec("ALTER TABLE archives ADD COLUMN date_plongee_dt DATETIME NULL AFTER date_plongee");
+                    $hasDt = true;
                 }
+            }
+            if ($hasDt) {
+                $pdo->exec("UPDATE archives SET date_plongee_dt = COALESCE(STR_TO_DATE(REPLACE(date_plongee, 'T', ' '), '%Y-%m-%d %H:%i'), STR_TO_DATE(date_plongee, '%Y-%m-%d')) WHERE date_plongee IS NOT NULL AND date_plongee <> '' AND date_plongee_dt IS NULL");
+                $pdo->exec("ALTER TABLE archives CHANGE COLUMN date_plongee date_plongee_legacy VARCHAR(50)");
+                $pdo->exec("ALTER TABLE archives CHANGE COLUMN date_plongee_dt date_plongee DATETIME NULL");
+                try {
+                    $pdo->exec("CREATE INDEX idx_archives_user_date ON archives (user_id, date_plongee DESC)");
+                } catch (\PDOException $e) { /* index déjà existant */ }
             }
         }
     }

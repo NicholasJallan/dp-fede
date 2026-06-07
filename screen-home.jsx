@@ -90,6 +90,20 @@ function DiveCardInProgress({ dive, onResume, onEdit }) {
   );
 }
 
+function SectionHead({ icon, iconColor, label, count, unit }) {
+  return (
+    <div className="section-head">
+      <h2>
+        <span className="section-head-icon" style={{ color: iconColor }}>{icon}</span>
+        <span style={{ color: iconColor || 'inherit' }}>{label}</span>
+      </h2>
+      {count != null && count > 0 && (
+        <span className="section-head-count">{count} {unit}{count > 1 ? 's' : ''}</span>
+      )}
+    </div>
+  );
+}
+
 function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone }) {
   const [dives,     setDives]     = useState(null);
   const [cloningId, setCloningId] = useState(null);
@@ -292,15 +306,9 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
 
       {/* ── Plongées en cours ──────────────────────────────────────────── */}
       {inProgress.length > 0 && (
-        <div style={{ marginTop:28 }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-            <h2 style={{ margin:0, fontSize:16, fontWeight:600, color:'var(--kelp,#2d8653)' }}>
-              ● Plongées en cours
-            </h2>
-            <span style={{ fontFamily:'var(--t-mono)', fontSize:11, color:'var(--ink-3)' }}>
-              {inProgress.length} fiche{inProgress.length > 1 ? 's' : ''}
-            </span>
-          </div>
+        <div style={{ marginTop:24 }}>
+          <SectionHead icon="▶" iconColor="var(--kelp,#2d8653)"
+            label="Plongées en cours" count={inProgress.length} unit="fiche" />
           <div className="card">
             <div className="card-body" style={{ padding:0 }}>
               {inProgress.map(d => (
@@ -315,13 +323,9 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
 
       {/* ── Plongées préparées ─────────────────────────────────────────── */}
       {prepared.length > 0 && (
-        <div style={{ marginTop:inProgress.length > 0 ? 20 : 28 }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-            <h2 style={{ margin:0, fontSize:16, fontWeight:600 }}>Plongées préparées</h2>
-            <span style={{ fontFamily:'var(--t-mono)', fontSize:11, color:'var(--ink-3)' }}>
-              {prepared.length} plongée{prepared.length > 1 ? 's' : ''}
-            </span>
-          </div>
+        <div style={{ marginTop:24 }}>
+          <SectionHead icon="✎" iconColor="var(--marine,#0a4a6e)"
+            label="Plongées préparées" count={prepared.length} unit="plongée" />
           <div className="card">
             <div className="card-body" style={{ padding:0 }}>
               {prepared.map(d => (
@@ -335,27 +339,10 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
         </div>
       )}
 
-      {/* ── Séparateur ────────────────────────────────────────────────── */}
-      {hasPending && archived.length > 0 && (
-        <div style={{ margin:'28px 0 20px', display:'flex', alignItems:'center', gap:12, color:'var(--ink-4)', fontSize:12 }}>
-          <div style={{ flex:1, height:1, background:'var(--line)' }} />
-          <span>Plongées archivées</span>
-          <div style={{ flex:1, height:1, background:'var(--line)' }} />
-        </div>
-      )}
-
       {/* ── Plongées archivées ─────────────────────────────────────────── */}
-      <div style={{ marginTop: hasPending ? 0 : 28 }}>
-        {!hasPending && (
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-            <h2 style={{ margin:0, fontSize:16, fontWeight:600 }}>Plongées archivées</h2>
-            {archived.length > 0 && (
-              <span style={{ fontFamily:'var(--t-mono)', fontSize:11, color:'var(--ink-3)' }}>
-                {archived.length} fiche{archived.length > 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-        )}
+      <div style={{ marginTop:24 }}>
+        <SectionHead icon="✓" iconColor="var(--ink-3)"
+          label="Plongées archivées" count={archived.length} unit="fiche" />
 
         {cloneErr && (
           <div style={{ marginBottom:10, padding:'8px 12px', background:'var(--coral-bg,#fff0f0)',

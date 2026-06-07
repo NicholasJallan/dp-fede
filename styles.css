@@ -1148,6 +1148,34 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   color: var(--ink-4);
 }
 
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.section-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.section-head-icon {
+  font-size: 13px;
+  line-height: 1;
+  display: inline-block;
+  width: 20px;
+  text-align: center;
+}
+.section-head-count {
+  font-family: var(--t-mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  letter-spacing: 0.04em;
+}
+
 .recent-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

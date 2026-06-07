@@ -19,6 +19,7 @@ Profilage de la plongée, check-list conditionnelle, composition des palanquées
 - [Flux de plongée](#flux-de-plongée)
 - [Déploiement](#déploiement)
 - **[Règles métier détaillées → RULES.md](RULES.md)**
+- **[Tests métier → TESTING.md](TESTING.md)**
 
 ---
 
@@ -125,12 +126,25 @@ sequenceDiagram
 ├── DP Assistant.html       ← Point d'entrée unique — charge tous les scripts
 ├── api.js                  ← Wrapper fetch (CSRF header, JSON, erreurs)
 ├── auth-context.jsx        ← Context React — Google OAuth, session, logout
+├── toast.jsx               ← Toast notifications (remplace alert())
 ├── app.jsx                 ← Shell principal, state global, routing par écran
 ├── components.jsx          ← Composants partagés (Pill, CdsLink, etc.)
 ├── data.js                 ← Référentiels métier (niveaux, aptitudes, check-list…)
 ├── diver-form.jsx          ← Formulaire ajout/édition plongeur
 ├── styles.css              ← Design system complet (custom properties, layout)
 ├── logo-ffessm.png         ← Logo FFESSM (58×51 px)
+│
+├── lib/                    ← Logique métier pure (testable, sans React)
+│   ├── pal-rules.js        ← validatePal + helpers (peLevel, paLevel, getMaxEnsLevel)
+│   └── depth-clamp.js      ← computePalHardLimit, clampProfMax
+│
+├── tests/                  ← Tests métier (node --test, voir TESTING.md)
+│   ├── setup.js            ← Charge data.js + lib/* dans un faux `window`
+│   ├── helpers/builders.js ← makeDiver, makePal, PRESET.n1()…
+│   ├── pal-rules.test.js   ← Couverture validatePal
+│   ├── dp-rules.test.js    ← Couverture getDpMaxDepth, getAvailableMelanges
+│   ├── aptitudes.test.js   ← Couverture getDiverAptitudes, getMilieuType…
+│   └── depth-clamp.test.js ← Couverture plafonds de profondeur
 │
 ├── screen-home.jsx         ← Accueil — historique archives + clone plongée
 ├── screen-login.jsx        ← Mire de connexion Google

@@ -6,6 +6,7 @@ const PRESSION_SORTIE_OPTIONS = [
 
 function ScreenFiche({ answers, palanquees, divers, setAnswer, pressions, setPressions, realises, setRealises, heuresDebut, setHeuresDebut, heuresFin, setHeuresFin }) {
   const { user } = useAuth();
+  const { showToast } = useToasts();
   const diversById = useMemo(() => {
     const m = {};
     divers.forEach(d => m[d.id] = d);
@@ -129,7 +130,11 @@ ${styles}
       });
       if (!res.ok) {
         const t = await res.text();
-        alert('Erreur génération PDF serveur (HTTP ' + res.status + ') : ' + t.slice(0, 300) + '\n\nFallback : impression navigateur.');
+        showToast({
+          tone: 'err',
+          title: `PDF serveur — HTTP ${res.status}`,
+          body: `${t.slice(0, 300)}\n\nBascule sur l'impression navigateur.`,
+        });
         window.print();
         return;
       }
@@ -139,7 +144,11 @@ ${styles}
       a.download = `fiche-securite-${(answers.date || '').slice(0, 10)}.pdf`;
       a.click();
     } catch (err) {
-      alert('Erreur PDF : ' + (err?.message || err) + '\n\nFallback : impression navigateur.');
+      showToast({
+        tone: 'err',
+        title: 'Erreur PDF',
+        body: `${err?.message || err}\n\nBascule sur l'impression navigateur.`,
+      });
       window.print();
     }
   };

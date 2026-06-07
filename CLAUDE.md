@@ -82,6 +82,11 @@ dp-fede. Sans ça, le navigateur émet « Failed to fetch » silencieusement.
 - `https://oauth2.googleapis.com`, `https://accounts.google.com`
   (token endpoints — OAuth Drive scope)
 
+## Tests métier
+
+Lancer : `npm test` (utilise `node --test`, Node 20+ requis, zéro dépendance NPM).
+Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : 120 tests.
+
 ## Données métier
 
 Tout est dans `data.js` (aucun build requis) :
@@ -113,3 +118,7 @@ Tout est dans `data.js` (aucun build requis) :
 - `buildQualifs()` dans `backend/routes/divers.php` : utiliser `$recs` (variable locale filtrée) et NON `compact('recycleurs')` qui capturerait le paramètre de fonction (liste complète).
 - `DIPLOMES_PRO` = `['BEES1','DEJEPS','DESJEPS','Autre']` — MF1/MF2 sont des brevets fédéraux, pas des diplômes professionnels d'État.
 - `getMilieuType()` est case-insensitive (`.toLowerCase()`) pour gérer les valeurs sites ('Lac', 'Carrière') et les anciennes valeurs questions.
+- `validatePal` vit dans `lib/pal-rules.js` (extrait de `screen-palanquees.jsx`). Toute modification doit être accompagnée d'un test dans `tests/pal-rules.test.js`.
+- Plafond de profondeur d'une palanquée : `window.computePalHardLimit({...})` (UN seul endroit). Les 4 anciennes duplications ont été supprimées.
+- Super-administrateur : email unique `nicholas.jallan@gmail.com` (constante `SUPER_ADMIN_EMAIL` côté front + `Auth::SUPER_ADMIN_EMAIL` côté back). Le rôle DB `admin` ne donne PAS accès aux endpoints `/api/users/*` — `Auth::requireSuperAdmin()` est requis.
+- `archives.date_plongee` est désormais un `DATETIME` (migration 006). Le front envoie/reçoit du `YYYY-MM-DDTHH:mm` ; la conversion est dans `backend/routes/archives.php::parseDiveDateToMySql/normalizeDiveDate`.

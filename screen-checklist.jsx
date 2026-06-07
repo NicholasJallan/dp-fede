@@ -57,7 +57,8 @@ function ScreenChecklist({ answers, setAnswer, checked, setChecked, comments, se
             style={answers.rappel_impossible ? { opacity:0.4 } : undefined}
             onChange={e => {
               setAnswer('moyen_rappel', e.target.value);
-              try { localStorage.setItem('dp-rappel-moyen', e.target.value); } catch {}
+              try { localStorage.setItem('dp-rappel-moyen', e.target.value); }
+              catch (err) { console.warn('[DP] persist moyen_rappel :', err?.message || err); }
             }}
           />
           <label style={{ display:'flex', alignItems:'center', gap:8, marginTop:10, fontSize:13, cursor:'pointer' }}>

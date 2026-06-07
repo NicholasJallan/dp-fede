@@ -1,0 +1,14 @@
+{
+  "name": "dp-assistant",
+  "version": "1.0.0",
+  "description": "Outil d'aide au Directeur de Plongée (FFESSM / Code du Sport)",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test --test-reporter=spec 'tests/**/*.test.js'",
+    "test:watch": "node --test --watch 'tests/**/*.test.js'"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

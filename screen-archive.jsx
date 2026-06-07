@@ -352,6 +352,7 @@ function ChecklistStatique({ checklistRef, answers, checked, comments, user }) {
 // Écran d'archivage principal
 // ---------------------------------------------------------------------------
 function ScreenArchive({ answers, palanquees, divers, user, pressions, realises, heuresDebut, heuresFin, checked, comments, plongeeFigee, onStartNew, onArchiveDone }) {
+  const { showToast } = useToasts();
   const ficheRef     = useRef(null);
   const checklistRef = useRef(null);
   const [status,     setStatus]     = useState('idle');
@@ -395,7 +396,10 @@ ${styles}
     if (!res.ok) {
       const t = await res.text();
       let detail = t.slice(0, 300);
-      try { const j = JSON.parse(t); if (j?.error) detail = j.error; } catch {}
+      // Best-effort : parser le body en JSON pour extraire {error}. Si ce n'est
+      // pas du JSON, on garde le slice texte ci-dessus comme détail.
+      try { const j = JSON.parse(t); if (j?.error) detail = j.error; }
+      catch { /* fallback texte déjà défini */ }
       throw new Error(`PDF ${type} — HTTP ${res.status} : ${detail}`);
     }
     return await res.blob();
@@ -405,14 +409,18 @@ ${styles}
     try {
       const blob = await generatePdfBlob('fiche');
       window.open(URL.createObjectURL(blob), '_blank');
-    } catch (err) { alert('Erreur PDF fiche : ' + err.message); }
+    } catch (err) {
+      showToast({ tone:'err', title:'PDF fiche — échec', body: err.message });
+    }
   };
 
   const onPrintChecklist = async () => {
     try {
       const blob = await generatePdfBlob('checklist');
       window.open(URL.createObjectURL(blob), '_blank');
-    } catch (err) { alert('Erreur PDF check-list : ' + err.message); }
+    } catch (err) {
+      showToast({ tone:'err', title:'PDF check-list — échec', body: err.message });
+    }
   };
 
   const getOrCreateFolder = async (token) => {

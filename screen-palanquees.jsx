@@ -1,4 +1,9 @@
 // DP Assistant — Plongeurs & Palanquées (v3 — règles FFESSM / CdS complètes)
+//
+// La logique métier (validatePal, peLevel, paLevel, getMaxEnsLevel) est dans
+// lib/pal-rules.js. Le calcul partagé de plafond profondeur est dans
+// lib/depth-clamp.js. Ce fichier ne contient plus que la UI + les callbacks
+// CRUD.
 
 const PAL_COLORS = {
   exploration: 'pal-explo',
@@ -7,9 +12,12 @@ const PAL_COLORS = {
   bapteme:     'pal-bapteme',
 };
 
+// Helpers délégués à lib/pal-rules.js (chargé avant data.js)
+const { getMaxEnsLevel, validatePal } = window;
+
 // ── AptitudeSelect ────────────────────────────────────────────────────────
-function AptitudeSelect({ diver, value, isExploration, onChange }) {
-  const available = window.getDiverAptitudes(diver, isExploration);
+function AptitudeSelect({ diver, value, isExploration, palContext, onChange }) {
+  const available = window.getDiverAptitudes(diver, isExploration, palContext);
   if (available.length === 0) return <span className="muted">—</span>;
   if (available.length === 1 && !value) {
     setTimeout(() => onChange(available[0]), 0);
@@ -22,325 +30,18 @@ function AptitudeSelect({ diver, value, isExploration, onChange }) {
   );
 }
 
-// ── Helpers — niveau effectif & limites profondeur ────────────────────────
-// PE valeur numérique (20, 40, 60) ou null
-function peLevel(apt) {
-  const m = /^PE(\d+)$/.exec(apt || '');
-  return m ? parseInt(m[1], 10) : null;
-}
-function paLevel(apt) {
-  const m = /^PA(\d+)$/.exec(apt || '');
-  return m ? parseInt(m[1], 10) : null;
-}
-
-// ── Validation complète d'une palanquée ───────────────────────────────────
-// Règles compilées depuis MFT FFESSM + Code du Sport (Art. A322-72→97).
-function validatePal(pal, diversById, answers, dp) {
-  const issues = [];
-  const membres = pal.membres
-    .map(m => ({ ...m, diver: m._bapteme ? m : diversById[m.diverId] }))
-    .filter(m => m.diver || m._bapteme);
-
-  // ─── Règle universelle : taille ─────────────────────────────────────
-  if (membres.length === 0) {
-    issues.push({ tone:'warn', text:'Palanquée vide.' });
-    return issues;
-  }
-  if (membres.length === 1) {
-    issues.push({ tone:'err', text:'Palanquée de 1 personne interdite (toujours par binôme minimum).' });
-  }
-  if (membres.length > 6) {
-    issues.push({ tone:'err', text:'Max 6 personnes par palanquée.' });
-  }
-
-  const apts    = membres.map(m => m.aptitude || '');
-  const milieu  = window.getMilieuType(answers.milieu);
-  const profMax = pal.profMax || 0;
-
-  // ─── Aptitudes manquantes ────────────────────────────────────────────
-  const sans = membres.filter(m => !m.aptitude);
-  if (sans.length > 0) {
-    issues.push({ tone:'warn', text:`${sans.length} membre(s) sans aptitude.` });
-  }
-
-  // ─── Catégorisation ──────────────────────────────────────────────────
-  const gpMembers   = membres.filter(m => m.aptitude === 'GP');
-  const ensMembers  = membres.filter(m => ['E1','E2','E3','E4'].includes(m.aptitude));
-  const peMembers   = membres.filter(m => peLevel(m.aptitude) !== null);
-  const paMembers   = membres.filter(m => paLevel(m.aptitude) !== null);
-  const baptMembers = membres.filter(m => m.aptitude === 'Baptême');
-
-  // ─── Profondeur max par aptitude ─────────────────────────────────────
-  membres.forEach(m => {
-    if (!m.aptitude) return;
-    const limit = window.aptitudeMaxDepth(m.aptitude);
-    if (profMax > limit) {
-      issues.push({ tone:'err',
-        text:`${m.aptitude} de ${m._bapteme ? m.prenom : (m.diver && diverFullName(m.diver))} limité à ${limit}m (palanquée à ${profMax}m).` });
-    }
+// Calcul partagé du plafond effectif d'une palanquée. Wrapper de
+// window.computePalHardLimit qui injecte automatiquement les dépendances
+// depuis data.js (aptitudeMaxDepth, getPalType, getDpMaxDepth).
+function hardLimitFor(membres, sessionMax, dp) {
+  return window.computePalHardLimit({
+    membres, dp, sessionMax,
+    aptitudeMaxDepth: window.aptitudeMaxDepth,
+    getPalType:       window.getPalType,
+    getDpMaxDepth:    window.getDpMaxDepth,
   });
-
-  // ─── Règles GP (guide de palanquée) ──────────────────────────────────
-  if (gpMembers.length > 0) {
-    // Tous les non-GP doivent être PE20/PE40 (jamais PE60, jamais PA, jamais Enseignant)
-    const otherApts = apts.filter(a => a !== 'GP');
-    const invalid = otherApts.filter(a => {
-      const pe = peLevel(a);
-      return pe === null || pe > 40;
-    });
-    if (invalid.length > 0) {
-      issues.push({ tone:'err',
-        text:'GP : seuls PE20/PE40 sont autorisés pour les encadrés. Pas de PE60, pas de PA, pas d\'enseignant.' });
-    }
-    // Pas de panachage PE20/PE40
-    const peLevels = [...new Set(peMembers.map(m => peLevel(m.aptitude)))];
-    if (peLevels.length > 1) {
-      issues.push({ tone:'err', text:'GP : tous les encadrés doivent avoir la même prérogative (PE20 ou PE40, pas un mélange).' });
-    }
-    // Profondeur max selon PE le plus élevé
-    const maxPE = Math.max(...peMembers.map(m => peLevel(m.aptitude) || 0), 0);
-    if (maxPE && profMax > maxPE) {
-      issues.push({ tone:'err', text:`GP avec PE${maxPE} : profondeur max ${maxPE}m.` });
-    }
-    // 6e personne = serre-file (doit être GP, ou E3/E4)
-    if (membres.length === 6) {
-      const lastApt = membres[membres.length - 1].aptitude;
-      if (!['GP','E3','E4'].includes(lastApt)) {
-        issues.push({ tone:'err', text:'Serre-file (6e) doit être GP, E3 ou E4.' });
-      }
-      if (gpMembers.length + ensMembers.filter(m => ['E3','E4'].includes(m.aptitude)).length < 2) {
-        issues.push({ tone:'err', text:'Palanquée à 6 : 2 encadrants minimum (GP + serre-file).' });
-      }
-    }
-    // Pas plus de 4 encadrés par GP
-    if (peMembers.length > 4) {
-      issues.push({ tone:'err', text:`GP : max 4 encadrés (${peMembers.length} actuellement).` });
-    }
-  }
-
-  // ─── Règles encadrants E1/E2/E3/E4 (formation) ───────────────────────
-  if (ensMembers.length > 0) {
-    // Taille max formation : 5 personnes (encadrant inclus)
-    if (membres.length > 5) {
-      issues.push({ tone:'err', text:`Palanquée formation : max 5 personnes (${membres.length} actuellement).` });
-    }
-    if (ensMembers.length > 1) {
-      // Plusieurs encadrants = formation d'encadrants — tolérée si tous E3 ou E4
-      const nonE3E4 = ensMembers.filter(m => !['E3','E4'].includes(m.aptitude));
-      if (nonE3E4.length > 0 && peMembers.length === 0) {
-        // c'est ok si formation de moniteurs
-      }
-    }
-
-    // Pas de PA dans une palanquée formation
-    if (paMembers.length > 0) {
-      issues.push({ tone:'err', text:'Palanquée formation : aptitudes PA non autorisées (utiliser PE).' });
-    }
-
-    // Pas de panachage de prérogatives PE
-    const peLevels = [...new Set(peMembers.map(m => peLevel(m.aptitude)))];
-    if (peLevels.length > 1) {
-      issues.push({ tone:'err', text:'Formation : pas de panachage PE20/PE40/PE60 dans une même palanquée.' });
-    }
-
-    // E1 : baptême uniquement, piscine ≤ 6m
-    if (apts.includes('E1')) {
-      if (milieu !== 'piscine') issues.push({ tone:'err', text:'E1 : formation/baptême uniquement en piscine.' });
-      if (profMax > 6)          issues.push({ tone:'err', text:'E1 : profondeur max 6 m.' });
-      if (baptMembers.length > 2) issues.push({ tone:'err', text:'E1 : max 2 baptisés à la fois.' });
-    }
-
-    // E2 : piscine/fosse ≤ 20m
-    if (apts.includes('E2')) {
-      if (!['fosse','piscine'].includes(milieu)) issues.push({ tone:'err', text:'E2 : enseignement limité piscine ou fosse.' });
-      if (profMax > 20) issues.push({ tone:'err', text:'E2 : profondeur max 20 m.' });
-    }
-
-    // E3 : tous environnements, formation max 40m
-    if (apts.includes('E3') && !apts.some(a => a === 'E4')) {
-      if (profMax > 40) issues.push({ tone:'err', text:'E3 (formation) : profondeur max 40 m. Pour PE60, un E4 est requis.' });
-      if (apts.includes('PE60')) issues.push({ tone:'err', text:'E3 : ne peut pas encadrer un PE60. Seul un E4 le peut.' });
-    }
-
-    // E4 : tous environnements, formation max 60m
-    if (apts.includes('E4')) {
-      if (profMax > 60) issues.push({ tone:'err', text:'E4 (formation) : profondeur max 60 m (sauf PTH).' });
-    }
-
-  }
-
-  // ─── Limite de profondeur du DP (tous types de palanquée) ────────────
-  // CdS A322-86 + extensions Trimix (PTH-120, E3/E4 uniquement).
-  const palTypeForDp = window.getPalType(pal.membres);
-  const dpMaxDepth   = window.getDpMaxDepth(palTypeForDp, dp);
-  if (dpMaxDepth > 0 && profMax > dpMaxDepth) {
-    const ctxLabel = (palTypeForDp === 'formation' || palTypeForDp === 'bapteme')
-      ? 'formation' : 'exploration';
-    issues.push({ tone:'err',
-      text:`DP ${answers.dp_qual} : ${ctxLabel} max ${dpMaxDepth} m (palanquée à ${profMax} m).` });
-  } else if (dpMaxDepth === 0) {
-    issues.push({ tone:'err',
-      text:`DP ${answers.dp_qual} ne peut pas diriger une palanquée de type ${palTypeForDp}.` });
-  }
-
-  // ─── PE sans encadrement : interdit ──────────────────────────────────
-  // Un Plongeur Encadré (PE) ne peut, par définition, plonger qu'avec un
-  // Guide de palanquée (GP) ou un Enseignant (E1→E4). On couvre ici les
-  // deux cas (palanquée 100 % PE, ou panachage PE + PA sans encadrement).
-  if (peMembers.length > 0 && gpMembers.length === 0 && ensMembers.length === 0) {
-    if (paMembers.length > 0) {
-      issues.push({ tone:'err',
-        text:'Panachage PE + PA sans encadrement : une palanquée est soit encadrée (GP ou Enseignant), soit 100 % autonome.' });
-    } else {
-      issues.push({ tone:'err',
-        text:'Plongeurs encadrés (PE) sans encadrement : un GP ou un Enseignant (E1→E4) est obligatoire.' });
-    }
-  }
-
-  // ─── Règles PA — autonomes ────────────────────────────────────────────
-  if (paMembers.length > 0 && gpMembers.length === 0 && ensMembers.length === 0) {
-    if (paMembers.length > 3) {
-      issues.push({ tone:'err', text:`Palanquée PA : max 3 plongeurs autonomes (${paMembers.length} actuellement).` });
-    }
-    const paLevels = [...new Set(paMembers.map(m => paLevel(m.aptitude)))];
-    if (paLevels.length > 1) {
-      issues.push({ tone:'err', text:'Palanquée PA : pas de panachage des prérogatives PA12/PA20/PA40.' });
-    }
-    if (baptMembers.length > 0) {
-      issues.push({ tone:'err', text:'Baptême : un encadrant E1→E4 est obligatoire.' });
-    }
-  }
-
-  // ─── Règles Baptême ──────────────────────────────────────────────────
-  if (baptMembers.length > 0) {
-    const enc = membres.filter(m => ['E1','E2','E3','E4'].includes(m.aptitude));
-    if (enc.length === 0) {
-      issues.push({ tone:'err', text:'Baptême : un encadrant E1→E4 est obligatoire.' });
-    } else {
-      // E1/E2 ne peuvent faire un baptême qu'en piscine
-      const hasE1E2 = enc.some(m => ['E1','E2'].includes(m.aptitude));
-      const hasE3E4 = enc.some(m => ['E3','E4'].includes(m.aptitude));
-      if (hasE1E2 && !hasE3E4 && ['mer','lac'].includes(milieu)) {
-        issues.push({ tone:'err', text:'Baptême en milieu naturel (mer/lac) : encadrant E3 ou E4 requis.' });
-      }
-    }
-    if (profMax > 6) issues.push({ tone:'err', text:'Baptême : profondeur max 6 m.' });
-  }
-
-  // ─── Licenciés débutants (sans niveau) ───────────────────────────────
-  // Un licencié sans brevet (ni niveau plongeur, ni niveau encadrant) doit :
-  //  - être en Baptême ou PE20 (aucune autre aptitude possible)
-  //  - être dans une palanquée FORMATION (présence d'un enseignant E1→E4).
-  const debutants = membres.filter(m =>
-    !m._bapteme && m.diver
-    && !m.diver.niveau_plongeur && !m.diver.niveau_encadrant);
-  if (debutants.length > 0) {
-    if (ensMembers.length === 0) {
-      issues.push({ tone:'err',
-        text:`Licencié débutant : un enseignant E1→E4 est obligatoire (plongée de formation).` });
-    }
-    debutants.forEach(m => {
-      if (m.aptitude && !['Baptême','PE20'].includes(m.aptitude)) {
-        issues.push({ tone:'err',
-          text:`Débutant ${diverFullName(m.diver)} : aptitude limitée à Baptême ou PE20.` });
-      }
-    });
-  }
-
-  // ─── Certificats médicaux ────────────────────────────────────────────
-  const eventDate = answers.date ? new Date(answers.date) : new Date();
-  membres.forEach(m => {
-    if (m._bapteme) return;
-    if (m.diver?.medical) {
-      const expiryDate = new Date(m.diver.medical);
-      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-      if (expiryDate < eventDate) {
-        issues.push({ tone:'err',
-          text:`Certificat médical de ${diverFullName(m.diver)} expiré (émis le ${m.diver.medical}, valable jusqu'au ${expiryDate.toLocaleDateString('fr-FR')}).` });
-      }
-    }
-  });
-
-  // ─── Mélanges respiratoires ──────────────────────────────────────────
-  const mlx = pal.melanges || [];
-  if (mlx.length === 0) {
-    issues.push({ tone:'warn', text:'Aucun mélange respiratoire sélectionné pour cette palanquée.' });
-  }
-
-  // Cohérence mélange ↔ qualifications du DP
-  const dpNitrox = dp?.nitrox || [];
-  const dpTrimix = dp?.trimix || [];
-  const dpNe     = dp?.niveau_encadrant || '';
-  const dpHasPNC    = dpNitrox.includes('PN-C');
-  const dpHasPTH120 = dpTrimix.includes('PTH-120');
-  if ((mlx.includes('Nx ≤ 40%') || mlx.includes('Nx > 40%')) && !dpHasPNC) {
-    issues.push({ tone:'err', text:'Mélange Nitrox sélectionné : le DP doit être PN-C.' });
-  }
-  if (mlx.includes('Tx')) {
-    if (!dpHasPTH120) {
-      issues.push({ tone:'err', text:'Mélange Trimix sélectionné : le DP doit être PTH-120.' });
-    }
-    if (!['E3','E4'].includes(dpNe)) {
-      issues.push({ tone:'err', text:'Mélange Trimix sélectionné : le DP doit être E3 ou E4 (E1/E2 interdits).' });
-    }
-    // Trimix interdit pour N1, N2, débutants et baptêmes (même en formation vers N3).
-    const trimixForbidden = membres.filter(m => {
-      if (m._bapteme) return true;
-      if (!m.diver)  return false;
-      const np = m.diver.niveau_plongeur;
-      const ne = m.diver.niveau_encadrant;
-      // OK = encadrant OU plongeur niveau N3
-      return !ne && np !== 'N3';
-    });
-    if (trimixForbidden.length > 0) {
-      const names = trimixForbidden.map(m =>
-        m._bapteme ? `${m.prenom || ''} ${(m.nom || '').toUpperCase()}`.trim()
-                   : diverFullName(m.diver)
-      ).join(', ');
-      issues.push({ tone:'err',
-        text:`Trimix interdit pour N1, N2, débutants et baptêmes : ${names}.` });
-    }
-    // Plongée avec GP : Trimix toujours interdit (même si les autres conditions sont remplies)
-    if (apts.includes('GP')) {
-      issues.push({ tone:'err',
-        text:'Plongée avec GP (palanquée guidée) : Trimix interdit.' });
-    }
-  }
-
-  // ─── Qualifications individuelles vs mélanges (explo & guidée) ───────
-  // En exploration ou plongée guidée, chaque plongeur doit individuellement
-  // détenir la qualification correspondant au mélange respiré. La formation
-  // (palanquée avec un E1→E4) est exemptée : un élève peut apprendre.
-  const palType = window.getPalType(pal.membres);
-  if (palType === 'exploration' || palType === 'guidee') {
-    const needsPN  = mlx.includes('Nx ≤ 40%');
-    const needsPNC = mlx.includes('Nx > 40%');
-    const needsPTH = mlx.includes('Tx');
-    membres.forEach(m => {
-      if (m._bapteme || !m.diver) return;
-      const nx   = m.diver.nitrox || [];
-      const tx   = m.diver.trimix || [];
-      const name = diverFullName(m.diver);
-      const hasPN  = nx.includes('PN')  || nx.includes('PN-C');
-      const hasPNC = nx.includes('PN-C');
-      const hasPTH = tx.includes('PTH-70') || tx.includes('PTH-120');
-      if (needsPN && !hasPN) {
-        issues.push({ tone:'err', text:`${name} : Nx ≤ 40% nécessite la qualification PN.` });
-      }
-      if (needsPNC && !hasPNC) {
-        issues.push({ tone:'err', text:`${name} : Nx > 40% nécessite la qualification PN-C.` });
-      }
-      if (needsPTH && !hasPTH) {
-        issues.push({ tone:'err', text:`${name} : Trimix nécessite au minimum PTH-70.` });
-      }
-    });
-  }
-
-  if (issues.filter(i => i.tone === 'err').length === 0) {
-    issues.push({ tone:'ok', text:`Composition conforme — type : ${palType}.` });
-  }
-  return issues;
 }
+
 
 // ── ScreenPalanquees ──────────────────────────────────────────────────────
 function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answers, setAnswer }) {
@@ -382,12 +83,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
   useEffect(() => {
     const sessionMax = parseInt(answers.prof_max) || Infinity;
     setPalanquees(prev => prev.map(p => {
-      const palTypeNew = window.getPalType(p.membres || []);
-      const aptLimit   = (p.membres || []).length > 0
-        ? Math.min(...p.membres.map(m => window.aptitudeMaxDepth(m.aptitude)))
-        : Infinity;
-      const dpLimit    = window.getDpMaxDepth(palTypeNew, dpDiver) || Infinity;
-      const hardLimit  = Math.min(aptLimit, sessionMax, dpLimit);
+      const hardLimit = hardLimitFor(p.membres || [], sessionMax, dpDiver);
       if (!Number.isFinite(hardLimit) || p.profMax <= hardLimit) return p;
       return { ...p, profMax: hardLimit, dtr: window.calcDTR(hardLimit) };
     }));
@@ -447,15 +143,15 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
     setPalanquees(prev => prev.map((p, i) => {
       if (p.id !== palId || p.membres.find(m => m.diverId === diverId)) return p;
       const d = diversById[diverId];
-      const apts = d ? window.getDiverAptitudes(d, isExploration) : [];
+      const palCtx = { maxEnsLevel: getMaxEnsLevel(p.membres) };
+      const apts = d ? window.getDiverAptitudes(d, isExploration, palCtx) : [];
       const aptitude = apts.length === 1 ? apts[0] : '';
       const newMembres = sortMembres([...p.membres, { diverId, aptitude }]);
       const nom = p.nomAuto ? derivePalNom(i, newMembres) : p.nom;
-      const aptLimit   = Math.min(...newMembres.map(m => window.aptitudeMaxDepth(m.aptitude)));
-      const palTypeNew = window.getPalType(newMembres);
-      const dpLimitAdd = window.getDpMaxDepth(palTypeNew, dpDiver) || Infinity;
-      const hardLimitAdd = Number.isFinite(aptLimit) ? Math.min(aptLimit, dpLimitAdd) : dpLimitAdd;
-      const profMax = Number.isFinite(hardLimitAdd) && p.profMax > hardLimitAdd ? hardLimitAdd : p.profMax;
+      // Pas de sessionMax ici : addToPal préserve la profondeur existante,
+      // seul l'ajout d'une aptitude plus restrictive doit réduire profMax.
+      const hardLimit = hardLimitFor(newMembres, Infinity, dpDiver);
+      const profMax   = window.clampProfMax(p.profMax, hardLimit);
       return { ...p, membres: newMembres, nom, profMax, dtr: window.calcDTR(profMax) };
     }));
   };
@@ -488,21 +184,20 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
         return m;
       });
       // Propager l'aptitude aux membres sans aptitude si compatible
+      // palContext recalculé après mise à jour pour inclure l'éventuel enseignant
+      const palCtx = { maxEnsLevel: getMaxEnsLevel(newMembres) };
       newMembres = newMembres.map(m => {
         if (m.aptitude || m._bapteme) return m;
         const d = diversById[m.diverId];
         if (!d) return m;
-        const avail = window.getDiverAptitudes(d, isExploration);
+        const avail = window.getDiverAptitudes(d, isExploration, palCtx);
         return avail.includes(aptitude) ? { ...m, aptitude } : m;
       });
       newMembres = sortMembres(newMembres);
       const nom = p.nomAuto ? derivePalNom(i, newMembres) : p.nom;
-      // Limiter profMax : aptitude la plus restrictive + profMax de session + limite DP (avec PTH-120)
-      const aptLimit   = Math.min(...newMembres.map(m => window.aptitudeMaxDepth(m.aptitude)));
-      const palTypeNew = window.getPalType(newMembres);
-      const dpLimit    = window.getDpMaxDepth(palTypeNew, dpDiver) || Infinity;
-      const hardLimit  = Number.isFinite(aptLimit) ? Math.min(aptLimit, sessionMax, dpLimit) : Math.min(sessionMax, dpLimit);
-      const profMax = Number.isFinite(hardLimit) && p.profMax > hardLimit ? hardLimit : p.profMax;
+      // Plafond : aptitude la plus restrictive ∩ profMax session ∩ limite DP (PTH-120 inclus)
+      const hardLimit = hardLimitFor(newMembres, sessionMax, dpDiver);
+      const profMax   = window.clampProfMax(p.profMax, hardLimit);
       return { ...p, membres: newMembres, nom, profMax, dtr: window.calcDTR(profMax) };
     }));
   };
@@ -528,13 +223,8 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
     const sessionMax = parseInt(answers.prof_max) || Infinity;
     setPalanquees(prev => prev.map(p => {
       if (p.id !== palId) return p;
-      const palTypeNew = window.getPalType(p.membres || []);
-      const aptLimit   = (p.membres || []).length > 0
-        ? Math.min(...p.membres.map(m => window.aptitudeMaxDepth(m.aptitude)))
-        : Infinity;
-      const dpLimit    = window.getDpMaxDepth(palTypeNew, dpDiver) || Infinity;
-      const hardLimit  = Math.min(aptLimit, sessionMax, dpLimit);
-      const clamped    = Number.isFinite(hardLimit) && profMax > hardLimit ? hardLimit : profMax;
+      const hardLimit = hardLimitFor(p.membres || [], sessionMax, dpDiver);
+      const clamped   = window.clampProfMax(profMax, hardLimit);
       return { ...p, profMax: clamped, dtr: window.calcDTR(clamped) };
     }));
   };
@@ -576,15 +266,8 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
       const apts = d ? window.getDiverAptitudes(d, isExploration) : [];
       const aptitude = apts.length === 1 ? apts[0] : '';
       const newMembres = [{ diverId, aptitude }];
-      const aptLimit   = Math.min(...newMembres.map(m => window.aptitudeMaxDepth(m.aptitude)));
-      const palTypeNew = window.getPalType(newMembres);
-      const dpLimit    = window.getDpMaxDepth(palTypeNew, dpDiver) || Infinity;
       const sessionMax = parseInt(answers.prof_max) || Infinity;
-      const hardLimit  = Math.min(
-        Number.isFinite(aptLimit) ? aptLimit : 60,
-        sessionMax,
-        dpLimit
-      );
+      const hardLimit  = hardLimitFor(newMembres, sessionMax, dpDiver);
       const initProfMax = Number.isFinite(hardLimit) ? hardLimit : 60;
       return [...prev, {
         id: newId,
@@ -760,6 +443,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
                         <small>{(d.nitrox||[]).join(' ')} {(d.trimix||[]).join(' ')}</small>
                       </div>
                       <AptitudeSelect diver={d} value={m.aptitude} isExploration={isExploration}
+                        palContext={{ maxEnsLevel: getMaxEnsLevel(p.membres) }}
                         onChange={apt => setAptitude(p.id, m.diverId, apt)} />
                       <button className="x" onClick={() => removeFromPal(p.id, m.diverId)}>×</button>
                     </div>
@@ -821,4 +505,5 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
   );
 }
 
-Object.assign(window, { ScreenPalanquees, validatePal });
+// validatePal est déjà exporté par lib/pal-rules.js.
+Object.assign(window, { ScreenPalanquees });

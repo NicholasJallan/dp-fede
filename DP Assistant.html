@@ -48,11 +48,16 @@
   <!-- API fetch wrapper -->
   <script src="api.js"></script>
 
+  <!-- Logique métier pure (chargée avant data.js — exporte validatePal, peLevel, getMaxEnsLevel, computePalHardLimit, clampProfMax) -->
+  <script src="lib/depth-clamp.js"></script>
+  <script src="lib/pal-rules.js"></script>
+
   <!-- Données métier -->
   <script src="data.js"></script>
 
   <!-- Composants UI et écrans -->
   <script type="text/babel" src="components.jsx"></script>
+  <script type="text/babel" src="toast.jsx"></script>
   <script type="text/babel" src="auth-context.jsx"></script>
   <script type="text/babel" src="diver-form.jsx"></script>
   <script type="text/babel" src="screen-login.jsx"></script>

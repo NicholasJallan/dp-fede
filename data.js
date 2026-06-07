@@ -31,24 +31,23 @@ window.DP_DEPTH_RULES = {
   N5: { formation: 0,  exploration: 60 },
 };
 
-// Profondeur max autorisée pour le DP dans un contexte donné (formation / exploration / guidée / baptême).
-// Prend en compte les extensions Trimix (PTH-120) uniquement pour E3 et E4.
-//
-//   E3 + PTH-120 → formation 40 m (pas d'extension), exploration 70 m
-//   E4 + PTH-120 → formation 80 m, exploration 120 m
-//
-// PTH-70 ne donne aucune extension de profondeur côté DP.
-// `palType` : 'formation' | 'bapteme' | 'exploration' | 'guidee'.
+/**
+ * Profondeur max autorisée pour le DP dans un contexte donné.
+ *
+ * Extensions Trimix (PTH-120) applicables uniquement à E3/E4 :
+ *   E3 + PTH-120 → formation 40 m (pas d'extension), exploration 70 m
+ *   E4 + PTH-120 → formation 80 m, exploration 120 m
+ * PTH-70 ne donne aucune extension côté DP.
+ *
+ * @param {'formation'|'bapteme'|'exploration'|'guidee'} palType
+ * @param {{niveau_encadrant?:string, trimix?:string[]}|null} dp
+ * @returns {number} Profondeur max en mètres (0 = type interdit pour ce DP)
+ */
 window.getDpMaxDepth = function(palType, dp) {
   const ne = dp?.niveau_encadrant || '';
   const rules = window.DP_DEPTH_RULES[ne] || { formation: 0, exploration: 0 };
   const isTraining = palType === 'formation' || palType === 'bapteme';
   const base = isTraining ? (rules.formation || 0) : (rules.exploration || 0);
-  if (base === 0 && !isTraining) {
-    // Fallback : si pas de droit explo (E1/E2), on retombe sur la formation
-    // pour permettre le calcul (la palanquée sera de toute façon de type formation).
-    // Aucun impact pratique : E1/E2 ne dirigent pas d'exploration.
-  }
   const pth120 = (dp?.trimix || []).includes('PTH-120');
   if (!pth120) return base;
   if (isTraining) {
@@ -60,13 +59,20 @@ window.getDpMaxDepth = function(palType, dp) {
   return base;
 };
 
-// Options prof_max disponibles selon DP × site × Trimix DP (Code du Sport Art. A322-86)
-// dp : { niveau_encadrant, trimix:[] } (optionnel)
-// site : { profondeur_max } (optionnel)
-//
-// On affiche toutes les profondeurs accessibles au DP (union formation + exploration).
-// La restriction par type d'activité s'applique à la validation des palanquées,
-// pas au choix de la profondeur de session.
+/**
+ * Options de prof_max disponibles selon DP × site × Trimix DP.
+ * Réf : Code du Sport Art. A322-86.
+ *
+ * On affiche toutes les profondeurs accessibles au DP (union formation +
+ * exploration). La restriction par type d'activité s'applique à la
+ * validation des palanquées, pas au choix de la profondeur de session.
+ *
+ * @param {string} niveauEncadrant  Niveau du DP ('E1'..'E4', 'N5')
+ * @param {string} activite         Activité prévue (informative)
+ * @param {{trimix?:string[]}|null} dp  Plongeur DP (peut contenir PTH-120)
+ * @param {{profondeur_max?:number}|null} site  Site sélectionné
+ * @returns {string[]} Liste de labels (ex: ['6 m','12 m','20 m'])
+ */
 window.getProfOptions = function(niveauEncadrant, activite, dp, site) {
   // dp peut être absent : on simule un DP avec juste le niveau encadrant
   const dpForMax = { niveau_encadrant: niveauEncadrant, trimix: dp?.trimix || [] };
@@ -87,14 +93,42 @@ window.getProfOptions = function(niveauEncadrant, activite, dp, site) {
   return candidates.filter(d => d <= max).map(d => d + ' m');
 };
 
-// Aptitudes disponibles pour un plongeur sur une plongée donnée
-// Retourne la liste de prérogatives que ce plongeur peut avoir dans une palanquée.
-window.getDiverAptitudes = function(diver, isExploration) {
+// Aptitudes "bonus" en formation accordées par la présence d'un enseignant
+// (E1→E4) dans la palanquée : un élève peut accéder à l'aptitude PE du
+// niveau immédiatement supérieur si l'enseignant a la prérogative de
+// l'enseigner (E3 enseigne PE40, E4 enseigne PE60).
+//
+//   N1  + E3/E4 → PE40
+//   N2  +  E4   → PE60
+//
+// Le débutant (sans niveau) obtient déjà Baptême+PE20 dans getDiverAptitudes,
+// donc rien à ajouter ici.
+window.getFormationBonusAptitudes = function(diver, maxEnsLevel) {
+  if (!diver || !maxEnsLevel) return [];
+  const np = diver.niveau_plongeur || null;
+  const ne = diver.niveau_encadrant || null;
+  if (ne) return []; // les encadrants ont déjà toutes les aptitudes plongeur
+  if (np === 'N1' && ['E3','E4'].includes(maxEnsLevel)) return ['PE40'];
+  if (np === 'N2' && maxEnsLevel === 'E4')             return ['PE60'];
+  return [];
+};
+
+/**
+ * Aptitudes disponibles pour un plongeur sur une plongée donnée.
+ * Retourne la liste ordonnée des prérogatives qu'il peut avoir dans une palanquée.
+ *
+ * @param {object}   diver          { niveau_plongeur?, niveau_encadrant?, trimix?, aptitudes_sup? }
+ * @param {boolean=} isExploration  true si la session DP est en exploration pure (N5)
+ * @param {{maxEnsLevel?:string}=} palContext Étend les aptitudes en formation si la palanquée contient un E1→E4
+ * @returns {string[]} Aptitudes triées dans l'ordre canonique
+ */
+window.getDiverAptitudes = function(diver, isExploration, palContext) {
   const np  = diver.niveau_plongeur  || null;
   const ne  = diver.niveau_encadrant || null;
   const trimix = diver.trimix || [];
   const sup    = diver.aptitudes_sup || [];
   const apts   = new Set();
+  const maxEnsLevel = palContext?.maxEnsLevel || null;
 
   // Licencié débutant (sans aucun niveau) : Baptême ou PE20 (en formation uniquement).
   // La validation palanquée garantit la présence d'un enseignant E1→E4.
@@ -137,13 +171,22 @@ window.getDiverAptitudes = function(diver, isExploration) {
   if (trimix.includes('PTH-70') || trimix.includes('PTH-120')) apts.add('PTH70');
   if (trimix.includes('PTH-120')) apts.add('PTH120');
 
+  // Bonus formation : PE niveau supérieur si enseignant suffisant dans la palanquée
+  window.getFormationBonusAptitudes(diver, maxEnsLevel).forEach(a => apts.add(a));
+
   // Ordre canonique : Baptême < PE < PA < GP < Enseignant
   const ORDER = ['Baptême','PE20','PE40','PE60','PA12','PA20','PA40','PA60',
                  'PTH70','PTH120','GP','E1','E2','E3','E4'];
   return ORDER.filter(a => apts.has(a));
 };
 
-// Profondeur max accessible pour une aptitude donnée
+/**
+ * Profondeur max accessible pour une aptitude donnée.
+ * Fallback à 60 m pour une aptitude inconnue (sécurité par défaut côté MFT FFESSM).
+ *
+ * @param {string} aptitude  Code aptitude (ex: 'PE40', 'PA60', 'GP', 'E3', 'PTH120')
+ * @returns {number} Mètres
+ */
 window.aptitudeMaxDepth = function(aptitude) {
   const map = {
     'Baptême': 6,
@@ -156,7 +199,13 @@ window.aptitudeMaxDepth = function(aptitude) {
   return map[aptitude] ?? 60;
 };
 
-// Type de palanquée pour la mise en forme (couleur)
+/**
+ * Type de palanquée (utilisé pour la couleur et les règles métier).
+ * Ordre de priorité : baptême > formation > guidée > exploration.
+ *
+ * @param {Array<{aptitude?:string}>} membres
+ * @returns {'bapteme'|'formation'|'guidee'|'exploration'}
+ */
 window.getPalType = function(membres) {
   const apts = membres.map(m => m.aptitude || '');
   if (apts.includes('Baptême'))                        return 'bapteme';
@@ -165,12 +214,17 @@ window.getPalType = function(membres) {
   return 'exploration';
 };
 
-// Mélanges disponibles selon les qualifications du Directeur de Plongée.
-// Air        : toujours autorisé.
-// Nx ≤ 40 %  : DP doit être PN-C (règle interne stricte).
-// Nx > 40 %  : DP doit être PN-C.
-// Tx (trimix): DP doit être PTH-120 ET de niveau E3 ou E4
-//              (E1/E2 ne peuvent jamais diriger une plongée trimix).
+/**
+ * Mélanges disponibles selon les qualifications du Directeur de Plongée.
+ *   Air        : toujours autorisé.
+ *   Nx ≤ 40 %  : DP doit être PN-C (règle interne stricte, plus restrictive que CdS).
+ *   Nx > 40 %  : DP doit être PN-C.
+ *   Tx (trimix): DP doit être PTH-120 ET E3 ou E4
+ *               (E1/E2/N5 ne peuvent jamais diriger une plongée trimix).
+ *
+ * @param {{niveau_encadrant?:string, nitrox?:string[], trimix?:string[]}|null} dp
+ * @returns {Array<{value:string, allowed:boolean, reason:string|null}>}
+ */
 window.getAvailableMelanges = function(dp) {
   const nitrox    = dp?.nitrox || [];
   const trimix    = dp?.trimix || [];
@@ -248,18 +302,18 @@ window.calcDTR = function(profMax) {
 };
 
 // =========================================================================
-// LEVELS (référence)
+// LEVELS — étiquettes affichables + flag canBeDP (le seul attribut consommé)
 // =========================================================================
 window.LEVELS = {
-  E1: { kind:'encadrant', label:'E1 — Initiateur club',        maxProfEns:6,  canBeDP:false },
-  E2: { kind:'encadrant', label:'E2 — Initiateur / MF1 stag.', maxProfEns:20, canBeDP:false },
-  E3: { kind:'encadrant', label:'E3 — MF1',                    maxProfEns:40, canBeDP:true  },
-  E4: { kind:'encadrant', label:'E4 — MF2',                    maxProfEns:60, canBeDP:true  },
-  N5: { kind:'encadrant', label:'N5 — DP plongeur',            maxProfEns:0,  canBeDP:true  },
-  N4: { kind:'plongeur',  label:'N4 / GP — Guide de palanquée',autoMax:60, canBeGuide:true  },
-  N3: { kind:'plongeur',  label:'N3 — PA-60 / PE-60',          autoMax:60 },
-  N2: { kind:'plongeur',  label:'N2 — PE-40 / PA-20',          autoMax:20 },
-  N1: { kind:'plongeur',  label:'N1 — PE-20',                  autoMax:0  },
+  E1: { label:'E1 — Initiateur club',        canBeDP:false },
+  E2: { label:'E2 — Initiateur / MF1 stag.', canBeDP:false },
+  E3: { label:'E3 — MF1',                    canBeDP:true  },
+  E4: { label:'E4 — MF2',                    canBeDP:true  },
+  N5: { label:'N5 — DP plongeur',            canBeDP:true  },
+  N4: { label:'N4 / GP — Guide de palanquée' },
+  N3: { label:'N3 — PA-60 / PE-60'           },
+  N2: { label:'N2 — PE-40 / PA-20'           },
+  N1: { label:'N1 — PE-20'                   },
 };
 
 // =========================================================================
@@ -424,17 +478,10 @@ window.CHECKLIST_RULES = [
 ];
 
 // =========================================================================
-// PAL_RULES — règles de composition palanquée
-// =========================================================================
-window.PAL_RULES = {
-  // Nombre max d'encadrés par type d'aptitude encadrant
-  maxEnc: { N4:4, E1:2, E2:4, E3:4, E4:4 },
-  // Taille max d'une palanquée PA (autonomes uniquement)
-  maxPA: 3,
-  // Aptitudes PA
-  isPA: (a) => a && a.startsWith('PA'),
-  isPE: (a) => a && a.startsWith('PE'),
-};
+// PAL_RULES retiré : ses constantes (maxEnc, maxPA) n'étaient consommées
+// nulle part — la logique conditionnelle est intégrée directement dans
+// lib/pal-rules.js (validatePal). Voir tests/pal-rules.test.js pour la
+// couverture exhaustive.
 
 // =========================================================================
 // Helpers

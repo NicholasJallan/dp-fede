@@ -49,6 +49,19 @@ class Db {
                 $pdo->exec($stmt);
             }
         }
+
+        // Migration 006 — archives.date_plongee VARCHAR(50) → DATETIME
+        // Détectée par l'absence de la colonne backup date_plongee_legacy
+        $hasLegacy = $pdo->query("SHOW COLUMNS FROM archives LIKE 'date_plongee_legacy'")->fetchColumn();
+        if (!$hasLegacy) {
+            $colType = $pdo->query("SHOW COLUMNS FROM archives LIKE 'date_plongee'")->fetch();
+            if ($colType && stripos($colType['Type'] ?? '', 'varchar') !== false) {
+                $sql = file_get_contents(__DIR__ . '/../migrations/006_archives_datetime.sql');
+                foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
+                    $pdo->exec($stmt);
+                }
+            }
+        }
     }
 
     public static function q(string $sql, array $params = []): PDOStatement {

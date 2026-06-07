@@ -123,6 +123,29 @@ class Auth {
         return $user;
     }
 
+    // Email du super-administrateur unique du système.
+    // Le super-admin a accès aux endpoints de gestion d'utilisateurs (liste,
+    // changement de rôle, suppression). Aucun autre compte n'y a accès, même
+    // promu admin en base : on n'autorise pas l'escalade par modification DB.
+    public const SUPER_ADMIN_EMAIL = 'nicholas.jallan@gmail.com';
+
+    /**
+     * Vérifie que l'utilisateur courant est *le* super-admin (par email).
+     * Aborte 403 sinon.
+     */
+    public static function requireSuperAdmin(): array {
+        $user = self::require();
+        if (($user['email'] ?? '') !== self::SUPER_ADMIN_EMAIL) {
+            Json::abort(403, 'Accès restreint au super-administrateur');
+        }
+        return $user;
+    }
+
+    /** Helper pure-lecture, pour les vues qui veulent juste savoir. */
+    public static function isSuperAdmin(?array $user): bool {
+        return $user && ($user['email'] ?? '') === self::SUPER_ADMIN_EMAIL;
+    }
+
     public static function destroySession(): void {
         $id = $_COOKIE[self::COOKIE] ?? '';
         if ($id) Db::q('DELETE FROM sessions WHERE id=?', [$id]);

@@ -6,12 +6,20 @@ function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch (err) {
+    // Storage indisponible (mode privé Safari) ou JSON corrompu → on repart de zéro.
+    console.warn('[DP] loadState échec :', err?.message || err);
+  }
   return null;
 }
 
 function saveState(s) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch {}
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+  catch (err) {
+    // Quota localStorage dépassé ou storage désactivé → l'utilisateur perdra
+    // la persistance, mais l'app reste fonctionnelle.
+    console.warn('[DP] saveState échec :', err?.message || err);
+  }
 }
 
 const STEPS = [
@@ -24,8 +32,15 @@ const STEPS = [
 
 const ADMIN_SCREENS = ["admin-divers", "admin-sites", "admin-users", "account", "archives"];
 
+// Email du super-administrateur (unique pour tout le système).
+// Doit rester EN SYNCHRO avec backend/lib/Auth.php::SUPER_ADMIN_EMAIL.
+// Le front ne fait que cacher l'UI ; l'autorisation réelle est côté backend.
+const SUPER_ADMIN_EMAIL = "nicholas.jallan@gmail.com";
+const isSuperAdmin = (u) => !!u && u.email === SUPER_ADMIN_EMAIL;
+
 function AppInner() {
   const { user, loading: authLoading, logout } = useAuth();
+  const { showToast } = useToasts();
 
   const [screen,       setScreen]       = useState("home");
   const [answers,      setAnswers]      = useState({});
@@ -34,8 +49,8 @@ function AppInner() {
   const [sites,        setSites]        = useState([]);
   const [sitesLoaded,  setSitesLoaded]  = useState(false);
   const [palanquees,   setPalanquees]   = useState([]);
-  const [checked,      setCheckedState] = useState({});
-  const [comments,     setCommentsState]= useState({});
+  const [checked,      setChecked]  = useState({});
+  const [comments,     setComments] = useState({});
   const [pressions,    setPressions]    = useState({}); // { palId-diverId: '50' }
   const [realises,     setRealises]     = useState({}); // { palId: { profMax, duree, dtr } }
   const [heuresDebut,   setHeuresDebut]   = useState({}); // { palId: 'HH:MM' }
@@ -76,8 +91,8 @@ function AppInner() {
       setHasDraft(true);
       if (s.answers)    setAnswers(s.answers);
       if (s.palanquees) setPalanquees(s.palanquees);
-      if (s.checked)    setCheckedState(s.checked);
-      if (s.comments)   setCommentsState(s.comments);
+      if (s.checked)    setChecked(s.checked);
+      if (s.comments)   setComments(s.comments);
       if (s.pressions)   setPressions(s.pressions);
       if (s.realises)    setRealises(s.realises);
       if (s.heuresDebut)  setHeuresDebut(s.heuresDebut);
@@ -92,9 +107,12 @@ function AppInner() {
     saveState({ answers, palanquees, checked, comments, pressions, realises, heuresDebut, heuresFin, plongeeFigee });
   }, [answers, palanquees, checked, comments, pressions, realises, heuresDebut, heuresFin, plongeeFigee, screen, user]);
 
-  const setAnswer  = useCallback((id, v) => setAnswers(prev => ({ ...prev, [id]: v })), []);
-  const setChecked = useCallback((id, v) => setCheckedState(prev => ({ ...prev, [id]: v })), []);
-  const setComment = useCallback((id, v) => setCommentsState(prev => ({ ...prev, [id]: v })), []);
+  // Wrappers `update*` : signature (id, value) → mise à jour immuable d'une entrée.
+  // On garde `setChecked`/`setComments` (setters useState) côté lecture/reset,
+  // et on passe `updateChecked`/`updateComment` aux écrans pour l'usage courant.
+  const setAnswer      = useCallback((id, v) => setAnswers(prev => ({ ...prev, [id]: v })), []);
+  const updateChecked  = useCallback((id, v) => setChecked(prev => ({ ...prev, [id]: v })), []);
+  const updateComment  = useCallback((id, v) => setComments(prev => ({ ...prev, [id]: v })), []);
 
   // Rafraîchit l'annuaire plongeurs + sites depuis le backend.
   // Indispensable à chaque démarrage de plongée pour que les évolutions de
@@ -197,8 +215,8 @@ function AppInner() {
     const lastRappel = localStorage.getItem('dp-rappel-moyen') || '';
     setAnswers(lastRappel ? { moyen_rappel: lastRappel } : {});
     setPalanquees([]);
-    setCheckedState({});
-    setCommentsState({});
+    setChecked({});
+    setComments({});
     setPressions({});
     setRealises({});
     setHeuresDebut({});
@@ -235,8 +253,8 @@ function AppInner() {
 
       setAnswers({ ...oldAnswers, date: newDate, meteo: '', fiche_observations: '', maree_heure: '', maree_coef: '' });
       setPalanquees(oldPals);
-      setCheckedState({});
-      setCommentsState({});
+      setChecked({});
+      setComments({});
       setPressions({});
       setRealises({});
       setHeuresDebut({});
@@ -249,7 +267,7 @@ function AppInner() {
       setScreen("profil");
       window.scrollTo({ top:0 });
     } catch (err) {
-      alert('Impossible de charger l\'archive : ' + err.message);
+      showToast({ tone:'err', title:'Clonage impossible', body: err.message });
     }
   };
 
@@ -383,7 +401,7 @@ function AppInner() {
             { id:"archives",     label:"Historique" },
             { id:"admin-divers", label:"Annuaire plongeurs" },
             { id:"admin-sites",  label:"Sites de plongée" },
-            ...(user.email === 'nicholas.jallan@gmail.com' ? [{ id:"admin-users", label:"Utilisateurs" }] : []),
+            ...(isSuperAdmin(user) ? [{ id:"admin-users", label:"Utilisateurs" }] : []),
             { id:"account",      label:"Mon compte" },
           ].map(item => (
             <button key={item.id}
@@ -418,8 +436,8 @@ function AppInner() {
           {screen === "checklist" && (
             <ScreenChecklist
               answers={answers} setAnswer={setAnswer}
-              checked={checked} setChecked={setChecked}
-              comments={comments} setComment={setComment}
+              checked={checked} setChecked={updateChecked}
+              comments={comments} setComment={updateComment}
             />
           )}
           {screen === "fiche" && (
@@ -444,7 +462,7 @@ function AppInner() {
           {screen === "admin-sites"  && (
             <ScreenAdminSites sites={sites} setSites={setSites} sitesLoaded={sitesLoaded} />
           )}
-          {screen === "admin-users"  && user.email === 'nicholas.jallan@gmail.com' && <ScreenAdminUsers />}
+          {screen === "admin-users"  && isSuperAdmin(user) && <ScreenAdminUsers />}
           {screen === "account"      && <ScreenAccount />}
         </div>
 
@@ -561,9 +579,11 @@ function AppInner() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppInner />
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <AppInner />
+      </AuthProvider>
+    </ToastProvider>
   );
 }
 

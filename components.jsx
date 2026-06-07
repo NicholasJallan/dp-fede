@@ -25,7 +25,6 @@ function Ref({ children }) {
 // =========================================================================
 function CdsBadge({ articleNumber, compact = false }) {
   const info = window.CDS_ARTICLES[articleNumber];
-  const title = info ? `${info.title} — ${info.summary}` : `Article ${articleNumber} du Code du Sport`;
   const href = info?.url
     || `https://www.legifrance.gouv.fr/search/code?searchField=ARTICLE&query=${encodeURIComponent(articleNumber)}&tab_selection=code`;
 
@@ -83,7 +82,6 @@ function CdsBadge({ articleNumber, compact = false }) {
       href={href}
       target="_blank" rel="noopener noreferrer"
       className={`cds-badge ${compact ? 'compact' : ''}`}
-      title={title}
       onMouseEnter={show}
       onFocus={show}
       onMouseLeave={hide}

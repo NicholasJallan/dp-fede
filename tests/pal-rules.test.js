@@ -33,6 +33,18 @@ describe('validatePal — taille', () => {
     assert.ok(errors(issues).some(e => /binôme minimum/i.test(e)));
   });
 
+  test('membre sans aptitude → BLOQUANT (pas de passage possible)', () => {
+    const d1 = PRESET.n2();
+    const d2 = PRESET.n2();
+    const issues = validatePal(
+      makePal({ membres: [makeMembre(d1, 'PE20'), makeMembre(d2, '')] }),
+      buildDiversById(d1, d2), makeAnswers(), PRESET.e3(),
+    );
+    assert.ok(errors(issues).some(e => /sans aptitude/.test(e)));
+    // Aucune erreur secondaire : le early-return évite les faux positifs
+    assert.equal(errors(issues).length, 1);
+  });
+
   test('palanquée > 6 personnes → BLOQUANT', () => {
     const dp = PRESET.e3();
     const enc = makeDiver({ niveau_encadrant: 'E4' });

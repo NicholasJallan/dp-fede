@@ -1095,13 +1095,20 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   margin-bottom: 24px;
   position: relative;
   overflow: hidden;
-}
-.home-hero-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 10px;
+  gap: 28px;
+}
+.home-hero-content {
+  flex: 1;
+  min-width: 0;
+}
+.home-hero-action {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
 }
 .home-hero-identity {
   display: flex;
@@ -1120,6 +1127,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--coral);
+  margin-top: 8px;
 }
 .home-hero p {
   color: var(--ink-4);

@@ -257,24 +257,24 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
     <div>
       <div className="home-hero">
         <span className="corner">v1.2</span>
-        <div className="home-hero-top">
+        <div className="home-hero-content">
           <div className="home-hero-identity">
             <img src="logo-ffessm.png" alt="FFESSM" className="home-ffessm-logo" />
             <h1>Préparer et diriger la plongée.</h1>
           </div>
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6, flexShrink:0 }}>
-            <button className="btn primary lg"
-              onClick={handleNew}
-              disabled={driveAuth === 'pending-explicit'}>
-              {driveAuth === 'pending-explicit' ? '↻ Autorisation Drive…' : '+ Nouvelle plongée'}
-            </button>
-            {driveAuth === 'ok' && (
-              <span style={{ fontSize:12, color:'var(--kelp,#2d8653)', fontWeight:500, whiteSpace:'nowrap' }}>✓ Google Drive autorisé</span>
-            )}
-          </div>
+          <div className="eyebrow">Outil d'aide à la décision · Code du Sport · FFESSM</div>
+          <p>Profilage, check-list conditionnelle, palanquées validées et fiche de sécurité conforme Art. A322-72 — sur un même outil.</p>
         </div>
-        <div className="eyebrow">Outil d'aide à la décision · Code du Sport · FFESSM</div>
-        <p>Profilage, check-list conditionnelle, palanquées validées et fiche de sécurité conforme Art. A322-72 — sur un même outil.</p>
+        <div className="home-hero-action">
+          <button className="btn primary lg"
+            onClick={handleNew}
+            disabled={driveAuth === 'pending-explicit'}>
+            {driveAuth === 'pending-explicit' ? '↻ Autorisation Drive…' : '+ Nouvelle plongée'}
+          </button>
+          {driveAuth === 'ok' && (
+            <span style={{ fontSize:12, color:'var(--kelp,#2d8653)', fontWeight:500, whiteSpace:'nowrap' }}>✓ Google Drive autorisé</span>
+          )}
+        </div>
       </div>
 
       {/* Pending Drive */}

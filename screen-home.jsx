@@ -307,7 +307,12 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
       {/* ── Plongées en cours ──────────────────────────────────────────── */}
       {inProgress.length > 0 && (
         <div style={{ marginTop:24 }}>
-          <SectionHead icon="▶" iconColor="var(--kelp,#2d8653)"
+          <SectionHead icon={
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polygon fill="currentColor" stroke="none" points="10,8.5 16.5,12 10,15.5"/>
+            </svg>
+          } iconColor="var(--kelp,#2d8653)"
             label="Plongées en cours" count={inProgress.length} unit="fiche" />
           <div className="card">
             <div className="card-body" style={{ padding:0 }}>
@@ -324,7 +329,12 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
       {/* ── Plongées préparées ─────────────────────────────────────────── */}
       {prepared.length > 0 && (
         <div style={{ marginTop:24 }}>
-          <SectionHead icon="✎" iconColor="var(--marine,#0a4a6e)"
+          <SectionHead icon={
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          } iconColor="var(--marine,#0a4a6e)"
             label="Plongées préparées" count={prepared.length} unit="plongée" />
           <div className="card">
             <div className="card-body" style={{ padding:0 }}>
@@ -341,7 +351,13 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
 
       {/* ── Plongées archivées ─────────────────────────────────────────── */}
       <div style={{ marginTop:24 }}>
-        <SectionHead icon="✓" iconColor="var(--ink-3)"
+        <SectionHead icon={
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="21 8 21 21 3 21 3 8"/>
+            <rect x="1" y="3" width="22" height="5"/>
+            <line x1="10" y1="12" x2="14" y2="12"/>
+          </svg>
+        } iconColor="var(--ink-3)"
           label="Plongées archivées" count={archived.length} unit="fiche" />
 
         {cloneErr && (

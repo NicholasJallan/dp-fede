@@ -10,7 +10,7 @@
 // La VERSION est bumpée à chaque déploiement par pi-scripts/bump-sw-version.sh
 // qui remplace la chaîne ci-dessous. Format : dp-{YYYYMMDD}-{sha7}.
 // La valeur « dp-dev-local » est le défaut hors déploiement.
-const VERSION = 'dp-20260608-b66828b';
+const VERSION = 'dp-20260608-f55d7ef';
 
 const SHELL_CACHE  = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;

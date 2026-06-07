@@ -1171,11 +1171,11 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   gap: 7px;
 }
 .section-head-icon {
-  font-size: 13px;
-  line-height: 1;
-  display: inline-block;
-  width: 20px;
-  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
 }
 .section-head-count {
   font-family: var(--t-mono);

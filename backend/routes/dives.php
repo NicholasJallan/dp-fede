@@ -199,6 +199,10 @@ if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
             $sets[]   = 'status=?';
             $params[] = $newStatus;
         }
+        if (isset($body['planned_at'])) {
+            $sets[]   = 'planned_at=?';
+            $params[] = parseDiveDateToMySql((string)$body['planned_at']);
+        }
         if (isset($body['started_at'])) {
             $sets[]   = 'started_at=?';
             $params[] = parseDiveDateToMySql((string)$body['started_at']);

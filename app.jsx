@@ -130,10 +130,16 @@ function AppInner() {
     if (!user || !currentDiveId || plongeeFigee) return;
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
+      const summary = {};
+      if (answers.site_nom) summary.site_nom    = answers.site_nom;
+      if (answers.dp_nom)   summary.dp_nom      = answers.dp_nom;
+      if (answers.dp_qual)  summary.dp_qual     = answers.dp_qual;
+      if (answers.date)   { summary.date_plongee = answers.date; summary.planned_at = answers.date; }
       api.dives.update(currentDiveId, {
         answers,
         palanquees,
         render_state: { checked, comments, pressions, realises, heuresDebut, heuresFin },
+        ...summary,
       }).catch(err => console.warn('[DP] auto-save:', err?.message));
     }, 500);
     return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
@@ -179,10 +185,16 @@ function AppInner() {
     if (!diveId) return;
     if (autoSaveTimerRef.current) { clearTimeout(autoSaveTimerRef.current); autoSaveTimerRef.current = null; }
     const s = stateRef.current;
+    const summary = {};
+    if (s.answers.site_nom) summary.site_nom    = s.answers.site_nom;
+    if (s.answers.dp_nom)   summary.dp_nom      = s.answers.dp_nom;
+    if (s.answers.dp_qual)  summary.dp_qual     = s.answers.dp_qual;
+    if (s.answers.date)   { summary.date_plongee = s.answers.date; summary.planned_at = s.answers.date; }
     api.dives.update(diveId, {
       answers:      s.answers,
       palanquees:   s.palanquees,
       render_state: { checked: s.checked, comments: s.comments, pressions: s.pressions, realises: s.realises, heuresDebut: s.heuresDebut, heuresFin: s.heuresFin },
+      ...summary,
     }).catch(() => {});
   }, []);
 

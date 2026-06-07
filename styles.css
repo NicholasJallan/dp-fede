@@ -1089,19 +1089,30 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 .home-hero {
   background: var(--ink);
   color: var(--paper);
-  padding: 36px 32px 30px;
+  padding: 20px 28px 18px;
   border-radius: var(--radius-md);
   border: 1px solid var(--ink);
   margin-bottom: 24px;
   position: relative;
   overflow: hidden;
 }
+.home-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 10px;
+}
+.home-hero-identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
 .home-hero h1 {
   font-size: 32px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  margin: 4px 0 8px;
-  max-width: 600px;
+  margin: 0;
 }
 .home-hero .eyebrow {
   font-family: var(--t-mono);
@@ -1112,20 +1123,18 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 }
 .home-hero p {
   color: var(--ink-4);
-  max-width: 580px;
-  margin: 0 0 22px;
+  margin: 4px 0 0;
   font-size: 14.5px;
+  white-space: nowrap;
 }
-.home-hero .actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .home-hero .btn.primary { background: var(--coral); border-color: var(--coral); }
 .home-hero .btn.primary:hover { background: oklch(56% 0.16 32); border-color: oklch(56% 0.16 32); }
 .home-hero .btn { background: transparent; border-color: #334559; color: var(--paper); }
 .home-hero .btn:hover { background: #15273C; }
 .home-ffessm-logo {
   display: block;
-  height: 52px;
+  height: 40px;
   width: auto;
-  margin-bottom: 20px;
   filter: brightness(0) invert(1);
   opacity: 0.9;
 }

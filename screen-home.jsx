@@ -121,6 +121,29 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
     tc.requestAccessToken({ prompt: explicit ? 'consent' : '' });
   }, []);
 
+  const handleNew = useCallback(() => {
+    if (!online || driveAuth === 'ok' || !window.google?.accounts?.oauth2) {
+      onNew(); return;
+    }
+    setDriveAuth('pending-explicit');
+    const tid = setTimeout(() => { setDriveAuth('idle'); onNew(); }, 15000);
+    const tc = window.google.accounts.oauth2.initTokenClient({
+      client_id: window.GOOGLE_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/drive.file',
+      callback: (resp) => {
+        clearTimeout(tid);
+        if (!resp.error) {
+          window.dp_driveToken = { access_token: resp.access_token, expires_at: Date.now() + 55 * 60 * 1000 };
+          setDriveAuth('ok');
+        } else {
+          setDriveAuth('idle');
+        }
+        onNew();
+      },
+    });
+    tc.requestAccessToken({ prompt: '' });
+  }, [online, driveAuth, onNew]);
+
   useEffect(() => {
     if (!online) { setDriveAuth('idle'); return; }
     requestDriveAccess(false);
@@ -220,28 +243,24 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
     <div>
       <div className="home-hero">
         <span className="corner">v1.2</span>
-        <img src="logo-ffessm.png" alt="FFESSM" className="home-ffessm-logo" />
-        <div className="eyebrow">Outil d'aide à la décision · Code du Sport · FFESSM</div>
-        <h1>Préparer et diriger la plongée.</h1>
-        <p>Profilage, check-list conditionnelle, palanquées validées et fiche de sécurité conforme Art. A322-72 — sur un même outil.</p>
-        <div className="actions">
-          <button className="btn primary lg" onClick={onNew}>+ Nouvelle plongée</button>
-        </div>
-        <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:10, minHeight:28 }}>
-          {driveAuth === 'ok' && (
-            <span style={{ fontSize:13, color:'var(--kelp,#2d8653)', fontWeight:500 }}>✓ Google Drive autorisé</span>
-          )}
-          {driveAuth === 'idle' && online && (
-            <button className="btn" style={{ fontSize:13 }}
-              onClick={() => requestDriveAccess(true)}
-              title="Nécessaire pour l'archivage hors ligne — autorisez avant de couper la connexion">
-              Autoriser Google Drive
+        <div className="home-hero-top">
+          <div className="home-hero-identity">
+            <img src="logo-ffessm.png" alt="FFESSM" className="home-ffessm-logo" />
+            <h1>Préparer et diriger la plongée.</h1>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6, flexShrink:0 }}>
+            <button className="btn primary lg"
+              onClick={handleNew}
+              disabled={driveAuth === 'pending-explicit'}>
+              {driveAuth === 'pending-explicit' ? '↻ Autorisation Drive…' : '+ Nouvelle plongée'}
             </button>
-          )}
-          {driveAuth === 'pending-explicit' && (
-            <span style={{ fontSize:13, color:'var(--ink-3)' }}>↻ Autorisation Drive…</span>
-          )}
+            {driveAuth === 'ok' && (
+              <span style={{ fontSize:12, color:'var(--kelp,#2d8653)', fontWeight:500, whiteSpace:'nowrap' }}>✓ Google Drive autorisé</span>
+            )}
+          </div>
         </div>
+        <div className="eyebrow">Outil d'aide à la décision · Code du Sport · FFESSM</div>
+        <p>Profilage, check-list conditionnelle, palanquées validées et fiche de sécurité conforme Art. A322-72 — sur un même outil.</p>
       </div>
 
       {/* Pending Drive */}

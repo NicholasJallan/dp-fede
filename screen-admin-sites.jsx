@@ -368,6 +368,11 @@ function ScreenAdminSites({ sites, setSites, sitesLoaded }) {
             <div className="info">
               <b>
                 {s.nom}
+                {s._pending && (
+                  <span title="Modification non encore synchronisée avec le serveur"
+                    style={{ display:'inline-block', width:8, height:8, borderRadius:'50%',
+                      background:'var(--coral, #e07856)', marginLeft:8, verticalAlign:'middle' }} />
+                )}
                 {s.ville && (
                   <span className="muted" style={{ fontWeight: 400, marginLeft: 6, fontSize: 13 }}>
                     {flagEmoji(s.pays_code)} {s.ville}{s.pays ? `, ${s.pays}` : ''}

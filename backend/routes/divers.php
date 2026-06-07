@@ -7,13 +7,34 @@ $DIPLOMES_PRO      = ['BEES1','DEJEPS','DESJEPS','Autre'];
 $RECYCLEURS_OK     = ['Revo','AP','Triton','JJccr','Xccr','Megalodon','Shark','Submatix','Autre'];
 
 // GET /api/divers
+// Paramètre optionnel ?since=ISO8601 — sync incrémental.
+// Renvoie les plongeurs créés/modifiés/supprimés depuis cette date (incl.
+// les soft-deletes pour propager les suppressions aux clients hors-ligne).
 if ($method === 'GET' && $path === '/api/divers') {
-    $user = Auth::require();
-    $rows = Db::all('SELECT * FROM divers WHERE user_id=? ORDER BY nom, prenom', [$user['id']]);
+    $user  = Auth::require();
+    $since = $_GET['since'] ?? null;
+    if ($since) {
+        $sinceSql = SyncHelpers::parseSinceParam($since);
+        $rows = Db::all(
+            'SELECT * FROM divers
+             WHERE user_id=? AND (updated_at >= ? OR deleted_at >= ?)
+             ORDER BY nom, prenom',
+            [$user['id'], $sinceSql, $sinceSql]
+        );
+    } else {
+        // Liste « live » : on exclut les soft-deletes côté snapshot complet.
+        $rows = Db::all(
+            'SELECT * FROM divers WHERE user_id=? AND deleted_at IS NULL ORDER BY nom, prenom',
+            [$user['id']]
+        );
+    }
     Json::ok(array_map('decodeDiver', $rows));
 }
 
 // POST /api/divers
+// Le client peut envoyer son propre id (UUID v4). Si fourni, l'insertion est
+// idempotente via INSERT ... ON DUPLICATE KEY UPDATE : un sync rejoué par
+// l'outbox n'a aucun effet de bord. Sans id, le serveur en génère un.
 if ($method === 'POST' && $path === '/api/divers') {
     Csrf::verify();
     $user = Auth::require();
@@ -26,22 +47,32 @@ if ($method === 'POST' && $path === '/api/divers') {
       ->date('medical', 'Date du certificat médical')
       ->abortIfErrors();
 
-    $id = Db::uuid();
+    $clientId = $v->nullable('id');
+    $id       = $clientId && SyncHelpers::isValidUuid($clientId) ? $clientId : Db::uuid();
+
+    $params = [
+        $id, $user['id'],
+        $v->str('nom'), $v->str('prenom'), $v->str('licence'),
+        buildLegacyNiveau($v),
+        $v->nullable('niveau_plongeur'), $v->nullable('niveau_encadrant'),
+        json_encode(buildQualifs($v, $DIPLOMES_PRO, $RECYCLEURS_OK), JSON_UNESCAPED_UNICODE),
+        json_encode($v->arr('aptitudes_sup'), JSON_UNESCAPED_UNICODE),
+        $v->nullable('medical'), $v->str('notes'),
+    ];
+
     Db::q(
         'INSERT INTO divers
            (id, user_id, nom, prenom, licence, niveau, niveau_plongeur, niveau_encadrant, qualifs, aptitudes_sup, medical, notes)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
-        [
-            $id, $user['id'],
-            $v->str('nom'), $v->str('prenom'), $v->str('licence'),
-            buildLegacyNiveau($v),
-            $v->nullable('niveau_plongeur'), $v->nullable('niveau_encadrant'),
-            json_encode(buildQualifs($v, $DIPLOMES_PRO, $RECYCLEURS_OK), JSON_UNESCAPED_UNICODE),
-            json_encode($v->arr('aptitudes_sup'), JSON_UNESCAPED_UNICODE),
-            $v->nullable('medical'), $v->str('notes'),
-        ]
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+         ON DUPLICATE KEY UPDATE
+           nom=VALUES(nom), prenom=VALUES(prenom), licence=VALUES(licence),
+           niveau=VALUES(niveau), niveau_plongeur=VALUES(niveau_plongeur),
+           niveau_encadrant=VALUES(niveau_encadrant), qualifs=VALUES(qualifs),
+           aptitudes_sup=VALUES(aptitudes_sup), medical=VALUES(medical),
+           notes=VALUES(notes), deleted_at=NULL',
+        $params
     );
-    Json::ok(decodeDiver(Db::row('SELECT * FROM divers WHERE id=?', [$id])), 201);
+    Json::ok(decodeDiver(Db::row('SELECT * FROM divers WHERE id=? AND user_id=?', [$id, $user['id']])), 201);
 }
 
 // GET /api/divers/:id
@@ -68,8 +99,9 @@ if ($method === 'PUT' && preg_match('#^/api/divers/([^/]+)$#', $path, $m)) {
 
     Db::q(
         'UPDATE divers SET nom=?, prenom=?, licence=?, niveau=?,
-          niveau_plongeur=?, niveau_encadrant=?, qualifs=?, aptitudes_sup=?, medical=?, notes=?
-         WHERE id=?',
+          niveau_plongeur=?, niveau_encadrant=?, qualifs=?, aptitudes_sup=?, medical=?, notes=?,
+          deleted_at=NULL
+         WHERE id=? AND user_id=?',
         [
             $v->str('nom'), $v->str('prenom'), $v->str('licence'),
             buildLegacyNiveau($v),
@@ -77,18 +109,22 @@ if ($method === 'PUT' && preg_match('#^/api/divers/([^/]+)$#', $path, $m)) {
             json_encode(buildQualifs($v, $DIPLOMES_PRO, $RECYCLEURS_OK), JSON_UNESCAPED_UNICODE),
             json_encode($v->arr('aptitudes_sup'), JSON_UNESCAPED_UNICODE),
             $v->nullable('medical'), $v->str('notes'),
-            $m[1],
+            $m[1], $user['id'],
         ]
     );
     Json::ok(decodeDiver(Db::row('SELECT * FROM divers WHERE id=?', [$m[1]])));
 }
 
 // DELETE /api/divers/:id
+// Soft delete — la ligne reste en base avec deleted_at non-null, ce qui
+// permet de propager la suppression aux clients qui pullent via ?since=.
+// Un re-DELETE est sans effet (idempotent : NOW() écrase deleted_at mais
+// l'état logique « supprimé » reste identique).
 if ($method === 'DELETE' && preg_match('#^/api/divers/([^/]+)$#', $path, $m)) {
     Csrf::verify();
     $user = Auth::require();
     ownerOrAbort($user['id'], $m[1]);
-    Db::q('DELETE FROM divers WHERE id=?', [$m[1]]);
+    Db::q('UPDATE divers SET deleted_at=NOW() WHERE id=? AND user_id=?', [$m[1], $user['id']]);
     Json::ok(null);
 }
 
@@ -139,7 +175,11 @@ function decodeDiver(array $row): array {
         $row['tiv']       = in_array('TIV',   $raw, true);
     }
     $row['aptitudes_sup'] = json_decode($row['aptitudes_sup'] ?? '[]', true) ?? [];
+    // Le client a besoin du flag « supprimé » pour appliquer le delete dans son
+    // store local. updated_at sert au cursor de sync (?since=).
+    $row['deleted'] = !empty($row['deleted_at']);
     // Keep legacy qualifs for any old consumers
     $row['qualifs'] = $raw;
     return $row;
 }
+

@@ -91,16 +91,29 @@ function ScreenArchives() {
   const [loadingId, setLoadingId] = useState(null);
   const [error,    setError]    = useState('');
 
-  useEffect(() => {
-    api.archives.list()
+  const refresh = useCallback(() => {
+    (api.dives?.listArchived || api.archives.list)()
       .then(rows => setArchives(rows))
       .catch(err => { setError(err.message); setArchives([]); });
   }, []);
 
+  useEffect(() => {
+    refresh();
+    // Auto-refresh quand l'outbox change ou qu'un sync se termine — ainsi
+    // les badges « en attente » disparaissent dès que le serveur a accusé.
+    const onChange = () => refresh();
+    window.addEventListener('dp:dataChanged', onChange);
+    window.addEventListener('dp:syncDone',    onChange);
+    return () => {
+      window.removeEventListener('dp:dataChanged', onChange);
+      window.removeEventListener('dp:syncDone',    onChange);
+    };
+  }, [refresh]);
+
   const openArchive = async (id) => {
     setLoadingId(id); setError('');
     try {
-      const data = await api.archives.get(id);
+      const data = await api.dives.get(id);
       setSelected(data);
     } catch (err) {
       setError('Impossible de charger l\'archive : ' + err.message);
@@ -134,37 +147,52 @@ function ScreenArchives() {
               Aucune plongée archivée pour le moment.
             </div>
           )}
-          {archives?.map(row => (
-            <button key={row.id}
-              onClick={() => openArchive(row.id)}
-              disabled={loadingId !== null}
-              style={{
-                display:'grid',
-                gridTemplateColumns:'1fr auto',
-                gap:'2px 12px',
-                width:'100%',
-                padding:'12px 16px',
-                borderBottom:'1px solid var(--line)',
-                background: loadingId === row.id ? 'var(--bg-2)' : 'transparent',
-                border:'none',
-                borderBottom:'1px solid var(--line)',
-                cursor:'pointer',
-                textAlign:'left',
-                transition:'background 150ms',
-              }}>
-              <div style={{ fontWeight:600, fontSize:14 }}>{row.site_nom || '—'}</div>
-              <div style={{ fontFamily:'var(--t-mono)', fontSize:11, color:'var(--ink-3)', textAlign:'right' }}>
-                {row.date_plongee || '—'}
-              </div>
-              <div style={{ fontSize:12, color:'var(--ink-3)' }}>
-                DP : {row.dp_nom || '—'} ({row.dp_qual || '—'}) · {row.activite || '—'}
-              </div>
-              <div style={{ fontSize:11, color:'var(--ink-4)', textAlign:'right' }}>
-                {row.drive_link ? '↗ Drive' : ''}
-                {loadingId === row.id ? ' …' : ''}
-              </div>
-            </button>
-          ))}
+          {archives?.map(row => {
+            const syncBadge = row._pending
+              ? { label: '● en attente d\'envoi',  color: 'var(--coral, #e07856)' }
+              : (row.synced && !row.drive_synced)
+                ? { label: '△ Drive en attente',   color: 'var(--sun, #e2a23a)' }
+                : null;
+            const rowId = row.client_uuid || row.id;
+            const openable = !row._pending; // une archive non encore synced n'a pas d'id serveur
+            return (
+              <button key={rowId}
+                onClick={() => openable && row.id && openArchive(row.id)}
+                disabled={loadingId !== null || !openable}
+                title={!openable ? 'Synchronisation en attente — ouverture indisponible' : undefined}
+                style={{
+                  display:'grid',
+                  gridTemplateColumns:'1fr auto',
+                  gap:'2px 12px',
+                  width:'100%',
+                  padding:'12px 16px',
+                  background: loadingId === row.id ? 'var(--bg-2)' : 'transparent',
+                  border:'none',
+                  borderBottom:'1px solid var(--line)',
+                  cursor: openable ? 'pointer' : 'default',
+                  textAlign:'left',
+                  transition:'background 150ms',
+                  opacity: openable ? 1 : 0.7,
+                }}>
+                <div style={{ fontWeight:600, fontSize:14 }}>{row.site_nom || '—'}</div>
+                <div style={{ fontFamily:'var(--t-mono)', fontSize:11, color:'var(--ink-3)', textAlign:'right' }}>
+                  {row.date_plongee || '—'}
+                </div>
+                <div style={{ fontSize:12, color:'var(--ink-3)' }}>
+                  DP : {row.dp_nom || '—'} ({row.dp_qual || '—'}) · {row.activite || '—'}
+                </div>
+                <div style={{ fontSize:11, textAlign:'right', display:'flex', gap:8, justifyContent:'flex-end', alignItems:'center' }}>
+                  {syncBadge && (
+                    <span style={{ color: syncBadge.color, fontWeight:600 }}>{syncBadge.label}</span>
+                  )}
+                  {row.drive_link && !syncBadge && (
+                    <span style={{ color:'var(--ink-4)' }}>↗ Drive</span>
+                  )}
+                  {loadingId === row.id ? ' …' : ''}
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

@@ -266,7 +266,13 @@ function ScreenAdminDivers({ divers, setDivers, diversLoaded }) {
         {filtered.map(d => (
           <div className="diver-admin-row" key={d.id}>
             <div className="info">
-              <b>{diverFullName(d)}</b>
+              <b>{diverFullName(d)}
+                {d._pending && (
+                  <span title="Modification non encore synchronisée avec le serveur"
+                    style={{ display:'inline-block', width:8, height:8, borderRadius:'50%',
+                      background:'var(--coral, #e07856)', marginLeft:8, verticalAlign:'middle' }} />
+                )}
+              </b>
               <div className="meta-row">
                 <Pill tone="ink">{diverLabel(d)}</Pill>
                 {(d.nitrox || []).includes('PN-C') && <Pill tone="kelp">PN-C</Pill>}

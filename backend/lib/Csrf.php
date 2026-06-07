@@ -4,7 +4,9 @@ declare(strict_types=1);
 class Csrf {
     private const COOKIE  = 'dp_csrf';
     private const HEADER  = 'HTTP_X_CSRF_TOKEN';
-    private const TTL     = 3600 * 8;
+    // Aligné sur la TTL session (7 jours). Évite que le cookie CSRF expire
+    // pendant qu'un DP est offline avec des actions en outbox prêtes à partir.
+    private const TTL     = 604800;
 
     // Issue or refresh the CSRF cookie, return the token
     public static function token(): string {

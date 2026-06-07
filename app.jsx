@@ -1,27 +1,5 @@
 // DP Assistant — Shell principal & state management
 
-const STORAGE_KEY = "dp-assistant-v1";
-
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch (err) {
-    // Storage indisponible (mode privé Safari) ou JSON corrompu → on repart de zéro.
-    console.warn('[DP] loadState échec :', err?.message || err);
-  }
-  return null;
-}
-
-function saveState(s) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
-  catch (err) {
-    // Quota localStorage dépassé ou storage désactivé → l'utilisateur perdra
-    // la persistance, mais l'app reste fonctionnelle.
-    console.warn('[DP] saveState échec :', err?.message || err);
-  }
-}
-
 const STEPS = [
   { id:"profil",     num:"01", label:"Profil de plongée",        sub:"Questionnaire" },
   { id:"palanquees", num:"02", label:"Plongeurs & palanquées",    sub:"Composition" },
@@ -32,102 +10,315 @@ const STEPS = [
 
 const ADMIN_SCREENS = ["admin-divers", "admin-sites", "admin-users", "account", "archives"];
 
-// Email du super-administrateur (unique pour tout le système).
-// Doit rester EN SYNCHRO avec backend/lib/Auth.php::SUPER_ADMIN_EMAIL.
-// Le front ne fait que cacher l'UI ; l'autorisation réelle est côté backend.
 const SUPER_ADMIN_EMAIL = "nicholas.jallan@gmail.com";
 const isSuperAdmin = (u) => !!u && u.email === SUPER_ADMIN_EMAIL;
 
 function AppInner() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading, logout, authMode } = useAuth();
   const { showToast } = useToasts();
+  const online = window.useOnline ? window.useOnline() : true;
+  const [authExpired, setAuthExpired] = useState(false);
+  useEffect(() => {
+    const onExpire = () => setAuthExpired(true);
+    window.addEventListener('dp:authExpired', onExpire);
+    return () => window.removeEventListener('dp:authExpired', onExpire);
+  }, []);
 
+  // ── Outbox / sync ────────────────────────────────────────────────────────
+  const [outboxItems, setOutboxItems] = useState([]);
+  const [drawerOpen,  setDrawerOpen]  = useState(false);
+  const refreshOutbox = useCallback(async () => {
+    if (!window.outbox) return;
+    const items = await window.outbox.pending();
+    setOutboxItems(items.sort((a, b) => a.createdAt - b.createdAt));
+  }, []);
+  useEffect(() => {
+    if (!user) return;
+    refreshOutbox();
+    const onChange = () => refreshOutbox();
+    window.addEventListener('dp:outboxChanged', onChange);
+    window.addEventListener('dp:syncDone',      onChange);
+    return () => {
+      window.removeEventListener('dp:outboxChanged', onChange);
+      window.removeEventListener('dp:syncDone',      onChange);
+    };
+  }, [user, refreshOutbox]);
+
+  // ── Navigation & mode ────────────────────────────────────────────────────
   const [screen,       setScreen]       = useState("home");
-  const [answers,      setAnswers]      = useState({});
+  // 'prepare' : étapes 1-3 (profil→palanquées→check-list phase 1)
+  // 'execute' : étapes 3-5 (check-list phase 2→fiche→archive)
+  const [diveMode,     setDiveMode]     = useState('prepare');
+
+  // ── Session en cours ─────────────────────────────────────────────────────
+  const [currentDiveId, setCurrentDiveId] = useState(null); // client_uuid de la plongée ouverte
+  const [answers,       setAnswers]       = useState({});
+  const [palanquees,    setPalanquees]    = useState([]);
+  const [checked,       setChecked]       = useState({});
+  const [comments,      setComments]      = useState({});
+  const [pressions,     setPressions]     = useState({});
+  const [realises,      setRealises]      = useState({});
+  const [heuresDebut,   setHeuresDebut]   = useState({});
+  const [heuresFin,     setHeuresFin]     = useState({});
+  const [plongeeFigee,  setPlongeeFigee]  = useState(false);
+  const [confirmModal,  setConfirmModal]  = useState(false);
+  const [archiveDone,   setArchiveDone]   = useState(false);
+  const [showSplash,    setShowSplash]    = useState(false);
+
+  // Modal de confirmation ±4 h avant de démarrer une plongée
+  const [confirmStart, setConfirmStart] = useState(null);
+
+  // ── Chargeurs annuaire ───────────────────────────────────────────────────
   const [divers,       setDivers]       = useState([]);
   const [diversLoaded, setDiversLoaded] = useState(false);
   const [sites,        setSites]        = useState([]);
   const [sitesLoaded,  setSitesLoaded]  = useState(false);
-  const [palanquees,   setPalanquees]   = useState([]);
-  const [checked,      setChecked]  = useState({});
-  const [comments,     setComments] = useState({});
-  const [pressions,    setPressions]    = useState({}); // { palId-diverId: '50' }
-  const [realises,     setRealises]     = useState({}); // { palId: { profMax, duree, dtr } }
-  const [heuresDebut,   setHeuresDebut]   = useState({}); // { palId: 'HH:MM' }
-  const [heuresFin,     setHeuresFin]     = useState({}); // { palId: 'HH:MM' }
-  const [plongeeFigee,  setPlongeeFigee]  = useState(false); // gel définitif après confirmation
-  const [confirmModal,  setConfirmModal]  = useState(false); // popup avant archivage
-  const [hasDraft,      setHasDraft]      = useState(false);
-  const [archiveDone,   setArchiveDone]   = useState(false);
-  const [showSplash,    setShowSplash]    = useState(false);
 
-  // Splash de bienvenue — à chaque connexion
+  // Migration one-time : supprimer l'ancien brouillon localStorage v1 (désormais obsolète)
+  useEffect(() => {
+    try { localStorage.removeItem('dp-assistant-v1'); } catch {}
+  }, []);
+
   useEffect(() => {
     if (!user) return;
     setShowSplash(true);
   }, [user?.id]);
 
-  // Load divers once authenticated
   useEffect(() => {
     if (!user || diversLoaded) return;
     api.divers.list()
       .then(list => { setDivers(list); setDiversLoaded(true); })
-      .catch(() => setDiversLoaded(true));
+      .catch(() => {
+        try {
+          const raw = localStorage.getItem('dp-cache-divers');
+          if (raw) { const { list } = JSON.parse(raw); if (Array.isArray(list)) setDivers(list); }
+        } catch {}
+        setDiversLoaded(true);
+      });
   }, [user, diversLoaded]);
 
-  // Load sites once authenticated
   useEffect(() => {
     if (!user || sitesLoaded) return;
     api.sites.list()
       .then(list => { setSites(list); setSitesLoaded(true); })
-      .catch(() => setSitesLoaded(true));
+      .catch(() => {
+        try {
+          const raw = localStorage.getItem('dp-cache-sites');
+          if (raw) { const { list } = JSON.parse(raw); if (Array.isArray(list)) setSites(list); }
+        } catch {}
+        setSitesLoaded(true);
+      });
   }, [user, sitesLoaded]);
 
-  // Restore persisted session state
-  useEffect(() => {
-    if (!user) return;
-    const s = loadState();
-    if (s) {
-      setHasDraft(true);
-      if (s.answers)    setAnswers(s.answers);
-      if (s.palanquees) setPalanquees(s.palanquees);
-      if (s.checked)    setChecked(s.checked);
-      if (s.comments)   setComments(s.comments);
-      if (s.pressions)   setPressions(s.pressions);
-      if (s.realises)    setRealises(s.realises);
-      if (s.heuresDebut)  setHeuresDebut(s.heuresDebut);
-      if (s.heuresFin)    setHeuresFin(s.heuresFin);
-      if (s.plongeeFigee) setPlongeeFigee(s.plongeeFigee);
-    }
-  }, [user]);
-
-  // Auto-save
-  useEffect(() => {
-    if (!user || screen === "home") return;
-    saveState({ answers, palanquees, checked, comments, pressions, realises, heuresDebut, heuresFin, plongeeFigee });
-  }, [answers, palanquees, checked, comments, pressions, realises, heuresDebut, heuresFin, plongeeFigee, screen, user]);
-
-  // Wrappers `update*` : signature (id, value) → mise à jour immuable d'une entrée.
-  // On garde `setChecked`/`setComments` (setters useState) côté lecture/reset,
-  // et on passe `updateChecked`/`updateComment` aux écrans pour l'usage courant.
-  const setAnswer      = useCallback((id, v) => setAnswers(prev => ({ ...prev, [id]: v })), []);
-  const updateChecked  = useCallback((id, v) => setChecked(prev => ({ ...prev, [id]: v })), []);
-  const updateComment  = useCallback((id, v) => setComments(prev => ({ ...prev, [id]: v })), []);
-
-  // Rafraîchit l'annuaire plongeurs + sites depuis le backend.
-  // Indispensable à chaque démarrage de plongée pour que les évolutions de
-  // niveaux/aptitudes survenues entre deux sessions soient prises en compte
-  // sans redémarrer l'application.
   const refreshDiversAndSites = useCallback(async () => {
     try {
       const [d, s] = await Promise.all([api.divers.list(), api.sites.list()]);
       setDivers(d);
       setSites(s);
-    } catch {
-      // On garde le cache local en cas d'échec réseau.
-    }
+    } catch {}
   }, []);
 
+  // ── Snapshot ref (auto-save sans dépendances dans loadDive) ──────────────
+  const stateRef = useRef({});
+  useEffect(() => {
+    stateRef.current = { answers, palanquees, checked, comments, pressions, realises, heuresDebut, heuresFin };
+  }, [answers, palanquees, checked, comments, pressions, realises, heuresDebut, heuresFin]);
+
+  // ── Auto-save debounced vers le serveur ──────────────────────────────────
+  const autoSaveTimerRef = useRef(null);
+  useEffect(() => {
+    if (!user || !currentDiveId || plongeeFigee) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      api.dives.update(currentDiveId, {
+        answers,
+        palanquees,
+        render_state: { checked, comments, pressions, realises, heuresDebut, heuresFin },
+      }).catch(err => console.warn('[DP] auto-save:', err?.message));
+    }, 500);
+    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+  }, [answers, palanquees, checked, comments, pressions, realises, heuresDebut, heuresFin, currentDiveId, user, plongeeFigee]);
+
+  // ── Détection transition prepared → in_progress (1er heuresDebut) ───────
+  const prevHeuresDbutCountRef = useRef(0);
+  useEffect(() => {
+    const count = Object.keys(heuresDebut).length;
+    if (prevHeuresDbutCountRef.current === 0 && count > 0 && currentDiveId) {
+      api.dives.update(currentDiveId, {
+        status: 'in_progress',
+        started_at: new Date().toISOString(),
+      }).catch(() => {});
+    }
+    prevHeuresDbutCountRef.current = count;
+  }, [heuresDebut, currentDiveId]);
+
+  // ── Callbacks ────────────────────────────────────────────────────────────
+
+  const setAnswer     = useCallback((id, v) => setAnswers(prev => ({ ...prev, [id]: v })), []);
+  const updateChecked = useCallback((id, v) => setChecked(prev => ({ ...prev, [id]: v })), []);
+  const updateComment = useCallback((id, v) => setComments(prev => ({ ...prev, [id]: v })), []);
+
+  // Vide l'état mémoire (ne modifie pas currentDiveId)
+  const resetDiveState = useCallback(() => {
+    setAnswers({});
+    setPalanquees([]);
+    setChecked({});
+    setComments({});
+    setPressions({});
+    setRealises({});
+    setHeuresDebut({});
+    setHeuresFin({});
+    setPlongeeFigee(false);
+    setConfirmModal(false);
+    setArchiveDone(false);
+    prevHeuresDbutCountRef.current = 0;
+  }, []);
+
+  // Flush immédiat de l'auto-save vers la plongée courante
+  const flushSave = useCallback((diveId) => {
+    if (!diveId) return;
+    if (autoSaveTimerRef.current) { clearTimeout(autoSaveTimerRef.current); autoSaveTimerRef.current = null; }
+    const s = stateRef.current;
+    api.dives.update(diveId, {
+      answers:      s.answers,
+      palanquees:   s.palanquees,
+      render_state: { checked: s.checked, comments: s.comments, pressions: s.pressions, realises: s.realises, heuresDebut: s.heuresDebut, heuresFin: s.heuresFin },
+    }).catch(() => {});
+  }, []);
+
+  // Charge une plongée depuis le store local (auto-save de la courante si différente)
+  const loadDive = useCallback(async (clientUuid, targetScreen, mode = 'prepare') => {
+    if (currentDiveId && currentDiveId !== clientUuid) {
+      flushSave(currentDiveId);
+    }
+
+    let dive;
+    try {
+      dive = await api.dives.get(clientUuid);
+    } catch {
+      dive = await window.offlineStore.get('dives', clientUuid);
+    }
+    if (!dive) { showToast({ tone: 'err', title: 'Plongée introuvable', body: clientUuid }); return; }
+
+    const a  = typeof dive.answers      === 'string' ? JSON.parse(dive.answers)      : (dive.answers      || {});
+    const p  = typeof dive.palanquees   === 'string' ? JSON.parse(dive.palanquees)   : (dive.palanquees   || []);
+    const rs = typeof dive.render_state === 'string' ? JSON.parse(dive.render_state) : (dive.render_state || {});
+
+    setAnswers(a);
+    setPalanquees(p);
+    setChecked(rs.checked   || {});
+    setComments(rs.comments  || {});
+    setPressions(rs.pressions || {});
+    setRealises(rs.realises  || {});
+    setHeuresDebut(rs.heuresDebut || {});
+    setHeuresFin(rs.heuresFin   || {});
+    setPlongeeFigee(dive.status === 'archived');
+    prevHeuresDbutCountRef.current = Object.keys(rs.heuresDebut || {}).length;
+    setCurrentDiveId(clientUuid);
+    setDiveMode(mode);
+    setArchiveDone(false);
+    setConfirmModal(false);
+
+    refreshDiversAndSites();
+    setScreen(targetScreen || (mode === 'execute' ? 'checklist' : 'profil'));
+    window.scrollTo({ top: 0 });
+  }, [currentDiveId, flushSave, refreshDiversAndSites, showToast]);
+
+  // Crée une nouvelle plongée préparée
+  const startPreparation = useCallback(async (prefill = null) => {
+    if (currentDiveId) flushSave(currentDiveId);
+
+    const client_uuid = window.randomUUID();
+    const lastRappel  = localStorage.getItem('dp-rappel-moyen') || '';
+    const t = new Date(); t.setMinutes(0, 0, 0); t.setHours(t.getHours() + 1);
+    const pad  = n => String(n).padStart(2, '0');
+    const newDate = `${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}T${pad(t.getHours())}:00`;
+
+    const initialAnswers = prefill
+      ? { ...prefill.answers, date: newDate, meteo: '', fiche_observations: '', maree_heure: '', maree_coef: '' }
+      : (lastRappel ? { moyen_rappel: lastRappel, date: newDate } : { date: newDate });
+    const initialPals = prefill ? prefill.palanquees : [];
+
+    await api.dives.create({
+      client_uuid,
+      status:       'prepared',
+      site_nom:     initialAnswers.site_nom || '',
+      date_plongee: newDate,
+      planned_at:   newDate,
+      dp_nom:       initialAnswers.dp_nom  || '',
+      dp_qual:      initialAnswers.dp_qual || '',
+      activite:     '',
+      answers:      initialAnswers,
+      palanquees:   initialPals,
+      render_state: {},
+    });
+
+    resetDiveState();
+    setAnswers(initialAnswers);
+    setPalanquees(initialPals);
+    setCurrentDiveId(client_uuid);
+    setDiveMode('prepare');
+    refreshDiversAndSites();
+    setScreen('profil');
+    window.scrollTo({ top: 0 });
+  }, [currentDiveId, flushSave, resetDiveState, refreshDiversAndSites]);
+
+  // Démarre l'exécution d'une plongée préparée (vérifie ±4 h)
+  const startExecution = useCallback((dive) => {
+    const planned = new Date(dive.planned_at || dive.date_plongee);
+    const now     = new Date();
+    const diffH   = Math.abs(now - planned) / 3_600_000;
+    if (diffH > 4 && !isNaN(planned.getTime())) {
+      setConfirmStart({ dive, diffH, planned });
+      return;
+    }
+    loadDive(dive.client_uuid || dive.id, 'checklist', 'execute');
+  }, [loadDive]);
+
+  const confirmStartExecution = useCallback(() => {
+    if (!confirmStart) return;
+    const dive = confirmStart.dive;
+    setConfirmStart(null);
+    loadDive(dive.client_uuid || dive.id, 'checklist', 'execute');
+  }, [confirmStart, loadDive]);
+
+  // Supprime une plongée préparée
+  const deleteDive = useCallback(async (clientUuid) => {
+    await api.dives.delete(clientUuid);
+    if (currentDiveId === clientUuid) {
+      resetDiveState();
+      setCurrentDiveId(null);
+      setScreen('home');
+    }
+    showToast({ tone: 'ok', title: 'Plongée supprimée' });
+  }, [currentDiveId, resetDiveState, showToast]);
+
+  // Clone une plongée archivée en nouvelle plongée préparée
+  const cloneDive = useCallback(async (archiveId) => {
+    try {
+      const data = await api.dives.get(archiveId);
+      const oldAnswers = typeof data.answers   === 'string' ? JSON.parse(data.answers)   : (data.answers   || {});
+      const oldPals    = typeof data.palanquees === 'string' ? JSON.parse(data.palanquees) : (data.palanquees || []);
+      // Nettoyer les données d'exécution des palanquées clonées
+      const cleanPals = oldPals.map(p => {
+        const { dtr, profMax, duree, ...rest } = p;
+        return rest;
+      });
+      await startPreparation({ answers: oldAnswers, palanquees: cleanPals });
+    } catch (err) {
+      showToast({ tone: 'err', title: 'Clonage impossible', body: err.message });
+    }
+  }, [startPreparation, showToast]);
+
+  // Fin du mode préparation → sauvegarde + retour accueil
+  const finishPreparation = useCallback(() => {
+    if (currentDiveId) flushSave(currentDiveId);
+    setScreen('home');
+    window.scrollTo({ top: 0 });
+    showToast({ tone: 'ok', title: 'Plongée préparée', body: 'Retrouvez-la dans la liste des plongées préparées.' });
+  }, [currentDiveId, flushSave, showToast]);
+
+  // ── Logique checklist + fiche ─────────────────────────────────────────────
   const derived = useMemo(() => {
     const notes = [];
     const profNum = parseFloat(answers.prof_max);
@@ -152,20 +343,18 @@ function AppInner() {
   const divePlongeesEnCours = Object.keys(heuresDebut).length > 0;
   const FICHE_IDX    = STEPS.findIndex(s => s.id === "fiche");
   const ARCHIVE_IDX  = STEPS.findIndex(s => s.id === "archive");
-  // Toutes les palanquées doivent avoir été mises à l'eau ET être ressorties.
-  // Une palanquée jamais démarrée bloque aussi le passage à l'archivage.
   const allPalanqueesFinished = palanquees.length > 0
     && palanquees.every(p => heuresDebut[p.id] && heuresFin[p.id]);
 
   const goPrev = () => {
-    if (plongeeFigee) return; // gel définitif
+    if (plongeeFigee) return;
     if (divePlongeesEnCours && currentStepIdx <= FICHE_IDX) return;
-    if (currentStepIdx <= 0) setScreen("home");
-    else setScreen(STEPS[currentStepIdx - 1].id);
+    if (diveMode === 'execute' && currentStepIdx <= STEPS.findIndex(s => s.id === 'checklist')) return;
+    if (currentStepIdx <= 0) { setScreen("home"); return; }
+    setScreen(STEPS[currentStepIdx - 1].id);
     window.scrollTo({ top:0, behavior:"smooth" });
   };
-  // Calcul des palanquées avec des erreurs bloquantes (utilisé pour confirmer
-  // le passage à la check-list en cas d'infractions résiduelles)
+
   const blockingPalSummary = useMemo(() => {
     if (typeof window.validatePal !== 'function') return [];
     const diversById = {};
@@ -181,15 +370,16 @@ function AppInner() {
   }, [palanquees, divers, answers]);
 
   const goNext = () => {
-    if (screen === "home") { setScreen("profil"); return; }
-    // Palanquées → Check-list : alerter si infractions bloquantes résiduelles
+    if (screen === "home") { startPreparation(); return; }
+    // Fin de préparation : bouton "Suivant" sur la check-list phase 1
+    if (screen === "checklist" && diveMode === 'prepare') {
+      finishPreparation();
+      return;
+    }
     if (screen === "palanquees" && blockingPalSummary.length > 0) {
       setConfirmModal("pal_blocking");
       return;
     }
-    // Fiche → Archive : vérifications + gel
-    // (le bouton Suivant est désactivé tant que toutes les plongées ne sont pas terminées,
-    //  cette garde reste comme filet de sécurité pour les chemins clavier/programmatique).
     if (screen === "fiche") {
       if (!allPalanqueesFinished) return;
       setConfirmModal("confirm");
@@ -211,66 +401,6 @@ function AppInner() {
     window.scrollTo({ top:0, behavior:"smooth" });
   };
 
-  const startNew = () => {
-    const lastRappel = localStorage.getItem('dp-rappel-moyen') || '';
-    setAnswers(lastRappel ? { moyen_rappel: lastRappel } : {});
-    setPalanquees([]);
-    setChecked({});
-    setComments({});
-    setPressions({});
-    setRealises({});
-    setHeuresDebut({});
-    setHeuresFin({});
-    setPlongeeFigee(false);
-    setConfirmModal(false);
-    localStorage.removeItem(STORAGE_KEY);
-    setHasDraft(false);
-    refreshDiversAndSites();
-    setScreen("profil");
-    window.scrollTo({ top:0 });
-  };
-  const resumeDraft = () => {
-    refreshDiversAndSites();
-    let target = "profil";
-    if (plongeeFigee) target = "archive";
-    else if (Object.keys(heuresDebut).length > 0) target = "fiche";
-    setScreen(target);
-    window.scrollTo({ top:0 });
-  };
-
-  const cloneDive = async (archiveId) => {
-    try {
-      const data = await api.archives.get(archiveId);
-      const oldAnswers = typeof data.answers === 'string' ? JSON.parse(data.answers) : (data.answers || {});
-      const oldPals    = typeof data.palanquees === 'string' ? JSON.parse(data.palanquees) : (data.palanquees || []);
-
-      // Calcul prochaine heure pleine
-      const t = new Date();
-      t.setMinutes(0, 0, 0);
-      t.setHours(t.getHours() + 1);
-      const pad = n => String(n).padStart(2, '0');
-      const newDate = `${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}T${pad(t.getHours())}:00`;
-
-      setAnswers({ ...oldAnswers, date: newDate, meteo: '', fiche_observations: '', maree_heure: '', maree_coef: '' });
-      setPalanquees(oldPals);
-      setChecked({});
-      setComments({});
-      setPressions({});
-      setRealises({});
-      setHeuresDebut({});
-      setHeuresFin({});
-      setPlongeeFigee(false);
-      setConfirmModal(false);
-      localStorage.removeItem(STORAGE_KEY);
-      setHasDraft(true);
-      refreshDiversAndSites();
-      setScreen("profil");
-      window.scrollTo({ top:0 });
-    } catch (err) {
-      showToast({ tone:'err', title:'Clonage impossible', body: err.message });
-    }
-  };
-
   const total     = window.CHECKLIST_RULES.reduce((n, p) =>
     n + p.items.filter(it => window.matchCondition(it.when, answers)).length, 0);
   const doneCount = Object.values(checked).filter(Boolean).length;
@@ -289,6 +419,7 @@ function AppInner() {
   const siteName = selectedSite?.nom || answers.site_nom || answers.site || '—';
   const departParts = [answers.depart_bord && 'Du bord', answers.depart_bateau && 'En bateau'].filter(Boolean);
   const depart = departParts.join(' / ') || '—';
+  const displayName = user.prenom || user.nom || user.email?.split('@')[0] || 'Moi';
 
   const sideSummary = (
     <div className="side">
@@ -329,21 +460,39 @@ function AppInner() {
   );
 
   const useSide = isStepScreen && screen !== "fiche";
-  const displayName = user.prenom || user.nom || user.email?.split('@')[0] || 'Moi';
+
+  // Masquer les étapes exécution en mode prepare, et vice-versa
+  const prepareOnlySteps = ['profil', 'palanquees'];
+  const executeOnlySteps = ['fiche', 'archive'];
+  // En mode execute, on montre checklist+fiche+archive ; en prepare, profil+palanquees+checklist
 
   return (
     <div className="app">
+      {authExpired && (
+        <div style={{
+          background: '#c0392b', color: 'white', padding: '10px 16px',
+          fontSize: 13, textAlign: 'center', fontWeight: 500,
+        }}>
+          ⚠ Votre session a expiré côté serveur. Reconnectez-vous pour synchroniser les actions en attente.
+          <button onClick={logout} style={{
+            marginLeft: 12, background: 'white', color: '#c0392b',
+            border: 0, padding: '4px 10px', borderRadius: 4, cursor: 'pointer',
+            fontWeight: 600, fontSize: 12,
+          }}>Reconnexion</button>
+        </div>
+      )}
       <div className="topbar">
         <button
           className="wordmark"
-          onClick={() => setScreen("home")}
+          onClick={() => { if (currentDiveId) flushSave(currentDiveId); setScreen("home"); }}
           title="Retour à l'accueil"
           style={{ background:'transparent', border:0, color:'inherit', cursor:'pointer', padding:0 }}>
           <span className="dot"></span>
           DP/ASSISTANT
         </button>
         {(isStepScreen || isAdminScreen) && (
-          <button className="session-link" onClick={() => setScreen("home")}
+          <button className="session-link"
+            onClick={() => { if (currentDiveId) flushSave(currentDiveId); setScreen("home"); }}
             style={{ marginLeft: 4 }}>
             ← Accueil
           </button>
@@ -351,6 +500,27 @@ function AppInner() {
         <span className="muted" style={{ color:"var(--ink-4)" }}>·</span>
         <span style={{ fontSize:13 }}>{user.club_nom || user.email}</span>
         <span className="meta">
+          <button onClick={() => setDrawerOpen(true)} className="session-link"
+            title={online
+              ? (outboxItems.length === 0 ? 'Connecté — tout est synchronisé' : `${outboxItems.length} action(s) en cours`)
+              : `Hors ligne — ${outboxItems.length} action(s) en attente`}
+            style={{ display:'inline-flex', alignItems:'center', gap:6,
+              background:'transparent', border:0, padding:0, cursor:'pointer', color:'inherit', font:'inherit' }}>
+            <span style={{
+              width: 8, height: 8, borderRadius: '50%',
+              background: online ? 'var(--kelp, #2d8653)' : 'var(--coral, #e07856)',
+              boxShadow: online ? 'none' : '0 0 0 3px rgba(224,120,86,0.18)',
+              flexShrink: 0,
+            }} />
+            <b>{online ? 'EN LIGNE' : 'HORS LIGNE'}</b>
+            {outboxItems.length > 0 && (
+              <span style={{
+                background: online ? 'var(--marine, #0a4a6e)' : 'var(--coral, #e07856)',
+                color: 'white', borderRadius: 10, fontSize: 10, fontWeight: 700,
+                padding: '1px 7px', minWidth: 18, textAlign: 'center',
+              }}>{outboxItems.length}</span>
+            )}
+          </button>
           <span>AUTO-SAVE · <b>ON</b></span>
           <button className="session-link" onClick={() => setScreen("account")} title="Mon compte">
             {displayName}
@@ -367,18 +537,21 @@ function AppInner() {
 
       {isStepScreen && (
         <div className="stepper">
-          {/* Indicateur visuel uniquement — la navigation se fait par les
-              boutons Précédent / Suivant en bas de page, qui appliquent les
-              contrôles métier (validatePal, confirmation, gel). */}
           {STEPS.map((s, i) => {
+            // En mode prepare : masquer fiche + archive ; en mode execute : masquer profil + palanquees
+            const hiddenInPrepare = diveMode === 'prepare' && executeOnlySteps.includes(s.id);
+            const hiddenInExecute = diveMode === 'execute' && prepareOnlySteps.includes(s.id);
+            if (hiddenInPrepare || hiddenInExecute) return null;
+
             const isDone    = i < currentStepIdx;
             const isActive  = i === currentStepIdx;
             const isLocked  = plongeeFigee
               ? i < ARCHIVE_IDX
-              : (divePlongeesEnCours && i < FICHE_IDX);
+              : (divePlongeesEnCours && i < FICHE_IDX)
+                || (diveMode === 'execute' && prepareOnlySteps.includes(s.id));
             const lockTitle = plongeeFigee
               ? "Plongée figée — consultation uniquement"
-              : "Verrouillé — plongée en cours";
+              : "Verrouillé";
             return (
               <div key={s.id}
                 className={`step ${isActive ? "active" : ""} ${isDone ? "done" : ""} ${isLocked ? "locked" : ""}`}
@@ -416,8 +589,13 @@ function AppInner() {
       <div className={`main ${useSide ? "with-side" : ""}`}>
         <div>
           {screen === "home" && (
-            <ScreenHome hasDraft={hasDraft} onNew={startNew} onResume={resumeDraft}
-              plongeeFigee={plongeeFigee} onClone={cloneDive} />
+            <ScreenHome
+              onNew={startPreparation}
+              onLoadDive={loadDive}
+              onStartExecution={startExecution}
+              onDeleteDive={deleteDive}
+              onClone={cloneDive}
+            />
           )}
           {screen === "profil" && (
             <ScreenProfil
@@ -438,6 +616,7 @@ function AppInner() {
               answers={answers} setAnswer={setAnswer}
               checked={checked} setChecked={updateChecked}
               comments={comments} setComment={updateComment}
+              mode={diveMode}
             />
           )}
           {screen === "fiche" && (
@@ -452,10 +631,11 @@ function AppInner() {
               pressions={pressions} realises={realises}
               heuresDebut={heuresDebut} heuresFin={heuresFin}
               checked={checked} comments={comments}
-              plongeeFigee={plongeeFigee} onStartNew={startNew}
-              onArchiveDone={() => setArchiveDone(true)} />
+              plongeeFigee={plongeeFigee} onStartNew={startPreparation}
+              onArchiveDone={() => setArchiveDone(true)}
+              diveId={currentDiveId} />
           )}
-          {screen === "archives" && <ScreenArchives />}
+          {screen === "archives"     && <ScreenArchives />}
           {screen === "admin-divers" && (
             <ScreenAdminDivers divers={divers} setDivers={setDivers} diversLoaded={diversLoaded} />
           )}
@@ -472,8 +652,11 @@ function AppInner() {
       {isStepScreen && (
         <div className="footnav">
           <button className="btn" onClick={goPrev}
-            disabled={plongeeFigee || (divePlongeesEnCours && currentStepIdx <= FICHE_IDX)}
-            title={plongeeFigee ? "Plongée figée" : (divePlongeesEnCours && currentStepIdx <= FICHE_IDX) ? "Verrouillé — plongée en cours" : undefined}>
+            disabled={
+              plongeeFigee
+              || (divePlongeesEnCours && currentStepIdx <= FICHE_IDX)
+              || (diveMode === 'execute' && screen === 'checklist')
+            }>
             ← Précédent
           </button>
           <div className="progress">
@@ -488,27 +671,66 @@ function AppInner() {
           {(() => {
             const isLast       = currentStepIdx === STEPS.length - 1;
             const ficheBlocked = screen === "fiche" && !allPalanqueesFinished;
+            const isPrepareEnd = screen === "checklist" && diveMode === 'prepare';
             const disabled     = (isLast && !archiveDone) || ficheBlocked;
             const title        = ficheBlocked
               ? "Terminez toutes les plongées (bouton ■ Fin sur la fiche) avant de continuer."
               : undefined;
+            const label        = isPrepareEnd
+              ? "Sauvegarder →"
+              : isLast ? "Terminé" : "Suivant →";
             return (
               <button className="btn primary"
-                onClick={isLast && archiveDone ? startNew : goNext}
+                onClick={isLast && archiveDone ? startPreparation : goNext}
                 disabled={disabled}
                 title={title}>
-                {isLast ? "Terminé" : "Suivant →"}
+                {label}
               </button>
             );
           })()}
         </div>
       )}
 
-      {/* Modale de confirmation / blocage avant archivage */}
+      {drawerOpen && (
+        <SyncDrawer
+          items={outboxItems}
+          online={online}
+          onClose={() => setDrawerOpen(false)}
+          onForceSync={() => window.sync?.trigger('user-force')}
+        />
+      )}
+
       {showSplash && (
         <SplashScreen user={user} onClose={() => setShowSplash(false)} />
       )}
 
+      {/* Modale ±4 h avant démarrage */}
+      {confirmStart && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', zIndex:1000,
+                      display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div style={{ background:'var(--surface)', borderRadius:12, padding:28, maxWidth:420, width:'100%',
+                        boxShadow:'0 8px 40px rgba(0,0,0,0.3)', display:'grid', gap:18 }}>
+            <h2 style={{ margin:0, fontSize:18, color:'var(--sun, #e2a23a)' }}>
+              ⚠ Écart horaire — confirmer ?
+            </h2>
+            <p style={{ margin:0, color:'var(--ink-2)', lineHeight:1.6 }}>
+              Cette plongée était planifiée pour le <b>{formatDateTime(
+                confirmStart.dive.planned_at || confirmStart.dive.date_plongee
+              )}</b>.
+              Il y a actuellement <b>{confirmStart.diffH.toFixed(1)} h</b> d'écart avec maintenant.
+            </p>
+            <p style={{ margin:0, color:'var(--ink-3)', fontSize:13 }}>
+              Confirmez-vous que c'est bien <em>cette</em> plongée que vous souhaitez démarrer ?
+            </p>
+            <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+              <button className="btn" onClick={() => setConfirmStart(null)}>Annuler</button>
+              <button className="btn primary" onClick={confirmStartExecution}>Démarrer quand même</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modale de confirmation / blocage avant archivage */}
       {confirmModal && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', zIndex:1000,
                       display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
@@ -523,17 +745,12 @@ function AppInner() {
                   {blockingPalSummary.length === 1
                     ? 'Une palanquée présente '
                     : `${blockingPalSummary.length} palanquées présentent `}
-                  des erreurs bloquantes. Passer outre signifie que vous engagez votre
-                  responsabilité personnelle de Directeur de Plongée et que vous
-                  enfreignez probablement le Code du Sport.
+                  des erreurs bloquantes. Passer outre engage votre responsabilité personnelle.
                 </p>
                 <div style={{
                   maxHeight:200, overflowY:'auto',
-                  background:'var(--paper-2)',
-                  border:'1px solid var(--line)',
-                  borderRadius:6,
-                  padding:'10px 12px',
-                  fontSize:13, lineHeight:1.45,
+                  background:'var(--paper-2)', border:'1px solid var(--line)',
+                  borderRadius:6, padding:'10px 12px', fontSize:13, lineHeight:1.45,
                 }}>
                   {blockingPalSummary.map(s => (
                     <div key={s.id} style={{ marginBottom:8 }}>
@@ -545,8 +762,7 @@ function AppInner() {
                   ))}
                 </div>
                 <div style={{ display:'flex', gap:10, justifyContent:'flex-end', flexWrap:'wrap' }}>
-                  <button className="btn" onClick={overridePalBlocking}
-                    style={{ color:'var(--coral)' }}>
+                  <button className="btn" onClick={overridePalBlocking} style={{ color:'var(--coral)' }}>
                     Continuer sous ma responsabilité
                   </button>
                   <button className="btn primary" autoFocus onClick={() => setConfirmModal(false)}>
@@ -559,7 +775,6 @@ function AppInner() {
                 <h2 style={{ margin:0, fontSize:18 }}>Confirmer et figer la plongée</h2>
                 <p style={{ margin:0, color:'var(--ink-2)', lineHeight:1.6 }}>
                   Vous êtes sur le point de <b>figer définitivement</b> toutes les informations de cette plongée.
-                  Après confirmation, aucune modification ne sera possible sur les étapes précédentes.
                 </p>
                 <p style={{ margin:0, color:'var(--ink-3)', fontSize:13, lineHeight:1.5 }}>
                   Confirmez-vous que toutes les informations (palanquées, heures, pressions, observations) sont complètes et correctes ?

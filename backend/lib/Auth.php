@@ -3,7 +3,14 @@ declare(strict_types=1);
 
 class Auth {
     private const COOKIE   = 'dp_session';
-    private const TTL      = 86400;     // 24h in seconds
+    // TTL session 7 jours — couvre les sorties terrain prolongées en zone blanche
+    // sans réseau. Sliding refresh (cf. self::current()) prolonge tant que le DP
+    // est encore online de temps en temps. Au-delà, le DP doit se reconnecter ;
+    // l'outbox locale est préservée et envoyée après re-login.
+    private const TTL      = 604800;     // 7 jours
+    // Seuil de renouvellement sliding : on prolonge si la session a déjà brûlé
+    // plus de la moitié de sa TTL. Évite d'écrire à chaque requête.
+    private const SLIDE_THRESHOLD = 302400; // 3,5 jours
     private const GOOGLE_TOKENINFO = 'https://oauth2.googleapis.com/tokeninfo?id_token=';
 
     // Verify Google ID token via tokeninfo endpoint, return payload or null
@@ -104,6 +111,17 @@ class Auth {
         if (strtotime($session['expires_at']) < time()) {
             Db::q('DELETE FROM sessions WHERE id=?', [$id]);
             return null;
+        }
+
+        // Sliding window : si la session est entamée à plus de 50%, on la
+        // prolonge. Maintient l'utilisateur connecté tant qu'il revient sur
+        // l'app au moins une fois tous les 3,5 jours, sans rafraîchir à chaque
+        // requête (cf. SLIDE_THRESHOLD).
+        $remaining = strtotime($session['expires_at']) - time();
+        if ($remaining < self::SLIDE_THRESHOLD) {
+            $newExpires = date('Y-m-d H:i:s', time() + self::TTL);
+            Db::q('UPDATE sessions SET expires_at=? WHERE id=?', [$newExpires, $id]);
+            self::setCookie($id);
         }
 
         return Db::row('SELECT * FROM users WHERE id=?', [$session['user_id']]);

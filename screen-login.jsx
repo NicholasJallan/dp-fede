@@ -3,6 +3,7 @@
 function ScreenLogin() {
   const { handleGoogleCredential } = useAuth();
   const btnRef = React.useRef(null);
+  const online = window.useOnline ? window.useOnline() : true;
 
   useEffect(() => {
     if (!window.google?.accounts) return;
@@ -40,6 +41,20 @@ function ScreenLogin() {
         </p>
 
         <div className="login-btn-wrap" ref={btnRef}></div>
+
+        {!online && (
+          <div style={{
+            marginTop: 14, padding: '10px 14px',
+            background: 'rgba(224,120,86,0.08)',
+            border: '1px solid rgba(224,120,86,0.35)',
+            borderRadius: 8, fontSize: 13, color: 'var(--ink-2)',
+            textAlign: 'left', lineHeight: 1.5,
+          }}>
+            <b style={{ color: 'var(--coral, #e07856)' }}>● Hors ligne</b><br />
+            La première connexion exige une connexion internet. Si vous vous
+            êtes déjà connecté récemment, rechargez la page une fois en ligne.
+          </div>
+        )}
 
         <p className="login-legal">
           Vos données sont hébergées sur nos serveurs, en Europe.

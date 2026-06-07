@@ -351,7 +351,7 @@ function ChecklistStatique({ checklistRef, answers, checked, comments, user }) {
 // ---------------------------------------------------------------------------
 // Écran d'archivage principal
 // ---------------------------------------------------------------------------
-function ScreenArchive({ answers, palanquees, divers, user, pressions, realises, heuresDebut, heuresFin, checked, comments, plongeeFigee, onStartNew, onArchiveDone }) {
+function ScreenArchive({ answers, palanquees, divers, user, pressions, realises, heuresDebut, heuresFin, checked, comments, plongeeFigee, onStartNew, onArchiveDone, diveId }) {
   const { showToast } = useToasts();
   const ficheRef     = useRef(null);
   const checklistRef = useRef(null);
@@ -360,7 +360,7 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
   const [error,      setError]      = useState('');
   const [queuedClientUuid, setQueuedClientUuid] = useState(null);
   // Détection online — utilisée pour ne pas tenter Drive/PDF hors ligne.
-  // Offline → on enqueue via api.archives.create (outbox) ; le PDF + Drive
+  // Offline → on enqueue via api.dives.update (outbox) ; le PDF + Drive
   // se feront depuis ScreenHome au retour de la connexion (PendingDriveBanner).
   const online = window.useOnline ? window.useOnline() : true;
 
@@ -380,24 +380,44 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
           return { ...m, nom: d.nom || '?', prenom: d.prenom || '', licence: d.licence || '' };
         })
       }));
-      const res = await api.archives.create({
-        site_nom:     answers.site_nom || answers.site || '',
-        date_plongee: (answers.date || '').slice(0, 10),
-        dp_nom:       answers.dp_nom || '',
-        dp_qual:      answers.dp_qual || '',
-        activite:     answers.activite || '',
-        answers,
-        palanquees:   enrichedPals,
-        drive_link:   '',
-        _render: { pressions, realises, heuresDebut, heuresFin, checked, comments },
-      });
-      setQueuedClientUuid(res.client_uuid);
+
+      if (diveId) {
+        // La plongée existe déjà — on la fait passer à 'archived'
+        const res = await api.dives.update(diveId, {
+          status:       'archived',
+          closed_at:    new Date().toISOString(),
+          site_nom:     answers.site_nom || answers.site || '',
+          dp_nom:       answers.dp_nom || '',
+          dp_qual:      answers.dp_qual || '',
+          activite:     answers.activite || '',
+          date_plongee: answers.date || '',
+          answers,
+          palanquees:   enrichedPals,
+          render_state: { pressions, realises, heuresDebut, heuresFin, checked, comments },
+        });
+        setQueuedClientUuid(diveId);
+      } else {
+        // Fallback one-shot (ancienne logique si diveId non fourni)
+        const res = await api.dives.create({
+          status:       'archived',
+          site_nom:     answers.site_nom || answers.site || '',
+          date_plongee: (answers.date || '').slice(0, 10),
+          dp_nom:       answers.dp_nom || '',
+          dp_qual:      answers.dp_qual || '',
+          activite:     answers.activite || '',
+          answers,
+          palanquees:   enrichedPals,
+          drive_link:   '',
+          render_state: { pressions, realises, heuresDebut, heuresFin, checked, comments },
+        });
+        setQueuedClientUuid(res.client_uuid);
+      }
       setStatus('queued');
       if (onArchiveDone) onArchiveDone();
     } catch (err) {
       setError(err.message);
     }
-  }, [answers, palanquees, divers, pressions, realises, heuresDebut, heuresFin, checked, comments, onArchiveDone]);
+  }, [diveId, answers, palanquees, divers, pressions, realises, heuresDebut, heuresFin, checked, comments, onArchiveDone]);
 
   // Nom de fichier : date-heure en premier pour tri naturel
   const buildFilename = (type = 'fiche-securite') => {
@@ -521,16 +541,24 @@ ${styles}
         })
       }));
 
-      await api.archives.create({
+      const archivePayload = {
+        status:       'archived',
+        closed_at:    new Date().toISOString(),
         site_nom:     answers.site_nom || answers.site || '',
-        date_plongee: (answers.date || '').slice(0, 10),
         dp_nom:       answers.dp_nom || '',
         dp_qual:      answers.dp_qual || '',
         activite:     answers.activite || '',
+        date_plongee: answers.date || '',
         answers,
         palanquees:   enrichedPals,
         drive_link:   ficheFile.webViewLink || '',
-      });
+        render_state: { pressions, realises, heuresDebut, heuresFin, checked, comments },
+      };
+      if (diveId) {
+        await api.dives.update(diveId, archivePayload);
+      } else {
+        await api.dives.create(archivePayload);
+      }
 
       setDriveLinks({ fiche: ficheFile.webViewLink || '', checklist: clFile.webViewLink || '' });
       setStatus('done');
@@ -776,9 +804,10 @@ async function finalizePendingDrive(archive, divers, user, onProgress) {
   if (!archive.server_id) {
     throw new Error('Archive non encore synchronisée côté serveur — relancer plus tard.');
   }
-  const r = archive._render || {};
-  const answers     = archive.answers     || {};
-  const palanquees  = archive.palanquees  || [];
+  // Compatibilité : render_state (nouveau) ou _render (ancien nom)
+  const r = archive.render_state || archive._render || {};
+  const answers    = typeof archive.answers    === 'string' ? JSON.parse(archive.answers)    : (archive.answers    || {});
+  const palanquees = typeof archive.palanquees === 'string' ? JSON.parse(archive.palanquees) : (archive.palanquees || []);
 
   // Rendu offscreen des deux templates dans un conteneur DOM temporaire.
   // On utilise ReactDOM.createRoot pour rendre, puis on lit outerHTML.
@@ -910,7 +939,7 @@ async function finalizePendingDrive(archive, divers, user, onProgress) {
     await up(checklistPdf, buildFilename('checklist'), folderId);
 
     if (onProgress) onProgress('saving');
-    await window.api.archives.markDriveDone(archive.client_uuid, ficheFile.webViewLink || '');
+    await window.api.dives.markDriveDone(archive.client_uuid, ficheFile.webViewLink || '');
     return ficheFile.webViewLink || '';
   } finally {
     root.unmount();

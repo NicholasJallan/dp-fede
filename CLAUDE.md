@@ -82,10 +82,25 @@ dp-fede. Sans ça, le navigateur émet « Failed to fetch » silencieusement.
 - `https://oauth2.googleapis.com`, `https://accounts.google.com`
   (token endpoints — OAuth Drive scope)
 
+### CSP / nginx — Service Worker et mode offline
+
+Pour le mode offline (PWA + SW) ajouter à la CSP du bloc dp-fede :
+`worker-src 'self'; manifest-src 'self';`
+
+Ajouter aussi les directives `location` pour `sw.js` (no-cache strict) et
+`site.webmanifest` (no-cache). Voir `nginx-offline-snippet.conf` à la
+racine du repo — à copier dans le bloc server après modification.
+
+Avant chaque déploiement : `./pi-scripts/bump-sw-version.sh` met à jour la
+constante `VERSION` dans `sw.js` (format `dp-{YYYYMMDD}-{sha7}`). Sans ce
+bump, le navigateur considère que le SW n'a pas changé et conserve l'ancien
+cache. À ajouter avant le rsync frontend.
+
 ## Tests métier
 
 Lancer : `npm test` (utilise `node --test`, Node 20+ requis, zéro dépendance NPM).
-Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : 120 tests.
+Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **162 tests**
+(121 métier FFESSM/Code du Sport + 41 offline : outbox, offline-store, sync, dive-lifecycle, home-buckets).
 
 ## Données métier
 
@@ -121,4 +136,16 @@ Tout est dans `data.js` (aucun build requis) :
 - `validatePal` vit dans `lib/pal-rules.js` (extrait de `screen-palanquees.jsx`). Toute modification doit être accompagnée d'un test dans `tests/pal-rules.test.js`.
 - Plafond de profondeur d'une palanquée : `window.computePalHardLimit({...})` (UN seul endroit). Les 4 anciennes duplications ont été supprimées.
 - Super-administrateur : email unique `nicholas.jallan@gmail.com` (constante `SUPER_ADMIN_EMAIL` côté front + `Auth::SUPER_ADMIN_EMAIL` côté back). Le rôle DB `admin` ne donne PAS accès aux endpoints `/api/users/*` — `Auth::requireSuperAdmin()` est requis.
-- `archives.date_plongee` est désormais un `DATETIME` (migration 006). Le front envoie/reçoit du `YYYY-MM-DDTHH:mm` ; la conversion est dans `backend/routes/archives.php::parseDiveDateToMySql/normalizeDiveDate`.
+- **Table `dives`** (anciennement `archives`, migration 008) : cycle de vie `status ENUM('prepared','in_progress','archived')`. Colonnes : `planned_at`, `started_at`, `closed_at`, `render_state` (JSON), `deleted_at`. La migration 008 renomme la table, backfill `status='archived'` pour les lignes existantes.
+- `dives.date_plongee` est un `DATETIME` (migration 006). Le front envoie/reçoit du `YYYY-MM-DDTHH:mm` ; la conversion est dans `backend/routes/dives.php::parseDiveDateToMySql/normalizeDiveDate`.
+- TTL session backend = **7 jours** (`Auth::TTL = 604800`), sliding refresh à 3,5 j restants. CSRF TTL alignée à 7 jours. Couvre les sessions terrain offline prolongées (migration 007 + Phase 1 offline).
+- `divers` et `sites` font du **soft-delete** : `DELETE` met `deleted_at = NOW()`, la ligne reste pour propager la suppression aux clients via `GET /api/divers?since=`. La liste sans `?since=` exclut les soft-deletes. Champ `deleted: bool` dans la réponse. Même mécanique pour `dives`.
+- `dives.client_uuid` : si le front envoie un `client_uuid` (UUID v4) et qu'une plongée existe déjà avec ce couple `(user_id, client_uuid)`, le POST renvoie 200 `{ id, duplicate: true }` au lieu de créer une 2ᵉ ligne. Permet à l'outbox de rejouer sans dupliquer.
+- `POST /api/divers` et `POST /api/sites` acceptent un `id` optionnel (UUID v4 client) ; en cas de collision PK, ils font un UPSERT (`ON DUPLICATE KEY UPDATE`) et réactivent les soft-deletes (`deleted_at = NULL`).
+- Mode offline : `lib/net.js` expose `window.useOnline()` (hook React) et `window.netStatus()`. Auth-context bascule en `authMode = 'offline'` si `/api/auth/me` échoue mais qu'un snapshot `dp-last-user` < 7 j existe. L'écran archive ne déclenche pas Drive hors-ligne et reprend automatiquement quand `online` repasse à true.
+- Service Worker : `sw.js` à la racine, scope `/`. Avant déploiement frontend, lancer `./pi-scripts/bump-sw-version.sh` pour bumper la constante `VERSION`. Les anciens caches sont purgés sèchement à l'activation du nouveau SW (pas de migration douce).
+- `render_state` : JSON stocké dans `dives.render_state`, contient `{ pressions, realises, heuresDebut, heuresFin, checked, comments }`. Synchronisé en continu via outbox (`dive.update`). Utilisé par `finalizePendingDrive` pour régénérer le PDF après reconnexion.
+- **Cycle de vie** : plongée créée à `status='prepared'` dès le clic "+ Nouvelle plongée". Transition → `in_progress` au 1er `heuresDebut` posé (détectée dans `app.jsx` via useEffect). Transition → `archived` à l'archivage Drive. PATCH refusé en rétrograde (`archived` → autre statut).
+- **Auto-save** : debounce 500 ms vers `api.dives.update(currentDiveId, { answers, palanquees, render_state })`. Flush immédiat au retour accueil (`flushSave`) et lors de `loadDive` (bascule entre plongées).
+- **`diveMode`** dans `app.jsx` : `'prepare'` (étapes 1-3) ou `'execute'` (étapes 3-5). Check-list filtre les phases selon `mode`.
+- **Outbox kinds** : `dive.create`, `dive.update`, `dive.delete`, `dive.drive` (drive registered par ScreenArchive). Handlers dans `lib/sync.js`.

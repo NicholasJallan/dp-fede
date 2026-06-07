@@ -3,11 +3,15 @@
   "short_name": "DP Assistant",
   "description": "Outil d'aide au Directeur de Plongée FFESSM (Code du Sport).",
   "icons": [
-    { "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/apple-touch-icon.png",       "sizes": "180x180", "type": "image/png", "purpose": "maskable" }
   ],
   "theme_color": "#0a4a6e",
-  "background_color": "#ffffff",
+  "background_color": "#0a4a6e",
   "display": "standalone",
-  "start_url": "/"
+  "orientation": "any",
+  "scope": "/",
+  "start_url": "/",
+  "lang": "fr"
 }

@@ -4,13 +4,30 @@ declare(strict_types=1);
 $MILIEUX = ['En mer','Lac','Carrière','Piscine','Autre'];
 
 // GET /api/sites
+// Paramètre optionnel ?since=ISO8601 — sync incrémental incluant les soft-deletes.
 if ($method === 'GET' && $path === '/api/sites') {
-    $user = Auth::require();
-    $rows = Db::all('SELECT * FROM sites WHERE user_id=? ORDER BY nom', [$user['id']]);
+    $user  = Auth::require();
+    $since = $_GET['since'] ?? null;
+    if ($since) {
+        $sinceSql = SyncHelpers::parseSinceParam($since);
+        $rows = Db::all(
+            'SELECT * FROM sites
+             WHERE user_id=? AND (updated_at >= ? OR deleted_at >= ?)
+             ORDER BY nom',
+            [$user['id'], $sinceSql, $sinceSql]
+        );
+    } else {
+        $rows = Db::all(
+            'SELECT * FROM sites WHERE user_id=? AND deleted_at IS NULL ORDER BY nom',
+            [$user['id']]
+        );
+    }
     Json::ok(array_map('decodeSite', $rows));
 }
 
 // POST /api/sites
+// Idempotent : id optionnel envoyé par le client (UUID v4) → INSERT ... ON
+// DUPLICATE KEY UPDATE. Permet à l'outbox de rejouer sans dupliquer.
 if ($method === 'POST' && $path === '/api/sites') {
     Csrf::verify();
     $user = Auth::require();
@@ -28,11 +45,19 @@ if ($method === 'POST' && $path === '/api/sites') {
         Json::abort(422, 'Indiquer au moins un type de départ (bord ou bateau).');
     }
 
-    $coord = $v->arr('coordonnees');
-    $id    = Db::uuid();
+    $clientId = $v->nullable('id');
+    $id       = $clientId && SyncHelpers::isValidUuid($clientId) ? $clientId : Db::uuid();
+    $coord    = $v->arr('coordonnees');
+
     Db::q(
         'INSERT INTO sites (id, user_id, nom, milieu, profondeur_max, coordonnees, notes, depart_bord, depart_bateau, shot_line, ville, pays, pays_code, region)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+         ON DUPLICATE KEY UPDATE
+           nom=VALUES(nom), milieu=VALUES(milieu), profondeur_max=VALUES(profondeur_max),
+           coordonnees=VALUES(coordonnees), notes=VALUES(notes),
+           depart_bord=VALUES(depart_bord), depart_bateau=VALUES(depart_bateau),
+           shot_line=VALUES(shot_line), ville=VALUES(ville), pays=VALUES(pays),
+           pays_code=VALUES(pays_code), region=VALUES(region), deleted_at=NULL',
         [
             $id, $user['id'],
             $v->str('nom'), $v->str('milieu') ?: 'En mer',
@@ -48,7 +73,7 @@ if ($method === 'POST' && $path === '/api/sites') {
             $v->str('region'),
         ]
     );
-    Json::ok(decodeSite(Db::row('SELECT * FROM sites WHERE id=?', [$id])), 201);
+    Json::ok(decodeSite(Db::row('SELECT * FROM sites WHERE id=? AND user_id=?', [$id, $user['id']])), 201);
 }
 
 // GET /api/sites/:id
@@ -80,8 +105,8 @@ if ($method === 'PUT' && preg_match('#^/api/sites/([^/]+)$#', $path, $m)) {
 
     $coord = $v->arr('coordonnees');
     Db::q(
-        'UPDATE sites SET nom=?, milieu=?, profondeur_max=?, coordonnees=?, notes=?, depart_bord=?, depart_bateau=?, shot_line=?, ville=?, pays=?, pays_code=?, region=?
-         WHERE id=?',
+        'UPDATE sites SET nom=?, milieu=?, profondeur_max=?, coordonnees=?, notes=?, depart_bord=?, depart_bateau=?, shot_line=?, ville=?, pays=?, pays_code=?, region=?, deleted_at=NULL
+         WHERE id=? AND user_id=?',
         [
             $v->str('nom'), $v->str('milieu') ?: 'En mer',
             $v->float('profondeur_max'),
@@ -94,18 +119,18 @@ if ($method === 'PUT' && preg_match('#^/api/sites/([^/]+)$#', $path, $m)) {
             $v->str('pays'),
             $v->str('pays_code'),
             $v->str('region'),
-            $m[1],
+            $m[1], $user['id'],
         ]
     );
     Json::ok(decodeSite(Db::row('SELECT * FROM sites WHERE id=?', [$m[1]])));
 }
 
-// DELETE /api/sites/:id
+// DELETE /api/sites/:id — soft delete pour propager aux clients via ?since=.
 if ($method === 'DELETE' && preg_match('#^/api/sites/([^/]+)$#', $path, $m)) {
     Csrf::verify();
     $user = Auth::require();
     siteOwnerOrAbort($user['id'], $m[1]);
-    Db::q('DELETE FROM sites WHERE id=?', [$m[1]]);
+    Db::q('UPDATE sites SET deleted_at=NOW() WHERE id=? AND user_id=?', [$m[1], $user['id']]);
     Json::ok(null);
 }
 
@@ -120,5 +145,8 @@ function decodeSite(array $row): array {
     $row['depart_bord']  = (bool)($row['depart_bord']   ?? false);
     $row['depart_bateau']= (bool)($row['depart_bateau'] ?? false);
     $row['shot_line']    = (bool)($row['shot_line']     ?? false);
+    // Flag « supprimé » consommé par l'outbox côté client pour appliquer le
+    // delete dans son store local.
+    $row['deleted']      = !empty($row['deleted_at']);
     return $row;
 }

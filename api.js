@@ -60,11 +60,16 @@ const api = {
     setRole:    (id, role)   => apiFetch(`/users/${id}/role`, { method: 'PATCH', body: { role } }),
     delete:     (id)         => apiFetch(`/users/${id}`, { method: 'DELETE', body: {} }),
   },
-  archives: {
-    list:   ()       => apiFetch('/archives'),
-    get:    (id)     => apiFetch(`/archives/${id}`),
-    create: (data)   => apiFetch('/archives', { method: 'POST', body: data }),
+  dives: {
+    list:   ()           => apiFetch('/dives'),
+    get:    (id)         => apiFetch(`/dives/${id}`),
+    create: (data)       => apiFetch('/dives', { method: 'POST', body: data }),
+    update: (id, patch)  => apiFetch(`/dives/${id}`, { method: 'PATCH', body: patch }),
+    delete: (id)         => apiFetch(`/dives/${id}`, { method: 'DELETE', body: {} }),
   },
 };
+
+// Alias rétro-compat pour screen-archives.jsx (appelle api.archives.list/get)
+api.archives = api.dives;
 
 Object.assign(window, { api });

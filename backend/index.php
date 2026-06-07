@@ -5,7 +5,7 @@ ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 
 // Load libs
-foreach (['Config','Json','Db','Auth','Csrf','Validate','Smtp'] as $cls) {
+foreach (['Config','Json','Db','Auth','Csrf','Validate','Smtp','SyncHelpers'] as $cls) {
     require_once __DIR__ . "/lib/{$cls}.php";
 }
 
@@ -38,7 +38,7 @@ if ($method === 'POST' && $path === '/api/auth/google') {
 
 // Router — load matching route file
 $routed = false;
-foreach (['auth','divers','sites','users','archives','pdf','proxy'] as $r) {
+foreach (['auth','divers','sites','users','dives','sync','pdf','proxy'] as $r) {
     $file = __DIR__ . "/routes/{$r}.php";
     require $file;
 }

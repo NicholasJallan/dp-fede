@@ -3,14 +3,14 @@
 // Stratégies par destination :
 //   - App shell local (/, *.css, *.jsx, *.png, /lib/*) : cache-first, precache à l'install
 //   - CDN tiers (unpkg, cdnjs, fonts.googleapis.com, fonts.gstatic.com) : cache-first runtime
-//   - GET /api/auth/me, /api/divers, /api/sites, /api/archives (liste) : stale-while-revalidate
+//   - GET /api/auth/me, /api/divers, /api/sites, /api/dives (liste) : stale-while-revalidate
 //   - Tout autre /api/* : network-only (laisse passer pour que l'app gère la queue)
 //   - Reste : network-first avec fallback cache
 //
 // La VERSION est bumpée à chaque déploiement par pi-scripts/bump-sw-version.sh
 // qui remplace la chaîne ci-dessous. Format : dp-{YYYYMMDD}-{sha7}.
 // La valeur « dp-dev-local » est le défaut hors déploiement.
-const VERSION = 'dp-20260607-83de952-1';
+const VERSION = 'dp-20260607-1dbb1de';
 
 const SHELL_CACHE  = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
@@ -73,7 +73,7 @@ const API_SWR_PATHS = [
   '/api/auth/me',
   '/api/divers',
   '/api/sites',
-  '/api/archives',
+  '/api/dives',
   '/api/sync/state',
 ];
 

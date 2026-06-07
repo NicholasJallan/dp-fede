@@ -72,6 +72,91 @@ class Db {
                 } catch (\PDOException $e) { /* index déjà existant */ }
             }
         }
+
+        // Migration 007 — Offline sync : soft-delete, updated_at, client_uuid.
+        // Appliquée colonne par colonne pour rester idempotente quel que soit
+        // l'état partiel de la base (déploiement interrompu, rerun, etc.).
+        self::addColumnIfMissing('divers',   'deleted_at',  'DATETIME NULL');
+        self::addIndexIfMissing ('divers',   'idx_divers_user_updated', '(user_id, updated_at)');
+        self::addIndexIfMissing ('divers',   'idx_divers_user_deleted', '(user_id, deleted_at)');
+
+        self::addColumnIfMissing('sites',    'updated_at',  'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+        self::addColumnIfMissing('sites',    'deleted_at',  'DATETIME NULL');
+        self::addIndexIfMissing ('sites',    'idx_sites_user_updated',  '(user_id, updated_at)');
+        self::addIndexIfMissing ('sites',    'idx_sites_user_deleted',  '(user_id, deleted_at)');
+
+        self::addColumnIfMissing('archives', 'client_uuid', 'VARCHAR(36) NULL');
+        self::addColumnIfMissing('archives', 'updated_at',  'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+        self::addUniqueIndexIfMissing('archives', 'uniq_archives_client', '(user_id, client_uuid)');
+
+        // Migration 008 — Cycle de vie des plongées (archives → dives).
+        // Renomme la table si besoin, puis ajoute les nouvelles colonnes.
+        $hasDives = self::$pdo->query("SHOW TABLES LIKE 'dives'")->fetchColumn();
+        if (!$hasDives) {
+            $hasArchives = self::$pdo->query("SHOW TABLES LIKE 'archives'")->fetchColumn();
+            if ($hasArchives) {
+                self::$pdo->exec('RENAME TABLE archives TO dives');
+            } else {
+                // Création from scratch (env fraîche sans migration 003-007)
+                self::$pdo->exec("CREATE TABLE IF NOT EXISTS dives (
+                    id           VARCHAR(36)  PRIMARY KEY,
+                    user_id      INT          NOT NULL,
+                    client_uuid  VARCHAR(36)  NULL,
+                    site_nom     VARCHAR(255),
+                    date_plongee DATETIME     NULL,
+                    dp_nom       VARCHAR(200),
+                    dp_qual      VARCHAR(20),
+                    activite     VARCHAR(50),
+                    answers      MEDIUMTEXT,
+                    palanquees   MEDIUMTEXT,
+                    drive_link   VARCHAR(500),
+                    updated_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    created_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+                )");
+            }
+        }
+
+        self::addColumnIfMissing('dives', 'status',       "ENUM('prepared','in_progress','archived') NOT NULL DEFAULT 'archived'");
+        self::addColumnIfMissing('dives', 'planned_at',   'DATETIME NULL');
+        self::addColumnIfMissing('dives', 'started_at',   'DATETIME NULL');
+        self::addColumnIfMissing('dives', 'closed_at',    'DATETIME NULL');
+        self::addColumnIfMissing('dives', 'render_state', 'MEDIUMTEXT NULL');
+        self::addColumnIfMissing('dives', 'deleted_at',   'DATETIME NULL');
+        self::addColumnIfMissing('dives', 'client_uuid',  'VARCHAR(36) NULL');
+        self::addColumnIfMissing('dives', 'updated_at',   'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+        self::addUniqueIndexIfMissing('dives', 'uniq_dives_client',     '(user_id, client_uuid)');
+        self::addIndexIfMissing     ('dives', 'idx_dives_user_date',    '(user_id, date_plongee DESC)');
+        self::addIndexIfMissing     ('dives', 'idx_dives_user_status',  '(user_id, status, planned_at DESC)');
+        self::addIndexIfMissing     ('dives', 'idx_dives_user_deleted', '(user_id, deleted_at)');
+
+        // Backfill : les lignes existantes (archivées) reçoivent planned_at et closed_at.
+        self::$pdo->exec("UPDATE dives SET planned_at = date_plongee WHERE planned_at IS NULL AND date_plongee IS NOT NULL");
+        self::$pdo->exec("UPDATE dives SET closed_at  = created_at   WHERE closed_at  IS NULL AND status = 'archived'");
+    }
+
+    /** Ajoute une colonne si absente. SHOW COLUMNS LIKE est fiable et indépendant
+     *  de la version MariaDB (IF NOT EXISTS sur ADD COLUMN n'est dispo qu'à
+     *  partir de 10.0.2 et déjà utilisé ailleurs, mais on garde le pattern
+     *  défensif employé pour les migrations 006 et antérieures). */
+    private static function addColumnIfMissing(string $table, string $col, string $spec): void {
+        $exists = self::$pdo->query("SHOW COLUMNS FROM `{$table}` LIKE " . self::$pdo->quote($col))->fetchColumn();
+        if (!$exists) {
+            self::$pdo->exec("ALTER TABLE `{$table}` ADD COLUMN `{$col}` {$spec}");
+        }
+    }
+
+    private static function addIndexIfMissing(string $table, string $name, string $cols): void {
+        $exists = self::$pdo->query("SHOW INDEX FROM `{$table}` WHERE Key_name=" . self::$pdo->quote($name))->fetchColumn();
+        if (!$exists) {
+            self::$pdo->exec("CREATE INDEX `{$name}` ON `{$table}` {$cols}");
+        }
+    }
+
+    private static function addUniqueIndexIfMissing(string $table, string $name, string $cols): void {
+        $exists = self::$pdo->query("SHOW INDEX FROM `{$table}` WHERE Key_name=" . self::$pdo->quote($name))->fetchColumn();
+        if (!$exists) {
+            self::$pdo->exec("CREATE UNIQUE INDEX `{$name}` ON `{$table}` {$cols}");
+        }
     }
 
     public static function q(string $sql, array $params = []): PDOStatement {

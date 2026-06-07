@@ -1,20 +1,25 @@
 // DP Assistant — Écran "Check-list opérationnelle"
 
-function ScreenChecklist({ answers, setAnswer, checked, setChecked, comments, setComment }) {
+// mode : 'prepare' → phase 1 uniquement, 'execute' → phase 2 uniquement
+function ScreenChecklist({ answers, setAnswer, checked, setChecked, comments, setComment, mode = 'execute' }) {
   const phases = useMemo(() => {
-    // Filter rules by conditions
-    return window.CHECKLIST_RULES.map(phase => {
-      const items = phase.items.filter(it => {
-        // Custom keys
-        if (it.when && it.when._custom === "pa60_derog") {
-          const pa60 = (answers.prof_max === "60 m") && answers.activite === "Exploration" && (!answers.dp_nom);
-          return pa60;
-        }
-        return window.matchCondition(it.when, answers);
+    return window.CHECKLIST_RULES
+      .filter(phase => {
+        if (mode === 'prepare') return phase.phase === 1;
+        if (mode === 'execute') return phase.phase === 2;
+        return true; // mode inconnu → tout afficher
+      })
+      .map(phase => {
+        const items = phase.items.filter(it => {
+          if (it.when && it.when._custom === "pa60_derog") {
+            const pa60 = (answers.prof_max === "60 m") && answers.activite === "Exploration" && (!answers.dp_nom);
+            return pa60;
+          }
+          return window.matchCondition(it.when, answers);
+        });
+        return { ...phase, items };
       });
-      return { ...phase, items };
-    });
-  }, [answers]);
+  }, [answers, mode]);
 
   const total = phases.reduce((n, p) => n + p.items.length, 0);
   const done = phases.reduce((n, p) => n + p.items.filter(i => checked[i.id]).length, 0);
@@ -24,9 +29,21 @@ function ScreenChecklist({ answers, setAnswer, checked, setChecked, comments, se
   return (
     <div>
       <div className="page-head">
-        <div className="eyebrow">Étape 3 / 5 · Check-list pré-plongée</div>
-        <h1>Avant d'autoriser la mise à l'eau</h1>
-        <p>{total} contrôles organisés en 2 phases (préparation + sur site), dont {phases.reduce((n,p) => n + p.items.filter(i => i.when).length, 0)} déclenchés par votre profilage. À la fin : décision finale du DP pour autoriser le départ.</p>
+        <div className="eyebrow">
+          {mode === 'prepare'
+            ? 'Étape 3 · Check-list — Phase 1 (préparation)'
+            : mode === 'execute'
+            ? 'Étape 3 · Check-list — Phase 2 (sur site)'
+            : 'Étape 3 / 5 · Check-list opérationnelle'}
+        </div>
+        <h1>
+          {mode === 'prepare'
+            ? 'Avant l\'arrivée sur site'
+            : mode === 'execute'
+            ? 'Sur site — avant la mise à l\'eau'
+            : 'Check-list pré-plongée'}
+        </h1>
+        <p>{total} contrôles{mode !== 'execute' ? ' de préparation' : ' sur site'}, dont {phases.reduce((n,p) => n + p.items.filter(i => i.when).length, 0)} déclenchés par votre profilage.{mode === 'execute' ? ' À la fin : décision finale du DP pour autoriser le départ.' : ''}</p>
       </div>
 
       <div className="row" style={{ marginBottom: 18, gap: 8 }}>

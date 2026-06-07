@@ -48,6 +48,17 @@
   <!-- API fetch wrapper -->
   <script src="api.js"></script>
 
+  <!-- Détection online/offline + polyfill randomUUID -->
+  <script src="lib/net.js"></script>
+
+  <!-- Couche offline : store IndexedDB → outbox → sync orchestrator → wrapper api.
+       Doit être chargée AVANT les JSX qui consomment window.api, car offline-api.js
+       décore les méthodes de api.* (interception). -->
+  <script src="lib/offline-store.js"></script>
+  <script src="lib/outbox.js"></script>
+  <script src="lib/sync.js"></script>
+  <script src="lib/offline-api.js"></script>
+
   <!-- Logique métier pure (chargée avant data.js — exporte validatePal, peLevel, getMaxEnsLevel, computePalHardLimit, clampProfMax) -->
   <script src="lib/depth-clamp.js"></script>
   <script src="lib/pal-rules.js"></script>
@@ -76,5 +87,36 @@
 
   <!-- App entry -->
   <script type="text/babel" src="app.jsx"></script>
+
+  <!-- Service Worker — enregistrement après le chargement principal pour
+       éviter de retarder le first paint. Le SW gère le cache de l'app shell
+       et la disponibilité offline. -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+          .then(reg => {
+            // Si une nouvelle version est dispo, on la signale à l'app via event.
+            reg.addEventListener('updatefound', () => {
+              const sw = reg.installing;
+              if (!sw) return;
+              sw.addEventListener('statechange', () => {
+                if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+                  window.dispatchEvent(new CustomEvent('dp:swUpdate', { detail: { reg } }));
+                }
+              });
+            });
+          })
+          .catch(err => console.warn('[SW] register échec :', err?.message || err));
+
+        // Messages venant du SW (ex. SYNC_TRIGGER de Background Sync).
+        navigator.serviceWorker.addEventListener('message', (e) => {
+          if (e.data?.type) {
+            window.dispatchEvent(new CustomEvent('dp:sw', { detail: e.data }));
+          }
+        });
+      });
+    }
+  </script>
 </body>
 </html>

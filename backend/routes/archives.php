@@ -2,17 +2,31 @@
 declare(strict_types=1);
 
 // GET /api/archives — liste des plongées archivées (sans les gros champs JSON)
+// Paramètre optionnel ?since=ISO8601 pour pull incrémental.
 if ($method === 'GET' && $path === '/api/archives') {
-    $user = Auth::require();
-    $rows = Db::all(
-        'SELECT id, site_nom, date_plongee, dp_nom, dp_qual, activite, drive_link, created_at
-         FROM archives WHERE user_id=? ORDER BY date_plongee DESC, created_at DESC',
-        [$user['id']]
-    );
-    // date_plongee est désormais un DATETIME — on renvoie une string ISO compatible
-    // avec le front qui consomme déjà "YYYY-MM-DDTHH:mm".
+    $user  = Auth::require();
+    $since = $_GET['since'] ?? null;
+    if ($since) {
+        $sinceSql = SyncHelpers::parseSinceParam($since);
+        $rows = Db::all(
+            'SELECT id, client_uuid, site_nom, date_plongee, dp_nom, dp_qual, activite, drive_link, palanquees, created_at, updated_at
+             FROM archives WHERE user_id=? AND updated_at >= ?
+             ORDER BY date_plongee DESC, created_at DESC',
+            [$user['id'], $sinceSql]
+        );
+    } else {
+        $rows = Db::all(
+            'SELECT id, client_uuid, site_nom, date_plongee, dp_nom, dp_qual, activite, drive_link, palanquees, created_at, updated_at
+             FROM archives WHERE user_id=? ORDER BY date_plongee DESC, created_at DESC',
+            [$user['id']]
+        );
+    }
     foreach ($rows as &$r) {
         $r['date_plongee'] = normalizeDiveDate($r['date_plongee'] ?? null);
+        $pals = json_decode($r['palanquees'] ?? '[]', true) ?: [];
+        $r['nb_palanquees'] = count($pals);
+        $r['nb_plongeurs']  = (int) array_sum(array_map(fn($p) => count($p['membres'] ?? []), $pals));
+        unset($r['palanquees']);
     }
     Json::ok($rows);
 }
@@ -28,18 +42,40 @@ if ($method === 'GET' && preg_match('#^/api/archives/([^/]+)$#', $path, $m)) {
     Json::ok($row);
 }
 
-// POST /api/archives — créer une archive
+// POST /api/archives — créer (ou récupérer si déjà créée) une archive.
+//
+// Idempotence : si le body contient client_uuid et que ce couple
+// (user_id, client_uuid) existe déjà, on renvoie 200 avec la ligne
+// existante (pas 409, parce que c'est le comportement attendu par
+// l'outbox côté client : rejouer = no-op).
+//
+// drive_link est désormais nullable : l'outbox peut envoyer l'archive
+// sans Drive (offline). Un PATCH ultérieur posera le lien quand Drive
+// est disponible.
 if ($method === 'POST' && $path === '/api/archives') {
     Csrf::verify();
     $user = Auth::require();
     $body = Json::body();
 
+    $clientUuid = isset($body['client_uuid']) && SyncHelpers::isValidUuid((string)$body['client_uuid'])
+        ? (string)$body['client_uuid'] : null;
+
+    if ($clientUuid) {
+        $existing = Db::row(
+            'SELECT id FROM archives WHERE user_id=? AND client_uuid=?',
+            [$user['id'], $clientUuid]
+        );
+        if ($existing) {
+            Json::ok(['id' => $existing['id'], 'duplicate' => true], 200);
+        }
+    }
+
     $id = Db::uuid();
     Db::q(
-        'INSERT INTO archives (id, user_id, site_nom, date_plongee, dp_nom, dp_qual, activite, answers, palanquees, drive_link)
-         VALUES (?,?,?,?,?,?,?,?,?,?)',
+        'INSERT INTO archives (id, user_id, client_uuid, site_nom, date_plongee, dp_nom, dp_qual, activite, answers, palanquees, drive_link)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?)',
         [
-            $id, $user['id'],
+            $id, $user['id'], $clientUuid,
             substr((string)($body['site_nom']     ?? ''), 0, 255),
             parseDiveDateToMySql((string)($body['date_plongee'] ?? '')),
             substr((string)($body['dp_nom']       ?? ''), 0, 200),
@@ -50,7 +86,29 @@ if ($method === 'POST' && $path === '/api/archives') {
             substr((string)($body['drive_link']   ?? ''), 0, 500),
         ]
     );
-    Json::ok(['id' => $id], 201);
+    Json::ok(['id' => $id, 'duplicate' => false], 201);
+}
+
+// PATCH /api/archives/:id — mise à jour partielle (drive_link uniquement).
+// Permet à l'outbox de poser le lien Drive après coup, une fois que
+// l'archive structurée est déjà en base. Toute autre modification est
+// rejetée : une archive est immuable côté métier.
+if ($method === 'PATCH' && preg_match('#^/api/archives/([^/]+)$#', $path, $m)) {
+    Csrf::verify();
+    $user = Auth::require();
+    $body = Json::body();
+
+    $row = Db::row('SELECT id FROM archives WHERE id=? AND user_id=?', [$m[1], $user['id']]);
+    if (!$row) Json::abort(404, 'Archive introuvable');
+
+    $driveLink = substr((string)($body['drive_link'] ?? ''), 0, 500);
+    if ($driveLink === '') Json::abort(422, 'drive_link requis');
+
+    Db::q(
+        'UPDATE archives SET drive_link=? WHERE id=? AND user_id=?',
+        [$driveLink, $m[1], $user['id']]
+    );
+    Json::ok(['id' => $m[1], 'drive_link' => $driveLink]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────

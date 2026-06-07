@@ -1,5 +1,13 @@
 // DP Assistant — Écran d'accueil
 
+// Convertit YYYY-MM-DD ou YYYY-MM-DDTHH:mm → dd-mm-yyyy
+function fmtArchiveDate(dt) {
+  if (!dt) return '—';
+  const d = String(dt).slice(0, 10);
+  if (d.length < 10) return dt;
+  return `${d.slice(8, 10)}-${d.slice(5, 7)}-${d.slice(0, 4)}`;
+}
+
 function ScreenHome({ onNew, onResume, hasDraft, plongeeFigee, onClone }) {
   const [archives,  setArchives]  = useState(null);
   const [cloningId, setCloningId] = useState(null);
@@ -231,7 +239,11 @@ function ScreenHome({ onNew, onResume, hasDraft, plongeeFigee, onClone }) {
                 <div>
                   <div style={{ fontWeight:600, fontSize:14, marginBottom:2 }}>{row.site_nom || '—'}</div>
                   <div style={{ fontSize:12, color:'var(--ink-3)' }}>
-                    {row.date_plongee || '—'} · DP : {row.dp_nom || '—'} ({row.dp_qual || '—'}) · {row.activite || '—'}
+                    <b style={{ color:'var(--ink-2)' }}>{fmtArchiveDate(row.date_plongee)}</b>
+                    {' · DP : '}{row.dp_nom || '—'}{' ('}{row.dp_qual || '—'}{')'}{' · '}{row.activite || '—'}
+                    {row.nb_palanquees > 0 && (
+                      <>{' · '}{row.nb_palanquees} pal. · {row.nb_plongeurs} plongeur{row.nb_plongeurs > 1 ? 's' : ''}</>
+                    )}
                   </div>
                 </div>
 

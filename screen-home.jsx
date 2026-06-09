@@ -251,8 +251,6 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
     return { inProgress: ip, prepared: pr, archived: ar };
   }, [dives]);
 
-  const hasPending = inProgress.length > 0 || prepared.length > 0;
-
   return (
     <div>
       <div className="home-hero">
@@ -305,49 +303,55 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
       )}
 
       {/* ── Plongées en cours ──────────────────────────────────────────── */}
-      {inProgress.length > 0 && (
-        <div style={{ marginTop:24 }}>
-          <SectionHead icon={
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"/>
-              <polygon fill="currentColor" stroke="none" points="10,8.5 16.5,12 10,15.5"/>
-            </svg>
-          } iconColor="var(--kelp,#2d8653)"
-            label="Plongées en cours" count={inProgress.length} unit="fiche" />
-          <div className="card">
-            <div className="card-body" style={{ padding:0 }}>
-              {inProgress.map(d => (
-                <DiveCardInProgress key={d.client_uuid || d.id} dive={d}
-                  onResume={onLoadDive}
-                  onEdit={(id) => onLoadDive(id, 'profil', 'prepare')} />
-              ))}
-            </div>
+      <div style={{ marginTop:24 }}>
+        <SectionHead icon={
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polygon fill="currentColor" stroke="none" points="10,8.5 16.5,12 10,15.5"/>
+          </svg>
+        } iconColor="var(--kelp,#2d8653)"
+          label="Plongées en cours" count={inProgress.length} unit="fiche" />
+        <div className="card">
+          <div className="card-body" style={{ padding:0 }}>
+            {dives === null
+              ? <div className="muted" style={{ padding:20, textAlign:'center', fontSize:13 }}>Chargement…</div>
+              : inProgress.length === 0
+                ? <div className="muted" style={{ padding:20, textAlign:'center', fontSize:13 }}>Aucune plongée en cours.</div>
+                : inProgress.map(d => (
+                    <DiveCardInProgress key={d.client_uuid || d.id} dive={d}
+                      onResume={onLoadDive}
+                      onEdit={(id) => onLoadDive(id, 'profil', 'prepare')} />
+                  ))
+            }
           </div>
         </div>
-      )}
+      </div>
 
       {/* ── Plongées préparées ─────────────────────────────────────────── */}
-      {prepared.length > 0 && (
-        <div style={{ marginTop:24 }}>
-          <SectionHead icon={
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-          } iconColor="var(--marine,#0a4a6e)"
-            label="Plongées préparées" count={prepared.length} unit="plongée" />
-          <div className="card">
-            <div className="card-body" style={{ padding:0 }}>
-              {prepared.map(d => (
-                <DiveCardPrepared key={d.client_uuid || d.id} dive={d}
-                  onStart={onStartExecution}
-                  onEdit={(id) => onLoadDive(id, 'profil', 'prepare')}
-                  onDelete={onDeleteDive} />
-              ))}
-            </div>
+      <div style={{ marginTop:24 }}>
+        <SectionHead icon={
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+        } iconColor="var(--marine,#0a4a6e)"
+          label="Plongées préparées" count={prepared.length} unit="plongée" />
+        <div className="card">
+          <div className="card-body" style={{ padding:0 }}>
+            {dives === null
+              ? <div className="muted" style={{ padding:20, textAlign:'center', fontSize:13 }}>Chargement…</div>
+              : prepared.length === 0
+                ? <div className="muted" style={{ padding:20, textAlign:'center', fontSize:13 }}>Aucune plongée préparée — cliquez sur « + Nouvelle plongée ».</div>
+                : prepared.map(d => (
+                    <DiveCardPrepared key={d.client_uuid || d.id} dive={d}
+                      onStart={onStartExecution}
+                      onEdit={(id) => onLoadDive(id, 'profil', 'prepare')}
+                      onDelete={onDeleteDive} />
+                  ))
+            }
           </div>
         </div>
-      )}
+      </div>
 
       {/* ── Plongées archivées ─────────────────────────────────────────── */}
       <div style={{ marginTop:24 }}>
@@ -369,14 +373,10 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
 
         <div className="card">
           <div className="card-body" style={{ padding:0 }}>
-            {dives === null && (
-              <div className="muted" style={{ padding:20, textAlign:'center', fontSize:13 }}>Chargement…</div>
-            )}
-            {dives !== null && archived.length === 0 && !hasPending && (
-              <div className="muted" style={{ padding:20, textAlign:'center', fontSize:13 }}>
-                Aucune plongée archivée pour le moment.
-              </div>
-            )}
+            {dives === null
+              ? <div className="muted" style={{ padding:20, textAlign:'center', fontSize:13 }}>Chargement…</div>
+              : archived.length === 0 && <div className="muted" style={{ padding:20, textAlign:'center', fontSize:13 }}>Aucune plongée archivée pour le moment.</div>
+            }
             {archived.map((row, i) => (
               <div key={row.client_uuid || row.id} style={{
                 display:'grid', gridTemplateColumns:'1fr auto',

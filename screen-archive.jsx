@@ -355,11 +355,14 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
   const { showToast } = useToasts();
   const ficheRef     = useRef(null);
   const checklistRef = useRef(null);
-  const [status,      setStatus]      = useState('idle');
-  const [driveLinks,  setDriveLinks]  = useState({ fiche:'', checklist:'' });
-  const [error,       setError]       = useState('');
-  // Lien Drive d'une plongée déjà archivée au chargement (pas régénéré).
-  const [savedDriveLink, setSavedDriveLink] = useState(null);
+  const [status,         setStatus]         = useState('idle');
+  const [driveLinks,     setDriveLinks]     = useState({ fiche:'', checklist:'' });
+  const [error,          setError]          = useState('');
+  // true uniquement si la plongée était déjà archivée AVANT d'arriver sur cet
+  // écran (chargement depuis l'historique). Distinct de plongeeFigee qui est
+  // mis à true par confirmArchive() avant la première visite sur cet écran.
+  const [alreadyArchived, setAlreadyArchived] = useState(false);
+  const [savedDriveLink,  setSavedDriveLink]  = useState(null);
   const online = window.useOnline ? window.useOnline() : true;
 
   // Enqueue offline : enregistre l'archive localement (passe via offline-api
@@ -583,23 +586,29 @@ ${styles}
   };
 
   // Déclenchement auto à l'arrivée sur l'écran.
-  // Si la plongée est déjà archivée (plongeeFigee) : on récupère le lien Drive
-  // existant sans régénérer les PDFs. Sinon, on lance l'archivage si on est en ligne.
+  // On inspecte le store pour savoir si la plongée est réellement déjà archivée
+  // (visite depuis l'historique). plongeeFigee ne suffit pas : confirmArchive()
+  // le met à true avant même la première visite sur cet écran.
   useEffect(() => {
-    if (plongeeFigee) {
+    async function init() {
       if (diveId) {
-        api.dives.get(diveId)
-          .then(dive => { if (dive?.drive_link) setSavedDriveLink(dive.drive_link); })
-          .catch(() => {});
+        try {
+          const dive = await api.dives.get(diveId);
+          if (dive?.status === 'archived') {
+            setAlreadyArchived(true);
+            if (dive.drive_link) setSavedDriveLink(dive.drive_link);
+            return;
+          }
+        } catch {}
       }
-      return;
+      if (online) doArchive();
     }
-    if (online) doArchive();
+    init();
   }, []); // eslint-disable-line
 
   // Reprise automatique de l'archivage quand la connexion revient.
   useEffect(() => {
-    if (!plongeeFigee && online && (status === 'idle' || status === 'error')) {
+    if (!alreadyArchived && online && (status === 'idle' || status === 'error')) {
       doArchive();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -703,7 +712,7 @@ ${styles}
           )}
 
           {/* Plongée déjà archivée au chargement — lien Drive récupéré, pas de régénération */}
-          {plongeeFigee && status === 'idle' && (
+          {alreadyArchived && status === 'idle' && (
             <div style={{ display:'grid', gap:12 }}>
               <Alert tone="ok">Plongée déjà archivée.</Alert>
               {savedDriveLink

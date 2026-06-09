@@ -355,13 +355,11 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
   const { showToast } = useToasts();
   const ficheRef     = useRef(null);
   const checklistRef = useRef(null);
-  const [status,     setStatus]     = useState('idle');
-  const [driveLinks, setDriveLinks] = useState({ fiche:'', checklist:'' });
-  const [error,      setError]      = useState('');
-  const [queuedClientUuid, setQueuedClientUuid] = useState(null);
-  // Détection online — utilisée pour ne pas tenter Drive/PDF hors ligne.
-  // Offline → on enqueue via api.dives.update (outbox) ; le PDF + Drive
-  // se feront depuis ScreenHome au retour de la connexion (PendingDriveBanner).
+  const [status,      setStatus]      = useState('idle');
+  const [driveLinks,  setDriveLinks]  = useState({ fiche:'', checklist:'' });
+  const [error,       setError]       = useState('');
+  // Lien Drive d'une plongée déjà archivée au chargement (pas régénéré).
+  const [savedDriveLink, setSavedDriveLink] = useState(null);
   const online = window.useOnline ? window.useOnline() : true;
 
   // Enqueue offline : enregistre l'archive localement (passe via offline-api
@@ -382,8 +380,7 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
       }));
 
       if (diveId) {
-        // La plongée existe déjà — on la fait passer à 'archived'
-        const res = await api.dives.update(diveId, {
+        await api.dives.update(diveId, {
           status:       'archived',
           closed_at:    new Date().toISOString(),
           site_nom:     answers.site_nom || answers.site || '',
@@ -395,10 +392,8 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
           palanquees:   enrichedPals,
           render_state: { pressions, realises, heuresDebut, heuresFin, checked, comments },
         });
-        setQueuedClientUuid(diveId);
       } else {
-        // Fallback one-shot (ancienne logique si diveId non fourni)
-        const res = await api.dives.create({
+        await api.dives.create({
           status:       'archived',
           site_nom:     answers.site_nom || answers.site || '',
           date_plongee: (answers.date || '').slice(0, 10),
@@ -410,7 +405,6 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
           drive_link:   '',
           render_state: { pressions, realises, heuresDebut, heuresFin, checked, comments },
         });
-        setQueuedClientUuid(res.client_uuid);
       }
       setStatus('queued');
       if (onArchiveDone) onArchiveDone();
@@ -463,24 +457,6 @@ ${styles}
       throw new Error(`PDF ${type} — HTTP ${res.status} : ${detail}`);
     }
     return await res.blob();
-  };
-
-  const onPrintFiche = async () => {
-    try {
-      const blob = await generatePdfBlob('fiche');
-      window.open(URL.createObjectURL(blob), '_blank');
-    } catch (err) {
-      showToast({ tone:'err', title:'PDF fiche — échec', body: err.message });
-    }
-  };
-
-  const onPrintChecklist = async () => {
-    try {
-      const blob = await generatePdfBlob('checklist');
-      window.open(URL.createObjectURL(blob), '_blank');
-    } catch (err) {
-      showToast({ tone:'err', title:'PDF check-list — échec', body: err.message });
-    }
   };
 
   const getOrCreateFolder = async (token) => {
@@ -606,16 +582,24 @@ ${styles}
     tokenClient.requestAccessToken({ prompt:'' });
   };
 
-  // Déclencher l'archivage automatiquement à l'arrivée sur l'écran — sauf
-  // si on est hors ligne. Dans ce cas, on attend la reconnexion : un useEffect
-  // ci-dessous se charge de relancer dès que `online` repasse à true.
+  // Déclenchement auto à l'arrivée sur l'écran.
+  // Si la plongée est déjà archivée (plongeeFigee) : on récupère le lien Drive
+  // existant sans régénérer les PDFs. Sinon, on lance l'archivage si on est en ligne.
   useEffect(() => {
+    if (plongeeFigee) {
+      if (diveId) {
+        api.dives.get(diveId)
+          .then(dive => { if (dive?.drive_link) setSavedDriveLink(dive.drive_link); })
+          .catch(() => {});
+      }
+      return;
+    }
     if (online) doArchive();
-  }, []);
+  }, []); // eslint-disable-line
 
   // Reprise automatique de l'archivage quand la connexion revient.
   useEffect(() => {
-    if (online && (status === 'idle' || status === 'error')) {
+    if (!plongeeFigee && online && (status === 'idle' || status === 'error')) {
       doArchive();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -645,6 +629,7 @@ ${styles}
         <div className="card-head"><h2>Export Google Drive</h2></div>
         <div className="card-body" style={{ display:'grid', gap:16 }}>
 
+          {/* Avancement */}
           {STATUS_MSGS[status] && (
             <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px',
                           background:'var(--bg-2)', borderRadius:8, fontSize:14, color:'var(--ink-2)' }}>
@@ -653,98 +638,87 @@ ${styles}
             </div>
           )}
 
-          {status === 'error' && <Alert tone="warn">Erreur : {error}</Alert>}
-
-          {status === 'idle' && online && (
-            <p style={{ margin:0, color:'var(--ink-3)', fontSize:14 }}>
-              Autorisez l'accès à Google Drive pour générer les deux PDFs et les archiver dans <code>dp-fede</code>.
-            </p>
+          {/* Erreur → bouton "Réessayer" (geste utilisateur débloque le popup GIS) */}
+          {status === 'error' && (
+            <>
+              <Alert tone="warn">Erreur : {error}</Alert>
+              <div><button className="btn primary" onClick={doArchive}>↑ Réessayer</button></div>
+            </>
           )}
 
+          {/* Hors ligne → file d'attente */}
           {!online && status === 'idle' && (
             <div style={{
               display:'grid', gap:10, padding:'14px 16px',
               background:'rgba(224,120,86,0.08)', border:'1px solid rgba(224,120,86,0.35)',
               borderRadius:8, fontSize:14, color:'var(--ink-2)',
             }}>
-              <div style={{ fontWeight:600, color:'var(--coral, #e07856)' }}>
-                ● Hors ligne
+              <div style={{ fontWeight:600, color:'var(--coral, #e07856)' }}>● Hors ligne</div>
+              <div>
+                Le dépôt Drive et la génération PDF nécessitent internet.
+                Enregistrez en file d'attente — tout sera produit automatiquement à la reconnexion.
               </div>
               <div>
-                Le dépôt sur Google Drive et la génération PDF nécessitent
-                internet. Vous pouvez <b>enregistrer la plongée en file d'attente</b>
-                — tout sera produit automatiquement à la reconnexion.
-              </div>
-              <div>
-                <button className="btn primary" onClick={saveOffline}>
-                  ✓ Enregistrer la plongée (Drive plus tard)
-                </button>
+                <button className="btn primary" onClick={saveOffline}>✓ Enregistrer (Drive plus tard)</button>
               </div>
             </div>
           )}
 
+          {/* Enregistrement local confirmé */}
           {status === 'queued' && (
             <div style={{
               display:'grid', gap:10, padding:'14px 16px',
               background:'rgba(45,134,83,0.06)', border:'1px solid rgba(45,134,83,0.3)',
               borderRadius:8, fontSize:14, color:'var(--ink-2)',
             }}>
-              <div style={{ fontWeight:600, color:'var(--kelp, #2d8653)' }}>
-                ✓ Plongée enregistrée localement
-              </div>
+              <div style={{ fontWeight:600, color:'var(--kelp, #2d8653)' }}>✓ Plongée enregistrée localement</div>
               <div>
-                La fiche PDF et le dépôt Drive seront produits dès que la
-                connexion revient. Vous retrouverez cette plongée dans l'Historique
-                avec la mention <em>△ Drive en attente</em>.
+                Fiche PDF et dépôt Drive produits dès la reconnexion.
+                Retrouvez cette plongée dans l'Historique avec la mention <em>△ Drive en attente</em>.
               </div>
-              <div style={{ display:'flex', gap:10 }}>
-                <button className="btn primary" onClick={onStartNew}>↩ Nouvelle plongée</button>
-              </div>
+              <div><button className="btn primary" onClick={onStartNew}>↩ Nouvelle plongée</button></div>
             </div>
           )}
 
-          {status === 'done' && plongeeFigee ? (
-            <div style={{ display:'grid', gap:10 }}>
+          {/* Archivage terminé — liens Drive uniquement, pas de boutons PDF redondants */}
+          {status === 'done' && (
+            <div style={{ display:'grid', gap:12 }}>
               <Alert tone="ok">
-                Plongée archivée et figée · 2 fichiers déposés dans <code>dp-fede</code>.
+                Plongée archivée · 2 fichiers déposés dans <code>dp-fede</code>.
               </Alert>
-              <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center', fontSize:13, color:'var(--ink-3)' }}>
-                {driveLinks.fiche     && <a href={driveLinks.fiche}     target="_blank" rel="noopener noreferrer" style={{ color:'var(--marine)' }}>↗ Fiche de sécurité</a>}
-                {driveLinks.fiche && driveLinks.checklist && <span>·</span>}
-                {driveLinks.checklist && <a href={driveLinks.checklist} target="_blank" rel="noopener noreferrer" style={{ color:'var(--marine)' }}>↗ Check-list</a>}
+              <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                {driveLinks.fiche     && (
+                  <a href={driveLinks.fiche}     target="_blank" rel="noopener noreferrer" className="btn">
+                    ↗ Fiche de sécurité
+                  </a>
+                )}
+                {driveLinks.checklist && (
+                  <a href={driveLinks.checklist} target="_blank" rel="noopener noreferrer" className="btn">
+                    ↗ Check-list
+                  </a>
+                )}
               </div>
-              <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center' }}>
-                <button className="btn primary" onClick={onStartNew}>↩ Nouvelle plongée</button>
-                <button className="btn" onClick={onPrintFiche}>⎙ Fiche de sécurité</button>
-                <button className="btn" onClick={onPrintChecklist}>⎙ Check-list</button>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center' }}>
-              <button className="btn primary"
-                onClick={online ? doArchive : () => window.print()}
-                disabled={busy || status === 'done'}
-                title={online ? undefined : 'Hors ligne — l\'archivage Drive démarrera à la reconnexion'}>
-                {!online ? '🖨 Imprimer (hors ligne)'
-                  : status === 'done' ? '✓ Archivée'
-                  : '↑ Archiver sur Google Drive'}
-              </button>
-              <button className="btn" onClick={onPrintFiche} disabled={!online}
-                title={online ? undefined : 'Génération PDF serveur indisponible hors ligne'}>
-                ⎙ Fiche de sécurité
-              </button>
-              <button className="btn" onClick={onPrintChecklist} disabled={!online}
-                title={online ? undefined : 'Génération PDF serveur indisponible hors ligne'}>
-                ⎙ Check-list
-              </button>
-              {status === 'done' && (
-                <button className="btn" style={{ fontSize:12 }}
-                  onClick={() => { setStatus('idle'); setDriveLinks({ fiche:'', checklist:'' }); setError(''); }}>
-                  Ré-archiver
-                </button>
-              )}
+              <div><button className="btn primary" onClick={onStartNew}>↩ Nouvelle plongée</button></div>
             </div>
           )}
+
+          {/* Plongée déjà archivée au chargement — lien Drive récupéré, pas de régénération */}
+          {plongeeFigee && status === 'idle' && (
+            <div style={{ display:'grid', gap:12 }}>
+              <Alert tone="ok">Plongée déjà archivée.</Alert>
+              {savedDriveLink
+                ? (
+                  <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                    <a href={savedDriveLink} target="_blank" rel="noopener noreferrer" className="btn">
+                      ↗ Ouvrir dans Google Drive
+                    </a>
+                  </div>
+                )
+                : <p style={{ margin:0, fontSize:13, color:'var(--ink-3)' }}>Lien Drive non disponible pour cette archive.</p>
+              }
+            </div>
+          )}
+
         </div>
       </div>
 

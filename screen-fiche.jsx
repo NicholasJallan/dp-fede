@@ -52,27 +52,41 @@ function ScreenFiche({ answers, palanquees, divers, setAnswer, pressions, setPre
     setConfirmDepart(null);
   };
 
+  const addMinutes = (hhmm, minutes) => {
+    const [h, m] = hhmm.split(':').map(Number);
+    const total = h * 60 + m + minutes;
+    const hh = Math.floor((total % (24 * 60)) / 60);
+    const mm = total % 60;
+    return hh.toString().padStart(2, '0') + ':' + mm.toString().padStart(2, '0');
+  };
+
   const openFinModal = (palId, pal) => {
     const endTime  = nowHHMM();
     const debut    = heuresDebut[palId];
     const elapsed  = debut ? diffMinutes(debut, endTime) : null;
     const dtrBrut  = pal.dtr || window.calcDTR(pal.profMax);
     const dtrCapped = (elapsed !== null && dtrBrut > elapsed) ? elapsed : dtrBrut;
-    // Pré-charger un éventuel commentaire saisi lors d'une précédente fin
-    // (cas où l'utilisateur rouvre la modale via la même action)
     const previous = realises[palId];
+    // Profondeur plafonnée par le site (answers.site_prof_max) si disponible
+    const siteProfMax = answers.site_prof_max ? parseInt(answers.site_prof_max, 10) : null;
     setFinForm({
       duree:       elapsed !== null ? String(elapsed) : '',
       profMax:     String(pal.profMax || ''),
       dtr:         String(dtrCapped),
       commentaire: previous?.commentaire || '',
     });
-    setFinModal({ palId, endTime, elapsed });
+    setFinModal({ palId, endTime, elapsed, debut, siteProfMax });
   };
 
   const confirmFin = () => {
     if (!finModal) return;
-    setHeuresFin(prev => ({ ...prev, [finModal.palId]: finModal.endTime }));
+    // Heure de fin = heure de début + durée saisie (pas l'heure courante),
+    // afin de gérer le délai entre la sortie réelle et le clic sur «Fin».
+    const dureeInt = parseInt(finForm.duree, 10);
+    const endTime = (finModal.debut && isFinite(dureeInt))
+      ? addMinutes(finModal.debut, dureeInt)
+      : finModal.endTime;
+    setHeuresFin(prev => ({ ...prev, [finModal.palId]: endTime }));
     setRealises(prev => ({ ...prev, [finModal.palId]: { ...finForm } }));
     // Matérialise la valeur de pression par défaut (50 bar) pour chaque membre
     // afin qu'elle soit présente dans l'export PDF même si l'utilisateur ne touche
@@ -510,10 +524,21 @@ ${styles}
                   placeholder="ex. 42" />
               </div>
               <div className="field">
-                <label>Profondeur max réalisée (m)</label>
-                <input className="input" type="number" min="1" max="200"
-                  value={finForm.profMax} onChange={e => setFinForm(f => ({ ...f, profMax:e.target.value }))}
-                  placeholder="ex. 35" />
+                <label>
+                  Profondeur max réalisée (m)
+                  {finModal.siteProfMax ? ` — max site ${finModal.siteProfMax} m` : ''}
+                </label>
+                <input className="input" type="number" min="1"
+                  max={finModal.siteProfMax ?? 200}
+                  value={finForm.profMax}
+                  onChange={e => {
+                    const raw = e.target.value;
+                    const v   = parseInt(raw, 10);
+                    const cap = finModal.siteProfMax;
+                    const clamped = (cap && isFinite(v) && v > cap) ? String(cap) : raw;
+                    setFinForm(f => ({ ...f, profMax: clamped }));
+                  }}
+                  placeholder="ex. 23" />
               </div>
               {palanquees.find(p => p.id === finModal.palId)?.no_deco && (
                 <Alert tone="info">

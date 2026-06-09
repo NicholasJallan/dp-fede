@@ -119,10 +119,10 @@ function AppInner() {
   }, []);
 
   // ── Snapshot ref (auto-save sans dépendances dans loadDive) ──────────────
+  // Mise à jour inline (pas dans useEffect) pour que flushSave lise toujours
+  // l'état courant même si l'utilisateur quitte la fiche juste après un setState.
   const stateRef = useRef({});
-  useEffect(() => {
-    stateRef.current = { answers, palanquees, checked, comments, pressions, realises, heuresDebut, heuresFin };
-  }, [answers, palanquees, checked, comments, pressions, realises, heuresDebut, heuresFin]);
+  stateRef.current = { answers, palanquees, checked, comments, pressions, realises, heuresDebut, heuresFin };
 
   // ── Auto-save debounced vers le serveur ──────────────────────────────────
   const autoSaveTimerRef = useRef(null);

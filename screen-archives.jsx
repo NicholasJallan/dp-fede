@@ -92,7 +92,7 @@ function ScreenArchives() {
   const [error,    setError]    = useState('');
 
   const refresh = useCallback(() => {
-    (api.dives?.listArchived || api.archives.list)()
+    api.dives.listArchived()
       .then(rows => setArchives(rows))
       .catch(err => { setError(err.message); setArchives([]); });
   }, []);

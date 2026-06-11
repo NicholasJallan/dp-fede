@@ -218,6 +218,17 @@ ${styles}
         <p>Document à compléter avant la mise à l'eau, à conserver 1 an minimum. Imprimable A4 portrait, lisible en noir et blanc.</p>
       </div>
 
+      {!window.isMilieuNaturel(answers.milieu) && (
+        <div className="no-print">
+          <Alert tone="info">
+            <b>Dérogation piscine / fosse ≤ 6 m.</b> En milieu artificiel d'une
+            profondeur ≤ 6 m, la fiche de sécurité n'est <b>pas obligatoire</b>
+            {' '}et un DP de niveau minimum E1 suffit <CdsLink art="A322-72" compact />.
+            Vous pouvez tout de même compléter cette fiche comme trace volontaire.
+          </Alert>
+        </div>
+      )}
+
       <div className="fiche-actions">
         <button className="btn" onClick={onExportJson}>⤓ Export JSON</button>
         <button className="btn primary" onClick={onPrintPdf}>Imprimer / PDF</button>
@@ -438,6 +449,20 @@ ${styles}
           <div>• Numéro d'urgence : <b>{answers.urgence_num || user?.urgence_defaut || '18'}</b></div>
         </div>
 
+        <h2>Conduite à tenir — déclenchement des secours</h2>
+        <div className="fiche-secours" style={{ fontSize:12, border:'1px solid #000', padding:'8px 10px', borderRadius:4 }}>
+          <div style={{ fontWeight:700, fontSize:13 }}>
+            ☎ URGENCE : {answers.urgence_num || user?.urgence_defaut || '18'}
+            <span className="muted" style={{ fontWeight:400 }}> · 112 (Europe) · 196 (secours en mer · CROSS)</span>
+          </div>
+          <div style={{ marginTop:4 }}>1. Sortir la victime de l'eau · 2. O₂ normobare 15 L/min · 3. Alerter les secours · 4. Surveiller / réanimer si besoin.</div>
+          <div>• Lieu / RDV secours : <b>{answers.site_acces_secours || answers.site_nom || '—'}</b></div>
+          <div>• Coordonnées GPS : <b>{(answers.site_coords?.lat != null)
+            ? `${Number(answers.site_coords.lat).toFixed(5)}, ${Number(answers.site_coords.lng).toFixed(5)}`
+            : '—'}</b></div>
+          <div>• Caisson / hôpital de référence : <b>{answers.site_caisson || '—'}</b></div>
+        </div>
+
         <h2>Aptitudes mises en œuvre</h2>
         <div style={{ fontSize: 12, display:'flex', gap:8, flexWrap:'wrap' }}>
           {Object.entries(aptUsage).map(([apt, n]) => (
@@ -491,6 +516,9 @@ ${styles}
         <div className="legal">
           Document à conserver 1 an minimum par l'établissement <CdsLink art="A322-72" compact />.
           Outil d'aide à la décision — la responsabilité personnelle du Directeur de Plongée demeure pleine et entière.
+          {window.REGLEMENTATION && (
+            <div style={{ marginTop:4 }}>{window.REGLEMENTATION.label}.</div>
+          )}
         </div>
       </div>
 

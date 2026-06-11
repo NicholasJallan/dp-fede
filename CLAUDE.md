@@ -9,10 +9,15 @@ Frontend : React 18 + Babel CDN, zéro build. Backend : PHP 7.4 + MariaDB sur Ra
 /var/www/html/dp-fede/       ← fichiers statiques (nginx)
   DP Assistant.html / index.html
   api.js, auth-context.jsx, app.jsx, screen-*.jsx
-  components.jsx, data.js, styles.css
+  components.jsx, diver-form.jsx, toast.jsx
+  data.js, styles.css
+  sw.js, site.webmanifest        ← PWA (Service Worker + manifest)
+  lib/                           ← front (zéro build) :
+    depth-clamp.js, net.js, offline-api.js,
+    offline-store.js, outbox.js, pal-rules.js, sync.js
 
 /var/www/dp-fede-api/        ← backend PHP (nginx → PHP-FPM)
-  index.php, lib/, routes/, migrations/
+  index.php, lib/, routes/
 
 /etc/dp-fede/config.php      ← config secrète (hors web root, chown root:www-data 640)
 
@@ -91,28 +96,32 @@ Ajouter aussi les directives `location` pour `sw.js` (no-cache strict) et
 `site.webmanifest` (no-cache). Voir `nginx-offline-snippet.conf` à la
 racine du repo — à copier dans le bloc server après modification.
 
-Avant chaque déploiement : `./pi-scripts/bump-sw-version.sh` met à jour la
-constante `VERSION` dans `sw.js` (format `dp-{YYYYMMDD}-{sha7}`). Sans ce
-bump, le navigateur considère que le SW n'a pas changé et conserve l'ancien
-cache. À ajouter avant le rsync frontend.
+Avant chaque déploiement frontend, bumper **manuellement** la constante
+`VERSION` dans `sw.js` (format `dp-{YYYYMMDD}-{sha7}`). Sans ce bump, le
+navigateur considère que le SW n'a pas changé et conserve l'ancien cache.
 
 ## Tests métier
 
 Lancer : `npm test` (utilise `node --test`, Node 20+ requis, zéro dépendance NPM).
-Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **162 tests**
-(121 métier FFESSM/Code du Sport + 41 offline : outbox, offline-store, sync, dive-lifecycle, home-buckets).
+Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **174 tests**
+(métier FFESSM/Code du Sport + offline : outbox, offline-store, sync, dive-lifecycle, home-buckets + contextualisation check-list par milieu).
 
 ## Données métier
 
 Tout est dans `data.js` (aucun build requis) :
-- `QUESTIONS` — 8 sections A→H, questions conditionnelles
-- `CHECKLIST_RULES` — 5 phases, items conditionnels
+- `QUESTIONS` — sections du questionnaire (A, B, C, E, F, G), questions conditionnelles (`when`)
+- `CHECKLIST_RULES` — 2 phases (préparation / sur site avant mise à l'eau), items conditionnels (`when`)
 - `LEVELS` / `QUALIFICATIONS` — niveaux FFESSM et qualifs complémentaires
 - `APTITUDE_MAP` — mapping niveau → aptitudes mandatory/optional
 - `DP_DEPTH_RULES` — profondeurs max par niveau DP (exploration / formation)
 - `getMilieuType(milieu)` — normalise 'En mer'/'Lac'/'Carrière'/'Piscine'/'Fosse' → 'mer'/'lac'/'piscine'/'fosse'
-- `getProfOptions(dpQual, activite)` — liste des profondeurs disponibles ; si exploration=0 pour le DP (E1/E2), fallback sur formation
-- `getDiverAptitudes(diver, isExploration)` — aptitudes disponibles pour un plongeur selon isExploration
+- `isMilieuNaturel(milieu)` — vrai en mer/lac/carrière, faux en piscine/fosse ; sert à masquer les questions et items de check-list sans objet en bassin (météo, marée, bouée)
+- `getProfOptions(niveauEncadrant, activite, dp, site)` — liste des profondeurs disponibles ; si exploration=0 pour le DP (E1/E2), fallback sur formation
+- `getDiverAptitudes(diver, isExploration, palContext)` — aptitudes disponibles pour un plongeur ; `palContext` (optionnel) apporte le bonus formation selon l'enseignant de la palanquée
+- `getDpMaxDepth(palType, dp)` — profondeur max autorisée pour un DP selon le type ('formation'/'exploration') ; 0 = type interdit
+- `getFormationBonusAptitudes(diver, maxEnsLevel)` — aptitudes PE bonus accordées en formation selon l'enseignant présent
+- `aptitudeMaxDepth(aptitude)` — profondeur max (m) associée à une aptitude (Baptême=6, PE20=20, …)
+- `sortMembresForFiche(membres)` — tri canonique des membres pour la fiche (encadrant → GP → … ; 2ᵉ GP en serre-file)
 - `getPalType(membres)` — type de palanquée : 'bapteme'/'formation'/'guidee'/'exploration'
 - `calcDTR(profMax)` — DTR sans déco : Math.ceil(profMax / 10)
 
@@ -136,16 +145,18 @@ Tout est dans `data.js` (aucun build requis) :
 - `validatePal` vit dans `lib/pal-rules.js` (extrait de `screen-palanquees.jsx`). Toute modification doit être accompagnée d'un test dans `tests/pal-rules.test.js`.
 - Plafond de profondeur d'une palanquée : `window.computePalHardLimit({...})` (UN seul endroit). Les 4 anciennes duplications ont été supprimées.
 - Super-administrateur : email unique `nicholas.jallan@gmail.com` (constante `SUPER_ADMIN_EMAIL` côté front + `Auth::SUPER_ADMIN_EMAIL` côté back). Le rôle DB `admin` ne donne PAS accès aux endpoints `/api/users/*` — `Auth::requireSuperAdmin()` est requis.
-- **Table `dives`** (anciennement `archives`, migration 008) : cycle de vie `status ENUM('prepared','in_progress','archived')`. Colonnes : `planned_at`, `started_at`, `closed_at`, `render_state` (JSON), `deleted_at`. La migration 008 renomme la table, backfill `status='archived'` pour les lignes existantes.
-- `dives.date_plongee` est un `DATETIME` (migration 006). Le front envoie/reçoit du `YYYY-MM-DDTHH:mm` ; la conversion est dans `backend/routes/dives.php::parseDiveDateToMySql/normalizeDiveDate`.
-- TTL session backend = **7 jours** (`Auth::TTL = 604800`), sliding refresh à 3,5 j restants. CSRF TTL alignée à 7 jours. Couvre les sessions terrain offline prolongées (migration 007 + Phase 1 offline).
+- **Schéma DB** : entièrement décrit par `backend/lib/Db.php::migrate()`, appelé au 1er accès PDO. Source unique de vérité, idempotent (`CREATE TABLE IF NOT EXISTS` + `addColumnIfMissing`/`addIndexIfMissing`), sûr pour une base fraîche comme pour la base déjà déployée. Il n'y a **plus** de dossier `migrations/` ni de chaîne de migrations versionnées : l'historique vit dans git (projet bêta, déploiement unique).
+- **Table `dives`** : cycle de vie `status ENUM('prepared','in_progress','archived')`. Colonnes : `planned_at`, `started_at`, `closed_at`, `render_state` (MEDIUMTEXT, JSON sérialisé), `deleted_at`.
+- `dives.date_plongee` est un `DATETIME`. Le front envoie/reçoit du `YYYY-MM-DDTHH:mm` ; la conversion est dans `backend/routes/dives.php::parseDiveDateToMySql/normalizeDiveDate`.
+- TTL session backend = **7 jours** (`Auth::TTL = 604800`), sliding refresh à 3,5 j restants. CSRF TTL alignée à 7 jours. Couvre les sessions terrain offline prolongées (Phase 1 offline).
 - `divers` et `sites` font du **soft-delete** : `DELETE` met `deleted_at = NOW()`, la ligne reste pour propager la suppression aux clients via `GET /api/divers?since=`. La liste sans `?since=` exclut les soft-deletes. Champ `deleted: bool` dans la réponse. Même mécanique pour `dives`.
 - `dives.client_uuid` : si le front envoie un `client_uuid` (UUID v4) et qu'une plongée existe déjà avec ce couple `(user_id, client_uuid)`, le POST renvoie 200 `{ id, duplicate: true }` au lieu de créer une 2ᵉ ligne. Permet à l'outbox de rejouer sans dupliquer.
 - `POST /api/divers` et `POST /api/sites` acceptent un `id` optionnel (UUID v4 client) ; en cas de collision PK, ils font un UPSERT (`ON DUPLICATE KEY UPDATE`) et réactivent les soft-deletes (`deleted_at = NULL`).
 - Mode offline : `lib/net.js` expose `window.useOnline()` (hook React) et `window.netStatus()`. Auth-context bascule en `authMode = 'offline'` si `/api/auth/me` échoue mais qu'un snapshot `dp-last-user` < 7 j existe. L'écran archive ne déclenche pas Drive hors-ligne et reprend automatiquement quand `online` repasse à true.
-- Service Worker : `sw.js` à la racine, scope `/`. Avant déploiement frontend, lancer `./pi-scripts/bump-sw-version.sh` pour bumper la constante `VERSION`. Les anciens caches sont purgés sèchement à l'activation du nouveau SW (pas de migration douce).
-- `render_state` : JSON stocké dans `dives.render_state`, contient `{ pressions, realises, heuresDebut, heuresFin, checked, comments }`. Synchronisé en continu via outbox (`dive.update`). Utilisé par `finalizePendingDrive` pour régénérer le PDF après reconnexion.
+- Service Worker : `sw.js` à la racine, scope `/`. Avant déploiement frontend, bumper **manuellement** la constante `VERSION` dans `sw.js`. Les anciens caches sont purgés sèchement à l'activation du nouveau SW (pas de migration douce).
+- `render_state` : colonne `MEDIUMTEXT` de `dives` contenant du JSON sérialisé `{ pressions, realises, heuresDebut, heuresFin, checked, comments }`. Synchronisé en continu via outbox (`dive.update`). Utilisé par `finalizePendingDrive` pour régénérer le PDF après reconnexion.
+- **Plan de secours** : `sites.acces_secours` et `sites.caisson` (VARCHAR 500, créés via `Db::migrate`). Propagés dans `answers` par `screen-profil.jsx` (`site_acces_secours`, `site_caisson`, `site_coords`) et affichés dans le bloc « Conduite à tenir » de la fiche/PDF (`screen-fiche.jsx`, `screen-archive.jsx`). Bouton flottant « ☎ URGENCE » en mode `execute` (`app.jsx`).
 - **Cycle de vie** : plongée créée à `status='prepared'` dès le clic "+ Nouvelle plongée". Transition → `in_progress` au 1er `heuresDebut` posé (détectée dans `app.jsx` via useEffect). Transition → `archived` à l'archivage Drive. PATCH refusé en rétrograde (`archived` → autre statut).
 - **Auto-save** : debounce 500 ms vers `api.dives.update(currentDiveId, { answers, palanquees, render_state })`. Flush immédiat au retour accueil (`flushSave`) et lors de `loadDive` (bascule entre plongées).
 - **`diveMode`** dans `app.jsx` : `'prepare'` (étapes 1-3) ou `'execute'` (étapes 3-5). Check-list filtre les phases selon `mode`.
-- **Outbox kinds** : `dive.create`, `dive.update`, `dive.delete`, `dive.drive` (drive registered par ScreenArchive). Handlers dans `lib/sync.js`.
+- **Outbox kinds** : `dive.create`, `dive.update`, `dive.delete`, `dive.drive` (drive registered par ScreenArchive) ; `diver.create`, `diver.update`, `diver.delete` ; `site.create`, `site.update`, `site.delete`. Handlers dans `lib/sync.js` (`DEFAULT_HANDLERS`).

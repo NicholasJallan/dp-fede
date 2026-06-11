@@ -23,9 +23,9 @@ if ($method === 'GET' && $path === '/api/users/stats') {
         SELECT
           u.id, u.email, u.nom, u.prenom, u.club_nom, u.role,
           u.created_at, u.last_login,
-          (SELECT COUNT(*) FROM divers   d WHERE d.user_id=u.id) AS nb_divers,
-          (SELECT COUNT(*) FROM sites    s WHERE s.user_id=u.id) AS nb_sites,
-          (SELECT COUNT(*) FROM archives a WHERE a.user_id=u.id) AS nb_fiches
+          (SELECT COUNT(*) FROM divers d WHERE d.user_id=u.id AND d.deleted_at IS NULL) AS nb_divers,
+          (SELECT COUNT(*) FROM sites  s WHERE s.user_id=u.id AND s.deleted_at IS NULL) AS nb_sites,
+          (SELECT COUNT(*) FROM dives  v WHERE v.user_id=u.id AND v.deleted_at IS NULL) AS nb_fiches
         FROM users u
         ORDER BY u.created_at DESC
     ');

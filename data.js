@@ -2,6 +2,22 @@
 // Niveaux, aptitudes, règles Code du Sport (Annexes III-15a, III-16a/b, Art. A322-xx)
 
 // =========================================================================
+// VEILLE RÉGLEMENTAIRE
+// Date du dernier texte du Code du Sport intégré dans les règles ci-dessous.
+// Affichée discrètement (fiche / écran compte) pour tracer la base
+// réglementaire de la fiche de sécurité archivée.
+// Derniers textes connus : arrêtés des 17 oct. 2025 et 24 nov. 2025
+// (modification de l'annexe III-15a — qualifications DP).
+// =========================================================================
+window.REGLEMENTATION = {
+  // Date jusqu'à laquelle les règles métier sont à jour.
+  aJour: '2025-11-26',
+  label: 'Code du Sport — règles à jour au 26/11/2025',
+  // Référence des derniers textes pris en compte.
+  textes: 'Arrêtés des 17 oct. 2025 et 24 nov. 2025 (annexe III-15a).',
+};
+
+// =========================================================================
 // MAPPING NIVEAU → APTITUDES (Annexes III-15a, III-16a/b)
 // mandatory : toujours acquis avec ce niveau
 // optional  : possible (aptitudes_sup dans le profil du plongeur)
@@ -339,10 +355,7 @@ window.QUESTIONS = [
         hint:'Shot-line = ligne lestée de descente/remontée. Obligatoire pour le Trimix. Indépendante du site.' },
       { id:'meteo',      label:'Conditions météo / mer / courant / visibilité', type:'meteo-field',
         placeholder:'Vent, état de la mer, courant, visibilité estimée…',
-        when:(a) => {
-          const m = window.getMilieuType(a.milieu);
-          return m !== 'piscine' && m !== 'fosse';
-        } },
+        when:(a) => window.isMilieuNaturel(a.milieu) },
       { id:'maree_relevant', label:'Informations de marée pertinentes ?', type:'bool',
         when:(a) => {
           const m = window.getMilieuType(a.milieu);
@@ -413,7 +426,8 @@ window.QUESTIONS = [
       { id:'eau_potable',   label:'Eau douce potable disponible ?', type:'bool' },
       { id:'rappel',        label:'Moyen de rappel des plongeurs (pétard, sondeur) ?', type:'bool',
         when:{depart_bateau:true} },
-      { id:'bouee_surface', label:'Bouée / pavillon de signalisation en surface ?', type:'bool' },
+      { id:'bouee_surface', label:'Bouée / pavillon de signalisation en surface ?', type:'bool',
+        when:(a) => window.isMilieuNaturel(a.milieu) },
       { id:'trimix_secu_note', label:'Plongée Trimix : sécurité surface continue obligatoire (Art. A322-91)',
         type:'info', when:{trimix:true} },
     ]
@@ -428,7 +442,7 @@ window.CHECKLIST_RULES = [
     phase:1, phaseTitle:'Préparation — avant l\'arrivée sur site',
     items:[
       { id:'p1_meteo',         text:'Bulletin météo consulté (vent, mer, courant, visibilité, alerte)', ref:'Bonne pratique', tags:['meteo'],
-        when:(a) => { const m = window.getMilieuType(a.milieu); return m !== 'piscine' && m !== 'fosse'; } },
+        when:(a) => window.isMilieuNaturel(a.milieu) },
       { id:'p1_maree',         text:'Heure et coefficient de marée vérifiés', tags:['meteo'], when:{maree_relevant:true} },
       { id:'p1_blocs',         text:'Dates de réépreuve TIV / requalif. blocs des plongeurs OK', ref:'Arrêté 18/11/86', tags:['materiel'] },
       { id:'p1_gonflage',      text:'Gonflage des blocs effectué — pressions contrôlées' },
@@ -449,7 +463,9 @@ window.CHECKLIST_RULES = [
         ref:'CdS A322-91', tags:['materiel'],
         when:(a) => a.shot_line || a.trimix },
       { id:'p1_secours_coord', text:'Coordonnées des secours affichées (pays-appropriées)', ref:'CdS A322-78', tags:['secours'] },
-      { id:'p1_fiche_init',    text:'Fiche de sécurité pré-remplie avec palanquées et paramètres prévus', ref:'CdS A322-72', tags:['fiche'] },
+      // NB : la fiche de sécurité pré-remplie n'est plus un item à cocher —
+      // l'application EST la fiche (palanquées + paramètres prévus saisis aux
+      // étapes précédentes). Plus de question auto-référente (ex-`p1_fiche_init`).
     ]
   },
   {
@@ -460,7 +476,8 @@ window.CHECKLIST_RULES = [
       { id:'p2_rappels_secu',  text:'Rappels de sécurité individuels communiqués : moyen de rappel, conduite à tenir en cas de perte de palanquée, procédure de remontée d\'urgence', ref:'CdS A322-72', tags:['fiche'] },
       { id:'p2_palanquees',    text:'Composition annoncée — GP / serre-files / autonomes identifiés' },
       { id:'p2_sec_surface',   text:'Sécurité surface en poste — relais identifiés si rotation', ref:'CdS A322-78', tags:['secours'], when:{sec_surface:true} },
-      { id:'p2_fiche',         text:'Fiche de sécurité complétée et accessible sur site', ref:'CdS A322-72', tags:['fiche'] },
+      // Ex-`p2_fiche` supprimé : l'application EST la fiche (complétée et
+      // accessible sur site par construction). Item auto-référent retiré.
       { id:'p2_pavillon',      text:'Pavillon Alpha hissé sur l\'embarcation', ref:'RIPAM règle 27', tags:['bateau'], when:{depart_bateau:true} },
       { id:'p2_echelle',       text:'Échelle de remontée déployée — ancrage adapté', tags:['bateau'], when:{depart_bateau:true} },
       { id:'p2_shot_line_pose', text:'Shot-line installée à l\'eau, lestée et amarrée correctement (obligatoire en Trimix)',
@@ -508,6 +525,14 @@ window.getMilieuType = function(milieu) {
   if (m.includes('piscine')) return 'piscine';
   if (m.includes('fosse'))   return 'fosse';
   return 'mer';
+};
+
+// Vrai en milieu naturel (mer / lac / carrière) — faux en piscine / fosse.
+// Sert à masquer les items de check-list et questions sans objet en bassin
+// (marée, bouée de surface, météo, etc.).
+window.isMilieuNaturel = function(milieu) {
+  const t = window.getMilieuType(milieu);
+  return t !== 'piscine' && t !== 'fosse';
 };
 
 // Structure type → label lisible

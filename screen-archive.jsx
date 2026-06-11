@@ -231,6 +231,20 @@ function FicheStatique({ ficheRef, answers, palanquees, divers, user, pressions,
         <div>• Numéro d'urgence : <b>{answers.urgence_num || user?.urgence_defaut || '18'}</b></div>
       </div>
 
+      <h2>Conduite à tenir — déclenchement des secours</h2>
+      <div style={{ fontSize:12, border:'1px solid #000', padding:'8px 10px', borderRadius:4 }}>
+        <div style={{ fontWeight:700, fontSize:13 }}>
+          ☎ URGENCE : {answers.urgence_num || user?.urgence_defaut || '18'}
+          <span className="muted" style={{ fontWeight:400 }}> · 112 (Europe) · 196 (secours en mer · CROSS)</span>
+        </div>
+        <div style={{ marginTop:4 }}>1. Sortir la victime de l'eau · 2. O₂ normobare 15 L/min · 3. Alerter les secours · 4. Surveiller / réanimer si besoin.</div>
+        <div>• Lieu / RDV secours : <b>{answers.site_acces_secours || answers.site_nom || '—'}</b></div>
+        <div>• Coordonnées GPS : <b>{(answers.site_coords?.lat != null)
+          ? `${Number(answers.site_coords.lat).toFixed(5)}, ${Number(answers.site_coords.lng).toFixed(5)}`
+          : '—'}</b></div>
+        <div>• Caisson / hôpital de référence : <b>{answers.site_caisson || '—'}</b></div>
+      </div>
+
       <h2>Aptitudes mises en œuvre</h2>
       <div style={{ fontSize:12, display:'flex', gap:8, flexWrap:'wrap' }}>
         {Object.entries(aptUsage).map(([apt, n]) => (

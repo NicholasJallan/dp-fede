@@ -111,8 +111,8 @@ sequenceDiagram
     App->>API: POST /api/pdf/fiche (HTML → wkhtmltopdf)
     API-->>App: blob PDF
     App->>Drive: upload PDF (OAuth Drive token)
-    App->>API: POST /api/archives (answers + palanquées + drive_link)
-    API->>DB: INSERT archives
+    App->>API: POST /api/dives (answers + palanquées + drive_link)
+    API->>DB: INSERT dives
 ```
 
 ---
@@ -287,14 +287,17 @@ Crée un site avec coordonnées GPS (JSON), milieu, profondeur max, options dép
 #### `PUT /api/sites/:id` / `DELETE /api/sites/:id`
 Mise à jour / suppression (appartenance vérifiée).
 
-#### `GET /api/archives`
-Liste les plongées archivées de l'utilisateur (ordre décroissant).
+#### `GET /api/dives`
+Liste les plongées de l'utilisateur (ordre décroissant). Paramètre optionnel `?since=ISO8601` pour le pull incrémental offline.
 
-#### `GET /api/archives/:id`
-Retourne une archive complète (answers + palanquées JSON parsés).
+#### `GET /api/dives/:id`
+Retourne une plongée complète (answers + palanquées + render_state JSON parsés).
 
-#### `POST /api/archives`
-Enregistre une nouvelle plongée archivée.
+#### `POST /api/dives`
+Crée une plongée (cycle de vie `status` : `prepared` → `in_progress` → `archived`). Idempotent via `client_uuid`.
+
+#### `PATCH /api/dives/:id` / `DELETE /api/dives/:id`
+Met à jour (answers, palanquées, render_state, status, drive_link) ou soft-delete une plongée.
 
 #### `POST /api/pdf/fiche`
 Reçoit un `html` (rendu React off-screen) + `filename`. Lance `wkhtmltopdf` en subprocess. Retourne le blob PDF.
@@ -395,24 +398,32 @@ erDiagram
         DATETIME created_at
     }
 
-    archives {
+    dives {
         VARCHAR id PK "UUID v4"
         INT user_id FK
+        VARCHAR client_uuid "UUID v4 client (idempotence)"
         VARCHAR site_nom
-        VARCHAR date_plongee
+        DATETIME date_plongee
         VARCHAR dp_nom
         VARCHAR dp_qual
         VARCHAR activite
+        ENUM status "prepared|in_progress|archived"
+        DATETIME planned_at
+        DATETIME started_at
+        DATETIME closed_at
         MEDIUMTEXT answers "JSON sérialisé"
         MEDIUMTEXT palanquees "JSON sérialisé"
+        MEDIUMTEXT render_state "JSON sérialisé"
         VARCHAR drive_link
+        DATETIME deleted_at "soft-delete"
+        TIMESTAMP updated_at
         TIMESTAMP created_at
     }
 
     users ||--o{ sessions : "a"
     users ||--o{ divers : "possède"
     users ||--o{ sites : "possède"
-    users ||--o{ archives : "possède"
+    users ||--o{ dives : "possède"
 ```
 
 ### Table `users`
@@ -483,20 +494,27 @@ erDiagram
 | `pays_code` | VARCHAR(3) | Code ISO 3166-1 alpha-3 |
 | `region` | VARCHAR(150) | Région / canton |
 
-### Table `archives`
+### Table `dives`
+
+Cycle de vie d'une plongée : `prepared` → `in_progress` → `archived`. Soft-delete via `deleted_at`. Idempotence offline via `client_uuid`.
 
 | Colonne | Type | Description |
 |---|---|---|
 | `id` | VARCHAR(36) PK | UUID v4 |
 | `user_id` | INT FK | Propriétaire (sans CASCADE — données conservées) |
+| `client_uuid` | VARCHAR(36) | UUID v4 côté client — idempotence du rejeu outbox |
 | `site_nom` | VARCHAR(255) | Nom du site (dénormalisé pour affichage) |
-| `date_plongee` | VARCHAR(50) | Date ISO 8601 (ex. `2026-05-28`) |
+| `date_plongee` | DATETIME | Date / heure de la plongée |
 | `dp_nom` | VARCHAR(200) | Nom du DP (dénormalisé) |
 | `dp_qual` | VARCHAR(20) | Qualification DP (ex. `E3`) |
 | `activite` | VARCHAR(50) | `Exploration`, `Enseignement`, `Mixte` |
+| `status` | ENUM | `prepared` / `in_progress` / `archived` |
+| `planned_at` / `started_at` / `closed_at` | DATETIME | Jalons du cycle de vie |
 | `answers` | MEDIUMTEXT | JSON sérialisé du formulaire complet (profil, palanquées…) |
 | `palanquees` | MEDIUMTEXT | JSON sérialisé des palanquées enrichies (noms plongeurs) |
+| `render_state` | MEDIUMTEXT | JSON sérialisé du suivi temps réel (pressions, réalisés, heures…) |
 | `drive_link` | VARCHAR(500) | URL Google Drive du PDF fiche de sécurité |
+| `deleted_at` | DATETIME | Soft-delete (NULL = actif) |
 
 #### Contenu JSON `answers` (principaux champs)
 

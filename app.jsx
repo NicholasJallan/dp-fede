@@ -49,6 +49,8 @@ function AppInner() {
   // 'prepare' : étapes 1-3 (profil→palanquées→check-list phase 1)
   // 'execute' : étapes 3-5 (check-list phase 2→fiche→archive)
   const [diveMode,     setDiveMode]     = useState('prepare');
+  // Modal « Urgence » accessible en un geste pendant le suivi temps réel.
+  const [urgenceOpen,  setUrgenceOpen]  = useState(false);
 
   // ── Session en cours ─────────────────────────────────────────────────────
   const [currentDiveId, setCurrentDiveId] = useState(null); // client_uuid de la plongée ouverte
@@ -700,6 +702,74 @@ function AppInner() {
               </button>
             );
           })()}
+        </div>
+      )}
+
+      {diveMode === 'execute' && (!online || outboxItems.length > 0) && (
+        <button
+          onClick={() => setDrawerOpen(true)}
+          title={online ? `${outboxItems.length} action(s) en cours de synchronisation` : `Hors ligne — ${outboxItems.length} action(s) en attente`}
+          style={{
+            position:'fixed', left:'50%', transform:'translateX(-50%)', bottom:84, zIndex:850,
+            background: online ? 'var(--marine, #0a4a6e)' : 'var(--coral, #e07856)',
+            color:'white', border:0, borderRadius:20, padding:'7px 14px',
+            fontSize:12, fontWeight:700, cursor:'pointer',
+            boxShadow:'0 4px 16px rgba(0,0,0,0.25)', display:'inline-flex', alignItems:'center', gap:6,
+          }}>
+          <span style={{ width:8, height:8, borderRadius:'50%', background:'white', opacity:0.9 }} />
+          {online ? `SYNCHRONISATION · ${outboxItems.length}` : `HORS LIGNE · ${outboxItems.length} en attente`}
+        </button>
+      )}
+
+      {diveMode === 'execute' && (
+        <button
+          className="urgence-fab"
+          onClick={() => setUrgenceOpen(true)}
+          title="Conduite à tenir / déclenchement des secours"
+          style={{
+            position:'fixed', right:18, bottom:84, zIndex:900,
+            background:'#c0392b', color:'white', border:0, borderRadius:28,
+            padding:'12px 18px', fontWeight:700, fontSize:14, cursor:'pointer',
+            boxShadow:'0 6px 24px rgba(192,57,43,0.45)',
+          }}>
+          ☎ URGENCE
+        </button>
+      )}
+
+      {urgenceOpen && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setUrgenceOpen(false)}>
+          <div className="modal" style={{ maxWidth:460 }}>
+            <div className="modal-head" style={{ background:'#c0392b', color:'white' }}>
+              <h3 style={{ color:'white' }}>☎ Déclenchement des secours</h3>
+              <button className="x" style={{ color:'white' }} onClick={() => setUrgenceOpen(false)}>×</button>
+            </div>
+            <div className="modal-body" style={{ display:'grid', gap:12, fontSize:14 }}>
+              <div style={{ fontSize:22, fontWeight:800 }}>
+                {answers.urgence_num || user?.urgence_defaut || '18'}
+              </div>
+              <div className="muted" style={{ fontSize:12 }}>
+                112 (Europe) · 196 (secours en mer · CROSS) · 15 (SAMU FR) · 144 (CH)
+              </div>
+              <ol style={{ margin:0, paddingLeft:18, lineHeight:1.6 }}>
+                <li>Sortir la victime de l'eau, l'allonger.</li>
+                <li>Oxygène normobare 15 L/min (BAVU si inconscient).</li>
+                <li>Alerter les secours — donner position et bilan.</li>
+                <li>Surveiller / réanimer ; noter heures et paramètres.</li>
+              </ol>
+              <div style={{ borderTop:'1px solid var(--line, #ddd)', paddingTop:10, display:'grid', gap:4 }}>
+                <div>• Lieu / RDV secours : <b>{answers.site_acces_secours || answers.site_nom || '—'}</b></div>
+                <div>• Coordonnées GPS : <b>{(answers.site_coords?.lat != null)
+                  ? `${Number(answers.site_coords.lat).toFixed(5)}, ${Number(answers.site_coords.lng).toFixed(5)}`
+                  : '—'}</b></div>
+                <div>• Caisson / hôpital : <b>{answers.site_caisson || '—'}</b></div>
+              </div>
+            </div>
+            <div className="modal-foot">
+              <a className="btn primary" href={`tel:${answers.urgence_num || user?.urgence_defaut || '18'}`}
+                style={{ textDecoration:'none' }}>Appeler</a>
+              <button className="btn" onClick={() => setUrgenceOpen(false)}>Fermer</button>
+            </div>
+          </div>
         </div>
       )}
 

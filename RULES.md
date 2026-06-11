@@ -2,6 +2,10 @@
 
 Synthèse exhaustive des règles métier appliquées par l'outil. Source : Code du Sport (Art. A322-71 à A322-101), MFT FFESSM et règles internes du club.
 
+> **Base réglementaire** : règles à jour au **26/11/2025** (derniers textes pris en compte : arrêtés des 17 oct. 2025 et 24 nov. 2025 modifiant l'annexe III-15a — qualifications DP). La date de référence est centralisée dans `window.REGLEMENTATION` (`data.js`) et affichée sur la fiche et l'écran compte.
+
+> **Dérogation piscine / fosse ≤ 6 m** : en milieu artificiel d'une profondeur ≤ 6 m, la fiche de sécurité n'est **pas obligatoire** et un DP de niveau minimum **E1** suffit (Art. A322-72). L'outil affiche un bandeau informatif dans ce cas et la fiche reste produisible comme trace volontaire.
+
 > **Avertissement** : outil d'aide à la décision. Ne se substitue pas à la responsabilité personnelle du Directeur de Plongée.
 
 ---

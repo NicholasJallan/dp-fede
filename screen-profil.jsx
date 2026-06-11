@@ -334,6 +334,10 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
       setAnswer('site_pays',     selectedSite.pays || '');
       setAnswer('site_pays_code',selectedSite.pays_code || '');
       setAnswer('site_prof_max', selectedSite.profondeur_max || null);
+      // Plan de secours : champs site réutilisés dans le bloc « conduite à tenir » de la fiche
+      setAnswer('site_acces_secours', selectedSite.acces_secours || '');
+      setAnswer('site_caisson',       selectedSite.caisson || '');
+      setAnswer('site_coords',        selectedSite.coordonnees || null);
       // Pré-cocher shot_line si dispo sur le site (toujours modifiable)
       if (selectedSite.shot_line && answers.shot_line === undefined) {
         setAnswer('shot_line', true);

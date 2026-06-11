@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 // Helpers partagés par les routes qui supportent le pull incrémental
-// (divers, sites, archives) et l'idempotence des écritures (UUID client).
+// (divers, sites, dives) et l'idempotence des écritures (UUID client).
 
 class SyncHelpers {
     /**

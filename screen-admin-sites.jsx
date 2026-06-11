@@ -7,6 +7,7 @@ const emptySite = () => ({
   depart_bord: false, depart_bateau: false,
   shot_line: false,
   ville: '', pays: '', pays_code: '', region: '',
+  acces_secours: '', caisson: '',
 });
 
 // Mapping ISO code → emoji drapeau
@@ -285,6 +286,21 @@ function SiteFormModal({ initial, title, onSave, onClose }) {
               onChange={e => setField('notes', e.target.value)}
               placeholder="Accès, conditions habituelles, points d'attention…" />
           </div>
+
+          <div className="field" style={{ marginTop: 10 }}>
+            <label>Plan de secours — point d'accès / RDV secours</label>
+            <textarea className="textarea" rows={2} value={form.acces_secours}
+              onChange={e => setField('acces_secours', e.target.value)}
+              placeholder="Parking, point de rendez-vous des secours, voie d'accès véhicule, héliport…" />
+            <div className="field-hint">Réutilisé automatiquement dans le bloc « conduite à tenir » de la fiche de sécurité.</div>
+          </div>
+
+          <div className="field" style={{ marginTop: 10 }}>
+            <label>Caisson / hôpital de référence</label>
+            <input className="input" value={form.caisson}
+              onChange={e => setField('caisson', e.target.value)}
+              placeholder="Caisson hyperbare le plus proche, hôpital, téléphone…" />
+          </div>
         </div>
         <div className="modal-foot">
           <button className="btn" onClick={onClose}>Annuler</button>
@@ -317,6 +333,7 @@ function ScreenAdminSites({ sites, setSites, sitesLoaded }) {
     depart_bord: !!s.depart_bord, depart_bateau: !!s.depart_bateau,
     shot_line: !!s.shot_line,
     ville: s.ville || '', pays: s.pays || '', pays_code: s.pays_code || '', region: s.region || '',
+    acces_secours: s.acces_secours || '', caisson: s.caisson || '',
   });
 
   const onSave = async (payload) => {

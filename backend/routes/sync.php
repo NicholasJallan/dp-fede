@@ -11,7 +11,7 @@ declare(strict_types=1);
 //   server_time: "2026-06-07T15:32:11",
 //   divers:   { updated_at: "..." | null, deleted_at: "..." | null },
 //   sites:    { updated_at: "..." | null, deleted_at: "..." | null },
-//   archives: { updated_at: "..." | null }
+//   dives:    { updated_at: "..." | null, deleted_at: "..." | null }
 // }
 if ($method === 'GET' && $path === '/api/sync/state') {
     $user = Auth::require();
@@ -44,10 +44,6 @@ if ($method === 'GET' && $path === '/api/sync/state') {
         'dives' => [
             'updated_at' => SyncHelpers::toIso($dives['u']),
             'deleted_at' => SyncHelpers::toIso($dives['d']),
-        ],
-        // Alias pour compatibilité avec anciens clients encore sur archives
-        'archives' => [
-            'updated_at' => SyncHelpers::toIso($dives['u']),
         ],
     ]);
 }

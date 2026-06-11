@@ -39,6 +39,8 @@ if ($method === 'POST' && $path === '/api/sites') {
       ->maxLen('pays', 80, 'Pays')
       ->maxLen('pays_code', 3, 'Code pays')
       ->maxLen('region', 150, 'Région')
+      ->maxLen('acces_secours', 500, 'Accès secours')
+      ->maxLen('caisson', 500, 'Caisson de référence')
       ->abortIfErrors();
 
     if (!$v->nullable('depart_bord') && !$v->nullable('depart_bateau')) {
@@ -50,14 +52,15 @@ if ($method === 'POST' && $path === '/api/sites') {
     $coord    = $v->arr('coordonnees');
 
     Db::q(
-        'INSERT INTO sites (id, user_id, nom, milieu, profondeur_max, coordonnees, notes, depart_bord, depart_bateau, shot_line, ville, pays, pays_code, region)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        'INSERT INTO sites (id, user_id, nom, milieu, profondeur_max, coordonnees, notes, depart_bord, depart_bateau, shot_line, ville, pays, pays_code, region, acces_secours, caisson)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
          ON DUPLICATE KEY UPDATE
            nom=VALUES(nom), milieu=VALUES(milieu), profondeur_max=VALUES(profondeur_max),
            coordonnees=VALUES(coordonnees), notes=VALUES(notes),
            depart_bord=VALUES(depart_bord), depart_bateau=VALUES(depart_bateau),
            shot_line=VALUES(shot_line), ville=VALUES(ville), pays=VALUES(pays),
-           pays_code=VALUES(pays_code), region=VALUES(region), deleted_at=NULL',
+           pays_code=VALUES(pays_code), region=VALUES(region),
+           acces_secours=VALUES(acces_secours), caisson=VALUES(caisson), deleted_at=NULL',
         [
             $id, $user['id'],
             $v->str('nom'), $v->str('milieu') ?: 'En mer',
@@ -71,6 +74,8 @@ if ($method === 'POST' && $path === '/api/sites') {
             $v->str('pays'),
             $v->str('pays_code'),
             $v->str('region'),
+            $v->str('acces_secours'),
+            $v->str('caisson'),
         ]
     );
     Json::ok(decodeSite(Db::row('SELECT * FROM sites WHERE id=? AND user_id=?', [$id, $user['id']])), 201);
@@ -97,6 +102,8 @@ if ($method === 'PUT' && preg_match('#^/api/sites/([^/]+)$#', $path, $m)) {
       ->maxLen('pays', 80, 'Pays')
       ->maxLen('pays_code', 3, 'Code pays')
       ->maxLen('region', 150, 'Région')
+      ->maxLen('acces_secours', 500, 'Accès secours')
+      ->maxLen('caisson', 500, 'Caisson de référence')
       ->abortIfErrors();
 
     if (!$v->nullable('depart_bord') && !$v->nullable('depart_bateau')) {
@@ -105,7 +112,7 @@ if ($method === 'PUT' && preg_match('#^/api/sites/([^/]+)$#', $path, $m)) {
 
     $coord = $v->arr('coordonnees');
     Db::q(
-        'UPDATE sites SET nom=?, milieu=?, profondeur_max=?, coordonnees=?, notes=?, depart_bord=?, depart_bateau=?, shot_line=?, ville=?, pays=?, pays_code=?, region=?, deleted_at=NULL
+        'UPDATE sites SET nom=?, milieu=?, profondeur_max=?, coordonnees=?, notes=?, depart_bord=?, depart_bateau=?, shot_line=?, ville=?, pays=?, pays_code=?, region=?, acces_secours=?, caisson=?, deleted_at=NULL
          WHERE id=? AND user_id=?',
         [
             $v->str('nom'), $v->str('milieu') ?: 'En mer',
@@ -119,6 +126,8 @@ if ($method === 'PUT' && preg_match('#^/api/sites/([^/]+)$#', $path, $m)) {
             $v->str('pays'),
             $v->str('pays_code'),
             $v->str('region'),
+            $v->str('acces_secours'),
+            $v->str('caisson'),
             $m[1], $user['id'],
         ]
     );

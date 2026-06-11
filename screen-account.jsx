@@ -152,6 +152,13 @@ function ScreenAccount() {
           {saving ? 'Enregistrement…' : 'Enregistrer'}
         </button>
       </div>
+
+      {window.REGLEMENTATION && (
+        <div className="muted" style={{ marginTop:24, fontSize:12, textAlign:'center' }}>
+          {window.REGLEMENTATION.label}.<br />
+          <span style={{ fontSize:11 }}>{window.REGLEMENTATION.textes}</span>
+        </div>
+      )}
     </div>
   );
 }

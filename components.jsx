@@ -326,9 +326,6 @@ const KIND_LABELS = {
   'dive.update':  'Plongée — sauvegarder',
   'dive.delete':  'Plongée — supprimer',
   'dive.drive':   'Plongée — déposer sur Drive',
-  // Alias legacy (anciennes entrées en outbox migrées)
-  'archive.create': 'Plongée — enregistrer',
-  'archive.drive':  'Plongée — déposer sur Drive',
   'diver.create':   'Plongeur — créer',
   'diver.update':   'Plongeur — modifier',
   'diver.delete':   'Plongeur — supprimer',
@@ -353,9 +350,7 @@ function describePayload(item) {
     case 'dive.create':
     case 'dive.update':
     case 'dive.delete':
-    case 'dive.drive':
-    case 'archive.create': return p.site_nom || (p.payload?.site_nom) || 'Plongée';
-    case 'archive.drive':  return p.site_nom || 'Plongée';
+    case 'dive.drive':     return p.site_nom || (p.payload?.site_nom) || 'Plongée';
     case 'diver.create':
     case 'diver.update':   return `${p.prenom || ''} ${p.nom || ''}`.trim() || 'Plongeur';
     case 'diver.delete':   return 'Plongeur supprimé';

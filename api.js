@@ -69,7 +69,4 @@ const api = {
   },
 };
 
-// Alias rétro-compat pour screen-archives.jsx (appelle api.archives.list/get)
-api.archives = api.dives;
-
 Object.assign(window, { api });

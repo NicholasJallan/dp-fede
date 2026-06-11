@@ -1272,6 +1272,14 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   .fiche-grid { grid-template-columns: repeat(2, 1fr); }
   .fiche .signatures { grid-template-columns: 1fr; }
 
+  /* Stepper compact sur mobile : on resserre les étapes et on masque le
+     sous-label monospace (peu lisible et coûteux en largeur) pour que les
+     5 étapes tiennent sans scroll horizontal excessif. Navigation inchangée. */
+  .stepper { gap: 0; }
+  .step { padding: 10px 10px 8px; font-size: 12px; }
+  .step .label-sub { display: none; }
+  .step .num { width: 20px; height: 20px; }
+
   /* Footnav compact sur mobile : on cache le label de l'étape (le stepper
      du haut le rappelle déjà), et on remonte la barre de progression
      sous les boutons pour éviter qu'elle ne squish les boutons. */

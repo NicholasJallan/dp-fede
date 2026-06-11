@@ -7,9 +7,8 @@
 //   - Tout autre /api/* : network-only (laisse passer pour que l'app gère la queue)
 //   - Reste : network-first avec fallback cache
 //
-// La VERSION est bumpée à chaque déploiement par pi-scripts/bump-sw-version.sh
-// qui remplace la chaîne ci-dessous. Format : dp-{YYYYMMDD}-{sha7}.
-// La valeur « dp-dev-local » est le défaut hors déploiement.
+// Bumper manuellement la VERSION ci-dessous à chaque déploiement frontend
+// (sinon le navigateur garde l'ancien cache). Format : dp-{YYYYMMDD}-{sha7}.
 const VERSION = 'dp-20260610-2e01ae2';
 
 const SHELL_CACHE  = `${VERSION}-shell`;

@@ -275,6 +275,27 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
         </div>
       </div>
 
+      {/* Reprise rapide terrain : accès direct à la plongée en cours la plus récente */}
+      {inProgress.length > 0 && (
+        <div style={{
+          marginTop:18, padding:'16px 18px', borderRadius:10,
+          background:'rgba(45,134,83,0.10)', border:'1px solid rgba(45,134,83,0.45)',
+          display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap',
+        }}>
+          <div>
+            <b style={{ fontSize:15 }}>▶ Plongée en cours</b>
+            <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:2 }}>
+              {inProgress[0].site_nom || 'Site —'} · DP {inProgress[0].dp_nom || '—'}
+              {inProgress.length > 1 ? ` · +${inProgress.length - 1} autre(s)` : ''}
+            </div>
+          </div>
+          <button className="btn primary lg"
+            onClick={() => onLoadDive(inProgress[0].client_uuid || inProgress[0].id, 'fiche', 'execute')}>
+            Reprendre la plongée en cours
+          </button>
+        </div>
+      )}
+
       {/* Pending Drive */}
       {pendingDrive.length > 0 && (
         <div style={{

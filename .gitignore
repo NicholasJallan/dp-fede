@@ -5,3 +5,6 @@ backend/config.php
 
 # Pi-side scripts contain pCloud credentials — don't ship to public repo
 pi-scripts/
+
+# JetBrains Junie agent artifacts (plans, session files) — not application code
+.junie/

@@ -56,7 +56,7 @@ function DiveCardPrepared({ dive, onStart, onEdit, onDelete, onCloneH3 }) {
         <button className="btn" style={{ fontSize:12, padding:'4px 10px' }}
           disabled={cloningH3} onClick={doCloneH3}
           title="Créer une plongée identique débutant 3 h plus tard (météo à rafraîchir)">
-          {cloningH3 ? '…' : '⎘ +3h'}
+          {cloningH3 ? '…' : '+3h'}
         </button>
         <button className="btn" style={{ fontSize:12, padding:'4px 10px', color:'var(--coral)' }}
           disabled={deleting} onClick={doDelete} title="Supprimer cette plongée préparée">

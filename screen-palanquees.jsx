@@ -157,9 +157,9 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
       return lo !== 0 ? lo : alpha(a, b);
     });
     return [
-      { id: 'e3e4',   label: 'E3 / E4',      divers: g.e3e4   },
-      { id: 'e1e2n4', label: 'E1 · E2 · N4', divers: g.e1e2n4 },
-      { id: 'autres', label: 'Autres',         divers: g.autres  },
+      { id: 'e3e4',   label: 'E3 / E4',      section: 'encadrants', divers: g.e3e4   },
+      { id: 'e1e2n4', label: 'E1 · E2 · N4', section: 'encadrants', divers: g.e1e2n4 },
+      { id: 'autres', label: 'Plongeurs',     section: 'plongeurs',  divers: g.autres  },
     ].filter(g => g.divers.length > 0);
   }, [filteredPool]);
 
@@ -375,10 +375,18 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
           <h4>Annuaire — {filteredPool.length} disponible{filteredPool.length !== 1 ? 's' : ''} / {divers.length}</h4>
           <input className="input small" type="text" placeholder="Rechercher…"
             value={filter} onChange={e => setFilter(e.target.value)} style={{ marginBottom:10 }} />
-          {poolGroups.map(group => {
-            const isOpen = openGroups.has(group.id);
-            return (
-              <div key={group.id} className="pool-group">
+          {(() => {
+            let lastSection = null;
+            return poolGroups.map(group => {
+              const showHeader = group.section !== lastSection;
+              lastSection = group.section;
+              const isOpen = openGroups.has(group.id);
+              return (
+                <React.Fragment key={group.id}>
+                  {showHeader && group.section === 'encadrants' && (
+                    <div className="pool-section-label">Encadrants</div>
+                  )}
+              <div className="pool-group">
                 <button className="pool-group-header" aria-expanded={isOpen}
                   onClick={() => toggleGroup(group.id)}>
                   <span>{group.label}</span>
@@ -410,8 +418,10 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
                   </div>
                 )}
               </div>
-            );
-          })}
+                </React.Fragment>
+              );
+            });
+          })()}
           <button className="btn ghost" style={{ marginTop:8, width:'100%' }}
             onClick={() => setShowQuickDiver(true)}>
             + Nouveau plongeur / baptême

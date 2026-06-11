@@ -33,9 +33,9 @@ function AptitudeSelect({ diver, value, isExploration, palContext, onChange }) {
 // Calcul partagé du plafond effectif d'une palanquée. Wrapper de
 // window.computePalHardLimit qui injecte automatiquement les dépendances
 // depuis data.js (aptitudeMaxDepth, getPalType, getDpMaxDepth).
-function hardLimitFor(membres, sessionMax, dp) {
+function hardLimitFor(membres, sessionMax, dp, siteMax = Infinity) {
   return window.computePalHardLimit({
-    membres, dp, sessionMax,
+    membres, dp, sessionMax, siteMax,
     aptitudeMaxDepth: window.aptitudeMaxDepth,
     getPalType:       window.getPalType,
     getDpMaxDepth:    window.getDpMaxDepth,
@@ -57,6 +57,9 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
   // N5 → exploration uniquement
   const isExploration = answers.dp_qual === 'N5';
   const dpQual = answers.dp_qual || '';
+
+  // Profondeur max du site (Infinity si non définie)
+  const siteMax = answers.site_prof_max ? Number(answers.site_prof_max) : Infinity;
 
   // DP courant (objet plongeur complet — nécessaire pour les contrôles gaz)
   const dpDiver = useMemo(
@@ -83,14 +86,14 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
     }));
   }, [allowedMelangeValues]);
 
-  // Re-borner la profondeur des palanquées existantes quand le DP change.
+  // Re-borner la profondeur des palanquées existantes quand le DP ou le site changent.
   useEffect(() => {
     setPalanquees(prev => prev.map(p => {
-      const hardLimit = hardLimitFor(p.membres || [], Infinity, dpDiver);
+      const hardLimit = hardLimitFor(p.membres || [], Infinity, dpDiver, siteMax);
       if (!Number.isFinite(hardLimit) || p.profMax <= hardLimit) return p;
       return { ...p, profMax: hardLimit, dtr: window.calcDTR(hardLimit) };
     }));
-  }, [dpDiver]);
+  }, [dpDiver, siteMax]);
 
   // Dériver activité depuis les aptitudes utilisées
   useEffect(() => {
@@ -185,7 +188,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
       const nom = p.nomAuto ? derivePalNom(i, newMembres) : p.nom;
       // Pas de sessionMax ici : addToPal préserve la profondeur existante,
       // seul l'ajout d'une aptitude plus restrictive doit réduire profMax.
-      const hardLimit = hardLimitFor(newMembres, Infinity, dpDiver);
+      const hardLimit = hardLimitFor(newMembres, Infinity, dpDiver, siteMax);
       const profMax   = window.clampProfMax(p.profMax, hardLimit);
       return { ...p, membres: newMembres, nom, profMax, dtr: window.calcDTR(profMax) };
     }));
@@ -230,8 +233,8 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
       });
       newMembres = sortMembres(newMembres);
       const nom = p.nomAuto ? derivePalNom(i, newMembres) : p.nom;
-      // Plafond : aptitude la plus restrictive ∩ profMax session ∩ limite DP (PTH-120 inclus)
-      const hardLimit = hardLimitFor(newMembres, sessionMax, dpDiver);
+      // Plafond : aptitude la plus restrictive ∩ profMax session ∩ limite DP ∩ site
+      const hardLimit = hardLimitFor(newMembres, sessionMax, dpDiver, siteMax);
       const profMax   = window.clampProfMax(p.profMax, hardLimit);
       return { ...p, membres: newMembres, nom, profMax, dtr: window.calcDTR(profMax) };
     }));
@@ -253,12 +256,11 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
     }));
   };
 
-  // DTR auto si "no déco" — borne par aptitudes, profMax de session, et limite DP (avec PTH-120)
+  // DTR auto si "no déco" — borne par aptitudes, profMax de session, limite DP et site
   const updateProfMax = (palId, profMax) => {
-    const sessionMax = Infinity;
     setPalanquees(prev => prev.map(p => {
       if (p.id !== palId) return p;
-      const hardLimit = hardLimitFor(p.membres || [], sessionMax, dpDiver);
+      const hardLimit = hardLimitFor(p.membres || [], Infinity, dpDiver, siteMax);
       const clamped   = window.clampProfMax(profMax, hardLimit);
       return { ...p, profMax: clamped, dtr: window.calcDTR(clamped) };
     }));
@@ -273,9 +275,8 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
 
   const addPal = () => {
     const id = 'p' + (Math.max(0, ...palanquees.map(p => parseInt(p.id.slice(1)) || 0)) + 1);
-    const sessionMax = Infinity;
     const dpLimit    = window.getDpMaxDepth('exploration', dpDiver) || Infinity;
-    const initProfMax = Math.min(60, sessionMax, dpLimit);
+    const initProfMax = Math.min(60, siteMax, dpLimit);
     setPalanquees(prev => [...prev, {
       id, nom: `Palanquée ${prev.length + 1}`, nomAuto: true,
       membres: [], profMax: initProfMax, duree: 35, dtr: window.calcDTR(initProfMax),
@@ -301,8 +302,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
       const apts = d ? window.getDiverAptitudes(d, isExploration) : [];
       const aptitude = apts.length === 1 ? apts[0] : '';
       const newMembres = [{ diverId, aptitude }];
-      const sessionMax = Infinity;
-      const hardLimit  = hardLimitFor(newMembres, sessionMax, dpDiver);
+      const hardLimit  = hardLimitFor(newMembres, Infinity, dpDiver, siteMax);
       const initProfMax = Number.isFinite(hardLimit) ? hardLimit : 60;
       return [...prev, {
         id: newId,

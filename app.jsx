@@ -323,7 +323,10 @@ function AppInner() {
         const { dtr, profMax, duree, ...rest } = p;
         return rest;
       });
-      await startPreparation({ answers: oldAnswers, palanquees: cleanPals });
+      const pad = n => String(n).padStart(2, '0');
+      const t = new Date(Date.now() + 3 * 3_600_000);
+      const h3Str = `${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}T${pad(t.getHours())}:${pad(t.getMinutes())}`;
+      await startPreparation({ answers: oldAnswers, palanquees: cleanPals }, h3Str);
     } catch (err) {
       showToast({ tone: 'err', title: 'Clonage impossible', body: err.message });
     }

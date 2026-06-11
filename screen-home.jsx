@@ -438,10 +438,10 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
                     </a>
                   )}
                   <button className="btn" style={{ fontSize:12, padding:'4px 10px', whiteSpace:'nowrap' }}
-                    title="Reprendre les mêmes paramètres pour une nouvelle plongée"
+                    title="Créer une nouvelle plongée sur ce modèle, heure actuelle +3h"
                     disabled={cloningId !== null}
                     onClick={() => handleClone(row.id || row.client_uuid)}>
-                    {cloningId === (row.id || row.client_uuid) ? '…' : '↺ Reprendre'}
+                    {cloningId === (row.id || row.client_uuid) ? '…' : 'Nouvelle plongée sur ce modèle'}
                   </button>
                 </div>
               </div>

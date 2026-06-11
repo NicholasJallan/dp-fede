@@ -393,12 +393,6 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
     window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 110, behavior:'smooth' });
   };
 
-  // Options prof_max dynamiques selon DP × activité × site × Trimix DP
-  const profOptions = useMemo(
-    () => window.getProfOptions(dpQual, answers.activite, selectedDP, selectedSite),
-    [dpQual, answers.activite, selectedDP, selectedSite]
-  );
-
   // Forcer paliers obligatoires si prof ≥ 60m
   useEffect(() => {
     const prof = parseInt(String(answers.prof_max || '').replace(/\D/g, ''), 10);
@@ -464,25 +458,6 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
       return (
         <Field key={q.id} label={q.label} hint={q.hint} regRef={q.ref}>
           <MareeField value={val} onChange={set} site={selectedSite} date={answers.date} />
-        </Field>
-      );
-    }
-
-    if (q.id === 'prof_max') {
-      if (profOptions.length === 0) {
-        return (
-          <Field key={q.id} label={q.label} regRef={q.ref}>
-            <Alert tone="warn">Choisir un DP avec prérogatives d'enseignement ou d'exploration avant de fixer la profondeur.</Alert>
-          </Field>
-        );
-      }
-      return (
-        <Field key={q.id} label={q.label} hint={q.hint} regRef={q.ref} required={q.required}>
-          <div className={`opt-group col-4`}>
-            {profOptions.map(o => (
-              <Opt key={o} label={o} checked={val === o} onClick={() => set(o)} />
-            ))}
-          </div>
         </Field>
       );
     }

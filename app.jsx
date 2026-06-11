@@ -239,17 +239,22 @@ function AppInner() {
   }, [currentDiveId, flushSave, refreshDiversAndSites, showToast]);
 
   // Crée une nouvelle plongée préparée
-  const startPreparation = useCallback(async (prefill = null) => {
+  const startPreparation = useCallback(async (prefill = null, overrideDate = null) => {
     if (currentDiveId) flushSave(currentDiveId);
 
     const client_uuid = window.randomUUID();
     const lastRappel  = localStorage.getItem('dp-rappel-moyen') || '';
-    const t = new Date(); t.setMinutes(0, 0, 0); t.setHours(t.getHours() + 1);
     const pad  = n => String(n).padStart(2, '0');
-    const newDate = `${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}T${pad(t.getHours())}:00`;
+    let newDate;
+    if (overrideDate) {
+      newDate = overrideDate;
+    } else {
+      const t = new Date(); t.setMinutes(0, 0, 0); t.setHours(t.getHours() + 1);
+      newDate = `${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}T${pad(t.getHours())}:00`;
+    }
 
     const initialAnswers = prefill
-      ? { ...prefill.answers, date: newDate, meteo: '', fiche_observations: '', maree_heure: '', maree_coef: '' }
+      ? { ...prefill.answers, date: newDate, meteo: '', maree_horaire: '', fiche_observations: '', maree_heure: '', maree_coef: '' }
       : (lastRappel ? { moyen_rappel: lastRappel, date: newDate } : { date: newDate });
     const initialPals = prefill ? prefill.palanquees : [];
 
@@ -319,6 +324,22 @@ function AppInner() {
         return rest;
       });
       await startPreparation({ answers: oldAnswers, palanquees: cleanPals });
+    } catch (err) {
+      showToast({ tone: 'err', title: 'Clonage impossible', body: err.message });
+    }
+  }, [startPreparation, showToast]);
+
+  // Clone une plongée préparée en nouvelle plongée H+3
+  const clonePreparedH3 = useCallback(async (clientUuid) => {
+    try {
+      const data = await api.dives.get(clientUuid);
+      const oldAnswers = typeof data.answers   === 'string' ? JSON.parse(data.answers)   : (data.answers   || {});
+      const oldPals    = typeof data.palanquees === 'string' ? JSON.parse(data.palanquees) : (data.palanquees || []);
+      const pad = n => String(n).padStart(2, '0');
+      const orig = new Date(oldAnswers.date || data.planned_at || data.date_plongee);
+      const h3   = new Date(orig.getTime() + 3 * 3_600_000);
+      const h3Str = `${h3.getFullYear()}-${pad(h3.getMonth()+1)}-${pad(h3.getDate())}T${pad(h3.getHours())}:${pad(h3.getMinutes())}`;
+      await startPreparation({ answers: oldAnswers, palanquees: oldPals }, h3Str);
     } catch (err) {
       showToast({ tone: 'err', title: 'Clonage impossible', body: err.message });
     }
@@ -609,6 +630,7 @@ function AppInner() {
               onStartExecution={startExecution}
               onDeleteDive={deleteDive}
               onClone={cloneDive}
+              onCloneH3={clonePreparedH3}
             />
           )}
           {screen === "profil" && (

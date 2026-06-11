@@ -8,14 +8,21 @@ function fmtDate(dt) {
   return `${d.slice(8, 10)}-${d.slice(5, 7)}-${d.slice(0, 4)}${time}`;
 }
 
-function DiveCardPrepared({ dive, onStart, onEdit, onDelete }) {
-  const [deleting, setDeleting] = useState(false);
+function DiveCardPrepared({ dive, onStart, onEdit, onDelete, onCloneH3 }) {
+  const [deleting,   setDeleting]   = useState(false);
+  const [cloningH3,  setCloningH3]  = useState(false);
 
   const doDelete = async () => {
     if (!confirm(`Supprimer la plongée "${dive.site_nom || '—'}" du ${fmtDate(dive.planned_at || dive.date_plongee)} ?`)) return;
     setDeleting(true);
     try { await onDelete(dive.client_uuid || dive.id); }
     catch { setDeleting(false); }
+  };
+
+  const doCloneH3 = async () => {
+    setCloningH3(true);
+    try { await onCloneH3(dive.client_uuid || dive.id); }
+    catch { setCloningH3(false); }
   };
 
   return (
@@ -37,7 +44,7 @@ function DiveCardPrepared({ dive, onStart, onEdit, onDelete }) {
           {dive.nb_palanquees > 0 && ` · ${dive.nb_palanquees} pal. · ${dive.nb_plongeurs} plongeurs`}
         </div>
       </div>
-      <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0 }}>
+      <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0, flexWrap:'wrap', justifyContent:'flex-end' }}>
         <button className="btn primary" style={{ fontSize:12, padding:'4px 10px' }}
           onClick={() => onStart(dive)} title="Démarrer l'exécution de cette plongée">
           ▶ Démarrer
@@ -45,6 +52,11 @@ function DiveCardPrepared({ dive, onStart, onEdit, onDelete }) {
         <button className="btn" style={{ fontSize:12, padding:'4px 10px' }}
           onClick={() => onEdit(dive.client_uuid || dive.id)} title="Modifier la préparation">
           ✎ Modifier
+        </button>
+        <button className="btn" style={{ fontSize:12, padding:'4px 10px' }}
+          disabled={cloningH3} onClick={doCloneH3}
+          title="Créer une plongée identique débutant 3 h plus tard (météo à rafraîchir)">
+          {cloningH3 ? '…' : '⎘ +3h'}
         </button>
         <button className="btn" style={{ fontSize:12, padding:'4px 10px', color:'var(--coral)' }}
           disabled={deleting} onClick={doDelete} title="Supprimer cette plongée préparée">
@@ -104,7 +116,7 @@ function SectionHead({ icon, iconColor, label, count, unit }) {
   );
 }
 
-function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone }) {
+function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone, onCloneH3 }) {
   const [dives,     setDives]     = useState(null);
   const [cloningId, setCloningId] = useState(null);
   const [cloneErr,  setCloneErr]  = useState('');
@@ -367,7 +379,8 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
                     <DiveCardPrepared key={d.client_uuid || d.id} dive={d}
                       onStart={onStartExecution}
                       onEdit={(id) => onLoadDive(id, 'profil', 'prepare')}
-                      onDelete={onDeleteDive} />
+                      onDelete={onDeleteDive}
+                      onCloneH3={onCloneH3} />
                   ))
             }
           </div>

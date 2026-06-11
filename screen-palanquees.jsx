@@ -47,6 +47,12 @@ function hardLimitFor(membres, sessionMax, dp) {
 function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answers, setAnswer }) {
   const [filter, setFilter] = useState('');
   const [showQuickDiver, setShowQuickDiver] = useState(false);
+  const [openGroups, setOpenGroups] = useState(() => new Set(['e3e4', 'e1e2n4', 'autres']));
+  const toggleGroup = (id) => setOpenGroups(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
 
   // N5 → exploration uniquement
   const isExploration = answers.dp_qual === 'N5';
@@ -77,17 +83,14 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
     }));
   }, [allowedMelangeValues]);
 
-  // Re-borner la profondeur des palanquées existantes quand DP ou prof_max session changent
-  // (couvre : changement de DP en cours de session, palanquée chargée d'un état antérieur,
-  // changement de la profondeur de session).
+  // Re-borner la profondeur des palanquées existantes quand le DP change.
   useEffect(() => {
-    const sessionMax = parseInt(answers.prof_max) || Infinity;
     setPalanquees(prev => prev.map(p => {
-      const hardLimit = hardLimitFor(p.membres || [], sessionMax, dpDiver);
+      const hardLimit = hardLimitFor(p.membres || [], Infinity, dpDiver);
       if (!Number.isFinite(hardLimit) || p.profMax <= hardLimit) return p;
       return { ...p, profMax: hardLimit, dtr: window.calcDTR(hardLimit) };
     }));
-  }, [dpDiver, answers.prof_max]);
+  }, [dpDiver]);
 
   // Dériver activité depuis les aptitudes utilisées
   useEffect(() => {
@@ -95,6 +98,13 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
     const hasEns = palanquees.some(p => p.membres.some(m => ['E1','E2','E3','E4'].includes(m.aptitude)));
     const hasExp = palanquees.some(p => p.membres.some(m => !['E1','E2','E3','E4'].includes(m.aptitude)));
     setAnswer('activite', (hasEns && hasExp) ? 'Mixte' : hasEns ? 'Enseignement' : 'Exploration');
+  }, [palanquees]);
+
+  // Dériver prof_max depuis la profondeur max des palanquées (valeur affichée + utilisée par checklist/fiche)
+  useEffect(() => {
+    if (!palanquees.length) { setAnswer('prof_max', null); return; }
+    const maxDepth = Math.max(...palanquees.map(p => p.profMax || 0));
+    setAnswer('prof_max', maxDepth > 0 ? `${maxDepth} m` : null);
   }, [palanquees]);
 
   // Dériver mélanges depuis les palanquées (remplace section D du questionnaire)
@@ -127,6 +137,31 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
       )
     );
   }, [divers, filter, assignedIds]);
+
+  const poolGroups = useMemo(() => {
+    const alpha = (a, b) =>
+      (a.nom + ' ' + (a.prenom || '')).localeCompare((b.nom + ' ' + (b.prenom || '')), 'fr');
+    const lvlOrd = np => ({ N3: 0, N2: 1, N1: 2 })[np] ?? 3;
+
+    const g = { e3e4: [], e1e2n4: [], autres: [] };
+    filteredPool.forEach(d => {
+      const ne = d.niveau_encadrant, np = d.niveau_plongeur;
+      if (['E3', 'E4'].includes(ne)) g.e3e4.push(d);
+      else if (['E1', 'E2'].includes(ne) || np === 'N4') g.e1e2n4.push(d);
+      else g.autres.push(d);
+    });
+    g.e3e4.sort(alpha);
+    g.e1e2n4.sort(alpha);
+    g.autres.sort((a, b) => {
+      const lo = lvlOrd(a.niveau_plongeur) - lvlOrd(b.niveau_plongeur);
+      return lo !== 0 ? lo : alpha(a, b);
+    });
+    return [
+      { id: 'e3e4',   label: 'E3 / E4',      divers: g.e3e4   },
+      { id: 'e1e2n4', label: 'E1 · E2 · N4', divers: g.e1e2n4 },
+      { id: 'autres', label: 'Autres',         divers: g.autres  },
+    ].filter(g => g.divers.length > 0);
+  }, [filteredPool]);
 
   // Réordonne automatiquement les membres après toute attribution d'aptitude.
   const sortMembres = (membres) => window.sortMembresForFiche(membres);
@@ -174,7 +209,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
   };
 
   const setAptitude = (palId, key, aptitude, isBapt = false) => {
-    const sessionMax = parseInt(answers.prof_max) || Infinity;
+    const sessionMax = Infinity;
     setPalanquees(prev => prev.map((p, i) => {
       if (p.id !== palId) return p;
       // Mettre à jour le membre ciblé
@@ -220,7 +255,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
 
   // DTR auto si "no déco" — borne par aptitudes, profMax de session, et limite DP (avec PTH-120)
   const updateProfMax = (palId, profMax) => {
-    const sessionMax = parseInt(answers.prof_max) || Infinity;
+    const sessionMax = Infinity;
     setPalanquees(prev => prev.map(p => {
       if (p.id !== palId) return p;
       const hardLimit = hardLimitFor(p.membres || [], sessionMax, dpDiver);
@@ -238,7 +273,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
 
   const addPal = () => {
     const id = 'p' + (Math.max(0, ...palanquees.map(p => parseInt(p.id.slice(1)) || 0)) + 1);
-    const sessionMax = parseInt(answers.prof_max) || Infinity;
+    const sessionMax = Infinity;
     const dpLimit    = window.getDpMaxDepth('exploration', dpDiver) || Infinity;
     const initProfMax = Math.min(60, sessionMax, dpLimit);
     setPalanquees(prev => [...prev, {
@@ -266,7 +301,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
       const apts = d ? window.getDiverAptitudes(d, isExploration) : [];
       const aptitude = apts.length === 1 ? apts[0] : '';
       const newMembres = [{ diverId, aptitude }];
-      const sessionMax = parseInt(answers.prof_max) || Infinity;
+      const sessionMax = Infinity;
       const hardLimit  = hardLimitFor(newMembres, sessionMax, dpDiver);
       const initProfMax = Number.isFinite(hardLimit) ? hardLimit : 60;
       return [...prev, {
@@ -292,6 +327,37 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
 
   const siteShotLine = answers.shot_line;
 
+  const renderDiverCard = (d) => {
+    const ne = d.niveau_encadrant, np = d.niveau_plongeur;
+    return (
+      <div className="diver-card" key={d.id}>
+        <div className="info">
+          <b>{diverFullName(d)}</b>
+          <small>
+            {ne ? <span className="pill ink" style={{ fontSize:11, padding:'1px 6px', borderRadius:3, marginRight:4 }}>{ne}</span> : null}
+            {np && !ne ? <span style={{ marginRight:4 }}>{np}</span> : null}
+            {!ne && !np ? <span className="pill coral" style={{ fontSize:11, padding:'1px 6px', borderRadius:3, marginRight:4 }}>Débutant</span> : null}
+            {(d.nitrox||[]).includes('PN-C') && <span className="muted"> · PN-C</span>}
+            {(d.trimix||[]).includes('PTH-120') && <span className="muted"> · PTH-120</span>}
+            {(d.recycleurs||[]).length > 0 && <span className="muted"> · CCR</span>}
+          </small>
+        </div>
+        <select className="role-sel"
+          onChange={e => {
+            const v = e.target.value;
+            if (v === '__new__') addPalAndAddDiver(d.id);
+            else if (v) addToPal(v, d.id);
+            e.target.value = '';
+          }}
+          value="">
+          <option value="">+ Ajouter à…</option>
+          {palanquees.map(p => <option key={p.id} value={p.id}>{p.nom}</option>)}
+          <option value="__new__">— Nouvelle palanquée</option>
+        </select>
+      </div>
+    );
+  };
+
   return (
     <div>
       <div className="page-head">
@@ -309,33 +375,40 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
           <h4>Annuaire — {filteredPool.length} disponible{filteredPool.length !== 1 ? 's' : ''} / {divers.length}</h4>
           <input className="input small" type="text" placeholder="Rechercher…"
             value={filter} onChange={e => setFilter(e.target.value)} style={{ marginBottom:10 }} />
-          {filteredPool.map(d => {
-            const ne = d.niveau_encadrant, np = d.niveau_plongeur;
+          {poolGroups.map(group => {
+            const isOpen = openGroups.has(group.id);
             return (
-              <div className="diver-card" key={d.id}>
-                <div className="info">
-                  <b>{diverFullName(d)}</b>
-                  <small>
-                    {ne ? <span className="pill ink" style={{ fontSize:11, padding:'1px 6px', borderRadius:3, marginRight:4 }}>{ne}</span> : null}
-                    {np && !ne ? <span style={{ marginRight:4 }}>{np}</span> : null}
-                    {!ne && !np ? <span className="pill coral" style={{ fontSize:11, padding:'1px 6px', borderRadius:3, marginRight:4 }}>Débutant</span> : null}
-                    {(d.nitrox||[]).includes('PN-C') && <span className="muted"> · PN-C</span>}
-                    {(d.trimix||[]).includes('PTH-120') && <span className="muted"> · PTH-120</span>}
-                    {(d.recycleurs||[]).length > 0 && <span className="muted"> · CCR</span>}
-                  </small>
-                </div>
-                <select className="role-sel"
-                  onChange={e => {
-                    const v = e.target.value;
-                    if (v === '__new__') addPalAndAddDiver(d.id);
-                    else if (v) addToPal(v, d.id);
-                    e.target.value = '';
-                  }}
-                  value="">
-                  <option value="">+ Ajouter à…</option>
-                  {palanquees.map(p => <option key={p.id} value={p.id}>{p.nom}</option>)}
-                  <option value="__new__">— Nouvelle palanquée</option>
-                </select>
+              <div key={group.id} className="pool-group">
+                <button className="pool-group-header" aria-expanded={isOpen}
+                  onClick={() => toggleGroup(group.id)}>
+                  <span>{group.label}</span>
+                  <span className="pool-group-meta">
+                    <span className="pool-group-count">{group.divers.length}</span>
+                    <span className="pool-group-chevron">▾</span>
+                  </span>
+                </button>
+                {isOpen && (
+                  <div className="pool-group-body">
+                    {group.id === 'autres'
+                      ? (() => {
+                          const lvlLabel = np => np || 'Débutant';
+                          let lastLvl = null;
+                          return group.divers.map(d => {
+                            const ne = d.niveau_encadrant, np = d.niveau_plongeur;
+                            const lbl = lvlLabel(np);
+                            const divider = lbl !== lastLvl ? (lastLvl = lbl, lbl) : null;
+                            return (
+                              <React.Fragment key={d.id}>
+                                {divider && <div className="pool-level-divider">{divider}</div>}
+                                {renderDiverCard(d)}
+                              </React.Fragment>
+                            );
+                          });
+                        })()
+                      : group.divers.map(d => <React.Fragment key={d.id}>{renderDiverCard(d)}</React.Fragment>)
+                    }
+                  </div>
+                )}
               </div>
             );
           })}

@@ -374,9 +374,6 @@ window.QUESTIONS = [
   {
     id:'C', title:'Profondeur & espaces d\'évolution',
     questions:[
-      { id:'prof_max',   label:'Profondeur maximale envisagée', type:'prof-choice',
-        ref:'CdS A322-86',
-        hint:'Options conditionnées par la qualification du DP et le type d\'activité.' },
       { id:'paliers',    label:'Plongée avec paliers obligatoires autorisée ?', type:'bool' },
       { id:'successive', label:'Plongée successive prévue dans la journée ?', type:'bool' },
     ]
@@ -401,8 +398,6 @@ window.QUESTIONS = [
     id:'F', title:'Public',
     questions:[
       { id:'mineurs',    label:'Présence de mineurs ?', type:'bool' },
-      { id:'formation',  label:'Plongeurs en formation ?', type:'bool',
-        hint:'Les niveaux et exercices seront déduits de la composition des palanquées.' },
       { id:'etrangers',  label:'Brevets étrangers non français (PADI, SSI, CMAS étr.) ?', type:'bool',
         hint:'→ évaluation par un E3 prévue' },
       { id:'handisub',   label:'Plongeurs en situation de handicap (handisub) ?', type:'bool' },

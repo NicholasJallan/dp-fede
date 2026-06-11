@@ -856,6 +856,53 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 }
 .diver-card.assigned .add { background: var(--ink-4); }
 
+.pool-group { margin-bottom: 2px; }
+.pool-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 5px 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: var(--t-mono);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 6px;
+  text-align: left;
+}
+.pool-group-meta { display: flex; align-items: center; gap: 6px; }
+.pool-group-count {
+  font-variant-numeric: tabular-nums;
+  background: var(--line);
+  border-radius: 10px;
+  padding: 0 6px;
+  font-size: 10px;
+  line-height: 16px;
+}
+.pool-group-chevron {
+  font-size: 12px;
+  transition: transform 0.15s;
+  display: inline-block;
+}
+.pool-group-header[aria-expanded="false"] .pool-group-chevron { transform: rotate(-90deg); }
+.pool-group-body { margin-bottom: 8px; }
+.pool-level-divider {
+  font-size: 10px;
+  font-family: var(--t-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  padding: 6px 0 3px;
+  border-top: 1px dashed var(--line);
+  margin-top: 4px;
+}
+.pool-level-divider:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+
 .pal-add {
   border: 1px dashed var(--line-2);
   background: transparent;

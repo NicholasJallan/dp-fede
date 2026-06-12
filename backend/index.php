@@ -53,7 +53,7 @@ if (in_array($method, $writeMethods, true)) {
 
 // Router — load matching route file
 $routed = false;
-foreach (['auth','divers','sites','users','dives','sync','pdf','proxy'] as $r) {
+foreach (['auth','divers','sites','users','dives','sync','pdf','proxy','csp'] as $r) {
     $file = __DIR__ . "/routes/{$r}.php";
     require $file;
 }

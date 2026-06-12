@@ -20,6 +20,7 @@ Profilage de la plongée, check-list conditionnelle, composition des palanquées
 - [Déploiement](#déploiement)
 - **[Règles métier détaillées → RULES.md](RULES.md)**
 - **[Tests métier → TESTING.md](TESTING.md)**
+- **[Sécurité (vue d'ensemble + audit GCP) → docs/security/](docs/security/README.md)**
 
 ---
 

@@ -206,6 +206,17 @@ function AppInner() {
       flushSave(currentDiveId);
     }
 
+    // Même plongée déjà en mémoire : l'état React est plus à jour que le store
+    // (flushSave est fire-and-forget — la lecture store peut devancer l'écriture).
+    if (currentDiveId === clientUuid) {
+      setDiveMode(mode);
+      setArchiveDone(false);
+      setConfirmModal(false);
+      setScreen(targetScreen || (mode === 'execute' ? 'checklist' : 'profil'));
+      window.scrollTo({ top: 0 });
+      return;
+    }
+
     let dive;
     try {
       dive = await api.dives.get(clientUuid);

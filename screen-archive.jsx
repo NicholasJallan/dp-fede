@@ -377,6 +377,10 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
   // mis à true par confirmArchive() avant la première visite sur cet écran.
   const [alreadyArchived, setAlreadyArchived] = useState(false);
   const [savedDriveLink,  setSavedDriveLink]  = useState(null);
+  // Vrai une fois que init() a vérifié le statut de la plongée. Empêche
+  // useEffect([online]) de déclencher doArchive() avant que init() ait
+  // eu le temps de détecter une plongée déjà archivée.
+  const [initialized,     setInitialized]     = useState(false);
   const online = window.useOnline ? window.useOnline() : true;
 
   // Enqueue offline : enregistre l'archive localement (passe via offline-api
@@ -519,9 +523,22 @@ ${styles}
       const checklistPdf = await generatePdfBlob('checklist');
 
       setStatus('uploading');
-      const folderId  = await getOrCreateFolder(token);
-      const ficheFile = await uploadFile(token, fichePdf,     buildFilename('fiche-securite'), folderId);
-      const clFile    = await uploadFile(token, checklistPdf, buildFilename('checklist'),      folderId);
+      let folderId, ficheFile, clFile;
+      try {
+        folderId  = await getOrCreateFolder(token);
+        ficheFile = await uploadFile(token, fichePdf,     buildFilename('fiche-securite'), folderId);
+        clFile    = await uploadFile(token, checklistPdf, buildFilename('checklist'),      folderId);
+      } catch (driveErr) {
+        // Drive inaccessible (réseau, token, quota…) — on archive localement.
+        // Le dépôt Drive sera relancé depuis l'accueil via « Finaliser sur Drive ».
+        showToast({
+          tone: 'warn',
+          title: 'Drive inaccessible',
+          body: 'Plongée archivée localement. Relancez le dépôt Drive depuis l\'accueil dès que possible.',
+        });
+        await saveOffline();
+        return;
+      }
 
       setStatus('saving');
       const diversById = {};
@@ -599,10 +616,10 @@ ${styles}
     tokenClient.requestAccessToken({ prompt:'' });
   };
 
-  // Déclenchement auto à l'arrivée sur l'écran.
-  // On inspecte le store pour savoir si la plongée est réellement déjà archivée
-  // (visite depuis l'historique). plongeeFigee ne suffit pas : confirmArchive()
-  // le met à true avant même la première visite sur cet écran.
+  // Vérifie si la plongée est déjà archivée (visite depuis l'historique), puis
+  // marque initialized=true pour débloquer le déclenchement de doArchive().
+  // Ne lance PAS doArchive() directement : c'est l'effet [initialized, online]
+  // ci-dessous qui s'en charge, après avoir reçu le résultat de init().
   useEffect(() => {
     async function init() {
       if (diveId) {
@@ -611,22 +628,24 @@ ${styles}
           if (dive?.status === 'archived') {
             setAlreadyArchived(true);
             if (dive.drive_link) setSavedDriveLink(dive.drive_link);
-            return;
           }
         } catch {}
       }
-      if (online) doArchive();
+      setInitialized(true);
     }
     init();
   }, []); // eslint-disable-line
 
-  // Reprise automatique de l'archivage quand la connexion revient.
+  // Déclenchement de l'archivage : au montage (quand initialized passe à true)
+  // et à chaque retour en ligne. La garde !initialized empêche tout déclenchement
+  // avant que init() ait vérifié le statut de la plongée.
   useEffect(() => {
+    if (!initialized) return;
     if (!alreadyArchived && online && (status === 'idle' || status === 'error')) {
       doArchive();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [online]);
+  }, [initialized, online]);
 
   const STATUS_MSGS = {
     requesting: '1/4 · Autorisation Google Drive…',
@@ -661,11 +680,14 @@ ${styles}
             </div>
           )}
 
-          {/* Erreur → bouton "Réessayer" (geste utilisateur débloque le popup GIS) */}
+          {/* Erreur → réessayer Drive ou archiver localement */}
           {status === 'error' && (
             <>
               <Alert tone="warn">Erreur : {error}</Alert>
-              <div><button className="btn primary" onClick={doArchive}>↑ Réessayer</button></div>
+              <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                <button className="btn primary" onClick={doArchive}>↑ Réessayer Drive</button>
+                <button className="btn" onClick={saveOffline}>✓ Archiver sans Drive</button>
+              </div>
             </>
           )}
 

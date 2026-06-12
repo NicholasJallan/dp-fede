@@ -8,3 +8,15 @@ pi-scripts/
 
 # JetBrains Junie agent artifacts (plans, session files) — not application code
 .junie/
+
+# Node / Playwright
+node_modules/
+tests-e2e/.auth/
+tests-e2e-report/
+test-results/
+playwright-report/
+
+# PHP
+backend/vendor/
+backend/composer.lock
+.phpunit.result.cache

@@ -6,9 +6,15 @@
   "type": "commonjs",
   "scripts": {
     "test": "node --test --test-reporter=spec 'tests/**/*.test.js'",
-    "test:watch": "node --test --watch 'tests/**/*.test.js'"
+    "test:watch": "node --test --watch 'tests/**/*.test.js'",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:php": "cd backend && composer test"
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
   }
 }

@@ -5,8 +5,16 @@ Le projet utilise le **test runner intégré à Node.js 20+** (`node --test`). A
 ## Lancer les tests
 
 ```bash
+# Front (logique métier, Node 20+, sans dépendance NPM)
 npm test              # Une passe, reporter spec
 npm run test:watch    # Watch mode
+
+# Backend PHP (PHPUnit, nécessite composer install sur le Pi)
+npm run test:php
+
+# End-to-end Playwright (nécessite cookies session — voir tests-e2e/README.md)
+npm run test:e2e
+npm run test:e2e:ui   # mode debug interactif
 ```
 
 ## Architecture
@@ -115,8 +123,45 @@ Modules couverts :
 | Dive lifecycle | transitions prepared → in_progress → archived | refus rétrograde, auto-save flush |
 | Home buckets | groupement par statut + tri | ordre date, pending Drive |
 
+## Backend PHP (Sprint 2)
+
+Scaffold PHPUnit dans `backend/`. Quatre suites en place :
+
+| Suite | Couvre |
+|---|---|
+| `AuthTest.php` | `Auth::isSuperAdmin`, constante `SUPER_ADMIN_EMAIL` (régression rôle) |
+| `CsrfTest.php` | `Csrf::verify` voie nominale, `Csrf::token` format hex |
+| `DiveDateHelpersTest.php` | `parseDiveDateToMySql`, `normalizeDiveDate` (frontière format date) |
+| `SyncHelpersTest.php` | `isValidUuid` (rempart contre injection PK), `parseSinceParam` |
+
+Sur le Pi (ou en CI) :
+
+```bash
+cd backend
+composer install --dev
+composer test
+```
+
+### À venir (hors Sprint 2)
+- Tests d'intégration HTTP (Auth::abort + routes complètes) — nécessite stub PDO.
+- Coverage rapportée (pcov ou xdebug).
+
+## E2E Playwright (Sprint 2)
+
+Trois golden paths dans `tests-e2e/` :
+
+| Fichier | Couvre |
+|---|---|
+| `01-home-loads.spec.js` | Hero, badge Drive (absence par défaut), navigation |
+| `02-dive-create-flow.spec.js` | Création plongée → questionnaire → retour home |
+| `03-offline-resilience.spec.js` | Coupure réseau, reload, reconnexion |
+
+Voir `tests-e2e/README.md` pour le setup cookies + variables d'env.
+
 ## Cibles non encore couvertes
 
-- Backend PHP : voir Sprint 2 (PHPUnit ajouté).
-- Composants React rendus (DOM) : voir Sprint 2 (Playwright E2E + tests d'unité sur hooks isolés).
-- Logique CRUD palanquée dans `screen-palanquees.jsx` (addToPal, setAptitude…) — testée indirectement via validatePal.
+- Composants React rendus (DOM) hors E2E : pas de tests unitaires DOM-level
+  (zéro-build → pas de @testing-library/react sans bundler).
+- Logique CRUD palanquée dans `screen-palanquees.jsx` (addToPal, setAptitude…)
+  — testée indirectement via validatePal.
+- Backend : intégration HTTP complète (nécessite stub PDO ou DB de test).

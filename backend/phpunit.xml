@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests-php/bootstrap.php"
+         colors="true"
+         executionOrder="defects"
+         failOnRisky="true"
+         failOnWarning="true"
+         beStrictAboutOutputDuringTests="true"
+         beStrictAboutTestsThatDoNotTestAnything="true">
+    <testsuites>
+        <testsuite name="unit">
+            <directory>tests-php</directory>
+        </testsuite>
+    </testsuites>
+    <coverage>
+        <include>
+            <directory suffix=".php">lib</directory>
+            <directory suffix=".php">routes</directory>
+        </include>
+        <exclude>
+            <file>lib/Config.php</file>
+        </exclude>
+    </coverage>
+</phpunit>

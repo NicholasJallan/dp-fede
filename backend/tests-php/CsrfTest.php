@@ -41,17 +41,28 @@ final class CsrfTest extends TestCase
         // pour ne pas faire échouer phpunit en strict mode.
     }
 
+    /**
+     * En CLI, setcookie() émet un warning "headers already sent". On capture
+     * ob_start() pour ne pas violer beStrictAboutOutputDuringTests, et on
+     * mute le warning avec @ (warning attendu en CLI, pas en HTTP).
+     */
     public function testTokenIssuesValidHex(): void
     {
         $_COOKIE = [];
-        // Csrf::token() émet setcookie + retourne le token.
-        // setcookie loggue un warning en CLI (headers already sent) — on
-        // mute le warning car ce n'est pas la responsabilité du test.
-        @\Csrf::token();
-        // En CLI on n'a pas $_COOKIE qui se met à jour automatiquement, mais
-        // au moins la méthode ne crash pas et retournerait un hex valide
-        // si on capturait le retour direct (ce qu'on fait ci-dessous).
+        ob_start();
         $tok = @\Csrf::token();
+        ob_end_clean();
         $this->assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $tok);
+    }
+
+    /**
+     * Si un cookie valide existe déjà, token() le renvoie sans en générer
+     * un nouveau (évite la rotation à chaque requête).
+     */
+    public function testTokenReusesExistingValidCookie(): void
+    {
+        $existing = str_repeat('c', 64);
+        $_COOKIE['dp_csrf'] = $existing;
+        $this->assertSame($existing, \Csrf::token());
     }
 }

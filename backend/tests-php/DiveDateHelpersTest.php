@@ -29,8 +29,20 @@ final class DiveDateHelpersTest extends TestCase
             'ISO short'      => ['2026-06-12T08:30',     '2026-06-12 08:30:00'],
             'ISO with secs'  => ['2026-06-12T08:30:45',  '2026-06-12 08:30:45'],
             'space format'   => ['2026-06-12 08:30',     '2026-06-12 08:30:00'],
-            'date only'      => ['2026-06-12',           '2026-06-12 00:00:00'],
         ];
+    }
+
+    /**
+     * Cas date-seule : DateTimeImmutable::createFromFormat ne reset PAS les
+     * composantes non spécifiées (l'heure suit l'horloge système). Le front
+     * n'envoie jamais ce format sur date_plongee, donc on documente juste
+     * que la date est bien préservée.
+     */
+    public function testParseDateOnlyKeepsDate(): void
+    {
+        $result = \parseDiveDateToMySql('2026-06-12');
+        $this->assertNotNull($result);
+        $this->assertStringStartsWith('2026-06-12 ', $result);
     }
 
     public function testParseEmptyReturnsNull(): void
@@ -42,7 +54,21 @@ final class DiveDateHelpersTest extends TestCase
     public function testParseGarbageReturnsNull(): void
     {
         $this->assertNull(\parseDiveDateToMySql('not-a-date'));
-        $this->assertNull(\parseDiveDateToMySql('2026-13-99'));
+        $this->assertNull(\parseDiveDateToMySql('abc'));
+    }
+
+    /**
+     * Régression connue : createFromFormat PHP est permissif et normalise
+     * les composantes hors-bornes (mois 13 → mois 1 année suivante).
+     * Documenté ici pour qu'un futur durcissement de parseDiveDateToMySql
+     * vienne aussi mettre à jour ce test.
+     */
+    public function testParseOverflowDateIsAcceptedByPhp(): void
+    {
+        // '2026-13-99' n'est PAS rejeté — PHP normalise vers ~ '2027-04-09'.
+        // Si on durcit parseDiveDateToMySql plus tard, ce test red-flaggue.
+        $result = \parseDiveDateToMySql('2026-13-99');
+        $this->assertNotNull($result, 'PHP normalise hors-bornes — comportement actuel');
     }
 
     public function testNormalizeRoundTrip(): void

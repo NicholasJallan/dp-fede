@@ -43,11 +43,33 @@ final class SyncHelpersTest extends TestCase
         $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $sql);
     }
 
-    public function testParseSinceRejectsGarbage(): void
+    public function testParseSinceAcceptsCommonFormats(): void
     {
-        // Implémentation actuelle : retourne une date ancienne par défaut, ou null.
-        // On vérifie au minimum qu'il n'y a pas d'exception non interceptée.
-        $result = \SyncHelpers::parseSinceParam('not-a-date');
-        $this->assertTrue($result === null || is_string($result));
+        // Formats émis par le front (Date#toISOString variants).
+        foreach (['2026-06-12T08:30', '2026-06-12 08:30:00', '2026-06-12'] as $input) {
+            $sql = \SyncHelpers::parseSinceParam($input);
+            $this->assertMatchesRegularExpression(
+                '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $sql,
+                "Should parse: {$input}"
+            );
+        }
     }
+
+    public function testToIsoRoundTrip(): void
+    {
+        $iso = \SyncHelpers::toIso('2026-06-12 08:30:00');
+        $this->assertSame('2026-06-12T08:30:00', $iso);
+    }
+
+    public function testToIsoNullPassthrough(): void
+    {
+        $this->assertNull(\SyncHelpers::toIso(null));
+        $this->assertNull(\SyncHelpers::toIso(''));
+    }
+
+    /**
+     * parseSinceParam('garbage') appelle Json::abort qui fait `exit`.
+     * Testable seulement en intégration HTTP (Sprint 3+). Pour l'instant
+     * on documente la voie négative et on évite de la déclencher en unit.
+     */
 }

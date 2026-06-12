@@ -427,7 +427,7 @@ ${styles}
           <div>• VHF : <b>{answers.vhf ? 'Embarquée et testée' : '—'}</b></div>
           <div>• Pavillon Alpha : <b>{answers.pavillon_alpha || answers.bouee_surface ? 'Hissé / présent' : '—'}</b></div>
           <div>• Eau douce potable : <b>{answers.eau_potable ? 'Oui' : 'Non'}</b></div>
-          <div>• Moyen de rappel : <b>{answers.rappel_impossible ? 'Pas de rappel possible' : (answers.moyen_rappel || (answers.rappel ? 'Oui' : '—'))}</b></div>
+          <div>• Moyen de rappel : <b>{answers.rappel ? 'Oui' : '—'}</b></div>
           <div>• Numéro d'urgence : <b>{answers.urgence_num || user?.urgence_defaut || '18'}</b></div>
         </div>
 

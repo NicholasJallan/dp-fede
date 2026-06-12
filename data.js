@@ -452,7 +452,7 @@ window.CHECKLIST_RULES = [
       { id:'p1_doc_plongeurs', text:'Brevets, licences, certificats médicaux à jour pour chaque plongeur', ref:'CdS A322-77', tags:['plongeurs'] },
       { id:'p1_etrangers',     text:'Évaluation par un E3 des plongeurs aux brevets étrangers', ref:'CdS A322-77', tags:['etrangers'], when:{etrangers:true} },
       { id:'p1_mineurs',       text:'Autorisations parentales signées récupérées', tags:['mineurs'], when:{mineurs:true} },
-      { id:'p1_vhf_test',      text:'VHF testée + piles secondaires + canal d\'urgence configuré', ref:'Code maritime', tags:['bateau'], when:{depart_bateau:true} },
+      { id:'p1_vhf_test',      text:'VHF testée + piles secondaires + Canal 16 (détresse) configuré', ref:'Code maritime', tags:['bateau'], when:{depart_bateau:true} },
       { id:'p1_carburant',     text:'Carburant + matériel de bord (gilets, signaux, mouillage) OK', tags:['bateau'], when:{depart_bateau:true} },
       { id:'p1_shot_line',     text:'Shot-line (ligne lestée de descente) préparée — lest, longueur, parachutes/bouée de signalisation',
         ref:'CdS A322-91', tags:['materiel'],
@@ -581,4 +581,29 @@ window.sortMembresForFiche = function(membres) {
     }
   }
   return sorted;
+};
+
+window.getEmergencyInfo = function(paysCode, milieu) {
+  const isMer = milieu && /^en mer$/i.test((milieu || '').trim());
+  if (paysCode === 'CH') {
+    return {
+      secondaryNums: '1414 (REGA · évacuation aérienne) · 117 (Police) · 112 (Europe)',
+      vhf: null,
+    };
+  }
+  if (paysCode === 'FR') {
+    const parts = ['15 (SAMU)', '112 (Europe)'];
+    if (isMer) parts.push('196 (CROSS)');
+    return {
+      secondaryNums: parts.join(' · '),
+      vhf: isMer ? 'Canal 16 (CROSS)' : null,
+    };
+  }
+  const parts = ['112 (Europe)'];
+  if (isMer) parts.push('196 (CROSS)');
+  parts.push('15 (SAMU FR)', '18 (Pompiers FR)', '144 (CH)', '1414 (REGA CH)');
+  return {
+    secondaryNums: parts.join(' · '),
+    vhf: isMer ? 'Canal 16' : null,
+  };
 };

@@ -1,19 +1,15 @@
 // DP Assistant — API fetch wrapper
-// Reads CSRF token from cookie and attaches as header on state-changing requests
+// Reads CSRF token via window.getCsrfToken (lib/google-drive.js) and attaches
+// it as a header on state-changing requests.
 
 const API_BASE = '/api';
-
-function getCsrfToken() {
-  const m = document.cookie.match(/(?:^|; )dp_csrf=([^;]+)/);
-  return m ? decodeURIComponent(m[1]) : '';
-}
 
 async function apiFetch(path, options = {}) {
   const method = (options.method || 'GET').toUpperCase();
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
 
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-    headers['X-CSRF-Token'] = getCsrfToken();
+    headers['X-CSRF-Token'] = window.getCsrfToken ? window.getCsrfToken() : '';
   }
 
   const res = await fetch(API_BASE + path, {

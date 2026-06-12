@@ -91,7 +91,7 @@ describe('Ma nouvelle règle', () => {
 
 ## Couverture
 
-État actuel : **120 tests, 22 suites**, ~120 ms d'exécution.
+État actuel : **176+ tests, 40 suites**, ~100 ms d'exécution (node 20 sans aucune dépendance NPM).
 
 Modules couverts :
 
@@ -99,6 +99,10 @@ Modules couverts :
 |---|---|---|
 | `lib/pal-rules.js` | `validatePal` | taille, profondeur, GP, encadrants, PA, baptêmes, débutants, médical, mélanges |
 | `lib/depth-clamp.js` | `computePalHardLimit`, `clampProfMax` | bornes session / DP / aptitudes |
+| `lib/outbox.js` | `enqueue`, `ready`, `markFailed` (backoff) | FIFO, backoff exp, nextWakeMs |
+| `lib/offline-store.js` | `put`, `get`, `all`, `del` | IDB-like avec fallback localStorage |
+| `lib/sync.js` | `drainOutbox`, handlers `dive.*` / `diver.*` | succès, 409 idempotent, offline guard |
+| `lib/google-drive.js` | `getDriveToken`, `getCsrfToken` | cache-first, timeout, scope |
 | `data.js` | `getDpMaxDepth` | E1→E4, N5, extensions PTH-120 |
 | `data.js` | `getProfOptions` | options par DP × site × Trimix |
 | `data.js` | `getAvailableMelanges` | filtrage Air / Nx / Tx selon qualif DP |
@@ -107,9 +111,12 @@ Modules couverts :
 | `data.js` | `getMilieuType` | normalisation mer/lac/piscine/fosse |
 | `data.js` | `getPalType` | priorité baptême > formation > guidée > exploration |
 | `data.js` | `sortMembresForFiche` | ordre canonique + serre-file |
+| `screen-checklist.jsx` (extrait) | filtrage milieu / phase | items conditionnels piscine/fosse/mer |
+| Dive lifecycle | transitions prepared → in_progress → archived | refus rétrograde, auto-save flush |
+| Home buckets | groupement par statut + tri | ordre date, pending Drive |
 
-## Non couvert (à venir)
+## Cibles non encore couvertes
 
-- Composants React (`screen-*.jsx`, `components.jsx`) — pas de DOM testing pour l'instant
-- Logique CRUD palanquée dans `screen-palanquees.jsx` (addToPal, setAptitude…) — testée indirectement via validatePal
-- Backend PHP — pas de PHPUnit configuré. Les contrôleurs sont fins (proxies vers Auth/Csrf/Db) ; la logique métier critique reste côté front.
+- Backend PHP : voir Sprint 2 (PHPUnit ajouté).
+- Composants React rendus (DOM) : voir Sprint 2 (Playwright E2E + tests d'unité sur hooks isolés).
+- Logique CRUD palanquée dans `screen-palanquees.jsx` (addToPal, setAptitude…) — testée indirectement via validatePal.

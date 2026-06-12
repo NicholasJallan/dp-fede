@@ -492,11 +492,11 @@ ${styles}
 </style>
 </head><body>${el.outerHTML}</body></html>`;
 
-    const csrf = document.cookie.split('; ').find(c => c.startsWith('dp_csrf='))?.split('=')[1];
+    const csrf = window.getCsrfToken ? window.getCsrfToken() : '';
     const res  = await fetch('/api/pdf/fiche', {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf || '' },
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
       body: JSON.stringify({ html, filename }),
     });
     if (!res.ok) {
@@ -610,41 +610,23 @@ ${styles}
     }
   };
 
-  const doArchive = () => {
-    if (!window.google?.accounts?.oauth2) {
+  const doArchive = async () => {
+    if (!window.isGisAvailable || !window.isGisAvailable()) {
       setError('Google Identity Services non disponible — recharger la page.');
       setStatus('error');
       return;
     }
     setStatus('requesting'); setError('');
 
-    // Token pré-obtenu sur l'écran d'accueil encore valide → on le réutilise
-    // directement, pas besoin de repasser par GIS.
-    const cached = window.dp_driveToken;
-    if (cached?.access_token && cached.expires_at > Date.now()) {
-      proceedWithToken(cached.access_token);
-      return;
-    }
-
-    // Sans geste utilisateur (auto-reprise après reconnexion), le navigateur
-    // peut bloquer silencieusement le popup GIS si le token n'est pas en cache.
-    // Ce timeout évite le hang infini : après 15 s sans réponse, on passe en
-    // erreur et le bouton réapparaît — le clic (geste user) débloque le popup.
-    const gisTimeout = setTimeout(() => {
-      setError('Autorisation Google Drive expirée — cliquez sur « Archiver » pour réessayer.');
+    try {
+      // window.getDriveToken gère le cache (réutilise un token valide sans GIS)
+      // et le timeout (15 s par défaut, en cas de popup bloqué silencieusement).
+      const token = await window.getDriveToken({ explicit: false, timeoutMs: 15000 });
+      proceedWithToken(token);
+    } catch (err) {
+      setError(err.message);
       setStatus('error');
-    }, 15000);
-
-    const tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: window.GOOGLE_CLIENT_ID,
-      scope: 'https://www.googleapis.com/auth/drive.file',
-      callback: async (resp) => {
-        clearTimeout(gisTimeout);
-        if (resp.error) { setError(resp.error); setStatus('error'); return; }
-        proceedWithToken(resp.access_token);
-      }
-    });
-    tokenClient.requestAccessToken({ prompt:'' });
+    }
   };
 
   // Vérifie si la plongée est déjà archivée (visite depuis l'historique), puis
@@ -932,27 +914,8 @@ async function finalizePendingDrive(archive, divers, user, onProgress) {
       buildHtml('Check-list',         checklistEl), buildFilename('checklist'));
 
     if (onProgress) onProgress('requesting');
-    // Token pré-stocké depuis l'écran d'accueil encore valide → skip GIS.
-    const cachedTok = window.dp_driveToken;
-    const token = (cachedTok?.access_token && cachedTok.expires_at > Date.now())
-      ? cachedTok.access_token
-      : await new Promise((resolve, reject) => {
-          // Même garde timeout que dans doArchive : sans geste user, le popup GIS
-          // peut être bloqué silencieusement. 15 s → reject → caller affiche erreur.
-          const gisTimeout = setTimeout(
-            () => reject(new Error('Autorisation Google Drive expirée — réessayez depuis l\'Historique.')),
-            15000,
-          );
-          const tc = google.accounts.oauth2.initTokenClient({
-            client_id: window.GOOGLE_CLIENT_ID,
-            scope: 'https://www.googleapis.com/auth/drive.file',
-            callback: (resp) => {
-              clearTimeout(gisTimeout);
-              resp.error ? reject(new Error(resp.error)) : resolve(resp.access_token);
-            },
-          });
-          tc.requestAccessToken({ prompt: '' });
-        });
+    // Délégué au helper centralisé : cache-first, timeout 15 s, scope drive.file.
+    const token = await window.getDriveToken({ explicit: false, timeoutMs: 15000 });
 
     if (onProgress) onProgress('uploading');
     async function getFolder() {

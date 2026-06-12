@@ -14,13 +14,15 @@
 
 const AuthContext = React.createContext(null);
 
-// Clés localStorage. Préfixées dp- pour ne pas collisionner.
-const LAST_USER_KEY  = 'dp-last-user';
-const LAST_USER_MAX_AGE_MS = 7 * 24 * 3600 * 1000; // 7 jours, aligné sur la TTL session backend
+// Clés localStorage centralisées dans lib/storage-keys.js.
+const SKEYS = window.STORAGE_KEYS || {
+  LAST_USER: 'dp-last-user', CACHE_DIVERS: 'dp-cache-divers', CACHE_SITES: 'dp-cache-sites',
+};
+const LAST_USER_MAX_AGE_MS = (window.TTL && window.TTL.LAST_USER_MAX_AGE) || 7 * 24 * 3600 * 1000;
 
 function readLastUser() {
   try {
-    const raw = localStorage.getItem(LAST_USER_KEY);
+    const raw = localStorage.getItem(SKEYS.LAST_USER);
     if (!raw) return null;
     const { user, at } = JSON.parse(raw);
     if (!user || !at) return null;
@@ -33,14 +35,14 @@ function readLastUser() {
 
 function writeLastUser(user) {
   try {
-    localStorage.setItem(LAST_USER_KEY, JSON.stringify({ user, at: Date.now() }));
+    localStorage.setItem(SKEYS.LAST_USER, JSON.stringify({ user, at: Date.now() }));
   } catch {
     // Quota / mode privé : on continue sans persister.
   }
 }
 
 function clearLastUser() {
-  try { localStorage.removeItem(LAST_USER_KEY); } catch {}
+  try { localStorage.removeItem(SKEYS.LAST_USER); } catch {}
 }
 
 // Pré-cache des listes au login pour bootstrap offline. Best-effort, non bloquant.
@@ -51,8 +53,8 @@ async function prefetchUserData() {
       api.divers.list().catch(() => null),
       api.sites.list().catch(() => null),
     ]);
-    if (divers) localStorage.setItem('dp-cache-divers', JSON.stringify({ list: divers, at: Date.now() }));
-    if (sites)  localStorage.setItem('dp-cache-sites',  JSON.stringify({ list: sites,  at: Date.now() }));
+    if (divers) localStorage.setItem(SKEYS.CACHE_DIVERS, JSON.stringify({ list: divers, at: Date.now() }));
+    if (sites)  localStorage.setItem(SKEYS.CACHE_SITES,  JSON.stringify({ list: sites,  at: Date.now() }));
   } catch {
     // Pas grave — le SW a peut-être déjà cache via SWR.
   }

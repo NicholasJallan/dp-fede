@@ -124,60 +124,44 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
   const { user } = useAuth();
   const { showToast } = useToasts();
 
-  // ── Google Drive pré-autorisation ────────────────────────────────────────
-  const [driveAuth, setDriveAuth] = useState('pending');
+  // ── Google Drive : demande à la demande, pas au chargement ──────────────
+  //
+  // Auparavant on demandait silencieusement un token Drive dès le montage de
+  // l'écran d'accueil (même si l'utilisateur ouvrait l'app pour consulter
+  // l'historique, son profil, ou faire de l'admin → token gaspillé).
+  //
+  // Désormais : on ne tente l'autorisation qu'au clic « + Nouvelle plongée ».
+  // Si l'utilisateur revient sur la home avec un token en cache valide, on
+  // affiche le badge « ✓ Drive autorisé » sans nouvel appel GIS.
+  const [driveAuth, setDriveAuth] = useState(
+    () => (window.getCachedToken && window.getCachedToken()) ? 'ok' : 'idle'
+  );
 
-  const requestDriveAccess = useCallback((explicit = false) => {
-    if (!window.google?.accounts?.oauth2) { setDriveAuth('idle'); return; }
-    setDriveAuth(explicit ? 'pending-explicit' : 'pending');
-    const tid = setTimeout(() => setDriveAuth('idle'), explicit ? 120000 : 4000);
-    const tc = google.accounts.oauth2.initTokenClient({
-      client_id: window.GOOGLE_CLIENT_ID,
-      scope: 'https://www.googleapis.com/auth/drive.file',
-      callback: (resp) => {
-        clearTimeout(tid);
-        if (resp.error) { setDriveAuth('idle'); return; }
-        window.dp_driveToken = {
-          access_token: resp.access_token,
-          expires_at: Date.now() + 55 * 60 * 1000,
-        };
-        setDriveAuth('ok');
-      },
-    });
-    tc.requestAccessToken({ prompt: explicit ? 'consent' : '' });
-  }, []);
-
-  const handleNew = useCallback(() => {
-    if (!online || driveAuth === 'ok' || !window.google?.accounts?.oauth2) {
-      onNew(); return;
+  const handleNew = useCallback(async () => {
+    // Offline ou GIS indispo → on continue sans token, l'archivage sera
+    // file-d'attenté et finalisé à la reconnexion.
+    if (!online || !window.isGisAvailable || !window.isGisAvailable()) {
+      onNew();
+      return;
+    }
+    // Token déjà en cache → on peut démarrer immédiatement.
+    if (window.getCachedToken && window.getCachedToken()) {
+      setDriveAuth('ok');
+      onNew();
+      return;
     }
     setDriveAuth('pending-explicit');
-    const tid = setTimeout(() => { setDriveAuth('idle'); onNew(); }, 15000);
-    const tc = window.google.accounts.oauth2.initTokenClient({
-      client_id: window.GOOGLE_CLIENT_ID,
-      scope: 'https://www.googleapis.com/auth/drive.file',
-      callback: (resp) => {
-        clearTimeout(tid);
-        if (!resp.error) {
-          window.dp_driveToken = { access_token: resp.access_token, expires_at: Date.now() + 55 * 60 * 1000 };
-          setDriveAuth('ok');
-        } else {
-          setDriveAuth('idle');
-        }
-        onNew();
-      },
-    });
-    tc.requestAccessToken({ prompt: '' });
-  }, [online, driveAuth, onNew]);
-
-  useEffect(() => {
-    if (!online) { setDriveAuth('idle'); return; }
-    requestDriveAccess(false);
-  }, []); // eslint-disable-line
-
-  useEffect(() => {
-    if (online && driveAuth === 'idle') requestDriveAccess(false);
-  }, [online]); // eslint-disable-line
+    try {
+      await window.getDriveToken({ explicit: false, timeoutMs: 15000 });
+      setDriveAuth('ok');
+    } catch {
+      // Refus / timeout / popup bloqué → on entre quand même dans la création.
+      // L'archive finale fallback en saveOffline.
+      setDriveAuth('idle');
+    } finally {
+      onNew();
+    }
+  }, [online, onNew]);
 
   // ── Pending Drive ────────────────────────────────────────────────────────
   const [pendingDrive, setPendingDrive] = useState([]);

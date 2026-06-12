@@ -78,7 +78,7 @@ function AppInner() {
 
   // Migration one-time : supprimer l'ancien brouillon localStorage v1 (désormais obsolète)
   useEffect(() => {
-    try { localStorage.removeItem('dp-assistant-v1'); } catch {}
+    try { localStorage.removeItem(window.STORAGE_KEYS?.LEGACY_V1 || 'dp-assistant-v1'); } catch {}
   }, []);
 
   useEffect(() => {
@@ -92,7 +92,8 @@ function AppInner() {
       .then(list => { setDivers(list); setDiversLoaded(true); })
       .catch(() => {
         try {
-          const raw = localStorage.getItem('dp-cache-divers');
+          const key = window.STORAGE_KEYS?.CACHE_DIVERS || 'dp-cache-divers';
+          const raw = localStorage.getItem(key);
           if (raw) { const { list } = JSON.parse(raw); if (Array.isArray(list)) setDivers(list); }
         } catch {}
         setDiversLoaded(true);
@@ -105,7 +106,8 @@ function AppInner() {
       .then(list => { setSites(list); setSitesLoaded(true); })
       .catch(() => {
         try {
-          const raw = localStorage.getItem('dp-cache-sites');
+          const key = window.STORAGE_KEYS?.CACHE_SITES || 'dp-cache-sites';
+          const raw = localStorage.getItem(key);
           if (raw) { const { list } = JSON.parse(raw); if (Array.isArray(list)) setSites(list); }
         } catch {}
         setSitesLoaded(true);
@@ -780,25 +782,31 @@ function AppInner() {
               <button className="x" style={{ color:'white' }} onClick={() => setUrgenceOpen(false)}>×</button>
             </div>
             <div className="modal-body" style={{ display:'grid', gap:12, fontSize:14 }}>
-              <div style={{ fontSize:22, fontWeight:800 }}>
-                {answers.urgence_num || user?.urgence_defaut || '18'}
-              </div>
-              <div className="muted" style={{ fontSize:12 }}>
-                112 (Europe) · 196 (secours en mer · CROSS) · 15 (SAMU FR) · 144 (CH)
-              </div>
-              <ol style={{ margin:0, paddingLeft:18, lineHeight:1.6 }}>
-                <li>Sortir la victime de l'eau, l'allonger.</li>
-                <li>Oxygène normobare 15 L/min (BAVU si inconscient).</li>
-                <li>Alerter les secours — donner position et bilan.</li>
-                <li>Surveiller / réanimer ; noter heures et paramètres.</li>
-              </ol>
-              <div style={{ borderTop:'1px solid var(--line, #ddd)', paddingTop:10, display:'grid', gap:4 }}>
-                <div>• Lieu / RDV secours : <b>{answers.site_acces_secours || answers.site_nom || '—'}</b></div>
-                <div>• Coordonnées GPS : <b>{(answers.site_coords?.lat != null)
-                  ? `${Number(answers.site_coords.lat).toFixed(5)}, ${Number(answers.site_coords.lng).toFixed(5)}`
-                  : '—'}</b></div>
-                <div>• Caisson / hôpital : <b>{answers.site_caisson || '—'}</b></div>
-              </div>
+              {(() => {
+                const emi = window.getEmergencyInfo(answers.site_pays_code, answers.milieu);
+                return (<>
+                  <div style={{ fontSize:22, fontWeight:800 }}>
+                    {answers.urgence_num || user?.urgence_defaut || '18'}
+                  </div>
+                  <div className="muted" style={{ fontSize:12 }}>
+                    {emi.secondaryNums}
+                  </div>
+                  <ol style={{ margin:0, paddingLeft:18, lineHeight:1.6 }}>
+                    <li>Sortir la victime de l'eau, l'allonger.</li>
+                    <li>Oxygène normobare 15 L/min (BAVU si inconscient).</li>
+                    <li>Alerter les secours — donner position et bilan.</li>
+                    <li>Surveiller / réanimer ; noter heures et paramètres.</li>
+                  </ol>
+                  <div style={{ borderTop:'1px solid var(--line, #ddd)', paddingTop:10, display:'grid', gap:4 }}>
+                    <div>• Lieu / RDV secours : <b>{answers.site_acces_secours || answers.site_nom || '—'}</b></div>
+                    <div>• Coordonnées GPS : <b>{(answers.site_coords?.lat != null)
+                      ? `${Number(answers.site_coords.lat).toFixed(5)}, ${Number(answers.site_coords.lng).toFixed(5)}`
+                      : '—'}</b></div>
+                    <div>• Caisson / hôpital : <b>{answers.site_caisson || '—'}</b></div>
+                    {emi.vhf && <div>• VHF : <b>{emi.vhf}</b> (canal de détresse)</div>}
+                  </div>
+                </>);
+              })()}
             </div>
             <div className="modal-foot">
               <a className="btn primary" href={`tel:${answers.urgence_num || user?.urgence_defaut || '18'}`}

@@ -511,42 +511,9 @@ ${styles}
     return await res.blob();
   };
 
-  const getOrCreateFolder = async (token) => {
-    const q = encodeURIComponent("name='dp-fede' and mimeType='application/vnd.google-apps.folder' and trashed=false");
-    const r = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (r.ok) {
-      const data = await r.json();
-      if (data.files && data.files.length > 0) return data.files[0].id;
-    }
-    const cr = await fetch('https://www.googleapis.com/drive/v3/files', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: 'dp-fede', mimeType: 'application/vnd.google-apps.folder' })
-    });
-    const folder = await cr.json();
-    if (!cr.ok || !folder.id) {
-      const msg = folder?.error?.message || folder?.error?.status || JSON.stringify(folder).slice(0, 200);
-      throw new Error(`Drive — impossible de créer le dossier dp-fede : ${msg}`);
-    }
-    return folder.id;
-  };
-
-  const uploadFile = async (token, blob, filename, folderId) => {
-    const form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify({ name: filename, parents: [folderId] })], { type:'application/json' }));
-    form.append('file', blob, filename);
-    const r = await fetch(
-      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink',
-      { method:'POST', headers:{ Authorization:`Bearer ${token}` }, body:form }
-    );
-    const data = await r.json();
-    if (!data.id) throw new Error('Upload Drive échoué : ' + JSON.stringify(data).slice(0, 200));
-    return data;
-  };
-
   // Logique d'archivage une fois le token Drive obtenu (pré-stocké ou frais via GIS).
+  // driveGetOrCreateFolder + driveUploadFile vivent dans lib/drive-upload.js
+  // (partagés avec finalizePendingDrive ci-dessous).
   const proceedWithToken = async (token) => {
     try {
       setStatus('generating');
@@ -556,9 +523,9 @@ ${styles}
       setStatus('uploading');
       let folderId, ficheFile, clFile;
       try {
-        folderId  = await getOrCreateFolder(token);
-        ficheFile = await uploadFile(token, fichePdf,     buildFilename('fiche-securite'), folderId);
-        clFile    = await uploadFile(token, checklistPdf, buildFilename('checklist'),      folderId);
+        folderId  = await window.driveGetOrCreateFolder(token, 'dp-fede');
+        ficheFile = await window.driveUploadFile(token, fichePdf,     buildFilename('fiche-securite'), folderId);
+        clFile    = await window.driveUploadFile(token, checklistPdf, buildFilename('checklist'),      folderId);
       } catch (driveErr) {
         // Drive inaccessible (réseau, token, quota…) — on archive localement.
         // Le dépôt Drive sera relancé depuis l'accueil via « Finaliser sur Drive ».
@@ -830,7 +797,7 @@ ${styles}
 // upload Drive, PATCH server. Une erreur propage (caller affiche).
 // ---------------------------------------------------------------------------
 async function finalizePendingDrive(archive, divers, user, onProgress) {
-  if (!window.google?.accounts?.oauth2) {
+  if (!window.isGisAvailable || !window.isGisAvailable()) {
     throw new Error('Google Identity Services indisponible — recharger la page.');
   }
   if (!archive.server_id) {
@@ -893,11 +860,11 @@ async function finalizePendingDrive(archive, divers, user, onProgress) {
       return `${date}${time ? '-' + time : ''}-${kind}-${site}.pdf`;
     };
 
-    const csrf = (document.cookie.match(/(?:^|; )dp_csrf=([^;]+)/) || [])[1] || '';
+    const csrf = window.getCsrfToken ? window.getCsrfToken() : '';
     async function genPdf(kind, html, filename) {
       const res = await fetch('/api/pdf/fiche', {
         method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': decodeURIComponent(csrf) },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
         body: JSON.stringify({ html, filename }),
       });
       if (!res.ok) {
@@ -918,38 +885,11 @@ async function finalizePendingDrive(archive, divers, user, onProgress) {
     const token = await window.getDriveToken({ explicit: false, timeoutMs: 15000 });
 
     if (onProgress) onProgress('uploading');
-    async function getFolder() {
-      const q = encodeURIComponent("name='dp-fede' and mimeType='application/vnd.google-apps.folder' and trashed=false");
-      const r1 = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (r1.ok) {
-        const d = await r1.json();
-        if (d.files?.length) return d.files[0].id;
-      }
-      const r2 = await fetch('https://www.googleapis.com/drive/v3/files', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'dp-fede', mimeType: 'application/vnd.google-apps.folder' }),
-      });
-      const f = await r2.json();
-      if (!f.id) throw new Error('Création dossier dp-fede impossible');
-      return f.id;
-    }
-    async function up(blob, filename, folderId) {
-      const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify({ name: filename, parents: [folderId] })], { type: 'application/json' }));
-      form.append('file', blob, filename);
-      const r1 = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
-        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form,
-      });
-      const d = await r1.json();
-      if (!d.id) throw new Error('Upload Drive échoué : ' + JSON.stringify(d).slice(0, 200));
-      return d;
-    }
-    const folderId  = await getFolder();
-    const ficheFile = await up(fichePdf,     buildFilename('fiche-securite'), folderId);
-    await up(checklistPdf, buildFilename('checklist'), folderId);
+    // driveGetOrCreateFolder + driveUploadFile partagés avec ScreenArchive
+    // (lib/drive-upload.js).
+    const folderId  = await window.driveGetOrCreateFolder(token, 'dp-fede');
+    const ficheFile = await window.driveUploadFile(token, fichePdf,     buildFilename('fiche-securite'), folderId);
+    await window.driveUploadFile(token, checklistPdf, buildFilename('checklist'), folderId);
 
     if (onProgress) onProgress('saving');
     await window.api.dives.markDriveDone(archive.client_uuid, ficheFile.webViewLink || '');

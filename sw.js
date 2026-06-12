@@ -9,7 +9,7 @@
 //
 // Bumper manuellement la VERSION ci-dessous à chaque déploiement frontend
 // (sinon le navigateur garde l'ancien cache). Format : dp-{YYYYMMDD}-{sha7}.
-const VERSION = 'dp-20260612-sprint1';
+const VERSION = 'dp-20260612-sprint3';
 
 const SHELL_CACHE  = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
@@ -51,6 +51,8 @@ const PRECACHE_URLS = [
   '/lib/offline-api.js',
   '/lib/storage-keys.js',
   '/lib/google-drive.js',
+  '/lib/drive-upload.js',
+  '/lib/use-auto-save.jsx',
   '/favicon.ico',
   '/favicon-16x16.png',
   '/favicon-32x32.png',

@@ -122,32 +122,14 @@ function AppInner() {
     } catch {}
   }, []);
 
-  // ── Snapshot ref (auto-save sans dépendances dans loadDive) ──────────────
-  // Mise à jour inline (pas dans useEffect) pour que flushSave lise toujours
-  // l'état courant même si l'utilisateur quitte la fiche juste après un setState.
-  const stateRef = useRef({});
-  stateRef.current = { answers, palanquees, checked, comments, pressions, realises, heuresDebut, heuresFin };
-
   // ── Auto-save debounced vers le serveur ──────────────────────────────────
-  const autoSaveTimerRef = useRef(null);
-  useEffect(() => {
-    if (!user || !currentDiveId || plongeeFigee) return;
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = setTimeout(() => {
-      const summary = {};
-      if (answers.site_nom) summary.site_nom    = answers.site_nom;
-      if (answers.dp_nom)   summary.dp_nom      = answers.dp_nom;
-      if (answers.dp_qual)  summary.dp_qual     = answers.dp_qual;
-      if (answers.date)   { summary.date_plongee = answers.date; summary.planned_at = answers.date; }
-      api.dives.update(currentDiveId, {
-        answers,
-        palanquees,
-        render_state: { checked, comments, pressions, realises, heuresDebut, heuresFin },
-        ...summary,
-      }).catch(err => console.warn('[DP] auto-save:', err?.message));
-    }, 500);
-    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
-  }, [answers, palanquees, checked, comments, pressions, realises, heuresDebut, heuresFin, currentDiveId, user, plongeeFigee]);
+  // Le hook gère le debounce 500 ms + snapshot ref. flushSave(id) force un
+  // envoi immédiat avant unmount / navigation entre plongées.
+  const flushSave = window.useAutoSave({
+    diveId: currentDiveId, user, plongeeFigee,
+    answers, palanquees, checked, comments,
+    pressions, realises, heuresDebut, heuresFin,
+  });
 
   // ── Détection transition prepared → in_progress (1er heuresDebut) ───────
   const prevHeuresDbutCountRef = useRef(0);
@@ -182,24 +164,6 @@ function AppInner() {
     setConfirmModal(false);
     setArchiveDone(false);
     prevHeuresDbutCountRef.current = 0;
-  }, []);
-
-  // Flush immédiat de l'auto-save vers la plongée courante
-  const flushSave = useCallback((diveId) => {
-    if (!diveId) return;
-    if (autoSaveTimerRef.current) { clearTimeout(autoSaveTimerRef.current); autoSaveTimerRef.current = null; }
-    const s = stateRef.current;
-    const summary = {};
-    if (s.answers.site_nom) summary.site_nom    = s.answers.site_nom;
-    if (s.answers.dp_nom)   summary.dp_nom      = s.answers.dp_nom;
-    if (s.answers.dp_qual)  summary.dp_qual     = s.answers.dp_qual;
-    if (s.answers.date)   { summary.date_plongee = s.answers.date; summary.planned_at = s.answers.date; }
-    api.dives.update(diveId, {
-      answers:      s.answers,
-      palanquees:   s.palanquees,
-      render_state: { checked: s.checked, comments: s.comments, pressions: s.pressions, realises: s.realises, heuresDebut: s.heuresDebut, heuresFin: s.heuresFin },
-      ...summary,
-    }).catch(() => {});
   }, []);
 
   // Charge une plongée depuis le store local (auto-save de la courante si différente)

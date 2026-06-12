@@ -78,9 +78,10 @@
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
-  <!-- Helpers globaux : clés de stockage + Google Drive/OAuth/CSRF -->
+  <!-- Helpers globaux : clés de stockage + Google Drive/OAuth/CSRF + upload REST -->
   <script src="lib/storage-keys.js"></script>
   <script src="lib/google-drive.js"></script>
+  <script src="lib/drive-upload.js"></script>
 
   <!-- API fetch wrapper (utilise window.getCsrfToken défini ci-dessus) -->
   <script src="api.js"></script>
@@ -107,6 +108,8 @@
   <script type="text/babel" src="components.jsx"></script>
   <script type="text/babel" src="toast.jsx"></script>
   <script type="text/babel" src="auth-context.jsx"></script>
+  <!-- Hooks réutilisables (doivent être chargés avant les screens qui les consomment) -->
+  <script type="text/babel" src="lib/use-auto-save.jsx"></script>
   <script type="text/babel" src="diver-form.jsx"></script>
   <script type="text/babel" src="screen-login.jsx"></script>
   <script type="text/babel" src="screen-home.jsx"></script>

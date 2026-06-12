@@ -28,12 +28,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
 
-// Rate limit login attempts (simple, per-IP, stored in APCu if available)
 $method = $_SERVER['REQUEST_METHOD'];
 $path   = strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
 
+// Rate-limit login attempts (15 min window, 10 essais/IP) — couvre les
+// tentatives de brute-force du callback OAuth.
 if ($method === 'POST' && $path === '/api/auth/google') {
-    rateLimitOrAbort();
+    rateLimitOrAbort('login', 10, 900, 'Trop de tentatives. Réessayez dans 15 minutes.');
+}
+
+// Rate-limit écriture (POST/PATCH/DELETE) sur les ressources métier.
+// 120 mutations/min par IP — couvre largement un usage normal (auto-save
+// debouncé 500 ms + outbox drain ~3 items/s) mais coupe les abus.
+$writeMethods   = ['POST', 'PATCH', 'PUT', 'DELETE'];
+$writePathRoots = ['/api/dives', '/api/divers', '/api/sites'];
+if (in_array($method, $writeMethods, true)) {
+    foreach ($writePathRoots as $root) {
+        if (strpos($path, $root) === 0) {
+            rateLimitOrAbort('write', 120, 60, 'Trop d\'écritures. Réessayez dans une minute.');
+            break;
+        }
+    }
 }
 
 // Router — load matching route file
@@ -47,16 +62,16 @@ Json::abort(404, 'Route introuvable');
 
 // ---------------------------------------------------------------------------
 
-function rateLimitOrAbort(): void {
+function rateLimitOrAbort(string $bucket, int $max, int $windowSec, string $errMsg): void {
     if (!extension_loaded('apcu') || !apcu_enabled()) return;
 
     $ip  = $_SERVER['REMOTE_ADDR'] ?? '0';
-    $key = "rl_login_{$ip}";
+    $key = "rl_{$bucket}_{$ip}";
     $n   = apcu_fetch($key);
     if ($n === false) {
-        apcu_store($key, 1, 900); // 15 min window
-    } else {
-        apcu_inc($key);
-        if ((int)$n >= 10) Json::abort(429, 'Trop de tentatives. Réessayez dans 15 minutes.');
+        apcu_store($key, 1, $windowSec);
+        return;
     }
+    apcu_inc($key);
+    if ((int)$n >= $max) Json::abort(429, $errMsg);
 }

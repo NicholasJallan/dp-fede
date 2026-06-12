@@ -167,19 +167,6 @@ ${styles}
     }
   };
 
-  const onExportJson = () => {
-    const snapshot = {
-      answers, palanquees, realises, pressions, observations: obs,
-      divers: divers.map(d => ({ id:d.id, nom:d.nom, prenom:d.prenom, niveau_plongeur:d.niveau_plongeur, niveau_encadrant:d.niveau_encadrant })),
-      exportedAt: new Date().toISOString(),
-    };
-    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type:'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `fiche-securite-${(answers.date || '').slice(0, 10)}.json`;
-    a.click();
-  };
-
   const siteName = answers.site_nom || answers.site || '—';
   const depart   = [answers.depart_bord && 'Du bord', answers.depart_bateau && 'En bateau'].filter(Boolean).join(' / ') || '—';
 
@@ -228,11 +215,6 @@ ${styles}
           </Alert>
         </div>
       )}
-
-      <div className="fiche-actions">
-        <button className="btn" onClick={onExportJson}>⤓ Export JSON</button>
-        <button className="btn primary" onClick={onPrintPdf}>Imprimer / PDF</button>
-      </div>
 
       <div className="fiche">
         <div className="fheader">

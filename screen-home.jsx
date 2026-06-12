@@ -26,7 +26,7 @@ function DiveCardPrepared({ dive, onStart, onEdit, onDelete, onCloneH3 }) {
   };
 
   return (
-    <div style={{
+    <div className="dive-card-row" style={{
       display:'grid', gridTemplateColumns:'1fr auto',
       gap:'4px 12px', padding:'12px 16px',
       borderBottom:'1px solid var(--line)', alignItems:'center',
@@ -44,7 +44,7 @@ function DiveCardPrepared({ dive, onStart, onEdit, onDelete, onCloneH3 }) {
           {dive.nb_palanquees > 0 && ` · ${dive.nb_palanquees} pal. · ${dive.nb_plongeurs} plongeurs`}
         </div>
       </div>
-      <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0, flexWrap:'wrap', justifyContent:'flex-end' }}>
+      <div className="dive-card-actions" style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0, flexWrap:'wrap', justifyContent:'flex-end' }}>
         <button className="btn primary" style={{ fontSize:12, padding:'4px 10px' }}
           onClick={() => onStart(dive)} title="Démarrer l'exécution de cette plongée">
           ▶ Démarrer
@@ -69,7 +69,7 @@ function DiveCardPrepared({ dive, onStart, onEdit, onDelete, onCloneH3 }) {
 
 function DiveCardInProgress({ dive, onResume, onEdit }) {
   return (
-    <div style={{
+    <div className="dive-card-row" style={{
       display:'grid', gridTemplateColumns:'1fr auto',
       gap:'4px 12px', padding:'12px 16px',
       borderBottom:'1px solid var(--line)', alignItems:'center',
@@ -88,7 +88,7 @@ function DiveCardInProgress({ dive, onResume, onEdit }) {
           {dive.nb_palanquees > 0 && ` · ${dive.nb_palanquees} pal.`}
         </div>
       </div>
-      <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0 }}>
+      <div className="dive-card-actions" style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0 }}>
         <button className="btn primary" style={{ fontSize:12, padding:'4px 10px' }}
           onClick={() => onResume(dive.client_uuid || dive.id, 'fiche', 'execute')}>
           ▶ Reprendre la fiche

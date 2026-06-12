@@ -535,8 +535,8 @@ function AppInner() {
             ← Accueil
           </button>
         )}
-        <span className="muted" style={{ color:"var(--ink-4)" }}>·</span>
-        <span style={{ fontSize:13 }}>{user.club_nom || user.email}</span>
+        <span className="muted topbar-sep" style={{ color:"var(--ink-4)" }}>·</span>
+        <span className="topbar-user-label" style={{ fontSize:13 }}>{user.club_nom || user.email}</span>
         <span className="meta">
           <button onClick={() => setDrawerOpen(true)} className="session-link"
             title={online
@@ -559,17 +559,17 @@ function AppInner() {
               }}>{outboxItems.length}</span>
             )}
           </button>
-          <span>AUTO-SAVE · <b>ON</b></span>
+          <span className="topbar-autosave">AUTO-SAVE · <b>ON</b></span>
           <button className="session-link" onClick={() => setScreen("account")} title="Mon compte">
             {displayName}
           </button>
           <button className="session-link" onClick={() => setScreen("archives")}>Historique</button>
           {user.role === 'admin' && (
-            <button className="session-link" onClick={() => setScreen("admin-divers")} title="Administration">
+            <button className="session-link topbar-admin-btn" onClick={() => setScreen("admin-divers")} title="Administration">
               Admin
             </button>
           )}
-          <button className="session-link" onClick={logout}>Déconnexion</button>
+          <button className="session-link topbar-logout-btn" onClick={logout}>Déconnexion</button>
         </span>
       </div>
 

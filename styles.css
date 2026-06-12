@@ -1316,6 +1316,14 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   .fiche tr { page-break-inside: avoid; }
 }
 
+/* P3 — Textes d'aide : éviter le débordement horizontal sur lignes longues.
+   Les enfants directs d'un grid ont min-width:auto par défaut, ce qui leur
+   permet de dépasser la cellule 1fr. min-width:0 rétablit le comportement
+   attendu et laisse overflow-wrap gérer les mots longs. */
+.main > * { min-width: 0; }
+.field { min-width: 0; }
+.field-hint { word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; }
+
 /* Small viewport */
 @media (max-width: 720px) {
   .topbar { padding: 10px 14px; flex-wrap: wrap; gap: 10px; }
@@ -1348,6 +1356,36 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   }
   .footnav .progress { order: 3; flex-basis: 100%; max-width: none; }
   .footnav .btn { min-height: 36px; font-size: 13px; padding: 6px 12px; }
+}
+
+/* Mobile étroit (≤ 480 px) */
+@media (max-width: 480px) {
+  /* P1 — Topbar : masquer les éléments secondaires pour éviter l'overflow sur 390 px.
+     Déconnexion et Admin restent accessibles via l'écran Mon compte. */
+  .topbar-user-label { display: none; }
+  .topbar-autosave   { display: none; }
+  .topbar-admin-btn  { display: none; }
+  .topbar-logout-btn { display: none; }
+  .topbar .meta { gap: 8px; }
+  /* Le séparateur · entre wordmark et email devient superflu sans le label */
+  .topbar .topbar-sep { display: none; }
+
+  /* P2 — Carte plongée : empiler infos et actions sur mobile */
+  .dive-card-row {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+  .dive-card-actions {
+    flex-shrink: 1 !important;
+    width: 100%;
+    justify-content: flex-start !important;
+  }
+
+  /* P4 — Stepper : afficher uniquement le label de l'étape active,
+     numéro seul pour les autres → toutes les étapes tiennent sans scroll. */
+  .step .grp { display: none; }
+  .step.active .grp,
+  .step.done .grp { display: flex; }
 }
 
 /* ===== Login screen ===== */

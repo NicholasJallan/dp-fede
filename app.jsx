@@ -909,4 +909,6 @@ function App() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+const _root = ReactDOM.createRoot(document.getElementById("root"));
+_root.render(<App />);
+window.dispatchEvent(new Event('dp:appReady'));

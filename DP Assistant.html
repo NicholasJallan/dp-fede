@@ -21,6 +21,39 @@
 </head>
 <body>
   <div id="root"></div>
+  <!-- Fallback : si React ne monte pas dans les 12 s, afficher un message actionnable. -->
+  <div id="load-fallback" style="display:none;position:fixed;inset:0;background:#F4F1EA;
+    align-items:center;justify-content:center;font-family:sans-serif;z-index:9999">
+    <div style="max-width:360px;padding:24px;background:#fff;border-radius:10px;
+      box-shadow:0 4px 20px rgba(0,0,0,.12);text-align:center">
+      <div style="font-size:24px;margin-bottom:12px">⚠</div>
+      <b style="font-size:16px">Chargement impossible</b>
+      <p style="color:#5A6B7E;font-size:13px;margin:10px 0 18px">
+        Les scripts de l'application n'ont pas pu être chargés.<br>
+        Videz le cache du site puis réessayez.
+      </p>
+      <button onclick="
+        if('serviceWorker' in navigator){
+          navigator.serviceWorker.getRegistrations().then(regs=>{
+            regs.forEach(r=>r.unregister());
+            caches.keys().then(k=>Promise.all(k.map(n=>caches.delete(n)))).then(()=>location.reload());
+          });
+        } else { location.reload(); }
+      " style="background:#0a4a6e;color:#fff;border:0;border-radius:6px;
+        padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer">
+        Vider le cache et recharger
+      </button>
+    </div>
+  </div>
+  <script>
+    var _loadTimer = setTimeout(function() {
+      var root = document.getElementById('root');
+      if (!root || !root.hasChildNodes()) {
+        document.getElementById('load-fallback').style.display = 'flex';
+      }
+    }, 12000);
+    window.addEventListener('dp:appReady', function() { clearTimeout(_loadTimer); });
+  </script>
 
   <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>

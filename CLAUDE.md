@@ -62,7 +62,7 @@ ssh pi@bullesenvalais.ch "sudo chown -R www-data:www-data /var/www/dp-fede-api"
 - **Backend PHP** : `/var/www/dp-fede-api/`
 - **Config secrète** : `/etc/dp-fede/config.php`
 - **DB** : MariaDB `dp_fede` / user `dp_fede_user@localhost`
-- **nginx** : `/etc/nginx/sites-available/bullesenvalais` (bloc dp-fede en bas)
+- **nginx** : `/etc/nginx/sites-available/bullesenvalais` (bloc dp-fede en bas, contient aussi la clé Google Maps via `sub_filter` — cf. section « Clé Google Maps »)
 - **GitHub** : https://github.com/NicholasJallan/dp-fede
 - **Google OAuth Client ID** : `813155202106-jlddu3nmfuq552p9673odcegrf5kuke7.apps.googleusercontent.com`
 - **GCP Project** : `api-project-813155202106`
@@ -78,13 +78,35 @@ ssh pi@bullesenvalais.ch "sudo nginx -t && sudo systemctl reload nginx"
 `DP Assistant.html` (et donc `index.html`) contient le placeholder
 `__GOOGLE_MAPS_API_KEY__` dans la balise `<script>` Maps. nginx remplace
 ce placeholder par la vraie clé au moment du serve via `sub_filter`
-(bloc `location ~* \.(jsx|js|css|html)$` du site dp-fede).
+dans le bloc `location ~* \.(jsx|js|css|html)$` du site dp-fede :
+
+```nginx
+sub_filter '__GOOGLE_MAPS_API_KEY__' '<nouvelle-clé-AIza…>';
+sub_filter_once on;
+```
+
+(le placeholder n'apparaît qu'une fois dans le HTML → `sub_filter_once
+on`. Ne pas ajouter `sub_filter_types text/html;` : c'est le défaut,
+nginx warn « duplicate MIME type ».)
 
 La clé vit donc UNIQUEMENT dans
 `/etc/nginx/sites-available/bullesenvalais` sur le Pi. **Jamais dans
-git.** En cas de rotation : éditer la valeur du `sub_filter` côté Pi,
-`sudo nginx -t && sudo systemctl reload nginx`, fini — aucun
-redéploiement frontend n'est nécessaire.
+git.** Le rsync de déploiement frontend envoie le placeholder tel quel,
+nginx s'occupe du reste — rien à faire de spécial au déploiement.
+
+Rotation de la clé (alerte GitHub Secret Scanning, compromission, ou
+audit trimestriel) :
+
+1. GCP Console → APIs & Services → Credentials → créer la nouvelle clé,
+   la restreindre (HTTP referrer `https://dp-fede.bullesenvalais.ch/*` +
+   APIs Maps JS + Places), supprimer l'ancienne.
+2. SSH Pi : `sudo $EDITOR /etc/nginx/sites-available/bullesenvalais`,
+   remplacer la valeur dans la directive `sub_filter` du bloc dp-fede.
+3. `sudo nginx -t && sudo systemctl reload nginx`.
+4. Vérifier : `curl -s https://dp-fede.bullesenvalais.ch/ | grep AIza`
+   doit renvoyer la nouvelle clé.
+
+Aucun redéploiement frontend nécessaire.
 
 Pré-commit guard : `git grep -E 'AIza[0-9A-Za-z_-]{35}'` doit ne rien
 renvoyer.
@@ -170,6 +192,7 @@ Tout est dans `data.js` (aucun build requis) :
 
 ## Pièges connus
 
+- **Clé Google Maps** : `DP Assistant.html` ligne 70 doit contenir le placeholder `__GOOGLE_MAPS_API_KEY__`, jamais une vraie clé `AIza…`. Une vraie clé qui s'y glisse fuite dans GitHub (Secret Scanning) à la première push. nginx (`sub_filter` côté Pi) injecte la vraie clé au serve — cf. section « Clé Google Maps ». Si le sélecteur de sites n'affiche plus la carte après modif nginx : vérifier que `sub_filter` est bien dans le bloc `location ~* \.(jsx|js|css|html)$` (sinon il ne s'applique pas au HTML, qui est servi par ce bloc à cause de l'extension).
 - `buildQualifs()` dans `backend/routes/divers.php` : utiliser `$recs` (variable locale filtrée) et NON `compact('recycleurs')` qui capturerait le paramètre de fonction (liste complète).
 - `DIPLOMES_PRO` = `['BEES1','DEJEPS','DESJEPS','Autre']` — MF1/MF2 sont des brevets fédéraux, pas des diplômes professionnels d'État.
 - `getMilieuType()` est case-insensitive (`.toLowerCase()`) pour gérer les valeurs sites ('Lac', 'Carrière') et les anciennes valeurs questions.

@@ -878,8 +878,8 @@ ssh pi@bullesenvalais.ch "sudo chown -R www-data:www-data /var/www/html/dp-fede 
 Cocher les tâches au fil de l'eau :
 
 - [x] C1.1 — Hotfix wkhtmltopdf (Phase 0)
-- [ ] M3 — Auto-bump SW
-- [ ] M4 — Inline scripts sortis, CSP durcie
+- [x] M3 — Auto-bump SW (pi-scripts/deploy-frontend.sh, local only)
+- [x] M4 — Inline scripts sortis → inline-boot.js, CSP sans 'unsafe-inline'
 - [x] M6 — Validation date stricte
 - [x] L1 — Fix Smtp `$line[3]` (Smtp.php supprimé ensuite)
 - [x] L2 — `requestAnimationFrame` au lieu de `setTimeout 50`

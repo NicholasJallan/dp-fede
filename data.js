@@ -1,5 +1,118 @@
+// @ts-check
 // DP Assistant — Données métier (v2)
 // Niveaux, aptitudes, règles Code du Sport (Annexes III-15a, III-16a/b, Art. A322-xx)
+
+/**
+ * @typedef {'N1'|'N2'|'N3'|''|null} NiveauPlongeur
+ * @typedef {'N4'|'N5'|'E1'|'E2'|'E3'|'E4'|''|null} NiveauEncadrant
+ * @typedef {'PA12'|'PA20'|'PA40'|'PA60'|'PE20'|'PE40'|'PE60'|'PTH70'|'PTH120'|'GP'|'Baptême'|'E1'|'E2'|'E3'|'E4'|''|null} Aptitude
+ */
+
+/**
+ * @typedef {Object} Diver
+ * @property {string} id
+ * @property {string} nom
+ * @property {string} prenom
+ * @property {string} [licence]
+ * @property {NiveauPlongeur} [niveau_plongeur]
+ * @property {NiveauEncadrant} [niveau_encadrant]
+ * @property {string[]} [aptitudes_sup]
+ * @property {boolean} [rifap]
+ * @property {boolean} [tiv]
+ * @property {string} [diplome_pro]
+ * @property {string} [medical]
+ * @property {string} [notes]
+ * @property {string} [deleted_at]
+ */
+
+/**
+ * @typedef {Object} Site
+ * @property {string} id
+ * @property {string} nom
+ * @property {string} milieu  ex: 'En mer', 'Lac', 'Piscine'
+ * @property {number|string} [profondeur_max]
+ * @property {string} [notes]
+ * @property {boolean} [depart_bord]
+ * @property {boolean} [depart_bateau]
+ * @property {string} [acces_secours]
+ * @property {string} [caisson]
+ * @property {string} [ville]
+ * @property {string} [pays]
+ * @property {string} [pays_code]
+ * @property {{lat: number, lng: number}|null} [coordonnees]
+ * @property {string} [deleted_at]
+ */
+
+/**
+ * @typedef {Object} PalMembre
+ * @property {string} id  diver id
+ * @property {Aptitude} aptitude
+ */
+
+/**
+ * @typedef {Object} Palanquee
+ * @property {string} id
+ * @property {string} [nom]
+ * @property {PalMembre[]} membres
+ * @property {number} profMax  profondeur max en mètres
+ * @property {number} duree    durée en minutes
+ * @property {number} dtr      DTR sans déco en minutes
+ * @property {boolean} [no_deco]
+ * @property {string} [melange]
+ */
+
+/**
+ * @typedef {Object} Answers
+ * @property {string} [date]
+ * @property {string} [site_id]
+ * @property {string} [site_nom]
+ * @property {string} [milieu]
+ * @property {string} [activite]  'Exploration'|'Enseignement'|'Mixte'
+ * @property {string} [dp_id]
+ * @property {string} [dp_nom]
+ * @property {NiveauEncadrant} [dp_qual]
+ * @property {boolean} [depart_bord]
+ * @property {boolean} [depart_bateau]
+ * @property {boolean} [mineurs]
+ * @property {boolean} [handisub]
+ * @property {boolean} [etrangers]
+ * @property {boolean} [air]
+ * @property {boolean} [nitrox]
+ * @property {boolean} [trimix]
+ * @property {boolean} [recycleur]
+ * @property {string} [structure]
+ * @property {string} [fiche_observations]
+ * @property {string} [site_acces_secours]
+ * @property {string} [site_caisson]
+ */
+
+/**
+ * @typedef {Object} RenderState
+ * @property {{[palId: string]: string}} [pressions]
+ * @property {{[palId: string]: boolean}} [realises]
+ * @property {{[palId: string]: string}} [heuresDebut]
+ * @property {{[palId: string]: string}} [heuresFin]
+ * @property {{[itemId: string]: boolean}} [checked]
+ * @property {{[itemId: string]: string}} [comments]
+ */
+
+/**
+ * @typedef {Object} Dive
+ * @property {string} id
+ * @property {string} [client_uuid]
+ * @property {'prepared'|'in_progress'|'archived'} status
+ * @property {Answers} [answers]
+ * @property {Palanquee[]} [palanquees]
+ * @property {RenderState} [render_state]
+ * @property {string} [site_nom]
+ * @property {string} [dp_nom]
+ * @property {NiveauEncadrant} [dp_qual]
+ * @property {string} [date_plongee]
+ * @property {string} [planned_at]
+ * @property {string} [started_at]
+ * @property {string} [closed_at]
+ * @property {string} [deleted_at]
+ */
 
 // =========================================================================
 // VEILLE RÉGLEMENTAIRE
@@ -109,16 +222,14 @@ window.getProfOptions = function(niveauEncadrant, activite, dp, site) {
   return candidates.filter(d => d <= max).map(d => d + ' m');
 };
 
-// Aptitudes "bonus" en formation accordées par la présence d'un enseignant
-// (E1→E4) dans la palanquée : un élève peut accéder à l'aptitude PE du
-// niveau immédiatement supérieur si l'enseignant a la prérogative de
-// l'enseigner (E3 enseigne PE40, E4 enseigne PE60).
-//
-//   N1  + E3/E4 → PE40
-//   N2  +  E4   → PE60
-//
-// Le débutant (sans niveau) obtient déjà Baptême+PE20 dans getDiverAptitudes,
-// donc rien à ajouter ici.
+/**
+ * Aptitudes "bonus" en formation accordées par la présence d'un enseignant
+ * (E1→E4). Un élève peut accéder à l'aptitude PE supérieure si l'enseignant
+ * a la prérogative d'enseigner ce niveau (E3→PE40, E4→PE60).
+ * @param {Diver|null} diver
+ * @param {NiveauEncadrant|null} maxEnsLevel  niveau max enseignant dans la palanquée
+ * @returns {string[]}
+ */
 window.getFormationBonusAptitudes = function(diver, maxEnsLevel) {
   if (!diver || !maxEnsLevel) return [];
   const np = diver.niveau_plongeur || null;
@@ -312,7 +423,11 @@ window.parseCdsRefs = function(text) {
   return refs;
 };
 
-// DTR sans déco (règle opérationnelle FFESSM) : 1 min / 10 m
+/**
+ * DTR sans déco (règle opérationnelle FFESSM) : 1 min / 10 m.
+ * @param {number} profMax
+ * @returns {number}
+ */
 window.calcDTR = function(profMax) {
   return Math.ceil((profMax || 0) / 10);
 };
@@ -511,8 +626,12 @@ window.matchCondition = function(when, answers) {
   return true;
 };
 
-// Résume le milieu en : 'mer' | 'lac' | 'piscine' | 'fosse'
-// Gère les valeurs site ('En mer', 'Lac', 'Carrière', 'Piscine') et les anciennes valeurs question
+/**
+ * Résume le milieu en : 'mer' | 'lac' | 'piscine' | 'fosse'.
+ * Gère les valeurs site ('En mer', 'Lac', 'Carrière', 'Piscine') et les anciennes valeurs question.
+ * @param {string|null|undefined} milieu
+ * @returns {'mer'|'lac'|'piscine'|'fosse'}
+ */
 window.getMilieuType = function(milieu) {
   if (!milieu) return 'mer';
   const m = milieu.toLowerCase();
@@ -522,9 +641,12 @@ window.getMilieuType = function(milieu) {
   return 'mer';
 };
 
-// Vrai en milieu naturel (mer / lac / carrière) — faux en piscine / fosse.
-// Sert à masquer les items de check-list et questions sans objet en bassin
-// (marée, bouée de surface, météo, etc.).
+/**
+ * Vrai en milieu naturel (mer / lac / carrière), faux en piscine / fosse.
+ * Sert à masquer les items de check-list et questions sans objet en bassin.
+ * @param {string|null|undefined} milieu
+ * @returns {boolean}
+ */
 window.isMilieuNaturel = function(milieu) {
   const t = window.getMilieuType(milieu);
   return t !== 'piscine' && t !== 'fosse';
@@ -538,16 +660,13 @@ window.STRUCTURE_LABELS = {
   autre:'Autre',
 };
 
-// Tri des membres d'une palanquée — appliqué à la fois sur l'écran de
-// constitution (au fur et à mesure de l'attribution des aptitudes) et sur
-// la fiche de sécurité. Ordre canonique :
-//   Enseignants par niveau décroissant (E4 > E3 > E2 > E1)
-//   → GP
-//   → PE par profondeur décroissante (PE60 > PE40 > PE20)
-//   → PTH (PTH120 > PTH70) — rare dans la composition d'une palanquée
-//   → PA (tous niveaux confondus, ordre d'insertion préservé via tri stable)
-//   → Baptême
-// Cas particulier : 2 GP (ou plus) → le second GP devient serre-file (en fin).
+/**
+ * Tri canonique des membres d'une palanquée pour la fiche de sécurité.
+ * E4→E1, GP, PE60→PE20, PTH120→PTH70, PA, Baptême.
+ * Cas particulier : 2+ GP → le second GP devient serre-file (fin de liste).
+ * @param {PalMembre[]} membres
+ * @returns {PalMembre[]}
+ */
 window.sortMembresForFiche = function(membres) {
   const priorityOf = (apt) => {
     switch (apt) {

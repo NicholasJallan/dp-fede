@@ -889,8 +889,8 @@ Cocher les tâches au fil de l'eau :
 - [x] H6 — Smtp.php supprimé (code mort, 0 call-site)
 - [x] M7 — Logging structuré
 - [x] M11 — firebase/php-jwt v7.1.0 (advisory v6 → v7 sans advisory)
-- [ ] H1 — esbuild + production builds
-- [ ] H2.A — JSDoc minimal
+- [x] H1 — esbuild + production builds
+- [x] H2.A — JSDoc minimal
 - [ ] H2.B — Vraie migration TS
 - [ ] C1.2 — PDF rendu côté serveur
 - [ ] M2 — Validation métier backend

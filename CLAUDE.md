@@ -1,7 +1,7 @@
 # CLAUDE.md — DP Assistant
 
 Outil d'aide au Directeur de Plongée (FFESSM / Code du Sport).
-Frontend : React 18 + Babel CDN, zéro build. Backend : PHP 7.4 + MariaDB sur Raspberry Pi.
+Frontend : React 18 + Babel CDN, zéro build. Backend : PHP 7.4-FPM (API) + PHP 8.2 (CLI, PHPUnit) + MariaDB sur Raspberry Pi.
 
 ## Architecture
 
@@ -79,13 +79,28 @@ Toute nouvelle API externe appelée via `fetch()` doit être ajoutée à
 `connect-src` dans `/etc/nginx/sites-available/bullesenvalais` du bloc
 dp-fede. Sans ça, le navigateur émet « Failed to fetch » silencieusement.
 
-État au 28/05/2026 :
+État au 13/06/2026 (Sprint 4 sécurité durcie) :
 - `'self'`
 - `https://maps.googleapis.com`, `https://maps.gstatic.com` (Maps + Places)
 - `https://api.open-meteo.com` (bouton « Précompléter depuis météo »)
 - `https://www.googleapis.com` (Google Drive : list/create/upload files)
 - `https://oauth2.googleapis.com`, `https://accounts.google.com`
   (token endpoints — OAuth Drive scope)
+- `https://unpkg.com`, `https://cdnjs.cloudflare.com`,
+  `https://fonts.googleapis.com`, `https://fonts.gstatic.com`
+  (REQUIS pour le Service Worker qui fait du runtime-fetch sur ces CDN)
+
+CSP report-uri configurée : violations envoyées à `/api/csp/report` →
+log `/var/log/dp-fede-csp.log` (chown www-data:www-data, mode 640).
+Vérifier régulièrement ce fichier pour identifier les nouvelles
+violations.
+
+Headers sécurité associés :
+- `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`
+  (préinscription HSTS effective si soumise à hstspreload.org).
+- `Permissions-Policy: camera=(), microphone=(), geolocation=(self), payment=(), usb=()`
+  (geolocation `self` car le bouton météo l'utilise).
+- `form-action 'self'` dans la CSP.
 
 ### CSP / nginx — Service Worker et mode offline
 

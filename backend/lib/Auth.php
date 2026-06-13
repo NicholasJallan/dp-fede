@@ -48,38 +48,21 @@ class Auth {
 
     /**
      * Vérifie un JWT Google RS256 hors-ligne via la clé publique JWKS.
-     * Retourne le payload si la signature est valide, null sinon.
+     * Délègue à firebase/php-jwt v7 (audit tiers, supprime le code ASN.1 maison).
      */
     private static function verifyJwtLocal(string $jwt): ?array {
-        if (!function_exists('openssl_verify')) return null;
-
-        $parts = explode('.', $jwt);
-        if (count($parts) !== 3) return null;
-        [$h64, $p64, $s64] = $parts;
-
-        $header = json_decode(self::b64UrlDecode($h64), true);
-        $payload = json_decode(self::b64UrlDecode($p64), true);
-        $sig    = self::b64UrlDecode($s64);
-        if (!is_array($header) || !is_array($payload) || $sig === false) return null;
-        if (($header['alg'] ?? '') !== 'RS256') return null;
-
-        $kid = $header['kid'] ?? '';
-        if (!$kid) return null;
+        if (!class_exists('\Firebase\JWT\JWK')) return null;
 
         $jwks = self::fetchJwks();
         if (!$jwks) return null;
 
-        $key = null;
-        foreach ($jwks['keys'] ?? [] as $k) {
-            if (($k['kid'] ?? '') === $kid) { $key = $k; break; }
+        try {
+            $keys    = \Firebase\JWT\JWK::parseKeySet($jwks);
+            $decoded = \Firebase\JWT\JWT::decode($jwt, $keys);
+            return (array) json_decode(json_encode($decoded), true);
+        } catch (\Throwable $e) {
+            return null;
         }
-        if (!$key) return null;
-
-        $pem = self::jwkToPem($key);
-        if (!$pem) return null;
-
-        $ok = openssl_verify("{$h64}.{$p64}", $sig, $pem, OPENSSL_ALGO_SHA256);
-        return $ok === 1 ? $payload : null;
     }
 
     private static function verifyViaTokeninfo(string $idToken): ?array {
@@ -106,62 +89,6 @@ class Auth {
             apcu_store(self::JWKS_CACHE_KEY, $jwks, self::JWKS_CACHE_TTL);
         }
         return $jwks;
-    }
-
-    /**
-     * Convertit un JWK RSA (e, n base64url) en PEM PKCS#1 utilisable par openssl_verify.
-     * Implémentation minimale — pas de dépendance Composer.
-     */
-    private static function jwkToPem(array $jwk): ?string {
-        if (($jwk['kty'] ?? '') !== 'RSA') return null;
-        $n = self::b64UrlDecode($jwk['n'] ?? '');
-        $e = self::b64UrlDecode($jwk['e'] ?? '');
-        if ($n === false || $e === false) return null;
-
-        // ASN.1 DER : SEQUENCE { INTEGER n, INTEGER e } emballé en SubjectPublicKeyInfo
-        $modulus  = self::asn1Integer($n);
-        $exponent = self::asn1Integer($e);
-        $rsaKey   = self::asn1Sequence($modulus . $exponent);
-        // BIT STRING wrapper + AlgorithmIdentifier (rsaEncryption OID)
-        $bitString = "\x00" . $rsaKey; // unused bits = 0
-        $bitWrap   = self::asn1TLV(0x03, $bitString);
-        $algId     = self::asn1Sequence(
-            self::asn1TLV(0x06, "\x2A\x86\x48\x86\xF7\x0D\x01\x01\x01") // OID rsaEncryption
-            . "\x05\x00" // NULL
-        );
-        $spki = self::asn1Sequence($algId . $bitWrap);
-        $b64  = chunk_split(base64_encode($spki), 64, "\n");
-        return "-----BEGIN PUBLIC KEY-----\n{$b64}-----END PUBLIC KEY-----\n";
-    }
-
-    private static function asn1Integer(string $bytes): string {
-        // INTEGER doit commencer par 0x00 si le MSB est set (sinon interprété négatif).
-        if (strlen($bytes) > 0 && (ord($bytes[0]) & 0x80)) $bytes = "\x00" . $bytes;
-        return self::asn1TLV(0x02, $bytes);
-    }
-
-    private static function asn1Sequence(string $contents): string {
-        return self::asn1TLV(0x30, $contents);
-    }
-
-    private static function asn1TLV(int $tag, string $value): string {
-        $len = strlen($value);
-        if ($len < 128) {
-            $lenBytes = chr($len);
-        } else {
-            $hex = dechex($len);
-            if (strlen($hex) & 1) $hex = '0' . $hex;
-            $raw = hex2bin($hex);
-            $lenBytes = chr(0x80 | strlen($raw)) . $raw;
-        }
-        return chr($tag) . $lenBytes . $value;
-    }
-
-    private static function b64UrlDecode(string $s) {
-        $s = strtr($s, '-_', '+/');
-        $pad = strlen($s) % 4;
-        if ($pad) $s .= str_repeat('=', 4 - $pad);
-        return base64_decode($s, true);
     }
 
     // Create or update user from Google payload, return user row

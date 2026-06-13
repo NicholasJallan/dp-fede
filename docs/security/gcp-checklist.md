@@ -41,13 +41,20 @@ GCP Console → APIs & Services → Credentials → OAuth 2.0 Client IDs
 
 GCP Console → APIs & Services → Credentials → API Keys
 
-La clé visible dans `DP Assistant.html` (`AIzaSyCTMJRl4wywovs3dkkDMJgmhAsMsHofYCM`)
-**doit** être restreinte. Vérifier :
+La clé Maps n'est **jamais** committée. Le fichier `DP Assistant.html`
+contient un placeholder `__GOOGLE_MAPS_API_KEY__` que nginx remplace au
+runtime via `sub_filter` (bloc `location ~* \.(jsx|js|css|html)$` du
+site dp-fede). La vraie clé vit donc uniquement dans
+`/etc/nginx/sites-available/bullesenvalais` côté Pi.
+
+La clé **doit** rester restreinte côté GCP. Vérifier :
 
 - [ ] **Application restrictions** : `HTTP referrers (web sites)`
 - [ ] **Referrer accepted** : `https://dp-fede.bullesenvalais.ch/*` UNIQUEMENT
 - [ ] **API restrictions** : `Maps JavaScript API` + `Places API` (rien d'autre)
 - [ ] **Quotas custom** : 1000 requêtes/jour max (alerte budget si dépassé)
+- [ ] **Aucune clé Maps en clair dans le repo** :
+      `git grep -E 'AIza[0-9A-Za-z_-]{35}'` doit ne rien renvoyer.
 
 Sans ces restrictions, n'importe quel site peut consommer le quota.
 
@@ -103,8 +110,12 @@ Filtre : `resource.type="oauth2_client"`
 
 ## 8. Renouvellements
 
-- Clé Maps : pas de rotation forcée (pas de secret) ; mais si compromission,
-  régénérer dans GCP et republier `DP Assistant.html`.
+- Clé Maps : pas de rotation forcée (par nature publique côté navigateur,
+  mais protégée par HTTP referrer côté GCP) ; si compromission ou alerte
+  GitHub Secret Scanning, régénérer dans GCP, supprimer l'ancienne, puis
+  remplacer la valeur du `sub_filter` dans
+  `/etc/nginx/sites-available/bullesenvalais` et reload nginx (zéro
+  redéploiement frontend nécessaire).
 - OAuth Client ID : idem, pas de rotation forcée, mais peut être rotaté en
   cas de besoin (impact : tous les utilisateurs doivent re-autoriser).
 - JWKS Google : rotation automatique côté Google, cache APCu 6h côté backend

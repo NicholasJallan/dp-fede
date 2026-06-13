@@ -73,6 +73,22 @@ ssh pi@bullesenvalais.ch "sudo chown -R www-data:www-data /var/www/dp-fede-api"
 ssh pi@bullesenvalais.ch "sudo nginx -t && sudo systemctl reload nginx"
 ```
 
+### Clé Google Maps — injectée au runtime par nginx
+
+`DP Assistant.html` (et donc `index.html`) contient le placeholder
+`__GOOGLE_MAPS_API_KEY__` dans la balise `<script>` Maps. nginx remplace
+ce placeholder par la vraie clé au moment du serve via `sub_filter`
+(bloc `location ~* \.(jsx|js|css|html)$` du site dp-fede).
+
+La clé vit donc UNIQUEMENT dans
+`/etc/nginx/sites-available/bullesenvalais` sur le Pi. **Jamais dans
+git.** En cas de rotation : éditer la valeur du `sub_filter` côté Pi,
+`sudo nginx -t && sudo systemctl reload nginx`, fini — aucun
+redéploiement frontend n'est nécessaire.
+
+Pré-commit guard : `git grep -E 'AIza[0-9A-Za-z_-]{35}'` doit ne rien
+renvoyer.
+
 ### CSP — origines whitelistées dans `connect-src`
 
 Toute nouvelle API externe appelée via `fetch()` doit être ajoutée à

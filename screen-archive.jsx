@@ -65,20 +65,26 @@ function FicheStatique({ ficheRef, answers, palanquees, divers, user, pressions,
         </div>
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:12, margin:'12px 0 6px' }}>
-        <div style={{ padding:'2px 0' }}>
-          <div style={{ fontFamily:'var(--t-mono)', fontSize:9.5, letterSpacing:'0.06em', textTransform:'uppercase', color:'#888' }}>Milieu</div>
-          <div style={{ fontWeight:600, fontSize:13 }}>{answers.milieu || '—'}</div>
-        </div>
-        <div style={{ padding:'2px 0' }}>
-          <div style={{ fontFamily:'var(--t-mono)', fontSize:9.5, letterSpacing:'0.06em', textTransform:'uppercase', color:'#888' }}>Départ</div>
-          <div style={{ fontWeight:600, fontSize:13 }}>{depart}{answers.shot_line ? ' · Shot-line' : ''}</div>
-        </div>
-        <div style={{ padding:'2px 0' }}>
-          <div style={{ fontFamily:'var(--t-mono)', fontSize:9.5, letterSpacing:'0.06em', textTransform:'uppercase', color:'#888' }}>Mélanges</div>
-          <div style={{ fontWeight:600, fontSize:12 }}>{allMelanges}</div>
-        </div>
-      </div>
+      {/* Layout en <table> et non en grid/flex : wkhtmltopdf 0.12.6 (QtWebKit)
+          ne supporte pas CSS Grid → sans table, tout s'empile verticalement. */}
+      <table style={{ width:'100%', borderCollapse:'collapse', margin:'12px 0 6px', tableLayout:'fixed' }}>
+        <tbody>
+          <tr>
+            <td style={{ width:'33.33%', verticalAlign:'top', padding:'2px 12px 2px 0' }}>
+              <div style={{ fontFamily:'var(--t-mono)', fontSize:9.5, letterSpacing:'0.06em', textTransform:'uppercase', color:'#888' }}>Milieu</div>
+              <div style={{ fontWeight:600, fontSize:13 }}>{answers.milieu || '—'}</div>
+            </td>
+            <td style={{ width:'33.33%', verticalAlign:'top', padding:'2px 12px' }}>
+              <div style={{ fontFamily:'var(--t-mono)', fontSize:9.5, letterSpacing:'0.06em', textTransform:'uppercase', color:'#888' }}>Départ</div>
+              <div style={{ fontWeight:600, fontSize:13 }}>{depart}{answers.shot_line ? ' · Shot-line' : ''}</div>
+            </td>
+            <td style={{ width:'33.33%', verticalAlign:'top', padding:'2px 0 2px 12px' }}>
+              <div style={{ fontFamily:'var(--t-mono)', fontSize:9.5, letterSpacing:'0.06em', textTransform:'uppercase', color:'#888' }}>Mélanges</div>
+              <div style={{ fontWeight:600, fontSize:12 }}>{allMelanges}</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
       <div style={{ margin:'0 0 18px', padding:'2px 0' }}>
         <div style={{ fontFamily:'var(--t-mono)', fontSize:9.5, letterSpacing:'0.06em', textTransform:'uppercase', color:'#888' }}>Conditions</div>
         <div style={{ fontWeight:500, fontSize:12 }}>{answers.meteo || '—'}</div>
@@ -211,26 +217,47 @@ function FicheStatique({ ficheRef, answers, palanquees, divers, user, pressions,
       </table>
 
       <h2>Sécurité surface</h2>
-      <div style={{ fontSize:12, columns:2, columnGap:24 }}>
-        <div>• Sécurité surface : <b>{answers.sec_surface ? 'Présente' : 'Non identifiée'}</b></div>
-        {Array.isArray(answers.sec_surface_membres) && answers.sec_surface_membres.length > 0 && (
-          <div>• Plongeurs surveillance : <b>{answers.sec_surface_membres.map(id => {
-            const d = diversById[id]; return d ? diverFullName(d) : id;
-          }).join(', ')}</b></div>
-        )}
-        {answers.sec_surface_externes && (
-          <div>• Non-plongeurs : <b>{answers.sec_surface_externes}</b></div>
-        )}
-        <div>• Plan de secours : <b>{answers.plan_secours ? 'Affiché et à jour' : 'À vérifier'}</b></div>
-        <div>• Coordonnées secours : <b>{answers.coords_secours ? 'Disponibles et affichées' : 'À vérifier'}</b></div>
-        <div>• Matériel O₂ vérifié : <b>{answers.o2 ? 'Oui' : 'Non'}</b></div>
-        <div>• Trousse de secours + couv. iso : <b>{answers.trousse ? 'Oui' : 'Non'}</b></div>
-        <div>• VHF : <b>{answers.vhf ? 'Embarquée et testée' : '—'}</b></div>
-        <div>• Pavillon Alpha : <b>{answers.pavillon_alpha || answers.bouee_surface ? 'Hissé / présent' : '—'}</b></div>
-        <div>• Eau douce potable : <b>{answers.eau_potable ? 'Oui' : 'Non'}</b></div>
-        <div>• Moyen de rappel : <b>{answers.rappel ? 'Oui' : '—'}</b></div>
-        <div>• Numéro d'urgence : <b>{answers.urgence_num || user?.urgence_defaut || '18'}</b></div>
-      </div>
+      {/* Idem : <table> à 2 colonnes pour bypass l'absence de CSS Grid/multicol
+          fiable dans wkhtmltopdf 0.12.6. On répartit les items équitablement. */}
+      {(() => {
+        const items = [
+          <span>• Sécurité surface : <b>{answers.sec_surface ? 'Présente' : 'Non identifiée'}</b></span>,
+          Array.isArray(answers.sec_surface_membres) && answers.sec_surface_membres.length > 0 && (
+            <span>• Plongeurs surveillance : <b>{answers.sec_surface_membres.map(id => {
+              const d = diversById[id]; return d ? diverFullName(d) : id;
+            }).join(', ')}</b></span>
+          ),
+          answers.sec_surface_externes && (
+            <span>• Non-plongeurs : <b>{answers.sec_surface_externes}</b></span>
+          ),
+          <span>• Plan de secours : <b>{answers.plan_secours ? 'Affiché et à jour' : 'À vérifier'}</b></span>,
+          <span>• Coordonnées secours : <b>{answers.coords_secours ? 'Disponibles et affichées' : 'À vérifier'}</b></span>,
+          <span>• Matériel O₂ vérifié : <b>{answers.o2 ? 'Oui' : 'Non'}</b></span>,
+          <span>• Trousse de secours + couv. iso : <b>{answers.trousse ? 'Oui' : 'Non'}</b></span>,
+          <span>• VHF : <b>{answers.vhf ? 'Embarquée et testée' : '—'}</b></span>,
+          <span>• Pavillon Alpha : <b>{answers.pavillon_alpha || answers.bouee_surface ? 'Hissé / présent' : '—'}</b></span>,
+          <span>• Eau douce potable : <b>{answers.eau_potable ? 'Oui' : 'Non'}</b></span>,
+          <span>• Moyen de rappel : <b>{answers.rappel ? 'Oui' : '—'}</b></span>,
+          <span>• Numéro d'urgence : <b>{answers.urgence_num || user?.urgence_defaut || '18'}</b></span>,
+        ].filter(Boolean);
+        const half = Math.ceil(items.length / 2);
+        const leftCol  = items.slice(0, half);
+        const rightCol = items.slice(half);
+        return (
+          <table style={{ width:'100%', borderCollapse:'collapse', tableLayout:'fixed', fontSize:12 }}>
+            <tbody>
+              <tr>
+                <td style={{ width:'50%', verticalAlign:'top', padding:'0 12px 0 0' }}>
+                  {leftCol.map((it, i) => <div key={`l${i}`} style={{ padding:'1px 0' }}>{it}</div>)}
+                </td>
+                <td style={{ width:'50%', verticalAlign:'top', padding:'0 0 0 12px' }}>
+                  {rightCol.map((it, i) => <div key={`r${i}`} style={{ padding:'1px 0' }}>{it}</div>)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        );
+      })()}
 
       <h2>Conduite à tenir — déclenchement des secours</h2>
       <div style={{ fontSize:12, border:'1px solid #000', padding:'8px 10px', borderRadius:4 }}>

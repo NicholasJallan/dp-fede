@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/../lib/HtmlSanitizer.php';
+
 // POST /api/pdf/fiche — génère un PDF depuis HTML via wkhtmltopdf
 if ($method === 'POST' && $path === '/api/pdf/fiche') {
     Csrf::verify();
@@ -17,15 +19,27 @@ if ($method === 'POST' && $path === '/api/pdf/fiche') {
     $name = preg_replace('/[^a-zA-Z0-9._-]/', '_', $name);
     if (substr($name, -4) !== '.pdf') $name .= '.pdf';
 
-    // Fichiers temporaires
-    $tmpHtml = tempnam(sys_get_temp_dir(), 'fiche_') . '.html';
-    $tmpPdf  = tempnam(sys_get_temp_dir(), 'fiche_') . '.pdf';
+    // Strip LFI/SSRF avant écriture sur disque
+    $html = HtmlSanitizer::forPdf($html);
+
+    // Fichiers temporaires — tempnam crée un fichier sans extension ; rename
+    // pour que wkhtmltopdf détecte le format HTML (évite aussi les orphelins).
+    $tmpHtml = tempnam(sys_get_temp_dir(), 'fiche_');
+    rename($tmpHtml, $tmpHtml . '.html');
+    $tmpHtml .= '.html';
+
+    $tmpPdf = tempnam(sys_get_temp_dir(), 'fiche_');
+    rename($tmpPdf, $tmpPdf . '.pdf');
+    $tmpPdf .= '.pdf';
+
     file_put_contents($tmpHtml, $html);
 
-    // Construire la commande wkhtmltopdf — A4 portrait, marges raisonnables
+    // --disable-local-file-access : neutralise le LFI (exfiltration de fichiers locaux)
+    // --disable-javascript : Qt WebKit 538 non patché, pas de JS dans les fiches
     $bin = '/usr/bin/wkhtmltopdf';
     $cmd = sprintf(
-        '%s --quiet --enable-local-file-access ' .
+        '%s --quiet --disable-local-file-access --disable-javascript ' .
+        '--no-stop-slow-scripts --javascript-delay 0 ' .
         '--page-size A4 --orientation Portrait ' .
         '--margin-top 12mm --margin-bottom 12mm --margin-left 12mm --margin-right 12mm ' .
         '%s %s 2>&1',

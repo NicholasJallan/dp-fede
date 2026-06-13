@@ -867,8 +867,8 @@ async function finalizePendingDrive(archive, divers, user, onProgress) {
         }),
       )
     );
-    // Laisse React le temps de mounter le DOM avant de lire outerHTML.
-    setTimeout(resolve, 50);
+    // Double rAF : garantit que React a peint avant de lire outerHTML.
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
   });
 
   try {

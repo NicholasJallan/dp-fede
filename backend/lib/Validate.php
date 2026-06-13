@@ -25,8 +25,10 @@ class Validate {
 
     public function date(string $key, string $label): self {
         $v = $this->data[$key] ?? '';
-        if ($v !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $v)) {
-            $this->errors[] = "{$label} doit être au format AAAA-MM-JJ";
+        if ($v === '') return $this;
+        $dt = \DateTimeImmutable::createFromFormat('Y-m-d', $v);
+        if (!$dt || $dt->format('Y-m-d') !== $v) {
+            $this->errors[] = "{$label} doit être une date valide au format AAAA-MM-JJ";
         }
         return $this;
     }

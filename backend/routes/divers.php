@@ -70,6 +70,7 @@ if ($method === 'POST' && $path === '/api/divers') {
            niveau_encadrant=VALUES(niveau_encadrant), qualifs=VALUES(qualifs),
            aptitudes_sup=VALUES(aptitudes_sup), medical=VALUES(medical),
            notes=VALUES(notes), deleted_at=NULL',
+        // created_at n'est pas mis à jour : réactivation = même ressource logique.
         $params
     );
     Json::ok(decodeDiver(Db::row('SELECT * FROM divers WHERE id=? AND user_id=?', [$id, $user['id']])), 201);

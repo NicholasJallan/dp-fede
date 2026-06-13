@@ -27,7 +27,7 @@ class Smtp {
             $r = '';
             while ($line = fgets($sock, 512)) {
                 $r .= $line;
-                if ($line[3] === ' ') break;
+                if (strlen($line) >= 4 && $line[3] === ' ') break;
             }
             return $r;
         };

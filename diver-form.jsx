@@ -1,6 +1,9 @@
 // DP Assistant — Formulaire plongeur partagé (création rapide depuis profil / palanquées)
 // Reprend l'exact même UX que screen-admin-divers.jsx mais en mode modal compact.
 
+import React, { useState, useEffect } from 'react';
+import { Alert } from './components.jsx';
+
 const NIVEAUX_PLONGEUR_QUICK  = ['N1','N2','N3'];
 const NIVEAUX_ENCADRANT_QUICK = ['N4','N5','E1','E2','E3','E4'];
 const DIPLOMES_PRO_QUICK      = ['BEES1','DEJEPS','DESJEPS','Autre'];
@@ -374,4 +377,4 @@ function DiverQuickAdd({ onCreated, onClose, initialName = '', allowBapteme = fa
   );
 }
 
-Object.assign(window, { DiverQuickAdd, AptitudesGroupQuick, emptyDiverQuick });
+export { DiverQuickAdd, AptitudesGroupQuick, emptyDiverQuick };

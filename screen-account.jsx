@@ -1,5 +1,9 @@
 // DP Assistant — Compte utilisateur
 
+import React, { useState } from 'react';
+import { useAuth } from './auth-context.jsx';
+import { Alert, Opt } from './components.jsx';
+
 function ScreenAccount() {
   const { user, setUser } = useAuth();
   const [form, setForm] = useState({
@@ -163,4 +167,4 @@ function ScreenAccount() {
   );
 }
 
-Object.assign(window, { ScreenAccount });
+export { ScreenAccount };

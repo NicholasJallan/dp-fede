@@ -1,5 +1,8 @@
 // DP Assistant — Historique des plongées archivées (lecture seule)
 
+import React, { useState, useEffect, useCallback } from 'react';
+import { Alert } from './components.jsx';
+
 function ArchiveDetail({ item, onBack }) {
   const data      = item;
   const answers   = (typeof data.answers   === 'string' ? JSON.parse(data.answers)   : data.answers)   || {};
@@ -199,4 +202,4 @@ function ScreenArchives() {
   );
 }
 
-Object.assign(window, { ScreenArchives });
+export { ScreenArchives };

@@ -1,5 +1,9 @@
 // DP Assistant — Étape 5 : Archiver la plongée sur Google Drive
 
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useToasts } from './toast.jsx';
+import { Alert, diverFullName, formatDateTime } from './components.jsx';
+
 // ---------------------------------------------------------------------------
 // Composant fiche de sécurité rendu hors-écran pour la capture PDF
 // ---------------------------------------------------------------------------
@@ -927,7 +931,4 @@ async function finalizePendingDrive(archive, divers, user, onProgress) {
   }
 }
 
-Object.assign(window, {
-  ScreenArchive, FicheStatique, ChecklistStatique,
-  finalizePendingDrive,
-});
+export { ScreenArchive, FicheStatique, ChecklistStatique, finalizePendingDrive };

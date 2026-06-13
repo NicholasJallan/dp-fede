@@ -1,18 +1,34 @@
 # CLAUDE.md — DP Assistant
 
 Outil d'aide au Directeur de Plongée (FFESSM / Code du Sport).
-Frontend : React 18 + Babel CDN, zéro build. Backend : PHP 7.4-FPM (API) + PHP 8.2 (CLI, PHPUnit) + MariaDB sur Raspberry Pi.
+Frontend : React 18 + esbuild. Backend : PHP 7.4-FPM (API) + PHP 8.2 (CLI, PHPUnit) + MariaDB sur Raspberry Pi.
+
+## Build frontend
+
+```bash
+npm run build    # build de prod → dist/   (node build.js)
+npm run dev      # watch mode   → dist/   (node build.js --watch)
+```
+
+`dist/` est gitignored — toujours déployer via `pi-scripts/deploy-frontend.sh` (qui lance le build puis rsync `dist/`).
+
+Le bump sw.js VERSION est **automatique** dans le script de déploiement — ne pas modifier `VERSION` à la main.
 
 ## Architecture
 
 ```
-/var/www/html/dp-fede/       ← fichiers statiques (nginx)
-  DP Assistant.html / index.html
-  api.js, auth-context.jsx, app.jsx, screen-*.jsx
-  components.jsx, diver-form.jsx, toast.jsx
-  data.js, styles.css
+Source (JSX, assets) → node build.js → dist/  ← ce qui est déployé
+  app.jsx (entry point esbuild)
+  screen-*.jsx, components.jsx, toast.jsx, auth-context.jsx
+  diver-form.jsx, lib/use-auto-save.jsx
+  data.js (window globals, chargé séparément)
+  lib/*.js (window globals, chargés séparément)
+
+/var/www/html/dp-fede/       ← dist/ rsynced ici
+  index.html, app.js (bundle), styles.css
+  api.js, data.js, inline-boot.js
   sw.js, site.webmanifest        ← PWA (Service Worker + manifest)
-  lib/                           ← front (zéro build) :
+  lib/                           ← plain JS window globals :
     depth-clamp.js, net.js, offline-api.js,
     offline-store.js, outbox.js, pal-rules.js, sync.js
 
@@ -32,15 +48,11 @@ MariaDB : base dp_fede, user dp_fede_user@localhost
 ## Déployer le frontend
 
 ```bash
-rsync -av --rsync-path="sudo rsync" \
-  --exclude='.git' --exclude='backend/' \
-  /Users/nicholas/projects/dpchecklist/ \
-  pi@bullesenvalais.ch:/var/www/html/dp-fede/
-
-ssh pi@bullesenvalais.ch "sudo chown -R www-data:www-data /var/www/html/dp-fede && \
-  sudo cp '/var/www/html/dp-fede/DP Assistant.html' /var/www/html/dp-fede/index.html && \
-  sudo chown www-data:www-data /var/www/html/dp-fede/index.html"
+bash pi-scripts/deploy-frontend.sh        # build + rsync dist/ → Pi
+bash pi-scripts/deploy-frontend.sh --dry-run  # test sans déployer
 ```
+
+Le script fait : `node build.js` → patch VERSION sw.js → `rsync dist/`. Le bump sw.js VERSION est automatique.
 
 ## Déployer le backend PHP
 

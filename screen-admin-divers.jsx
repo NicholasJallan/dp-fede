@@ -1,5 +1,8 @@
 // DP Assistant — Annuaire des plongeurs (v2)
 
+import React, { useState, useEffect } from 'react';
+import { Alert, Pill, diverFullName } from './components.jsx';
+
 const NIVEAUX_PLONGEUR  = ['N1','N2','N3'];
 const NIVEAUX_ENCADRANT = ['N4','N5','E1','E2','E3','E4'];
 const DIPLOMES_PRO      = ['BEES1','DEJEPS','DESJEPS','Autre'];
@@ -488,4 +491,4 @@ function ScreenAdminDivers({ divers, setDivers, diversLoaded }) {
   );
 }
 
-Object.assign(window, { ScreenAdminDivers, NIVEAUX_PLONGEUR, NIVEAUX_ENCADRANT });
+export { ScreenAdminDivers, NIVEAUX_PLONGEUR, NIVEAUX_ENCADRANT };

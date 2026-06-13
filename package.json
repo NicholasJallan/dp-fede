@@ -5,6 +5,8 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
+    "build": "node build.js",
+    "dev": "node build.js --watch",
     "test": "node --test --test-reporter=spec 'tests/**/*.test.js'",
     "test:watch": "node --test --watch 'tests/**/*.test.js'",
     "test:e2e": "playwright test",
@@ -15,6 +17,14 @@
     "node": ">=20"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0"
+    "@playwright/test": "^1.49.0",
+    "esbuild": "^0.28.1"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   }
 }

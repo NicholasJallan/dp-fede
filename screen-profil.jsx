@@ -1,5 +1,11 @@
 // DP Assistant — Profilage de la plongée (v2)
 
+import React, { useState, useEffect, useMemo } from 'react';
+import { useAuth } from './auth-context.jsx';
+import { Alert, Field, Opt, Question, Pill, CdsLink, diverFullName } from './components.jsx';
+import { DiverQuickAdd } from './diver-form.jsx';
+import { SiteFormModal } from './screen-admin-sites.jsx';
+
 // ── DPPicker ──────────────────────────────────────────────────────────────
 function DPPicker({ value, divers, onChange, setDivers }) {
   const [showAdd, setShowAdd] = useState(false);
@@ -531,4 +537,4 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
   );
 }
 
-Object.assign(window, { ScreenProfil });
+export { ScreenProfil };

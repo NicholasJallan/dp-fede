@@ -1,5 +1,10 @@
 // DP Assistant — Écran d'accueil (cycle de vie : préparées / en cours / archivées)
 
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useAuth } from './auth-context.jsx';
+import { useToasts } from './toast.jsx';
+import { finalizePendingDrive } from './screen-archive.jsx';
+
 function fmtDate(dt) {
   if (!dt) return '—';
   const d = String(dt).slice(0, 10);
@@ -205,7 +210,7 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
     for (const archive of pendingDrive) {
       try {
         setFinalizeMsg(`${ok + fail + 1}/${pendingDrive.length} — ${archive.site_nom || 'plongée'}`);
-        await window.finalizePendingDrive(archive, divers, user, (step) => {
+        await finalizePendingDrive(archive, divers, user, (step) => {
           setFinalizeMsg(`${ok + fail + 1}/${pendingDrive.length} — ${archive.site_nom || 'plongée'} · ${step}`);
         });
         ok++;
@@ -438,4 +443,4 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
   );
 }
 
-Object.assign(window, { ScreenHome });
+export { ScreenHome };

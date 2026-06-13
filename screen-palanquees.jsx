@@ -5,6 +5,10 @@
 // lib/depth-clamp.js. Ce fichier ne contient plus que la UI + les callbacks
 // CRUD.
 
+import React, { useState, useEffect, useMemo } from 'react';
+import { Alert, Pill, diverFullName } from './components.jsx';
+import { DiverQuickAdd } from './diver-form.jsx';
+
 const PAL_COLORS = {
   exploration: 'pal-explo',
   guidee:      'pal-guidee',
@@ -588,5 +592,4 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
   );
 }
 
-// validatePal est déjà exporté par lib/pal-rules.js.
-Object.assign(window, { ScreenPalanquees });
+export { ScreenPalanquees };

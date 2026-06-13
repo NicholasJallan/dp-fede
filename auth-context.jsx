@@ -12,7 +12,9 @@
 // Au succès du login Google, on précache divers + sites pour bootstrap rapide
 // au prochain boot offline.
 
-const AuthContext = React.createContext(null);
+import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
+
+const AuthContext = createContext(null);
 
 // Clés localStorage centralisées dans lib/storage-keys.js.
 const SKEYS = window.STORAGE_KEYS || {
@@ -156,7 +158,7 @@ function AuthProvider({ children }) {
 }
 
 function useAuth() {
-  return React.useContext(AuthContext);
+  return useContext(AuthContext);
 }
 
-Object.assign(window, { AuthProvider, useAuth, AuthContext });
+export { AuthProvider, useAuth, AuthContext };

@@ -1,5 +1,8 @@
 // DP Assistant — Administration des sites de plongée
 
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Alert, Pill } from './components.jsx';
+
 const MILIEUX_LIST = ['En mer','Lac','Carrière','Piscine','Autre'];
 const emptySite = () => ({
   nom: '', milieu: 'En mer', profondeur_max: '',
@@ -45,10 +48,10 @@ const MAP_DEFAULT = { lat: 43.3, lng: 5.4 };
 
 // ── MapPicker ──────────────────────────────────────────────────────────────
 function MapPicker({ coordonnees, onChange }) {
-  const containerRef = React.useRef(null);
-  const mapRef       = React.useRef(null);
-  const markerRef    = React.useRef(null);
-  const searchRef    = React.useRef(null);
+  const containerRef = useRef(null);
+  const mapRef       = useRef(null);
+  const markerRef    = useRef(null);
+  const searchRef    = useRef(null);
   const [ready, setReady] = useState(!!window.__gmapsLoaded);
 
   useEffect(() => {
@@ -448,4 +451,4 @@ function ScreenAdminSites({ sites, setSites, sitesLoaded }) {
   );
 }
 
-Object.assign(window, { ScreenAdminSites, SiteFormModal, emptySite, MILIEUX_LIST });
+export { ScreenAdminSites, SiteFormModal, emptySite, MILIEUX_LIST };

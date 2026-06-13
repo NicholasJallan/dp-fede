@@ -1,6 +1,6 @@
 // DP Assistant — Composants UI partagés
 
-const { useState, useEffect, useMemo, useRef, useCallback } = React;
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 
 // =========================================================================
 // Pill — pastille de tag/mélange
@@ -477,10 +477,9 @@ function SyncDrawer({ items, online, onClose, onForceSync }) {
 }
 
 // =========================================================================
-// Export to window for cross-file usage
-// =========================================================================
-Object.assign(window, {
-  Pill, Ref, CdsLink, withCdsLinks, Alert, Opt, Toggle, Field, Question,
+export {
+  Pill, Ref, CdsBadge, CdsLink, withCdsLinks, Alert, Opt, Toggle, Field, Question,
   formatDateTime, diverFullName, getDiver,
+  KIND_LABELS, formatAge, describePayload,
   SyncDrawer,
-});
+};

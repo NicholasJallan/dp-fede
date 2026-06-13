@@ -1,8 +1,8 @@
 // DP Assistant — Service Worker
 //
 // Stratégies par destination :
-//   - App shell local (/, *.css, *.jsx, *.png, /lib/*) : cache-first, precache à l'install
-//   - CDN tiers (unpkg, cdnjs, fonts.googleapis.com, fonts.gstatic.com) : cache-first runtime
+//   - App shell local (/, *.css, app.js, /lib/*) : cache-first, precache à l'install
+//   - CDN tiers (fonts.googleapis.com, fonts.gstatic.com, cdnjs) : cache-first runtime
 //   - GET /api/auth/me, /api/divers, /api/sites, /api/dives (liste) : stale-while-revalidate
 //   - Tout autre /api/* : network-only (laisse passer pour que l'app gère la queue)
 //   - Reste : network-first avec fallback cache
@@ -17,32 +17,16 @@ const API_CACHE     = `${VERSION}-api`;
 
 // Précache : app shell local. Toute requête à la racine du domaine doit
 // pouvoir être servie depuis ce cache après install.
+// Note : app.jsx, composants JSX et lib/use-auto-save.jsx sont maintenant
+// compilés dans app.js — plus besoin de les précacher individuellement.
 const PRECACHE_URLS = [
   '/',
   '/index.html',
-  '/DP%20Assistant.html',
   '/inline-boot.js',
   '/styles.css',
   '/api.js',
   '/data.js',
-  '/app.jsx',
-  '/auth-context.jsx',
-  '/components.jsx',
-  '/diver-form.jsx',
-  '/toast.jsx',
-  '/screen-account.jsx',
-  '/screen-admin-divers.jsx',
-  '/screen-admin-sites.jsx',
-  '/screen-admin-users.jsx',
-  '/screen-archive.jsx',
-  '/screen-archives.jsx',
-  '/screen-checklist.jsx',
-  '/screen-fiche.jsx',
-  '/screen-home.jsx',
-  '/screen-login.jsx',
-  '/screen-palanquees.jsx',
-  '/screen-profil.jsx',
-  '/screen-splash.jsx',
+  '/app.js',
   '/lib/depth-clamp.js',
   '/lib/pal-rules.js',
   '/lib/net.js',
@@ -53,7 +37,6 @@ const PRECACHE_URLS = [
   '/lib/storage-keys.js',
   '/lib/google-drive.js',
   '/lib/drive-upload.js',
-  '/lib/use-auto-save.jsx',
   '/favicon.ico',
   '/favicon-16x16.png',
   '/favicon-32x32.png',
@@ -66,10 +49,10 @@ const PRECACHE_URLS = [
 
 // Origines CDN qu'on accepte de cacher en runtime (réponses opaques OK).
 const CDN_ORIGINS = [
-  'https://unpkg.com',
-  'https://cdnjs.cloudflare.com',
+  'https://cdnjs.cloudflare.com',    // jsPDF + html2canvas
   'https://fonts.googleapis.com',
   'https://fonts.gstatic.com',
+  // https://unpkg.com retiré : React/ReactDOM/Babel sont maintenant bundlés dans app.js
 ];
 
 // Endpoints API à cacher en stale-while-revalidate. Lecture seule.

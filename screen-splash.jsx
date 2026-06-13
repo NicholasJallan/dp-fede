@@ -1,5 +1,7 @@
 // DP Assistant — Splash de bienvenue (affiché une fois par session)
 
+import React from 'react';
+
 function SplashScreen({ user, onClose }) {
   const displayName = user?.prenom || user?.nom || user?.email?.split('@')[0] || '';
 
@@ -73,4 +75,4 @@ function SplashScreen({ user, onClose }) {
   );
 }
 
-Object.assign(window, { SplashScreen });
+export { SplashScreen };

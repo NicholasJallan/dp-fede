@@ -1,5 +1,10 @@
 // DP Assistant — Fiche de sécurité (Art. A322-72)
 
+import React, { useState, useMemo } from 'react';
+import { useAuth } from './auth-context.jsx';
+import { useToasts } from './toast.jsx';
+import { Alert, CdsLink, diverFullName, formatDateTime } from './components.jsx';
+
 const PRESSION_SORTIE_OPTIONS = [
   'panne d\'air','20','30','40','50','60','70','80','90','100+',
 ];
@@ -624,4 +629,4 @@ ${styles}
   );
 }
 
-Object.assign(window, { ScreenFiche });
+export { ScreenFiche };

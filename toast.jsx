@@ -7,7 +7,9 @@
 // Le tone gère la couleur de bordure (err / warn / ok / info).
 // Les toasts s'auto-ferment après `ttl` ms (défaut 6000). Cliquer × ferme.
 
-const ToastContext = React.createContext(null);
+import React, { useState, useRef, useCallback, createContext, useContext } from 'react';
+
+const ToastContext = createContext(null);
 
 function ToastProvider({ children }) {
   const [stack, setStack] = useState([]);
@@ -45,10 +47,8 @@ function ToastProvider({ children }) {
 }
 
 function useToasts() {
-  const ctx = React.useContext(ToastContext);
+  const ctx = useContext(ToastContext);
   if (!ctx) {
-    // Mode dégradé : si on est hors provider (test, splash), on tombe sur alert()
-    // pour ne jamais perdre une erreur.
     return {
       showToast: ({ title, body }) => window.alert(`${title || ''}\n${body || ''}`.trim()),
       dismiss:   () => {},
@@ -57,4 +57,4 @@ function useToasts() {
   return ctx;
 }
 
-Object.assign(window, { ToastProvider, useToasts, ToastContext });
+export { ToastProvider, useToasts, ToastContext };

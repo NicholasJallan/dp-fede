@@ -1,5 +1,8 @@
 // DP Assistant — Écran "Check-list opérationnelle"
 
+import React, { useState, useMemo } from 'react';
+import { Pill, CdsLink } from './components.jsx';
+
 // mode : 'prepare' → phase 1 uniquement, 'execute' → phase 2 uniquement
 function ScreenChecklist({ answers, setAnswer, checked, setChecked, comments, setComment, mode = 'execute' }) {
   const phases = useMemo(() => {
@@ -158,4 +161,4 @@ function ScreenChecklist({ answers, setAnswer, checked, setChecked, comments, se
   );
 }
 
-Object.assign(window, { ScreenChecklist });
+export { ScreenChecklist };

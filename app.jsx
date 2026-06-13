@@ -1,5 +1,25 @@
 // DP Assistant — Shell principal & state management
 
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createRoot } from 'react-dom/client';
+import { ToastProvider, useToasts } from './toast.jsx';
+import { AuthProvider, useAuth } from './auth-context.jsx';
+import { useAutoSave } from './lib/use-auto-save.jsx';
+import { Pill, SyncDrawer, formatDateTime } from './components.jsx';
+import { ScreenLogin } from './screen-login.jsx';
+import { ScreenHome } from './screen-home.jsx';
+import { ScreenProfil } from './screen-profil.jsx';
+import { ScreenPalanquees } from './screen-palanquees.jsx';
+import { ScreenChecklist } from './screen-checklist.jsx';
+import { ScreenFiche } from './screen-fiche.jsx';
+import { ScreenArchive } from './screen-archive.jsx';
+import { ScreenArchives } from './screen-archives.jsx';
+import { ScreenAccount } from './screen-account.jsx';
+import { ScreenAdminDivers } from './screen-admin-divers.jsx';
+import { ScreenAdminSites } from './screen-admin-sites.jsx';
+import { ScreenAdminUsers } from './screen-admin-users.jsx';
+import { SplashScreen } from './screen-splash.jsx';
+
 const STEPS = [
   { id:"profil",     num:"01", label:"Profil de plongée",        sub:"Questionnaire" },
   { id:"palanquees", num:"02", label:"Plongeurs & palanquées",    sub:"Composition" },
@@ -125,7 +145,7 @@ function AppInner() {
   // ── Auto-save debounced vers le serveur ──────────────────────────────────
   // Le hook gère le debounce 500 ms + snapshot ref. flushSave(id) force un
   // envoi immédiat avant unmount / navigation entre plongées.
-  const flushSave = window.useAutoSave({
+  const flushSave = useAutoSave({
     diveId: currentDiveId, user, plongeeFigee,
     answers, palanquees, checked, comments,
     pressions, realises, heuresDebut, heuresFin,
@@ -892,6 +912,6 @@ function App() {
   );
 }
 
-const _root = ReactDOM.createRoot(document.getElementById("root"));
+const _root = createRoot(document.getElementById("root"));
 _root.render(<App />);
 window.dispatchEvent(new Event('dp:appReady'));

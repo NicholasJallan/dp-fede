@@ -1,8 +1,11 @@
 // DP Assistant — Écran de connexion Google
 
+import React, { useEffect, useRef } from 'react';
+import { useAuth } from './auth-context.jsx';
+
 function ScreenLogin() {
   const { handleGoogleCredential } = useAuth();
-  const btnRef = React.useRef(null);
+  const btnRef = useRef(null);
   const online = window.useOnline ? window.useOnline() : true;
 
   useEffect(() => {
@@ -65,4 +68,4 @@ function ScreenLogin() {
   );
 }
 
-Object.assign(window, { ScreenLogin });
+export { ScreenLogin };

@@ -1,5 +1,9 @@
 // DP Assistant — Administration des utilisateurs (super-admin nicholas.jallan@gmail.com uniquement)
 
+import React, { useState, useEffect } from 'react';
+import { useAuth } from './auth-context.jsx';
+import { Alert, Pill } from './components.jsx';
+
 const SUPER_ADMIN_EMAIL = 'nicholas.jallan@gmail.com';
 
 function ScreenAdminUsers() {
@@ -118,4 +122,4 @@ function ScreenAdminUsers() {
   );
 }
 
-Object.assign(window, { ScreenAdminUsers, SUPER_ADMIN_EMAIL });
+export { ScreenAdminUsers, SUPER_ADMIN_EMAIL };

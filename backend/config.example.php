@@ -15,11 +15,4 @@ return [
     'app' => [
         'domain' => 'dp-fede.bullesenvalais.ch',
     ],
-    'smtp' => [
-        'host' => 'smtp.gmail.com',
-        'port' => 587,
-        'user' => 'nicholas.jallan@gmail.com',
-        'pass' => 'CHANGEME',  // App password Gmail
-        'from' => 'nicholas.jallan@gmail.com',
-    ],
 ];

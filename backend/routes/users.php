@@ -46,6 +46,7 @@ if ($method === 'PATCH' && preg_match('#^/api/users/(\d+)/role$#', $path, $m)) {
     if (!$target) Json::abort(404, 'Utilisateur introuvable');
 
     Db::q('UPDATE users SET role=? WHERE id=?', [$role, $m[1]]);
+    Log::action('user.role_changed', ['target_id' => (int)$m[1], 'target_email' => $target['email'] ?? null, 'new_role' => $role]);
     Json::ok(null);
 }
 
@@ -64,5 +65,6 @@ if ($method === 'DELETE' && preg_match('#^/api/users/(\d+)$#', $path, $m)) {
     }
 
     Db::q('DELETE FROM users WHERE id=?', [$m[1]]);
+    Log::action('user.deleted', ['target_id' => (int)$m[1], 'target_email' => $target['email'] ?? null]);
     Json::ok(null);
 }

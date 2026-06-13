@@ -14,7 +14,6 @@ if (!class_exists('Config')) {
             'app'    => ['domain' => 'dp-fede.bullesenvalais.ch'],
             'db'     => ['host' => '127.0.0.1', 'name' => 'dp_fede_test', 'user' => 'test', 'pass' => 'test'],
             'google' => ['client_id' => 'test-client-id.apps.googleusercontent.com'],
-            'smtp'   => ['host' => '', 'user' => '', 'pass' => '', 'from' => ''],
         ];
         public static function get(string $section): array {
             return self::$store[$section] ?? [];

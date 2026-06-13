@@ -134,6 +134,7 @@ if ($method === 'POST' && $path === '/api/dives') {
             substr((string)($body['drive_link'] ?? ''), 0, 500),
         ]
     );
+    Log::action('dive.created', ['dive_id' => $id]);
     Json::ok(['id' => $id, 'duplicate' => false], 201);
 }
 
@@ -229,6 +230,9 @@ if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
     Db::q('UPDATE dives SET ' . implode(',', $sets) . ' WHERE id=?', $params);
 
     $updated = Db::row('SELECT id, status, drive_link FROM dives WHERE id=?', [$row['id']]);
+    if ($newStatus === 'archived' && $curStatus !== 'archived') {
+        Log::action('dive.archived', ['dive_id' => $updated['id'], 'drive_link' => $updated['drive_link'] ?? null]);
+    }
     Json::ok($updated);
 }
 
@@ -248,6 +252,7 @@ if ($method === 'DELETE' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
     }
 
     Db::q('UPDATE dives SET deleted_at=NOW() WHERE id=?', [$row['id']]);
+    Log::action('dive.deleted', ['dive_id' => $row['id']]);
     Json::ok(['id' => $row['id'], 'deleted' => true]);
 }
 

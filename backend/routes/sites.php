@@ -140,6 +140,7 @@ if ($method === 'DELETE' && preg_match('#^/api/sites/([^/]+)$#', $path, $m)) {
     $user = Auth::require();
     siteOwnerOrAbort($user['id'], $m[1]);
     Db::q('UPDATE sites SET deleted_at=NOW() WHERE id=? AND user_id=?', [$m[1], $user['id']]);
+    Log::action('site.deleted', ['site_id' => $m[1]]);
     Json::ok(null);
 }
 

@@ -8,12 +8,16 @@ if ($method === 'POST' && $path === '/api/auth/google') {
     if (!$idToken) Json::abort(400, 'Jeton manquant');
 
     $payload = Auth::verifyGoogleToken($idToken);
-    if (!$payload) Json::abort(401, 'Jeton Google invalide ou expiré');
+    if (!$payload) {
+        Log::action('auth.refused');
+        Json::abort(401, 'Jeton Google invalide ou expiré');
+    }
 
     $user = Auth::upsertUser($payload);
     Auth::createSession((int)$user['id']);
     Csrf::token(); // émet le cookie CSRF
 
+    Log::action('auth.login', ['user_id' => $user['id'], 'email' => $user['email'] ?? null]);
     Json::ok(userPublic($user));
 }
 
@@ -29,6 +33,8 @@ if ($method === 'GET' && $path === '/api/auth/me') {
 // POST /api/auth/logout
 if ($method === 'POST' && $path === '/api/auth/logout') {
     Csrf::verify();
+    $user = Auth::current();
+    Log::action('auth.logout', ['user_id' => $user['id'] ?? null]);
     Auth::destroySession();
     Json::ok(null);
 }

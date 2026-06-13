@@ -186,6 +186,14 @@ class Db {
         self::addIndexIfMissing     ('dives', 'idx_dives_user_date',    '(user_id, date_plongee DESC)');
         self::addIndexIfMissing     ('dives', 'idx_dives_user_status',  '(user_id, status, planned_at DESC)');
         self::addIndexIfMissing     ('dives', 'idx_dives_user_deleted', '(user_id, deleted_at)');
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS rate_limits (
+            bucket       VARCHAR(64)  NOT NULL,
+            ident        VARCHAR(64)  NOT NULL,
+            count        INT UNSIGNED NOT NULL DEFAULT 0,
+            window_start DATETIME     NOT NULL,
+            PRIMARY KEY (bucket, ident)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
 
     /** Ajoute une colonne si absente. SHOW COLUMNS LIKE est fiable et

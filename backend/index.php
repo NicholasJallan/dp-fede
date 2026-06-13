@@ -5,7 +5,7 @@ ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 
 // Load libs
-foreach (['Config','Json','Db','Auth','Csrf','Validate','Smtp','SyncHelpers'] as $cls) {
+foreach (['Config','Json','Db','Auth','Csrf','Validate','SyncHelpers','RateLimit','Log'] as $cls) {
     require_once __DIR__ . "/lib/{$cls}.php";
 }
 
@@ -34,7 +34,7 @@ $path   = strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
 // Rate-limit login attempts (15 min window, 10 essais/IP) — couvre les
 // tentatives de brute-force du callback OAuth.
 if ($method === 'POST' && $path === '/api/auth/google') {
-    rateLimitOrAbort('login', 10, 900, 'Trop de tentatives. Réessayez dans 15 minutes.');
+    RateLimit::hitOrAbort('login', 10, 900, 'Trop de tentatives. Réessayez dans 15 minutes.');
 }
 
 // Rate-limit écriture (POST/PATCH/DELETE) sur les ressources métier.
@@ -45,7 +45,7 @@ $writePathRoots = ['/api/dives', '/api/divers', '/api/sites'];
 if (in_array($method, $writeMethods, true)) {
     foreach ($writePathRoots as $root) {
         if (strpos($path, $root) === 0) {
-            rateLimitOrAbort('write', 120, 60, 'Trop d\'écritures. Réessayez dans une minute.');
+            RateLimit::hitOrAbort('write', 120, 60, 'Trop d\'écritures. Réessayez dans une minute.');
             break;
         }
     }
@@ -60,18 +60,3 @@ foreach (['auth','divers','sites','users','dives','sync','pdf','proxy','csp'] as
 
 Json::abort(404, 'Route introuvable');
 
-// ---------------------------------------------------------------------------
-
-function rateLimitOrAbort(string $bucket, int $max, int $windowSec, string $errMsg): void {
-    if (!extension_loaded('apcu') || !apcu_enabled()) return;
-
-    $ip  = $_SERVER['REMOTE_ADDR'] ?? '0';
-    $key = "rl_{$bucket}_{$ip}";
-    $n   = apcu_fetch($key);
-    if ($n === false) {
-        apcu_store($key, 1, $windowSec);
-        return;
-    }
-    apcu_inc($key);
-    if ((int)$n >= $max) Json::abort(429, $errMsg);
-}

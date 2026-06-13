@@ -126,6 +126,7 @@ if ($method === 'DELETE' && preg_match('#^/api/divers/([^/]+)$#', $path, $m)) {
     $user = Auth::require();
     ownerOrAbort($user['id'], $m[1]);
     Db::q('UPDATE divers SET deleted_at=NOW() WHERE id=? AND user_id=?', [$m[1], $user['id']]);
+    Log::action('diver.deleted', ['diver_id' => $m[1]]);
     Json::ok(null);
 }
 

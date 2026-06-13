@@ -877,17 +877,17 @@ ssh pi@bullesenvalais.ch "sudo chown -R www-data:www-data /var/www/html/dp-fede 
 
 Cocher les tâches au fil de l'eau :
 
-- [ ] C1.1 — Hotfix wkhtmltopdf (Phase 0)
+- [x] C1.1 — Hotfix wkhtmltopdf (Phase 0)
 - [ ] M3 — Auto-bump SW
 - [ ] M4 — Inline scripts sortis, CSP durcie
-- [ ] M6 — Validation date stricte
-- [ ] L1 — Fix Smtp `$line[3]`
-- [ ] L2 — `requestAnimationFrame` au lieu de `setTimeout 50`
-- [ ] L3 — `.editorconfig`
-- [ ] L4 — Sémantique de réactivation décidée
-- [ ] H5 — Rate-limit persistant
-- [ ] H6 — Smtp.php tranché
-- [ ] M7 — Logging structuré
+- [x] M6 — Validation date stricte
+- [x] L1 — Fix Smtp `$line[3]` (Smtp.php supprimé ensuite)
+- [x] L2 — `requestAnimationFrame` au lieu de `setTimeout 50`
+- [x] L3 — `.editorconfig`
+- [x] L4 — Sémantique de réactivation décidée (commentaire)
+- [x] H5 — Rate-limit persistant
+- [x] H6 — Smtp.php supprimé (code mort, 0 call-site)
+- [x] M7 — Logging structuré
 - [ ] M11 — firebase/php-jwt
 - [ ] H1 — esbuild + production builds
 - [ ] H2.A — JSDoc minimal

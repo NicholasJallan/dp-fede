@@ -238,7 +238,9 @@ ${styles}
           </div>
         </div>
 
-        <div className="fiche-grid">
+        {/* Mise en page alignée sur le PDF : 3 colonnes Milieu/Départ/Mélanges,
+            puis Conditions sur sa propre ligne pleine largeur juste en-dessous. */}
+        <div className="fiche-grid" style={{ gridTemplateColumns:'repeat(3, 1fr)', marginBottom:8 }}>
           <div className="cell">
             <div className="k">Milieu</div>
             <div className="v">{answers.milieu || '—'}</div>
@@ -257,6 +259,8 @@ ${styles}
               })()}
             </div>
           </div>
+        </div>
+        <div className="fiche-grid" style={{ gridTemplateColumns:'1fr', marginTop:0 }}>
           <div className="cell">
             <div className="k">Conditions</div>
             <div className="v" style={{ fontSize:12, fontWeight:500 }}>{answers.meteo || '—'}</div>

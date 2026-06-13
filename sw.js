@@ -9,7 +9,7 @@
 //
 // Bumper manuellement la VERSION ci-dessous à chaque déploiement frontend
 // (sinon le navigateur garde l'ancien cache). Format : dp-{YYYYMMDD}-{sha7}.
-const VERSION = 'dp-20260613-pdf-cols';
+const VERSION = 'dp-20260613-fiche-cols';
 
 const SHELL_CACHE  = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;

@@ -21,6 +21,7 @@ const PRECACHE_URLS = [
   '/',
   '/index.html',
   '/DP%20Assistant.html',
+  '/inline-boot.js',
   '/styles.css',
   '/api.js',
   '/data.js',

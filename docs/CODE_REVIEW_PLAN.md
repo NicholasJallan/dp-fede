@@ -888,7 +888,7 @@ Cocher les tâches au fil de l'eau :
 - [x] H5 — Rate-limit persistant
 - [x] H6 — Smtp.php supprimé (code mort, 0 call-site)
 - [x] M7 — Logging structuré
-- [ ] M11 — firebase/php-jwt
+- [x] M11 — firebase/php-jwt v7.1.0 (advisory v6 → v7 sans advisory)
 - [ ] H1 — esbuild + production builds
 - [ ] H2.A — JSDoc minimal
 - [ ] H2.B — Vraie migration TS

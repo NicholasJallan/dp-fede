@@ -45,28 +45,13 @@
       </button>
     </div>
   </div>
-  <script>
-    var _loadTimer = setTimeout(function() {
-      var root = document.getElementById('root');
-      if (!root || !root.hasChildNodes()) {
-        document.getElementById('load-fallback').style.display = 'flex';
-      }
-    }, 12000);
-    window.addEventListener('dp:appReady', function() { clearTimeout(_loadTimer); });
-  </script>
+  <!-- Boot scripts (fallback timer, GOOGLE_CLIENT_ID, gmapsReady callback, SW registration) -->
+  <script src="inline-boot.js"></script>
 
   <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script>window.GOOGLE_CLIENT_ID = "813155202106-jlddu3nmfuq552p9673odcegrf5kuke7.apps.googleusercontent.com";</script>
 
   <!-- Google Maps JS API (Places) -->
-  <script>
-    window.__gmapsLoaded = false;
-    window.__gmapsReady = function() {
-      window.__gmapsLoaded = true;
-      window.dispatchEvent(new Event('gmaps:ready'));
-    };
-  </script>
   <script src="https://maps.googleapis.com/maps/api/js?key=__GOOGLE_MAPS_API_KEY__&libraries=places&callback=__gmapsReady" async defer></script>
 
   <!-- jsPDF + html2canvas (PDF generation for archive) -->
@@ -128,35 +113,6 @@
   <!-- App entry -->
   <script type="text/babel" src="app.jsx"></script>
 
-  <!-- Service Worker — enregistrement après le chargement principal pour
-       éviter de retarder le first paint. Le SW gère le cache de l'app shell
-       et la disponibilité offline. -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' })
-          .then(reg => {
-            // Si une nouvelle version est dispo, on la signale à l'app via event.
-            reg.addEventListener('updatefound', () => {
-              const sw = reg.installing;
-              if (!sw) return;
-              sw.addEventListener('statechange', () => {
-                if (sw.state === 'installed' && navigator.serviceWorker.controller) {
-                  window.dispatchEvent(new CustomEvent('dp:swUpdate', { detail: { reg } }));
-                }
-              });
-            });
-          })
-          .catch(err => console.warn('[SW] register échec :', err?.message || err));
-
-        // Messages venant du SW (ex. SYNC_TRIGGER de Background Sync).
-        navigator.serviceWorker.addEventListener('message', (e) => {
-          if (e.data?.type) {
-            window.dispatchEvent(new CustomEvent('dp:sw', { detail: e.data }));
-          }
-        });
-      });
-    }
-  </script>
+  <!-- Service Worker enregistré par inline-boot.js -->
 </body>
 </html>

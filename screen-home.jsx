@@ -67,7 +67,9 @@ function DiveCardPrepared({ dive, onStart, onEdit, onDelete, onCloneH3 }) {
   );
 }
 
-function DiveCardInProgress({ dive, onResume, onEdit }) {
+function DiveCardInProgress({ dive, onResume }) {
+  // Une fois la plongée démarrée (palanquées à l'eau), la préparation est figée :
+  // pas de bouton « Modifier ». Seule action : reprendre la fiche pour clôturer.
   return (
     <div className="dive-card-row" style={{
       display:'grid', gridTemplateColumns:'1fr auto',
@@ -92,10 +94,6 @@ function DiveCardInProgress({ dive, onResume, onEdit }) {
         <button className="btn primary" style={{ fontSize:12, padding:'4px 10px' }}
           onClick={() => onResume(dive.client_uuid || dive.id, 'fiche', 'execute')}>
           ▶ Reprendre la fiche
-        </button>
-        <button className="btn" style={{ fontSize:12, padding:'4px 10px' }}
-          onClick={() => onEdit(dive.client_uuid || dive.id)}>
-          ✎ Modifier
         </button>
       </div>
     </div>
@@ -336,8 +334,7 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
                 ? <div className="muted" style={{ padding:20, textAlign:'center', fontSize:13 }}>Aucune plongée en cours.</div>
                 : inProgress.map(d => (
                     <DiveCardInProgress key={d.client_uuid || d.id} dive={d}
-                      onResume={onLoadDive}
-                      onEdit={(id) => onLoadDive(id, 'profil', 'prepare')} />
+                      onResume={onLoadDive} />
                   ))
             }
           </div>

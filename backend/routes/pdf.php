@@ -114,41 +114,10 @@ if ($method === 'POST' && $path === '/api/pdf/fiche') {
 
     $html = HtmlSanitizer::forPdf($html);
 
-    $tmpHtml = tempnam(sys_get_temp_dir(), 'fiche_');
-    rename($tmpHtml, $tmpHtml . '.html');
-    $tmpHtml .= '.html';
-
-    $tmpPdf = tempnam(sys_get_temp_dir(), 'fiche_');
-    rename($tmpPdf, $tmpPdf . '.pdf');
-    $tmpPdf .= '.pdf';
-
-    file_put_contents($tmpHtml, $html);
-
-    $bin = '/usr/bin/wkhtmltopdf';
-    $cmd = sprintf(
-        '%s --quiet --disable-local-file-access --disable-javascript ' .
-        '--no-stop-slow-scripts --javascript-delay 0 ' .
-        '--page-size A4 --orientation Portrait ' .
-        '--margin-top 12mm --margin-bottom 12mm --margin-left 12mm --margin-right 12mm ' .
-        '%s %s 2>&1',
-        escapeshellcmd($bin),
-        escapeshellarg($tmpHtml),
-        escapeshellarg($tmpPdf)
-    );
-
-    exec($cmd, $output, $code);
-    @unlink($tmpHtml);
-
-    if ($code !== 0 || !file_exists($tmpPdf) || filesize($tmpPdf) === 0) {
-        @unlink($tmpPdf);
-        Json::abort(500, 'Erreur de génération PDF : ' . implode("\n", $output));
+    try {
+        $pdf = PdfRender::generate($html);
+    } catch (\RuntimeException $e) {
+        Json::abort(500, 'Erreur de génération PDF : ' . $e->getMessage());
     }
-
-    header('Content-Type: application/pdf');
-    header('Content-Disposition: attachment; filename="' . $name . '"');
-    header('Content-Length: ' . filesize($tmpPdf));
-    header('X-Content-Type-Options: nosniff');
-    readfile($tmpPdf);
-    @unlink($tmpPdf);
-    exit;
+    PdfRender::stream($pdf, $name);
 }

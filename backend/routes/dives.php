@@ -137,16 +137,23 @@ if ($method === 'GET' && $path === '/api/dives') {
 }
 
 // ── GET /api/dives/:id ──────────────────────────────────────────────────────
+// H4 : render_state chargé depuis dive_runtime_state (LEFT JOIN) afin de ne
+// pas dépendre de dives.render_state (colonne gardée pour compatibilité).
 if ($method === 'GET' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
     $user = Auth::require();
     $row  = Db::row(
-        'SELECT * FROM dives WHERE id=? AND user_id=? AND deleted_at IS NULL',
+        'SELECT d.*, COALESCE(r.state, d.render_state) AS render_state
+           FROM dives d
+           LEFT JOIN dive_runtime_state r ON r.dive_id = d.id
+          WHERE d.id=? AND d.user_id=? AND d.deleted_at IS NULL',
         [$m[1], $user['id']]
     );
     if (!$row) {
-        // Essai par client_uuid (utile lors du premier load depuis le client)
         $row = Db::row(
-            'SELECT * FROM dives WHERE client_uuid=? AND user_id=? AND deleted_at IS NULL',
+            'SELECT d.*, COALESCE(r.state, d.render_state) AS render_state
+               FROM dives d
+               LEFT JOIN dive_runtime_state r ON r.dive_id = d.id
+              WHERE d.client_uuid=? AND d.user_id=? AND d.deleted_at IS NULL',
             [$m[1], $user['id']]
         );
     }
@@ -198,8 +205,8 @@ if ($method === 'POST' && $path === '/api/dives') {
     Db::q(
         'INSERT INTO dives
          (id, user_id, client_uuid, status, site_nom, date_plongee, planned_at,
-          dp_nom, dp_qual, activite, answers, palanquees, render_state, drive_link)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+          dp_nom, dp_qual, activite, answers, palanquees, drive_link)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
         [
             $id, $user['id'], $clientUuid, $status,
             substr((string)($body['site_nom']   ?? ''), 0, 255),
@@ -210,10 +217,18 @@ if ($method === 'POST' && $path === '/api/dives') {
             substr((string)($body['activite']   ?? ''), 0, 50),
             json_encode($body['answers']    ?? [], JSON_UNESCAPED_UNICODE),
             json_encode($body['palanquees'] ?? [], JSON_UNESCAPED_UNICODE),
-            json_encode($body['render_state'] ?? [], JSON_UNESCAPED_UNICODE),
             substr((string)($body['drive_link'] ?? ''), 0, 500),
         ]
     );
+
+    // H4 : render_state → table dédiée (n'impacte pas dives.updated_at)
+    if (!empty($body['render_state'])) {
+        Db::q(
+            'INSERT INTO dive_runtime_state (dive_id, state) VALUES (?,?)',
+            [$id, json_encode($body['render_state'], JSON_UNESCAPED_UNICODE)]
+        );
+    }
+
     Log::action('dive.created', ['dive_id' => $id]);
     Json::ok(['id' => $id, 'duplicate' => false], 201);
 }
@@ -294,17 +309,25 @@ if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
         }
     }
 
-    // render_state et drive_link sont mutables même après archivage
-    if (isset($body['render_state'])) {
-        $sets[]   = 'render_state=?';
-        $params[] = json_encode($body['render_state'], JSON_UNESCAPED_UNICODE);
-    }
+    // drive_link mutable même après archivage
     if (isset($body['drive_link'])) {
         $sets[]   = 'drive_link=?';
         $params[] = substr((string)$body['drive_link'], 0, 500);
     }
 
-    if (empty($sets)) Json::abort(422, 'Aucun champ à mettre à jour');
+    // H4 : render_state → dive_runtime_state (UPSERT sans toucher dives.updated_at)
+    // Traité séparément même si $sets est vide (render_state seul est valide).
+    $hasRenderState = isset($body['render_state']);
+    if ($hasRenderState) {
+        $rsJson = json_encode($body['render_state'], JSON_UNESCAPED_UNICODE);
+        Db::q(
+            'INSERT INTO dive_runtime_state (dive_id, state) VALUES (?,?)
+             ON DUPLICATE KEY UPDATE state=VALUES(state)',
+            [$row['id'], $rsJson]
+        );
+    }
+
+    if (empty($sets) && !$hasRenderState) Json::abort(422, 'Aucun champ à mettre à jour');
 
     // Validation règles métier uniquement lors d'une transition de statut significative
     // (in_progress ou archived). Les auto-saves intermédiaires ('prepared') ne
@@ -319,8 +342,10 @@ if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
         validatePalanqueesOrAbort($body['palanquees'], $ans, $user['id']);
     }
 
-    $params[] = $row['id'];
-    Db::q('UPDATE dives SET ' . implode(',', $sets) . ' WHERE id=?', $params);
+    if (!empty($sets)) {
+        $params[] = $row['id'];
+        Db::q('UPDATE dives SET ' . implode(',', $sets) . ' WHERE id=?', $params);
+    }
 
     $updated = Db::row('SELECT id, status, drive_link FROM dives WHERE id=?', [$row['id']]);
     if ($newStatus === 'archived' && $curStatus !== 'archived') {

@@ -21,17 +21,16 @@ class Db {
     }
 
     /**
-     * Crée / met à jour le schéma vers son état courant, de manière idempotente.
-     *
-     * Le projet est en bêta, déployé à un seul endroit : l'historique des
-     * versions de schéma vit dans git. On ne conserve donc pas la chaîne de
-     * migrations incrémentales (rename archives→dives, backfills VARCHAR→DATETIME,
-     * etc.) : on décrit directement le schéma cible avec des garde-fous
-     * idempotents (CREATE TABLE IF NOT EXISTS + addColumnIfMissing/addIndexIfMissing),
-     * sûrs aussi bien pour une base fraîche que pour la base déjà déployée.
+     * Applique d'abord les migrations versionnées (Migrator), puis les garde-fous
+     * idempotents hérités (addColumnIfMissing / addIndexIfMissing) pour la
+     * compatibilité avec les instances déployées avant l'introduction du Migrator.
      */
     private static function migrate(): void {
         $pdo = self::$pdo;
+
+        // H3 — migrations versionnées
+        require_once __DIR__ . '/Migrator.php';
+        Migrator::run($pdo);
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS users (
             id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

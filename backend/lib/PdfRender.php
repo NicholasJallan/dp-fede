@@ -154,44 +154,29 @@ HTML;
     }
 
     /**
-     * Appelle wkhtmltopdf et retourne le PDF sous forme de chaîne binaire.
+     * Génère un PDF via mPDF (PHP pur, pas de process externe).
+     * Remplace wkhtmltopdf (archivé 2022, Qt WebKit 538 non patché).
      * Lève une RuntimeException en cas d'échec.
      */
     public static function generate(string $html): string
     {
-        $tmpHtml = tempnam(sys_get_temp_dir(), 'dp_fiche_');
-        rename($tmpHtml, $tmpHtml . '.html');
-        $tmpHtml .= '.html';
-
-        $tmpPdf = tempnam(sys_get_temp_dir(), 'dp_fiche_');
-        rename($tmpPdf, $tmpPdf . '.pdf');
-        $tmpPdf .= '.pdf';
-
-        file_put_contents($tmpHtml, $html);
-
-        $bin = '/usr/bin/wkhtmltopdf';
-        $cmd = sprintf(
-            '%s --quiet --disable-local-file-access --disable-javascript ' .
-            '--no-stop-slow-scripts --javascript-delay 0 ' .
-            '--page-size A4 --orientation Portrait ' .
-            '--margin-top 12mm --margin-bottom 12mm --margin-left 12mm --margin-right 12mm ' .
-            '%s %s 2>&1',
-            escapeshellcmd($bin),
-            escapeshellarg($tmpHtml),
-            escapeshellarg($tmpPdf)
-        );
-
-        exec($cmd, $output, $code);
-        @unlink($tmpHtml);
-
-        if ($code !== 0 || !file_exists($tmpPdf) || filesize($tmpPdf) === 0) {
-            @unlink($tmpPdf);
-            throw new RuntimeException('wkhtmltopdf : ' . implode("\n", $output));
+        // mPDF est chargé via l'autoloader Composer (/vendor/autoload.php inclus par index.php)
+        $mpdf = new \Mpdf\Mpdf([
+            'mode'          => 'utf-8',
+            'format'        => 'A4',
+            'margin_top'    => 12,
+            'margin_bottom' => 12,
+            'margin_left'   => 12,
+            'margin_right'  => 12,
+            'tempDir'       => sys_get_temp_dir() . '/mpdf',
+        ]);
+        $mpdf->SetDisplayMode('fullpage');
+        try {
+            $mpdf->WriteHTML($html);
+            return $mpdf->Output('', 'S');
+        } catch (\Throwable $e) {
+            throw new RuntimeException('mPDF : ' . $e->getMessage());
         }
-
-        $pdf = file_get_contents($tmpPdf);
-        @unlink($tmpPdf);
-        return $pdf;
     }
 
     /** Stream le PDF vers le client HTTP. */

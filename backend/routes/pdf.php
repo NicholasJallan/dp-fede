@@ -5,14 +5,13 @@ require_once __DIR__ . '/../lib/PdfRender.php';
 require_once __DIR__ . '/../lib/Rules.php';
 require_once __DIR__ . '/../lib/HtmlSanitizer.php';
 
-// POST /api/pdf/fiche — génère un PDF.
+// POST /api/pdf/fiche — génère un PDF via mPDF (PHP pur, pas de process externe).
 //
-// Mode A (nouveau, C1.2) : { dive_id, type: "fiche"|"checklist" }
-//   → charge depuis la DB, rendu PHP, wkhtmltopdf.
+// Mode A : { dive_id, type: "fiche"|"checklist" }
+//   → charge depuis la DB, rendu PHP template → mPDF.
 //
 // Mode B (legacy, déprécié) : { html, filename }
-//   → HTML sanitizé envoyé directement à wkhtmltopdf.
-//   Log l'accès. Sera retiré dans une release future.
+//   → HTML sanitizé → mPDF. Log l'accès. Sera retiré dans une release future.
 //
 if ($method === 'POST' && $path === '/api/pdf/fiche') {
     Csrf::verify();

@@ -892,9 +892,9 @@ Cocher les tâches au fil de l'eau :
 - [x] H1 — esbuild + production builds
 - [x] H2.A — JSDoc minimal
 - [ ] H2.B — Vraie migration TS
-- [ ] C1.2 — PDF rendu côté serveur
-- [ ] M2 — Validation métier backend
-- [ ] C2 — Sortir wkhtmltopdf
-- [ ] H3 — Migrations versionnées
-- [ ] H4 — Séparer `render_state`
+- [x] C1.2 — PDF rendu côté serveur (mPDF, templates PHP)
+- [x] M2 — Validation métier backend (Rules.php + RulesTest.php)
+- [x] C2 — Sortir wkhtmltopdf → mPDF PHP pur
+- [x] H3 — Migrations versionnées (Migrator.php)
+- [x] H4 — Séparer `render_state` (table dive_runtime_state)
 - [ ] H7 — CDN locaux

@@ -2,7 +2,7 @@
 //
 // Stratégies par destination :
 //   - App shell local (/, *.css, app.js, /lib/*) : cache-first, precache à l'install
-//   - CDN tiers (fonts.googleapis.com, fonts.gstatic.com, cdnjs) : cache-first runtime
+//   - CDN tiers (fonts.googleapis.com, fonts.gstatic.com) : cache-first runtime
 //   - GET /api/auth/me, /api/divers, /api/sites, /api/dives (liste) : stale-while-revalidate
 //   - Tout autre /api/* : network-only (laisse passer pour que l'app gère la queue)
 //   - Reste : network-first avec fallback cache
@@ -49,10 +49,10 @@ const PRECACHE_URLS = [
 
 // Origines CDN qu'on accepte de cacher en runtime (réponses opaques OK).
 const CDN_ORIGINS = [
-  'https://cdnjs.cloudflare.com',    // jsPDF + html2canvas
   'https://fonts.googleapis.com',
   'https://fonts.gstatic.com',
   // https://unpkg.com retiré : React/ReactDOM/Babel sont maintenant bundlés dans app.js
+  // https://cdnjs.cloudflare.com retiré : jsPDF/html2canvas supprimés (PDF côté serveur via mPDF)
 ];
 
 // Endpoints API à cacher en stale-while-revalidate. Lecture seule.

@@ -30,6 +30,7 @@ require_once __DIR__ . '/../lib/HtmlSanitizer.php';
 require_once __DIR__ . '/../lib/Csrf.php';
 require_once __DIR__ . '/../lib/SyncHelpers.php';
 require_once __DIR__ . '/../lib/Auth.php';
+require_once __DIR__ . '/../lib/Rules.php';
 // Db dépend de PDO live → on ne charge pas Auth::current/Session ici (les
 // tests qui en ont besoin doivent mocker explicitement).
 require_once __DIR__ . '/../lib/Db.php';

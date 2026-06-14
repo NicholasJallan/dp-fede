@@ -429,8 +429,7 @@ function ChecklistStatique({ checklistRef, answers, checked, comments, user }) {
 // ---------------------------------------------------------------------------
 function ScreenArchive({ answers, palanquees, divers, user, pressions, realises, heuresDebut, heuresFin, checked, comments, plongeeFigee, onStartNew, onArchiveDone, diveId }) {
   const { showToast } = useToasts();
-  const ficheRef     = useRef(null);
-  const checklistRef = useRef(null);
+  // ficheRef / checklistRef supprimés — PDF rendu côté serveur (C1.2)
   const [status,         setStatus]         = useState('idle');
   const [driveLinks,     setDriveLinks]     = useState({ fiche:'', checklist:'' });
   const [error,          setError]          = useState('');
@@ -505,36 +504,20 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
     return `${date}${time ? '-' + time : ''}-${type}-${site}.pdf`;
   };
 
-  // Génération PDF via wkhtmltopdf côté serveur
+  // Génération PDF via le backend (C1.2) : envoie dive_id, le serveur charge
+  // les données depuis la DB et appelle wkhtmltopdf. Plus de DOM offscreen.
   const generatePdfBlob = async (type = 'fiche') => {
-    const el       = type === 'checklist' ? checklistRef.current : ficheRef.current;
-    const filename = buildFilename(type === 'checklist' ? 'checklist' : 'fiche-securite');
-    if (!el) throw new Error(`Rendu ${type} introuvable.`);
-    const styles = Array.from(document.querySelectorAll('link[rel=stylesheet]'))
-      .map(l => `<link rel="stylesheet" href="${l.href}">`).join('\n');
-    const html = `<!DOCTYPE html><html lang="fr"><head>
-<meta charset="utf-8">
-<title>${type === 'checklist' ? 'Check-list' : 'Fiche de sécurité'}</title>
-${styles}
-<style>
-  body { background: white; padding: 0; margin: 0; }
-  .fiche { box-shadow: none; max-width: 100%; }
-  .no-print, .fiche-actions { display: none !important; }
-</style>
-</head><body>${el.outerHTML}</body></html>`;
-
+    if (!diveId) throw new Error('diveId requis pour la génération PDF côté serveur.');
     const csrf = window.getCsrfToken ? window.getCsrfToken() : '';
     const res  = await fetch('/api/pdf/fiche', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-      body: JSON.stringify({ html, filename }),
+      body: JSON.stringify({ dive_id: diveId, type }),
     });
     if (!res.ok) {
       const t = await res.text();
       let detail = t.slice(0, 300);
-      // Best-effort : parser le body en JSON pour extraire {error}. Si ce n'est
-      // pas du JSON, on garde le slice texte ci-dessus comme détail.
       try { const j = JSON.parse(t); if (j?.error) detail = j.error; }
       catch { /* fallback texte déjà défini */ }
       throw new Error(`PDF ${type} — HTTP ${res.status} : ${detail}`);
@@ -542,11 +525,20 @@ ${styles}
     return await res.blob();
   };
 
-  // Logique d'archivage une fois le token Drive obtenu (pré-stocké ou frais via GIS).
-  // driveGetOrCreateFolder + driveUploadFile vivent dans lib/drive-upload.js
-  // (partagés avec finalizePendingDrive ci-dessous).
+  // Logique d'archivage une fois le token Drive obtenu.
   const proceedWithToken = async (token) => {
     try {
+      // Flush immédiat du render_state avant la génération PDF : le serveur doit
+      // avoir les données à jour (pressions, heures, check-list) avant de rendre.
+      const csrf = window.getCsrfToken ? window.getCsrfToken() : '';
+      if (diveId) {
+        await fetch(`/api/dives/${diveId}`, {
+          method: 'PATCH', credentials: 'include',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+          body: JSON.stringify({ render_state: { pressions, realises, heuresDebut, heuresFin, checked, comments } }),
+        });
+      }
+
       setStatus('generating');
       const fichePdf     = await generatePdfBlob('fiche');
       const checklistPdf = await generatePdfBlob('checklist');
@@ -798,16 +790,7 @@ ${styles}
         </div>
       </div>
 
-      {/* Rendu hors-écran pour capture PDF */}
-      <div style={{ position:'fixed', left:'-9999px', top:0, width:794, overflow:'visible', zIndex:-1, pointerEvents:'none' }}>
-        <FicheStatique ficheRef={ficheRef} answers={answers} palanquees={palanquees}
-          divers={divers} user={user} pressions={pressions} realises={realises}
-          heuresDebut={heuresDebut} heuresFin={heuresFin} />
-      </div>
-      <div style={{ position:'fixed', left:'-9999px', top:0, width:794, overflow:'visible', zIndex:-1, pointerEvents:'none' }}>
-        <ChecklistStatique checklistRef={checklistRef} answers={answers}
-          checked={checked || {}} comments={comments || {}} user={user} />
-      </div>
+      {/* PDF rendu côté serveur (C1.2) — pas de DOM offscreen */}
     </div>
   );
 }
@@ -824,8 +807,9 @@ ${styles}
 // divers  : annuaire courant (pour résoudre les noms si non enrichis)
 // user    : utilisateur courant
 //
-// Rend les deux templates offscreen, appelle /api/pdf/fiche pour chacun,
-// upload Drive, PATCH server. Une erreur propage (caller affiche).
+// Génère les deux PDFs depuis le serveur (C1.2), upload sur Drive, PATCH server.
+// Le rendu est délégué au backend (templates PHP + wkhtmltopdf) : plus de DOM
+// offscreen, plus de outerHTML. Le backend charge les données depuis dive_id.
 // ---------------------------------------------------------------------------
 async function finalizePendingDrive(archive, divers, user, onProgress) {
   if (!window.isGisAvailable || !window.isGisAvailable()) {
@@ -834,101 +818,47 @@ async function finalizePendingDrive(archive, divers, user, onProgress) {
   if (!archive.server_id) {
     throw new Error('Archive non encore synchronisée côté serveur — relancer plus tard.');
   }
-  // Compatibilité : render_state (nouveau) ou _render (ancien nom)
-  const r = archive.render_state || archive._render || {};
-  const answers    = typeof archive.answers    === 'string' ? JSON.parse(archive.answers)    : (archive.answers    || {});
-  const palanquees = typeof archive.palanquees === 'string' ? JSON.parse(archive.palanquees) : (archive.palanquees || []);
 
-  // Rendu offscreen des deux templates dans un conteneur DOM temporaire.
-  // On utilise ReactDOM.createRoot pour rendre, puis on lit outerHTML.
-  const host = document.createElement('div');
-  host.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;pointer-events:none;z-index:-1';
-  document.body.appendChild(host);
+  const answers = typeof archive.answers === 'string' ? JSON.parse(archive.answers) : (archive.answers || {});
 
-  const ficheEl     = document.createElement('div');
-  const checklistEl = document.createElement('div');
-  host.appendChild(ficheEl);
-  host.appendChild(checklistEl);
+  const buildFilename = (kind) => {
+    const dt   = answers.date || '';
+    const date = dt.slice(0, 10);
+    const time = dt.length >= 16 ? dt.slice(11, 16).replace(':', 'h') : '';
+    const site = (archive.site_nom || 'site').replace(/[^a-zA-Z0-9]/g, '-').slice(0, 30);
+    return `${date}${time ? '-' + time : ''}-${kind}-${site}.pdf`;
+  };
 
-  const root = ReactDOM.createRoot(host);
-  await new Promise(resolve => {
-    root.render(
-      React.createElement(React.Fragment, null,
-        React.createElement(FicheStatique, {
-          ficheRef: { current: ficheEl },
-          answers, palanquees, divers, user,
-          pressions:    r.pressions    || {},
-          realises:     r.realises     || {},
-          heuresDebut:  r.heuresDebut  || {},
-          heuresFin:    r.heuresFin    || {},
-        }),
-        React.createElement(ChecklistStatique, {
-          checklistRef: { current: checklistEl },
-          answers,
-          checked:  r.checked  || {},
-          comments: r.comments || {},
-          user,
-        }),
-      )
-    );
-    // Double rAF : garantit que React a peint avant de lire outerHTML.
-    requestAnimationFrame(() => requestAnimationFrame(resolve));
-  });
+  const csrf = window.getCsrfToken ? window.getCsrfToken() : '';
 
-  try {
-    const styles = Array.from(document.querySelectorAll('link[rel=stylesheet]'))
-      .map(l => `<link rel="stylesheet" href="${l.href}">`).join('\n');
-    const buildHtml = (title, el) => `<!DOCTYPE html><html lang="fr"><head>
-<meta charset="utf-8"><title>${title}</title>${styles}
-<style>body{background:white;padding:0;margin:0}.fiche{box-shadow:none;max-width:100%}.no-print,.fiche-actions{display:none!important}</style>
-</head><body>${el.firstChild?.outerHTML || el.outerHTML}</body></html>`;
-
-    const buildFilename = (kind) => {
-      const dt   = answers.date || '';
-      const date = dt.slice(0, 10);
-      const time = dt.length >= 16 ? dt.slice(11, 16).replace(':', 'h') : '';
-      const site = (archive.site_nom || 'site').replace(/[^a-zA-Z0-9]/g, '-').slice(0, 30);
-      return `${date}${time ? '-' + time : ''}-${kind}-${site}.pdf`;
-    };
-
-    const csrf = window.getCsrfToken ? window.getCsrfToken() : '';
-    async function genPdf(kind, html, filename) {
-      const res = await fetch('/api/pdf/fiche', {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-        body: JSON.stringify({ html, filename }),
-      });
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(`PDF ${kind} HTTP ${res.status} : ${t.slice(0, 200)}`);
-      }
-      return await res.blob();
+  async function genPdf(type) {
+    const res = await fetch('/api/pdf/fiche', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+      body: JSON.stringify({ dive_id: archive.server_id, type }),
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(`PDF ${type} HTTP ${res.status} : ${t.slice(0, 200)}`);
     }
-
-    if (onProgress) onProgress('generating');
-    const fichePdf     = await genPdf('fiche',
-      buildHtml('Fiche de sécurité', ficheEl),     buildFilename('fiche-securite'));
-    const checklistPdf = await genPdf('checklist',
-      buildHtml('Check-list',         checklistEl), buildFilename('checklist'));
-
-    if (onProgress) onProgress('requesting');
-    // Délégué au helper centralisé : cache-first, timeout 15 s, scope drive.file.
-    const token = await window.getDriveToken({ explicit: false, timeoutMs: 15000 });
-
-    if (onProgress) onProgress('uploading');
-    // driveGetOrCreateFolder + driveUploadFile partagés avec ScreenArchive
-    // (lib/drive-upload.js).
-    const folderId  = await window.driveGetOrCreateFolder(token, 'dp-fede');
-    const ficheFile = await window.driveUploadFile(token, fichePdf,     buildFilename('fiche-securite'), folderId);
-    await window.driveUploadFile(token, checklistPdf, buildFilename('checklist'), folderId);
-
-    if (onProgress) onProgress('saving');
-    await window.api.dives.markDriveDone(archive.client_uuid, ficheFile.webViewLink || '');
-    return ficheFile.webViewLink || '';
-  } finally {
-    root.unmount();
-    host.remove();
+    return await res.blob();
   }
+
+  if (onProgress) onProgress('generating');
+  const fichePdf     = await genPdf('fiche');
+  const checklistPdf = await genPdf('checklist');
+
+  if (onProgress) onProgress('requesting');
+  const token = await window.getDriveToken({ explicit: false, timeoutMs: 15000 });
+
+  if (onProgress) onProgress('uploading');
+  const folderId  = await window.driveGetOrCreateFolder(token, 'dp-fede');
+  const ficheFile = await window.driveUploadFile(token, fichePdf,     buildFilename('fiche-securite'), folderId);
+  await window.driveUploadFile(token, checklistPdf, buildFilename('checklist'), folderId);
+
+  if (onProgress) onProgress('saving');
+  await window.api.dives.markDriveDone(archive.client_uuid, ficheFile.webViewLink || '');
+  return ficheFile.webViewLink || '';
 }
 
 export { ScreenArchive, FicheStatique, ChecklistStatique, finalizePendingDrive };

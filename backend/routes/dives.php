@@ -1,6 +1,79 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/../lib/Rules.php';
+
+// Charge les divers référencés dans les palanquées depuis la DB et retourne
+// ['diversById' => [...], 'dp' => array|null]. Renvoie 422 si la validation
+// des règles dures échoue (erreurs bloquantes). Les warnings sont ignorés
+// (le front affiche le feedback temps réel, le back valide les dures seulement).
+function validatePalanqueesOrAbort(array $palanquees, array $answers, int $userId): void
+{
+    if (empty($palanquees)) return;
+
+    // Collecter tous les diverId uniques référencés
+    $driverIds = [];
+    foreach ($palanquees as $pal) {
+        foreach ($pal['membres'] ?? [] as $m) {
+            if (empty($m['_bapteme']) && !empty($m['diverId'])) {
+                $driverIds[$m['diverId']] = true;
+            }
+        }
+    }
+
+    $diversById = [];
+    if (!empty($driverIds)) {
+        $ids   = array_keys($driverIds);
+        $phs   = implode(',', array_fill(0, count($ids), '?'));
+        $rows  = Db::all(
+            "SELECT id, nom, prenom, niveau_plongeur, niveau_encadrant,
+                    aptitudes_sup, qualifs, medical
+               FROM divers
+              WHERE id IN ({$phs}) AND user_id=? AND deleted_at IS NULL",
+            [...$ids, $userId]
+        );
+        foreach ($rows as $row) {
+            // Décoder qualifs → nitrox / trimix (même logique que routes/divers.php)
+            $raw = json_decode($row['qualifs'] ?? '[]', true) ?? [];
+            if (isset($raw['nitrox'])) {
+                $row['nitrox'] = $raw['nitrox'] ?? [];
+                $row['trimix'] = $raw['trimix'] ?? [];
+            } else {
+                $row['nitrox'] = array_values(array_intersect((array)$raw, ['PN', 'PN-C']));
+                $row['trimix'] = array_values(array_intersect((array)$raw, ['PTH-70', 'PTH-120']));
+            }
+            $row['aptitudes_sup'] = json_decode($row['aptitudes_sup'] ?? '[]', true) ?? [];
+            $diversById[$row['id']] = $row;
+        }
+    }
+
+    // Charger le DP
+    $dp = null;
+    if (!empty($answers['dp_id'])) {
+        $dpRow = Db::row(
+            'SELECT id, niveau_encadrant, qualifs, aptitudes_sup
+               FROM divers WHERE id=? AND user_id=? AND deleted_at IS NULL',
+            [$answers['dp_id'], $userId]
+        );
+        if ($dpRow) {
+            $raw = json_decode($dpRow['qualifs'] ?? '[]', true) ?? [];
+            $dpRow['nitrox'] = isset($raw['nitrox']) ? ($raw['nitrox'] ?? []) : array_values(array_intersect((array)$raw, ['PN', 'PN-C']));
+            $dpRow['trimix'] = isset($raw['trimix']) ? ($raw['trimix'] ?? []) : array_values(array_intersect((array)$raw, ['PTH-70', 'PTH-120']));
+            $dp = $dpRow;
+        }
+    }
+
+    // Si le DP n'est pas en DB, construire un dp minimal depuis answers (dp_qual)
+    if (!$dp && !empty($answers['dp_qual'])) {
+        $dp = ['niveau_encadrant' => $answers['dp_qual'], 'nitrox' => [], 'trimix' => []];
+    }
+
+    $result = Rules::validateDive($palanquees, $diversById, $answers, $dp);
+    if (!$result['ok']) {
+        Json::abort(422, implode(' | ', $result['errors']));
+    }
+}
+
 // ── GET /api/dives ─────────────────────────────────────────────────────────
 // Liste des plongées (tous statuts par défaut).
 // ?status=prepared,in_progress,archived — filtre sur un ou plusieurs statuts.
@@ -114,6 +187,11 @@ if ($method === 'POST' && $path === '/api/dives') {
     $dpDate  = parseDiveDateToMySql((string)($body['date_plongee'] ?? ''));
     $planned = $dpDate; // planned_at = date_plongee à la création
 
+    // Validation règles métier avant persistance
+    if (!empty($body['palanquees'])) {
+        validatePalanqueesOrAbort($body['palanquees'], $body['answers'] ?? [], $user['id']);
+    }
+
     $id = Db::uuid();
     Db::q(
         'INSERT INTO dives
@@ -225,6 +303,18 @@ if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
     }
 
     if (empty($sets)) Json::abort(422, 'Aucun champ à mettre à jour');
+
+    // Validation règles métier si les palanquées sont modifiées et que la plongée
+    // n'est pas encore archivée (les archivées ne peuvent plus être modifiées de toute façon).
+    if (isset($body['palanquees']) && $curStatus !== 'archived') {
+        $ans = isset($body['answers']) ? $body['answers'] : [];
+        if (empty($ans)) {
+            // Charger les answers courantes si non fournis dans le body
+            $existingAnswers = Db::row('SELECT answers FROM dives WHERE id=?', [$row['id']]);
+            $ans = json_decode($existingAnswers['answers'] ?? '{}', true) ?? [];
+        }
+        validatePalanqueesOrAbort($body['palanquees'], $ans, $user['id']);
+    }
 
     $params[] = $row['id'];
     Db::q('UPDATE dives SET ' . implode(',', $sets) . ' WHERE id=?', $params);

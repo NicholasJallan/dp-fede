@@ -9,23 +9,38 @@ function ScreenLogin() {
   const online = window.useOnline ? window.useOnline() : true;
 
   useEffect(() => {
-    if (!window.google?.accounts) return;
-    const clientId = window.GOOGLE_CLIENT_ID;
-    if (!clientId || clientId === 'GOOGLE_CLIENT_ID_PLACEHOLDER') return;
+    let cancelled = false;
+    let timer = null;
 
-    google.accounts.id.initialize({
-      client_id: clientId,
-      callback: handleGoogleCredential,
-      auto_select: false,
-    });
+    function init() {
+      if (cancelled) return;
+      // GIS charge async — si pas encore dispo, on repoll toutes les 150 ms.
+      if (!window.google?.accounts?.id) {
+        timer = setTimeout(init, 150);
+        return;
+      }
+      const clientId = window.GOOGLE_CLIENT_ID;
+      if (!clientId || clientId === 'GOOGLE_CLIENT_ID_PLACEHOLDER') return;
 
-    google.accounts.id.renderButton(btnRef.current, {
-      theme: 'outline',
-      size: 'large',
-      text: 'signin_with',
-      locale: 'fr',
-      width: 280,
-    });
+      google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleGoogleCredential,
+        auto_select: false,
+      });
+
+      if (btnRef.current) {
+        google.accounts.id.renderButton(btnRef.current, {
+          theme: 'outline',
+          size: 'large',
+          text: 'signin_with',
+          locale: 'fr',
+          width: 280,
+        });
+      }
+    }
+
+    init();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
   }, [handleGoogleCredential]);
 
   return (

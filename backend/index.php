@@ -29,6 +29,8 @@ header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
 
 $method = $_SERVER['REQUEST_METHOD'];
+// HEAD : même routage que GET ; PHP/nginx suppriment automatiquement le corps.
+if ($method === 'HEAD') $method = 'GET';
 $path   = strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
 
 // Rate-limit login attempts (15 min window, 10 essais/IP) — couvre les

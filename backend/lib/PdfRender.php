@@ -100,16 +100,16 @@ CSS;
     /** Tri des membres pour la fiche : encadrant > GP > PE > PA > Baptême ; 2e GP en serre-file. */
     public static function sortMembresForFiche(array $membres): array
     {
-        $priority = function (string $apt): int {
-            return match($apt) {
-                'E4'  => 0, 'E3' => 1, 'E2' => 2, 'E1' => 3,
-                'GP'  => 4,
-                'PE60'=> 5, 'PE40' => 6, 'PE20' => 7,
-                'PTH120' => 8, 'PTH70' => 9,
-                'PA12', 'PA20', 'PA40', 'PA60' => 10,
-                'Baptême' => 11,
-                default   => 99,
-            };
+        $priorityMap = [
+            'E4' => 0, 'E3' => 1, 'E2' => 2, 'E1' => 3,
+            'GP' => 4,
+            'PE60' => 5, 'PE40' => 6, 'PE20' => 7,
+            'PTH120' => 8, 'PTH70' => 9,
+            'PA12' => 10, 'PA20' => 10, 'PA40' => 10, 'PA60' => 10,
+            'Baptême' => 11,
+        ];
+        $priority = function (string $apt) use ($priorityMap): int {
+            return $priorityMap[$apt] ?? 99;
         };
         $sorted = $membres;
         usort($sorted, fn($a, $b) => $priority($a['aptitude'] ?? '') - $priority($b['aptitude'] ?? ''));

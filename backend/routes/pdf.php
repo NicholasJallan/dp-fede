@@ -73,18 +73,17 @@ if ($method === 'POST' && $path === '/api/pdf/fiche') {
             'urgence_defaut'  => $dive['urgence_defaut']  ?? '18',
         ];
 
-        // Rendu du template
+        // Rendu du template — $user est remappé sur le profil (≠ $authUser d'Auth::require())
+        $authUser = $user; // on préserve le user authentifié avant écrasement local
+        $user     = $userData;
         ob_start();
         if ($type === 'checklist') {
-            $user        = $userData;
-            $renderState = $renderState;
             require __DIR__ . '/../templates/checklist.php';
         } else {
-            $user        = $userData;
-            $renderState = $renderState;
             require __DIR__ . '/../templates/fiche.php';
         }
         $bodyHtml = ob_get_clean();
+        $user = $authUser; // restore
 
         $title = $type === 'checklist' ? 'Check-list opérationnelle' : 'Fiche de sécurité';
         $html  = PdfRender::buildHtml($title, $bodyHtml);

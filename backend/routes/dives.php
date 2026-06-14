@@ -187,8 +187,10 @@ if ($method === 'POST' && $path === '/api/dives') {
     $dpDate  = parseDiveDateToMySql((string)($body['date_plongee'] ?? ''));
     $planned = $dpDate; // planned_at = date_plongee à la création
 
-    // Validation règles métier avant persistance
-    if (!empty($body['palanquees'])) {
+    // Validation règles métier uniquement si la plongée est créée avec un statut
+    // avancé (in_progress ou archived = sync offline d'une session déjà terminée).
+    // Pour 'prepared', la palanquée peut être incomplète → pas de blocage.
+    if (!empty($body['palanquees']) && in_array($status, ['in_progress', 'archived'], true)) {
         validatePalanqueesOrAbort($body['palanquees'], $body['answers'] ?? [], $user['id']);
     }
 
@@ -304,12 +306,13 @@ if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
 
     if (empty($sets)) Json::abort(422, 'Aucun champ à mettre à jour');
 
-    // Validation règles métier si les palanquées sont modifiées et que la plongée
-    // n'est pas encore archivée (les archivées ne peuvent plus être modifiées de toute façon).
-    if (isset($body['palanquees']) && $curStatus !== 'archived') {
-        $ans = isset($body['answers']) ? $body['answers'] : [];
+    // Validation règles métier uniquement lors d'une transition de statut significative
+    // (in_progress ou archived). Les auto-saves intermédiaires ('prepared') ne
+    // bloquent pas la composition en cours (membres sans aptitude, etc.).
+    if (isset($body['palanquees']) && $curStatus !== 'archived'
+        && in_array($newStatus, ['in_progress', 'archived'], true)) {
+        $ans = $body['answers'] ?? [];
         if (empty($ans)) {
-            // Charger les answers courantes si non fournis dans le body
             $existingAnswers = Db::row('SELECT answers FROM dives WHERE id=?', [$row['id']]);
             $ans = json_decode($existingAnswers['answers'] ?? '{}', true) ?? [];
         }

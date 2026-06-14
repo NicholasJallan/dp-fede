@@ -56,8 +56,9 @@ const CDN_ORIGINS = [
 ];
 
 // Endpoints API à cacher en stale-while-revalidate. Lecture seule.
+// NB : /api/auth/me est intentionnellement absent — la session doit toujours
+// être vérifiée en direct (un cache stale "connecté" bloquerait la reconnexion).
 const API_SWR_PATHS = [
-  '/api/auth/me',
   '/api/divers',
   '/api/sites',
   '/api/dives',

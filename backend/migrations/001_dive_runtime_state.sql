@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS dive_runtime_state (
     state      MEDIUMTEXT  NOT NULL,
     updated_at TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_drs_dive FOREIGN KEY (dive_id) REFERENCES dives(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Migrer les render_state existants (idempotent via INSERT IGNORE).
 INSERT IGNORE INTO dive_runtime_state (dive_id, state)

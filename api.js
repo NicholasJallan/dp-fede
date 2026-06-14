@@ -17,6 +17,7 @@ async function apiFetch(path, options = {}) {
     method,
     headers,
     credentials: 'include',
+    cache: 'no-store',
     body: options.body != null ? JSON.stringify(options.body) : undefined,
   });
 

@@ -42,9 +42,9 @@ class Rules
     {
         if (!$milieu) return 'mer';
         $m = mb_strtolower($milieu);
-        if (str_contains($m, 'lac') || str_contains($m, 'carrière') || str_contains($m, 'carriere')) return 'lac';
-        if (str_contains($m, 'piscine')) return 'piscine';
-        if (str_contains($m, 'fosse'))   return 'fosse';
+        if (strpos($m, 'lac') !== false || strpos($m, 'carrière') !== false || strpos($m, 'carriere') !== false) return 'lac';
+        if (strpos($m, 'piscine') !== false) return 'piscine';
+        if (strpos($m, 'fosse')   !== false) return 'fosse';
         return 'mer';
     }
 
@@ -60,7 +60,7 @@ class Rules
         $apts = array_column($membres, 'aptitude');
         if (in_array('Baptême', $apts, true)) return 'bapteme';
         if (array_intersect(self::ENS_LEVELS, $apts)) return 'formation';
-        if (in_array('GP', $apts, true) && array_filter($apts, fn($a) => str_starts_with((string)$a, 'PE'))) return 'guidee';
+        if (in_array('GP', $apts, true) && array_filter($apts, fn($a) => strpos((string)$a, 'PE') === 0)) return 'guidee';
         return 'exploration';
     }
 

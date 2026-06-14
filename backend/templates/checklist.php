@@ -52,14 +52,13 @@ function matchCond(mixed $when, array $a): bool {
     return true;
 }
 
-$getMilieuType = fn(?string $m): string => match(true) {
-    !$m                                             => 'mer',
-    str_contains(strtolower($m), 'lac')
-        || str_contains(strtolower($m), 'carrière')
-        || str_contains(strtolower($m), 'carriere') => 'lac',
-    str_contains(strtolower($m), 'piscine')         => 'piscine',
-    str_contains(strtolower($m), 'fosse')           => 'fosse',
-    default                                         => 'mer',
+$getMilieuType = function (?string $m): string {
+    if (!$m) return 'mer';
+    $ml = strtolower($m);
+    if (strpos($ml, 'lac') !== false || strpos($ml, 'carrière') !== false || strpos($ml, 'carriere') !== false) return 'lac';
+    if (strpos($ml, 'piscine') !== false) return 'piscine';
+    if (strpos($ml, 'fosse')   !== false) return 'fosse';
+    return 'mer';
 };
 $isMilieuNaturelFn = function (array $a) use ($getMilieuType): bool {
     $t = $getMilieuType($a['milieu'] ?? null);

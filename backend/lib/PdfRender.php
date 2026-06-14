@@ -183,7 +183,7 @@ HTML;
     public static function stream(string $pdf, string $filename): void
     {
         $safe = preg_replace('/[^a-zA-Z0-9._-]/', '_', $filename);
-        if (!str_ends_with($safe, '.pdf')) $safe .= '.pdf';
+        if (substr($safe, -4) !== '.pdf') $safe .= '.pdf';
         header('Content-Type: application/pdf');
         header('Content-Disposition: attachment; filename="' . $safe . '"');
         header('Content-Length: ' . strlen($pdf));

@@ -173,7 +173,10 @@ async function staleWhileRevalidate(req, cacheName) {
   const cache  = await caches.open(cacheName);
   const cached = await cache.match(req);
 
-  const network = fetch(req)
+  // no-store : bypass le cache HTTP de Chrome pour que les réponses API
+  // viennent toujours du serveur, même si une ancienne réponse est en cache.
+  const networkReq = new Request(req, { cache: 'no-store' });
+  const network = fetch(networkReq)
     .then(res => {
       if (res.ok) cache.put(req, res.clone()).catch(() => {});
       return res;

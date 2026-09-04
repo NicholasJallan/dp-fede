@@ -753,16 +753,25 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 .divers-grid {
   display: grid;
   grid-template-columns: 1fr;
+  align-items: start;
   gap: 14px;
 }
 @media (min-width: 720px) {
   .divers-grid { grid-template-columns: 320px 1fr; }
 }
 .pal-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: start;
   gap: 14px;
 }
+@media (min-width: 1100px) {
+  .pal-list { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1500px) {
+  .pal-list { grid-template-columns: repeat(3, 1fr); }
+}
+.pal-list .pal-add { grid-column: 1 / -1; }
 .pal {
   background: var(--surface);
   border: 1px solid var(--line);

@@ -3,7 +3,22 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from './auth-context.jsx';
 import { useToasts } from './toast.jsx';
-import { Alert, CdsLink, diverFullName, formatDateTime } from './components.jsx';
+import { Alert, CdsLink, diverFullName, formatDateTime, NumberStepper } from './components.jsx';
+
+// Paliers de décompression saisis par tranche de 3 m — bornes usuelles.
+const PALIER_DEPTHS = [9, 6, 3];
+
+// Résumé compact des paliers réalisés — affiché sur la fiche et le PDF.
+function formatPaliers(real) {
+  if (!real) return null;
+  const parts = PALIER_DEPTHS
+    .filter(d => parseFloat(real.paliers?.[d]) > 0)
+    .map(d => `${d}m ${real.paliers[d]}'`);
+  if (real.confort?.on && parseFloat(real.confort.duree) > 0) {
+    parts.push(`confort ${real.confort.profondeur}m ${real.confort.duree}'`);
+  }
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
 
 const PRESSION_SORTIE_OPTIONS = [
   'panne d\'air','20','30','40','50','60','70','80','90','100+',
@@ -20,7 +35,11 @@ function ScreenFiche({ answers, palanquees, divers, setAnswer, pressions, setPre
 
   // heuresDebut, heuresFin, pressions, realises sont levés dans app.jsx
   const [finModal,      setFinModal]      = useState(null);
-  const [finForm,       setFinForm]       = useState({ duree:'', profMax:'', dtr:'', commentaire:'' });
+  const [finForm,       setFinForm]       = useState({
+    duree:'', profMax:'', dtr:'', commentaire:'',
+    paliers: { 9:'', 6:'', 3:'' },
+    confort: { on:false, profondeur:'3', duree:'' },
+  });
   const [obs,           setObs]           = useState(answers.fiche_observations || '');
   const [confirmDepart, setConfirmDepart] = useState(null); // palId en attente de confirmation
 
@@ -79,6 +98,8 @@ function ScreenFiche({ answers, palanquees, divers, setAnswer, pressions, setPre
       profMax:     String(pal.profMax || ''),
       dtr:         String(dtrCapped),
       commentaire: previous?.commentaire || '',
+      paliers:     { 9:'', 6:'', 3:'', ...(previous?.paliers || {}) },
+      confort:     { on:false, profondeur:'3', duree:'', ...(previous?.confort || {}) },
     });
     setFinModal({ palId, endTime, elapsed, debut, siteProfMax });
   };
@@ -365,6 +386,9 @@ ${styles}
                               <div>
                                 <div style={{ fontSize:9, color:'#888', textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:1 }}>Réalisé</div>
                                 <b style={{ color: real ? 'inherit' : '#bbb' }}>{real ? `${real.dtr} min` : '—'}</b>
+                                {formatPaliers(real) && (
+                                  <div style={{ fontSize:9.5, color:'#2d6b86', marginTop:2 }}>{formatPaliers(real)}</div>
+                                )}
                               </div>
                             </td>
                           </>
@@ -534,10 +558,9 @@ ${styles}
             <div className="modal-body" style={{ display:'grid', gap:12 }}>
               <div className="field">
                 <label>Durée réelle (min){finModal.elapsed !== null ? ` — max ${finModal.elapsed} min` : ''}</label>
-                <input className="input" type="number" min="1" max={finModal.elapsed ?? 240}
+                <NumberStepper suffix="min" min={0} max={finModal.elapsed ?? 240}
                   value={finForm.duree}
-                  onChange={e => {
-                    const raw = e.target.value;
+                  onChange={raw => {
                     const v   = parseInt(raw, 10);
                     const max = finModal.elapsed;
                     const newDuree = (max !== null && v > max) ? String(max) : raw;
@@ -558,11 +581,9 @@ ${styles}
                   Profondeur max réalisée (m)
                   {finModal.siteProfMax ? ` — max site ${finModal.siteProfMax} m` : ''}
                 </label>
-                <input className="input" type="number" min="1"
-                  max={finModal.siteProfMax ?? 200}
+                <NumberStepper suffix="m" min={0} max={finModal.siteProfMax ?? 200}
                   value={finForm.profMax}
-                  onChange={e => {
-                    const raw = e.target.value;
+                  onChange={raw => {
                     const v   = parseInt(raw, 10);
                     const cap = finModal.siteProfMax;
                     const clamped = (cap && isFinite(v) && v > cap) ? String(cap) : raw;
@@ -577,11 +598,9 @@ ${styles}
               )}
               <div className="field">
                 <label>DTR réel (min){finForm.duree ? ` — max ${finForm.duree} min` : ''}</label>
-                <input className="input" type="number" min="0"
-                  max={finForm.duree ? parseInt(finForm.duree, 10) : 120}
+                <NumberStepper suffix="min" min={0} max={finForm.duree ? parseInt(finForm.duree, 10) : 120}
                   value={finForm.dtr}
-                  onChange={e => {
-                    const raw = e.target.value;
+                  onChange={raw => {
                     const v   = parseInt(raw, 10);
                     const max = parseInt(finForm.duree, 10);
                     // Capper DTR à la durée réelle de la plongée
@@ -591,6 +610,48 @@ ${styles}
                   placeholder="ex. 4" />
                 <div className="field-hint">La DTR ne peut pas excéder la durée réelle de la plongée.</div>
               </div>
+
+              <div className="field">
+                <label>Paliers de décompression réalisés <span className="muted" style={{ fontWeight:400 }}>(optionnel)</span></label>
+                <div className="field-hint">Durée observée à chaque palier, par tranche de 3 m.</div>
+                <div style={{ display:'grid', gap:8, marginTop:6 }}>
+                  {PALIER_DEPTHS.map(depth => (
+                    <div key={depth} style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      <span style={{ width:36, fontFamily:'var(--t-mono)', fontSize:13, fontWeight:600 }}>{depth} m</span>
+                      <NumberStepper suffix="min" min={0} max={99}
+                        value={finForm.paliers[depth]}
+                        onChange={v => setFinForm(f => ({ ...f, paliers: { ...f.paliers, [depth]: v } }))}
+                        placeholder="0" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="field">
+                <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer' }}>
+                  <input type="checkbox" checked={finForm.confort.on}
+                    onChange={e => setFinForm(f => ({ ...f, confort: { ...f.confort, on: e.target.checked } }))} />
+                  Palier de confort observé <span className="muted" style={{ fontWeight:400 }}>(non obligatoire)</span>
+                </label>
+                {finForm.confort.on && (
+                  <div style={{ display:'flex', gap:16, marginTop:8, flexWrap:'wrap' }}>
+                    <div>
+                      <div className="field-hint" style={{ marginBottom:4 }}>Profondeur</div>
+                      <NumberStepper suffix="m" min={1} max={12}
+                        value={finForm.confort.profondeur}
+                        onChange={v => setFinForm(f => ({ ...f, confort: { ...f.confort, profondeur: v } }))} />
+                    </div>
+                    <div>
+                      <div className="field-hint" style={{ marginBottom:4 }}>Durée</div>
+                      <NumberStepper suffix="min" min={0} max={30}
+                        value={finForm.confort.duree}
+                        onChange={v => setFinForm(f => ({ ...f, confort: { ...f.confort, duree: v } }))}
+                        placeholder="0" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="field">
                 <label>Commentaires <span className="muted" style={{ fontWeight:400 }}>(optionnel)</span></label>
                 <textarea className="textarea" rows={3}

@@ -185,6 +185,57 @@ function Toggle({ checked, onChange, label }) {
 }
 
 // =========================================================================
+// NumberStepper — saisie numérique rapide (boutons − / + avec répétition
+// en appui long, façon "roulette"). Utilisé pour les paramètres de sortie
+// de palanquée (profondeur, durée, DTR, paliers) où la correction au clavier
+// est trop lente en conditions de terrain.
+// =========================================================================
+function NumberStepper({ value, onChange, step = 1, min, max, suffix = '', width = 64, placeholder }) {
+  const holdRef = useRef(null);
+  const clamp = (v) => {
+    if (min != null && v < min) v = min;
+    if (max != null && v > max) v = max;
+    return v;
+  };
+  const bump = (dir) => {
+    const base = parseFloat(value);
+    const cur = isFinite(base) ? base : (min != null ? min : 0);
+    onChange(String(clamp(Math.round((cur + dir * step) * 100) / 100)));
+  };
+  const stopHold = () => {
+    if (holdRef.current) {
+      clearTimeout(holdRef.current.timeout);
+      clearInterval(holdRef.current.interval);
+      holdRef.current = null;
+    }
+  };
+  const startHold = (dir) => {
+    bump(dir);
+    stopHold();
+    const timeout = setTimeout(() => {
+      const interval = setInterval(() => bump(dir), 110);
+      holdRef.current = { ...holdRef.current, interval };
+    }, 400);
+    holdRef.current = { timeout };
+  };
+  useEffect(() => stopHold, []);
+  return (
+    <div className="stepper">
+      <button type="button" className="stepper-btn" aria-label="Diminuer"
+        onPointerDown={e => { e.preventDefault(); startHold(-1); }}
+        onPointerUp={stopHold} onPointerLeave={stopHold} onPointerCancel={stopHold}>−</button>
+      <input className="input stepper-field" type="number" inputMode="decimal"
+        style={{ width }} value={value} placeholder={placeholder}
+        onChange={e => onChange(e.target.value)} />
+      <button type="button" className="stepper-btn" aria-label="Augmenter"
+        onPointerDown={e => { e.preventDefault(); startHold(1); }}
+        onPointerUp={stopHold} onPointerLeave={stopHold} onPointerCancel={stopHold}>+</button>
+      {suffix && <span className="stepper-suffix">{suffix}</span>}
+    </div>
+  );
+}
+
+// =========================================================================
 // Field wrapper
 // =========================================================================
 function Field({ label, hint, regRef, required, children, controls }) {
@@ -478,7 +529,7 @@ function SyncDrawer({ items, online, onClose, onForceSync }) {
 
 // =========================================================================
 export {
-  Pill, Ref, CdsBadge, CdsLink, withCdsLinks, Alert, Opt, Toggle, Field, Question,
+  Pill, Ref, CdsBadge, CdsLink, withCdsLinks, Alert, Opt, Toggle, NumberStepper, Field, Question,
   formatDateTime, diverFullName, getDiver,
   KIND_LABELS, formatAge, describePayload,
   SyncDrawer,

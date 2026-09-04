@@ -101,6 +101,22 @@ $palMelange = function (array $p): string {
     return $arr ? implode(' · ', array_map(fn($m) => htmlspecialchars($m, ENT_QUOTES, 'UTF-8'), $arr)) : 'Air';
 };
 
+// Résumé compact des paliers réalisés — miroir de formatPaliers() côté client.
+$palierDepths = [9, 6, 3];
+$formatPaliers = function (?array $real) use ($palierDepths, $h): ?string {
+    if (!$real) return null;
+    $parts = [];
+    foreach ($palierDepths as $d) {
+        $v = $real['paliers'][$d] ?? null;
+        if ($v !== null && $v !== '' && (float)$v > 0) $parts[] = "{$d}m " . $h((string)$v) . "'";
+    }
+    $confort = $real['confort'] ?? null;
+    if (!empty($confort['on']) && (float)($confort['duree'] ?? 0) > 0) {
+        $parts[] = 'confort ' . $h((string)($confort['profondeur'] ?? '')) . 'm ' . $h((string)$confort['duree']) . "'";
+    }
+    return $parts ? implode(' · ', $parts) : null;
+};
+
 $pressions   = $renderState['pressions']   ?? [];
 $realises    = $renderState['realises']    ?? [];
 $heuresDebut = $renderState['heuresDebut'] ?? [];
@@ -232,6 +248,9 @@ $heuresFin   = $renderState['heuresFin']   ?? [];
           <div style="margin-top:6px;padding-top:4px;border-top:1px solid #e2e8f0;">
             <div class="label">Réalisé</div>
             <b<?= $real ? '' : ' style="color:#94a3b8;"' ?>><?= $real ? $h((string)$real['dtr']) . ' min' : '—' ?></b>
+            <?php $palierSummary = $formatPaliers($real); if ($palierSummary): ?>
+              <div style="font-size:9.5px;color:#2d6b86;margin-top:2px;"><?= $palierSummary ?></div>
+            <?php endif; ?>
           </div>
         </td>
 <?php endif; ?>

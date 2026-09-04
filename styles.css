@@ -540,6 +540,56 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 .btn.icon { padding: 8px; min-height: 40px; width: 40px; }
 .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
 
+/* ===== NumberStepper — saisie numérique rapide (paramètres de sortie) ===== */
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+  user-select: none;
+}
+.stepper-btn {
+  appearance: none;
+  border: 0;
+  background: var(--paper-2);
+  color: var(--ink);
+  width: 44px;
+  min-height: 44px;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  cursor: pointer;
+}
+.stepper-btn:hover { background: var(--marine-50); }
+.stepper-btn:active { background: var(--marine-50); color: var(--marine); }
+.stepper-field {
+  width: 64px;
+  min-height: 44px;
+  border: 0;
+  border-left: 1px solid var(--line-2);
+  border-right: 1px solid var(--line-2);
+  border-radius: 0;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 15px;
+}
+.stepper-field:focus { box-shadow: none; border-color: var(--line-2); }
+.stepper-suffix {
+  padding: 0 10px 0 8px;
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
 /* ===== Footer / nav bar ===== */
 
 .footnav {

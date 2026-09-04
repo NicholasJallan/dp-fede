@@ -3,17 +3,15 @@
 // Stratégies par destination :
 //   - App shell local (/, *.css, app.js, /lib/*) : cache-first, precache à l'install
 //   - CDN tiers (fonts.googleapis.com, fonts.gstatic.com) : cache-first runtime
-//   - GET /api/auth/me, /api/divers, /api/sites, /api/dives (liste) : stale-while-revalidate
-//   - Tout autre /api/* : network-only (laisse passer pour que l'app gère la queue)
+//   - Tout /api/* : network-only (l'app gère le hors-ligne via offlineStore)
 //   - Reste : network-first avec fallback cache
 //
 // Bumper manuellement la VERSION ci-dessous à chaque déploiement frontend
 // (sinon le navigateur garde l'ancien cache). Format : dp-{YYYYMMDD}-{sha7}.
-const VERSION = 'dp-20260904-workspaces2';
+const VERSION = 'dp-20260904-sync-fix';
 
 const SHELL_CACHE  = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
-const API_CACHE     = `${VERSION}-api`;
 
 // Précache : app shell local. Toute requête à la racine du domaine doit
 // pouvoir être servie depuis ce cache après install.
@@ -56,15 +54,17 @@ const CDN_ORIGINS = [
   // https://cdnjs.cloudflare.com retiré : jsPDF/html2canvas supprimés (PDF côté serveur via mPDF)
 ];
 
-// Endpoints API à cacher en stale-while-revalidate. Lecture seule.
-// NB : /api/auth/me est intentionnellement absent — la session doit toujours
-// être vérifiée en direct (un cache stale "connecté" bloquerait la reconnexion).
-const API_SWR_PATHS = [
-  '/api/divers',
-  '/api/sites',
-  '/api/dives',
-  '/api/sync/state',
-];
+// Aucun endpoint API n'est mis en cache par le SW.
+//
+// Le stale-while-revalidate rendait TOUTE lecture API vieille d'une requête :
+// un plongeur créé disparaissait de l'annuaire au refresh suivant, un plongeur
+// supprimé y ressuscitait, et `/api/sync/state` renvoyait un curseur périmé
+// qui faisait sauter le pull incrémental d'un cycle entier. Le mode hors-ligne
+// ne repose pas sur ce cache : `lib/offline-api.js` retombe sur l'offlineStore
+// (IndexedDB) dès que le fetch échoue.
+//
+// NB : `cache: 'no-store'` côté app (api.js) ne protège pas de ça — il
+// contourne le cache HTTP de Chrome, pas le Service Worker.
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
@@ -110,13 +110,8 @@ self.addEventListener('fetch', (event) => {
 
   // Same-origin
   if (url.origin === self.location.origin) {
-    if (url.pathname.startsWith('/api/')) {
-      if (API_SWR_PATHS.some(p => url.pathname === p || url.pathname.startsWith(p + '/'))) {
-        event.respondWith(staleWhileRevalidate(req, API_CACHE));
-      }
-      // sinon : network-only — laisse passer, l'app gère
-      return;
-    }
+    // network-only — on laisse passer, l'app gère l'échec (offlineStore).
+    if (url.pathname.startsWith('/api/')) return;
     event.respondWith(cacheFirst(req, SHELL_CACHE));
     return;
   }
@@ -169,36 +164,6 @@ async function cacheFirst(req, cacheName) {
     }
     throw err;
   }
-}
-
-async function staleWhileRevalidate(req, cacheName) {
-  const cache  = await caches.open(cacheName);
-  const cached = await cache.match(req);
-
-  // no-store : bypass le cache HTTP de Chrome pour que les réponses API
-  // viennent toujours du serveur, même si une ancienne réponse est en cache.
-  const networkReq = new Request(req, { cache: 'no-store' });
-  const network = fetch(networkReq)
-    .then(res => {
-      if (res.ok) cache.put(req, res.clone()).catch(() => {});
-      return res;
-    })
-    .catch(() => null);
-
-  // Cache-first si présent, sinon attend le réseau.
-  if (cached) {
-    // Refresh en arrière-plan, ne bloque pas la réponse.
-    network.catch(() => {});
-    return cached;
-  }
-  const res = await network;
-  if (res) return res;
-  // Offline + pas de cache : renvoyer une enveloppe JSON minimale pour que
-  // l'app puisse distinguer ce cas de l'erreur HTTP.
-  return new Response(JSON.stringify({ ok: false, error: 'offline', offline: true }), {
-    status: 503,
-    headers: { 'Content-Type': 'application/json' },
-  });
 }
 
 async function notifyClients(payload) {

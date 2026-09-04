@@ -79,4 +79,17 @@ function bootOffline() {
   return win;
 }
 
-module.exports = { createWindow, loadScript, bootOffline, makeLocalStorage };
+// Comme bootOffline, plus lib/offline-api.js par-dessus un window.api stub.
+// `sync.start()` est neutralisé : offline-api l'appelle en setTimeout(0) et il
+// poserait des listeners + un interval de 60 s qui garderaient node --test en
+// vie. Les tests appellent sync._drainOutbox() / _pullIncremental() directement.
+function bootOfflineApi(apiStub) {
+  const win = bootOffline();
+  win.sync.start = () => {};
+  win.api = apiStub;
+  win.netStatus = () => ({ online: true });
+  loadScript(win, 'lib/offline-api.js');
+  return win;
+}
+
+module.exports = { createWindow, loadScript, bootOffline, bootOfflineApi, makeLocalStorage };

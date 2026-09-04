@@ -218,7 +218,7 @@ Après échec corrigé : `sudo systemctl reset-failed certbot.service`
 ## Tests métier
 
 Lancer : `npm test` (utilise `node --test`, Node 20+ requis, zéro dépendance NPM).
-Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **174 tests**
+Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **214 tests**
 (métier FFESSM/Code du Sport + offline : outbox, offline-store, sync, dive-lifecycle, home-buckets + contextualisation check-list par milieu).
 
 ## Données métier
@@ -299,15 +299,68 @@ Routes : `GET /api/workspaces`, `POST /api/workspaces/join` (code, rate-limité
 Côté client : `lib/scope.js` expose `purgeLocalScope()` et `switchScope(id)`.
 **Toute bascule d'espace purge les caches locaux** — stores IndexedDB
 `divers/sites/dives/archives/meta`, snapshots `dp-cache-*`, et le cache SW
-`*-api`. Sans ça le membre verrait les données du scope précédent au premier
-paint (le SW sert `/api/divers`, `/api/sites`, `/api/dives` et `/api/sync/state`
-en stale-while-revalidate, keyés par URL seule) et hériterait d'un curseur
-`meta.sync` faussé. L'outbox est **conservée** mais la bascule est **refusée**
+`*-api` (le SW ne cache plus l'API — cf. « Service Worker et cache API » — mais
+un onglet resté sur un ancien SW peut encore en détenir un). Sans ça le membre
+verrait les données du scope précédent au premier paint et hériterait d'un
+curseur `meta.sync` faussé. L'outbox est **conservée** mais la bascule est **refusée**
 tant qu'elle n'est pas vide : ses items ne portent pas de scope et partiraient
 au mauvais endroit. `logout()` purge aussi (plusieurs moniteurs sur une tablette).
 
 Créer un stage suivant : Administration → Structures → nom + code, puis
 distribuer le code. Rien d'autre.
+
+## Service Worker et cache API
+
+**Le SW ne met AUCUN endpoint `/api/*` en cache** (`sw.js`) — tout est
+network-only. Le hors-ligne est assuré par `lib/offline-api.js`, qui retombe sur
+l'offlineStore (IndexedDB) dès qu'un fetch échoue.
+
+Ne pas réintroduire de stale-while-revalidate sur l'API. Le cache rendait chaque
+lecture vieille d'une requête, avec trois symptômes qui ressemblaient à des bugs
+métier :
+
+- un plongeur créé **disparaissait** de l'annuaire au refresh suivant
+  (`refreshDiversAndSites()` remplaçait l'état React par une liste d'avant la
+  création) et réapparaissait au refresh d'après ;
+- un plongeur supprimé **ressuscitait** dans l'offlineStore, réinjecté par une
+  réponse antérieure à la suppression ;
+- `/api/sync/state` renvoyait un curseur périmé, donc `pullIncremental` se
+  croyait à jour et sautait un cycle entier : les créations d'un autre moniteur
+  de la structure n'arrivaient qu'au 2ᵉ déclencheur de sync.
+
+`cache: 'no-store'` dans `api.js` ne protège pas de ça — cette option contourne
+le cache HTTP de Chrome, pas le Service Worker.
+
+## Synchronisation — garanties
+
+- **Push immédiat** : `outbox.enqueue()` pose `nextRetryAt = Date.now()` et émet
+  `dp:outboxChanged`, que `sync.start()` écoute → le POST part dans le même tick,
+  sans timer ni backoff.
+- **Reprise après interruption** : `outbox.recoverInflight()`, appelée au boot
+  avant le premier cycle, repasse en `pending` les items restés `inflight` (onglet
+  fermé pendant l'envoi). Sans elle `ready()` les excluait à vie et la saisie
+  était perdue en silence. Le rejeu est sûr : tous les endpoints d'écriture sont
+  idempotents (upsert sur id client, dédup `client_uuid`, soft-delete).
+- **Pull périodique** : cycle toutes les 60 s tant que l'onglet est visible
+  (`PULL_INTERVAL_MS` dans `lib/sync.js`). Les autres déclencheurs (boot, online,
+  visibilitychange, outbox) ne suffisent pas pour un moniteur qui laisse l'app
+  ouverte au premier plan pendant que les autres saisissent.
+- **Auto-save coalescé** : `dive.update` passe un `coalesceKey = client_uuid` à
+  `outbox.enqueue()`. Les patchs successifs fusionnent dans le même item au lieu
+  d'empiler un PATCH par sauvegarde (une toutes les 500 ms). Le backoff et la
+  place FIFO de l'item sont préservés. Un item `inflight` n'absorbe rien : ce qui
+  est saisi pendant l'envoi part dans un second item.
+- **Pas d'écrasement de la saisie en cours** : le handler `dive.update` ne
+  repasse la fiche à `_pending: false` que si plus aucune écriture ne l'attend
+  dans l'outbox — sinon le pull incrémental écraserait des modifications pas
+  encore poussées.
+- **Le pull des fiches fusionne, il ne remplace pas** : `GET /api/dives?since=`
+  ne renvoie que le résumé (ni `answers`, ni `palanquees`, ni `render_state`) ; un
+  `put` sec viderait la fiche en cache — invisible en ligne, fatal hors-ligne.
+- **Limite connue** : la résolution de conflit est un *dernier écrivain gagne* au
+  niveau du document. Deux moniteurs qui éditent **la même** fiche en même temps
+  s'écrasent mutuellement. Créer des fiches différentes en parallèle, ou en
+  modifier une chacun son tour, est sûr.
 
 ## Pièges connus
 
@@ -347,4 +400,8 @@ distribuer le code. Rien d'autre.
   déploiement est manuel (`npm run build`, bump manuel de `VERSION` dans `sw.js`,
   puis `rsync dist/`). Idem backend : `rsync backend/` en excluant `config.php`
   et `vendor/`.
+- **Curseurs de sync** : `Date.parse(x || 0)` vaut `Date.parse(0)` → « 2000-01-01 »,
+  pas 0. Une table vide côté serveur se croyait donc en retard et retirait tout
+  depuis 1970 à chaque cycle sans jamais pouvoir avancer son curseur. Passer par
+  `cursorTs()` dans `lib/sync.js`, jamais par un `||` nu.
 - **Outbox kinds** : `dive.create`, `dive.update`, `dive.delete`, `dive.drive` (drive registered par ScreenArchive) ; `diver.create`, `diver.update`, `diver.delete` ; `site.create`, `site.update`, `site.delete`. Handlers dans `lib/sync.js` (`DEFAULT_HANDLERS`).

@@ -138,3 +138,103 @@ describe('sync — offline guard', () => {
     assert.equal(await win.outbox.size(), 1);
   });
 });
+
+describe('sync — pull incrémental des fiches de sécurité', () => {
+  // GET /api/dives?since= ne renvoie que le résumé de la fiche (pas answers /
+  // palanquees / render_state). Le pull doit donc fusionner, pas remplacer.
+  const state = { divers: {}, sites: {}, dives: { updated_at: '2026-09-04T19:00:00' } };
+
+  test('le pull d\'une fiche modifiée ailleurs préserve son contenu local', async () => {
+    const u = 'uuid-1';
+    await win.offlineStore.put('dives', u, {
+      client_uuid: u, server_id: 42, site_nom: 'Hendaye',
+      answers: { dp_nom: 'Jallan' }, palanquees: [{ membres: [] }], synced: true,
+    });
+
+    mockFetch([
+      async () => ({ data: state }),
+      async () => ({ data: [{ id: 42, client_uuid: u, site_nom: 'Hendaye — bouée 3', status: 'in_progress' }] }),
+    ]);
+    await win.sync._pullIncremental();
+
+    const got = await win.offlineStore.get('dives', u);
+    assert.equal(got.site_nom, 'Hendaye — bouée 3', 'le résumé serveur est appliqué');
+    assert.equal(got.status, 'in_progress');
+    assert.deepEqual(got.answers, { dp_nom: 'Jallan' }, 'la fiche n\'est pas vidée');
+    assert.equal(got.palanquees.length, 1);
+  });
+
+  test('une fiche en cours de saisie (_pending) n\'est pas écrasée par le pull', async () => {
+    const u = 'uuid-1';
+    await win.offlineStore.put('dives', u, {
+      client_uuid: u, server_id: 42, site_nom: 'Local', _pending: true,
+    });
+    mockFetch([
+      async () => ({ data: state }),
+      async () => ({ data: [{ id: 42, client_uuid: u, site_nom: 'Serveur' }] }),
+    ]);
+    await win.sync._pullIncremental();
+    assert.equal((await win.offlineStore.get('dives', u)).site_nom, 'Local');
+  });
+});
+
+describe('sync — dive.update et saisie concurrente', () => {
+  test('la fiche reste _pending si une écriture attend encore', async () => {
+    const u = 'uuid-1';
+    await win.offlineStore.put('dives', u, { client_uuid: u, server_id: 42, _pending: true });
+    const first = await win.outbox.enqueue('dive.update', { client_uuid: u, patch: { answers: { a: 1 } } });
+    // L'utilisateur continue de saisir pendant l'envoi du premier patch.
+    await win.outbox.markInflight(first.id);
+    await win.outbox.enqueue('dive.update', { client_uuid: u, patch: { answers: { a: 2 } } });
+
+    mockFetch([async () => ({ data: { id: 42 } })]);
+    await win.sync._defaultHandlers['dive.update'](first);
+
+    assert.equal((await win.offlineStore.get('dives', u))._pending, true,
+      'sinon le pull écraserait la saisie pas encore poussée');
+  });
+
+  test('la fiche repasse à _pending=false quand la file est vide', async () => {
+    const u = 'uuid-1';
+    await win.offlineStore.put('dives', u, { client_uuid: u, server_id: 42, _pending: true });
+    const only = await win.outbox.enqueue('dive.update', { client_uuid: u, patch: { answers: { a: 1 } } });
+
+    mockFetch([async () => ({ data: { id: 42 } })]);
+    await win.sync._defaultHandlers['dive.update'](only);
+
+    assert.equal((await win.offlineStore.get('dives', u))._pending, false);
+  });
+});
+
+describe('sync — curseurs de pull', () => {
+  test('une table vide côté serveur ne déclenche aucun pull', async () => {
+    const calls = mockFetch([
+      async () => ({ data: { divers: {}, sites: {}, dives: {} } }),
+    ]);
+    await win.sync._pullIncremental();
+    assert.equal(calls.length, 1, 'seul /api/sync/state est appelé');
+  });
+
+  test('rien de neuf depuis le dernier passage → aucun pull', async () => {
+    await win.offlineStore.put('meta', 'sync', { divers: '2026-09-04T19:00:00' });
+    const calls = mockFetch([
+      async () => ({ data: { divers: { updated_at: '2026-09-04T19:00:00' }, sites: {}, dives: {} } }),
+    ]);
+    await win.sync._pullIncremental();
+    assert.equal(calls.length, 1);
+  });
+
+  test('une création côté serveur est tirée et fait avancer le curseur', async () => {
+    await win.offlineStore.put('meta', 'sync', { divers: '2026-09-04T19:00:00' });
+    const calls = mockFetch([
+      async () => ({ data: { divers: { updated_at: '2026-09-04T19:11:22' }, sites: {}, dives: {} } }),
+      async () => ({ data: [{ id: 'd-9', nom: 'Valbuena', prenom: 'Alain' }] }),
+    ]);
+    await win.sync._pullIncremental();
+
+    assert.equal(calls.length, 2);
+    assert.match(calls[1].url, /^\/api\/divers\?since=/);
+    assert.equal((await win.offlineStore.get('divers', 'd-9')).nom, 'Valbuena');
+    assert.equal((await win.offlineStore.get('meta', 'sync')).divers, '2026-09-04T19:11:22');
+  });
+});

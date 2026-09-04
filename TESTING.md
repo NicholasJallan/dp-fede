@@ -32,6 +32,10 @@ tests/
   dp-rules.test.js    ← couverture getDpMaxDepth, getProfOptions, getAvailableMelanges
   aptitudes.test.js   ← couverture getDiverAptitudes, aptitudeMaxDepth, getMilieuType, getPalType, sortMembresForFiche
   depth-clamp.test.js ← couverture computePalHardLimit, clampProfMax
+  outbox.test.js      ← queue offline : backoff, coalescing auto-save, reprise des envois interrompus
+  sync.test.js        ← drain outbox, curseurs de pull, saisie concurrente sur une fiche
+  offline-api.test.js ← réconciliation annuaire réseau ↔ local (création visible, fantômes purgés)
+  offline-store.test.js, scope-purge.test.js, dive-lifecycle.test.js, home-buckets.test.js
 ```
 
 ### Pourquoi `node --test` plutôt que Jest/Vitest ?
@@ -99,7 +103,7 @@ describe('Ma nouvelle règle', () => {
 
 ## Couverture
 
-État actuel : **176+ tests, 40 suites**, ~100 ms d'exécution (node 20 sans aucune dépendance NPM).
+État actuel : **214 tests, 48 suites**, ~100 ms d'exécution (node 20 sans aucune dépendance NPM).
 
 Modules couverts :
 

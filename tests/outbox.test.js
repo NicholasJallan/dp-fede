@@ -102,3 +102,89 @@ describe('outbox — markDone / markFailed / backoff exp', () => {
     assert.equal(got.attempts, 20);
   });
 });
+
+describe('outbox — coalescing (auto-save des fiches)', () => {
+  const coalesce = (uuid) => ({
+    coalesceKey:  uuid,
+    mergePayload: (prev, next) => ({ client_uuid: uuid, patch: { ...prev.patch, ...next.patch } }),
+  });
+
+  test('deux dive.update sur la même fiche fusionnent en un seul item', async () => {
+    const u = 'uuid-1';
+    await win.outbox.enqueue('dive.update', { client_uuid: u, patch: { answers: { a: 1 } } }, coalesce(u));
+    await win.outbox.enqueue('dive.update', { client_uuid: u, patch: { palanquees: [] } },   coalesce(u));
+
+    assert.equal(await win.outbox.size(), 1);
+    const [item] = await win.outbox.pending();
+    assert.deepEqual(item.payload.patch, { answers: { a: 1 }, palanquees: [] });
+  });
+
+  test('le dernier patch gagne sur un champ déjà présent', async () => {
+    const u = 'uuid-1';
+    await win.outbox.enqueue('dive.update', { client_uuid: u, patch: { status: 'prepared' } },    coalesce(u));
+    await win.outbox.enqueue('dive.update', { client_uuid: u, patch: { status: 'in_progress' } }, coalesce(u));
+    const [item] = await win.outbox.pending();
+    assert.equal(item.payload.patch.status, 'in_progress');
+  });
+
+  test('deux fiches différentes ne fusionnent pas', async () => {
+    await win.outbox.enqueue('dive.update', { client_uuid: 'a', patch: { x: 1 } }, coalesce('a'));
+    await win.outbox.enqueue('dive.update', { client_uuid: 'b', patch: { x: 2 } }, coalesce('b'));
+    assert.equal(await win.outbox.size(), 2);
+  });
+
+  test('un item inflight n\'absorbe pas les nouvelles écritures', async () => {
+    const u = 'uuid-1';
+    const first = await win.outbox.enqueue('dive.update', { client_uuid: u, patch: { a: 1 } }, coalesce(u));
+    await win.outbox.markInflight(first.id);
+    await win.outbox.enqueue('dive.update', { client_uuid: u, patch: { b: 2 } }, coalesce(u));
+    assert.equal(await win.outbox.size(), 2, 'la saisie faite pendant l\'envoi part dans un 2e item');
+  });
+
+  test('la fusion préserve le backoff et la place FIFO', async () => {
+    const u = 'uuid-1';
+    const first = await win.outbox.enqueue('dive.update', { client_uuid: u, patch: { a: 1 } }, coalesce(u));
+    await win.outbox.markFailed(first.id, new Error('réseau'));
+    const failed = await win.outbox.get(first.id);
+
+    const merged = await win.outbox.enqueue('dive.update', { client_uuid: u, patch: { b: 2 } }, coalesce(u));
+    assert.equal(merged.id, first.id);
+    assert.equal(merged.attempts, 1, 'compteur d\'échecs conservé');
+    assert.equal(merged.nextRetryAt, failed.nextRetryAt, 'pas de retry immédiat sur un serveur en échec');
+    assert.equal(merged.createdAt, first.createdAt, 'reste à sa place dans le FIFO');
+  });
+
+  test('sans coalesceKey, le comportement historique est inchangé', async () => {
+    await win.outbox.enqueue('diver.create', { id: 'a' });
+    await win.outbox.enqueue('diver.create', { id: 'a' });
+    assert.equal(await win.outbox.size(), 2);
+  });
+});
+
+describe('outbox — récupération des items interrompus en vol', () => {
+  test('recoverInflight repasse les inflight en pending', async () => {
+    const it = await win.outbox.enqueue('diver.create', { id: 'd-1', nom: 'Valbuena' });
+    await win.outbox.markInflight(it.id);
+    assert.equal((await win.outbox.ready()).length, 0, 'invisible tant qu\'inflight');
+
+    const n = await win.outbox.recoverInflight();
+    assert.equal(n, 1);
+    const ready = await win.outbox.ready();
+    assert.equal(ready.length, 1, 'le plongeur repart après rechargement de l\'app');
+    assert.equal(ready[0].payload.nom, 'Valbuena');
+  });
+
+  test('recoverInflight ne touche pas les items pending', async () => {
+    const it = await win.outbox.enqueue('diver.create', { id: 'a' });
+    await win.outbox.markFailed(it.id, new Error('x'));
+    const before = await win.outbox.get(it.id);
+    assert.equal(await win.outbox.recoverInflight(), 0);
+    assert.deepEqual(await win.outbox.get(it.id), before);
+  });
+
+  test('nextWakeMs ignore les inflight (pas de réveil en boucle à vide)', async () => {
+    const it = await win.outbox.enqueue('diver.create', { id: 'a' });
+    await win.outbox.markInflight(it.id);
+    assert.equal(await win.outbox.nextWakeMs(), null, 'aucun réveil à programmer');
+  });
+});

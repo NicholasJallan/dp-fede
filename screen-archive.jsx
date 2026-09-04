@@ -9,9 +9,13 @@ import { Alert, diverFullName, formatDateTime } from './components.jsx';
 // ---------------------------------------------------------------------------
 function ScreenArchive({ answers, palanquees, divers, user, pressions, realises, heuresDebut, heuresFin, checked, comments, plongeeFigee, onStartNew, onArchiveDone, diveId }) {
   const { showToast } = useToasts();
+  // Session BEPPA Hendaye 2026 : pas d'archivage Google Drive, juste les PDF
+  // à télécharger. cf. workspaces.php::wsSlugify('BEPPA Hendaye 2026').
+  const isBeppaHendaye = user?.workspace?.slug === 'beppa-hendaye-2026';
   // ficheRef / checklistRef supprimés — PDF rendu côté serveur (C1.2)
   const [status,         setStatus]         = useState('idle');
   const [driveLinks,     setDriveLinks]     = useState({ fiche:'', checklist:'' });
+  const [pdfLinks,       setPdfLinks]       = useState({ fiche:'', checklist:'' });
   const [error,          setError]          = useState('');
   // true uniquement si la plongée était déjà archivée AVANT d'arriver sur cet
   // écran (chargement depuis l'historique). Distinct de plongeeFigee qui est
@@ -52,6 +56,7 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
           date_plongee: answers.date || '',
           answers,
           palanquees:   enrichedPals,
+          drive_synced: isBeppaHendaye,
           render_state: { pressions, realises, heuresDebut, heuresFin, checked, comments },
         });
       } else {
@@ -65,6 +70,7 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
           answers,
           palanquees:   enrichedPals,
           drive_link:   '',
+          drive_synced: isBeppaHendaye,
           render_state: { pressions, realises, heuresDebut, heuresFin, checked, comments },
         });
       }
@@ -199,6 +205,76 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
     }
   };
 
+  // Session BEPPA Hendaye : fiche + check-list en PDF, téléchargement direct,
+  // aucun appel Drive/GIS. drive_synced:true empêche le dive de réapparaître
+  // dans « Finaliser sur Drive » sur l'accueil (cf. offline-api.js).
+  const doPdfOnly = async () => {
+    setStatus('generating'); setError('');
+    try {
+      const csrf = window.getCsrfToken ? window.getCsrfToken() : '';
+      if (diveId) {
+        await fetch(`/api/dives/${diveId}`, {
+          method: 'PATCH', credentials: 'include',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+          body: JSON.stringify({ render_state: { pressions, realises, heuresDebut, heuresFin, checked, comments } }),
+        });
+      }
+      const fichePdf     = await generatePdfBlob('fiche');
+      const checklistPdf = await generatePdfBlob('checklist');
+
+      setStatus('saving');
+      const diversById = {};
+      divers.forEach(d => { diversById[d.id] = d; });
+      const enrichedPals = palanquees.map(p => ({
+        ...p,
+        membres: (p.membres || []).map(m => {
+          const d = diversById[m.diverId] || {};
+          return { ...m, nom: d.nom || '?', prenom: d.prenom || '', licence: d.licence || '' };
+        })
+      }));
+      const archivePayload = {
+        status:       'archived',
+        closed_at:    new Date().toISOString(),
+        site_nom:     answers.site_nom || answers.site || '',
+        dp_nom:       answers.dp_nom || '',
+        dp_qual:      answers.dp_qual || '',
+        activite:     answers.activite || '',
+        date_plongee: answers.date || '',
+        answers,
+        palanquees:   enrichedPals,
+        drive_synced: true,
+        render_state: { pressions, realises, heuresDebut, heuresFin, checked, comments },
+      };
+      if (diveId) {
+        await api.dives.update(diveId, archivePayload);
+      } else {
+        await api.dives.create(archivePayload);
+      }
+
+      setPdfLinks({ fiche: URL.createObjectURL(fichePdf), checklist: URL.createObjectURL(checklistPdf) });
+      setStatus('done');
+      if (onArchiveDone) onArchiveDone();
+    } catch (err) {
+      setError(err.message);
+      setStatus('error');
+    }
+  };
+
+  // Régénère les PDF d'une plongée déjà archivée (pas de lien sauvegardé
+  // puisqu'il n'y a jamais eu d'upload Drive à mémoriser).
+  const regeneratePdfs = async () => {
+    setStatus('generating'); setError('');
+    try {
+      const fichePdf     = await generatePdfBlob('fiche');
+      const checklistPdf = await generatePdfBlob('checklist');
+      setPdfLinks({ fiche: URL.createObjectURL(fichePdf), checklist: URL.createObjectURL(checklistPdf) });
+      setStatus('done');
+    } catch (err) {
+      setError(err.message);
+      setStatus('error');
+    }
+  };
+
   // Vérifie si la plongée est déjà archivée (visite depuis l'historique), puis
   // marque initialized=true pour débloquer le déclenchement de doArchive().
   // Ne lance PAS doArchive() directement : c'est l'effet [initialized, online]
@@ -225,7 +301,7 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
   useEffect(() => {
     if (!initialized) return;
     if (!alreadyArchived && online && (status === 'idle' || status === 'error')) {
-      doArchive();
+      if (isBeppaHendaye) doPdfOnly(); else doArchive();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialized, online]);
@@ -245,13 +321,15 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
         <div className="eyebrow">Étape 5 / 5 · Archiver</div>
         <h1>Archiver la plongée</h1>
         <p>
-          Génère la fiche de sécurité et la check-list en PDF et les dépose dans votre Google Drive
-          (dossier <code>dp-fede</code>, créé automatiquement si absent).
+          {isBeppaHendaye
+            ? 'Génère la fiche de sécurité et la check-list en PDF, à télécharger directement (session BEPPA Hendaye 2026 — pas d\'archivage Google Drive).'
+            : <>Génère la fiche de sécurité et la check-list en PDF et les dépose dans votre Google Drive
+               (dossier <code>dp-fede</code>, créé automatiquement si absent).</>}
         </p>
       </div>
 
       <div className="card">
-        <div className="card-head"><h2>Export Google Drive</h2></div>
+        <div className="card-head"><h2>{isBeppaHendaye ? 'Fiche PDF' : 'Export Google Drive'}</h2></div>
         <div className="card-body" style={{ display:'grid', gap:16 }}>
 
           {/* Avancement */}
@@ -263,18 +341,20 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
             </div>
           )}
 
-          {/* Erreur → réessayer Drive ou archiver localement */}
+          {/* Erreur → réessayer, ou archiver sans Drive (hors BEPPA Hendaye) */}
           {status === 'error' && (
             <>
               <Alert tone="warn">Erreur : {error}</Alert>
               <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-                <button className="btn primary" onClick={doArchive}>↑ Réessayer Drive</button>
-                <button className="btn" onClick={saveOffline}>✓ Archiver sans Drive</button>
+                <button className="btn primary" onClick={isBeppaHendaye ? doPdfOnly : doArchive}>
+                  {isBeppaHendaye ? '↻ Réessayer' : '↑ Réessayer Drive'}
+                </button>
+                {!isBeppaHendaye && <button className="btn" onClick={saveOffline}>✓ Archiver sans Drive</button>}
               </div>
             </>
           )}
 
-          {/* Hors ligne → file d'attente */}
+          {/* Hors ligne → file d'attente (BEPPA Hendaye : PDF nécessite aussi le réseau) */}
           {!online && status === 'idle' && (
             <div style={{
               display:'grid', gap:10, padding:'14px 16px',
@@ -283,11 +363,15 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
             }}>
               <div style={{ fontWeight:600, color:'var(--coral, #e07856)' }}>● Hors ligne</div>
               <div>
-                Le dépôt Drive et la génération PDF nécessitent internet.
-                Enregistrez en file d'attente — tout sera produit automatiquement à la reconnexion.
+                {isBeppaHendaye
+                  ? 'La génération des PDF nécessite internet (rendu côté serveur).'
+                  : 'Le dépôt Drive et la génération PDF nécessitent internet.'}
+                {' '}Enregistrez en file d'attente — tout sera produit automatiquement à la reconnexion.
               </div>
               <div>
-                <button className="btn primary" onClick={saveOffline}>✓ Enregistrer (Drive plus tard)</button>
+                <button className="btn primary" onClick={saveOffline}>
+                  {isBeppaHendaye ? '✓ Enregistrer (PDF plus tard)' : '✓ Enregistrer (Drive plus tard)'}
+                </button>
               </div>
             </div>
           )}
@@ -308,42 +392,64 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
             </div>
           )}
 
-          {/* Archivage terminé — liens Drive uniquement, pas de boutons PDF redondants */}
+          {/* Archivage terminé — liens Drive, ou téléchargement PDF direct (BEPPA Hendaye) */}
           {status === 'done' && (
             <div style={{ display:'grid', gap:12 }}>
               <Alert tone="ok">
-                Plongée archivée · 2 fichiers déposés dans <code>dp-fede</code>.
+                {isBeppaHendaye
+                  ? 'Plongée archivée · fiche de sécurité et check-list générées en PDF.'
+                  : <>Plongée archivée · 2 fichiers déposés dans <code>dp-fede</code>.</>}
               </Alert>
               <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-                {driveLinks.fiche     && (
-                  <a href={driveLinks.fiche}     target="_blank" rel="noopener noreferrer" className="btn">
-                    ↗ Fiche de sécurité
-                  </a>
-                )}
-                {driveLinks.checklist && (
-                  <a href={driveLinks.checklist} target="_blank" rel="noopener noreferrer" className="btn">
-                    ↗ Check-list
-                  </a>
+                {isBeppaHendaye ? (
+                  <>
+                    {pdfLinks.fiche && (
+                      <a href={pdfLinks.fiche} download={buildFilename('fiche-securite')} className="btn">
+                        ⬇ Fiche de sécurité
+                      </a>
+                    )}
+                    {pdfLinks.checklist && (
+                      <a href={pdfLinks.checklist} download={buildFilename('checklist')} className="btn">
+                        ⬇ Check-list
+                      </a>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {driveLinks.fiche     && (
+                      <a href={driveLinks.fiche}     target="_blank" rel="noopener noreferrer" className="btn">
+                        ↗ Fiche de sécurité
+                      </a>
+                    )}
+                    {driveLinks.checklist && (
+                      <a href={driveLinks.checklist} target="_blank" rel="noopener noreferrer" className="btn">
+                        ↗ Check-list
+                      </a>
+                    )}
+                  </>
                 )}
               </div>
               <div><button className="btn primary" onClick={onStartNew}>↩ Nouvelle plongée</button></div>
             </div>
           )}
 
-          {/* Plongée déjà archivée au chargement — lien Drive récupéré, pas de régénération */}
+          {/* Plongée déjà archivée au chargement */}
           {alreadyArchived && status === 'idle' && (
             <div style={{ display:'grid', gap:12 }}>
               <Alert tone="ok">Plongée déjà archivée.</Alert>
-              {savedDriveLink
-                ? (
-                  <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-                    <a href={savedDriveLink} target="_blank" rel="noopener noreferrer" className="btn">
-                      ↗ Ouvrir dans Google Drive
-                    </a>
-                  </div>
-                )
-                : <p style={{ margin:0, fontSize:13, color:'var(--ink-3)' }}>Lien Drive non disponible pour cette archive.</p>
-              }
+              {isBeppaHendaye ? (
+                <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                  <button className="btn primary" onClick={regeneratePdfs}>↻ Régénérer les PDF</button>
+                </div>
+              ) : savedDriveLink ? (
+                <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                  <a href={savedDriveLink} target="_blank" rel="noopener noreferrer" className="btn">
+                    ↗ Ouvrir dans Google Drive
+                  </a>
+                </div>
+              ) : (
+                <p style={{ margin:0, fontSize:13, color:'var(--ink-3)' }}>Lien Drive non disponible pour cette archive.</p>
+              )}
             </div>
           )}
 

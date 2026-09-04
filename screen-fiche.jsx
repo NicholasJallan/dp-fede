@@ -1,6 +1,6 @@
 // DP Assistant — Fiche de sécurité (Art. A322-72)
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from './auth-context.jsx';
 import { useToasts } from './toast.jsx';
 import { Alert, CdsLink, diverFullName, formatDateTime } from './components.jsx';

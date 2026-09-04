@@ -160,7 +160,9 @@ HTML;
      */
     public static function generate(string $html): string
     {
-        // mPDF est chargé via l'autoloader Composer (/vendor/autoload.php inclus par index.php)
+        // mPDF est chargé via un autoloader restreint (jamais vendor/autoload.php,
+        // dont le platform_check casse sous PHP 7.4 — cf. lib/PdfAutoload.php).
+        require_once __DIR__ . '/PdfAutoload.php';
         $mpdf = new \Mpdf\Mpdf([
             'mode'          => 'utf-8',
             'format'        => 'A4',

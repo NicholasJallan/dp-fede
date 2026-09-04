@@ -63,7 +63,7 @@ foreach ($palanquees as $p) {
 
 // Sécurité surface
 $secItems = [];
-$secItems[] = '• Sécurité surface : <b>' . ($answers['sec_surface'] ? 'Présente' : 'Non identifiée') . '</b>';
+$secItems[] = '• Sécurité surface : <b>' . (!empty($answers['sec_surface']) ? 'Présente' : 'Non identifiée') . '</b>';
 if (!empty($answers['sec_surface_membres']) && is_array($answers['sec_surface_membres'])) {
     $names = array_filter(array_map(fn($id) => isset($diversById[$id]) ? PdfRender::diverFullName($diversById[$id]) : null, $answers['sec_surface_membres']));
     if ($names) $secItems[] = '• Plongeurs surveillance : <b>' . implode(', ', $names) . '</b>';

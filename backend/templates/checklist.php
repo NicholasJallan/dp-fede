@@ -35,7 +35,7 @@ $milieu  = $answers['milieu'] ?? null;
 $isMilieuNaturel = !in_array(PdfRender::h($milieu ?? ''), [], true)
     && !in_array(strtolower($milieu ?? ''), ['piscine', 'fosse'], true);
 
-function matchCond(mixed $when, array $a): bool {
+function matchCond($when, array $a): bool {
     if (!$when) return true;
     if ($when === null) return true;
     // Pour les conditions tableau simples (équivalent des objets JS {key:true})

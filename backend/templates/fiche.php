@@ -10,7 +10,7 @@ declare(strict_types=1);
  *   $user       array   Utilisateur courant (club_nom, structure_type, ...)
  */
 
-$h   = fn(?string $v): string => PdfRender::h($v);
+$h   = fn($v): string => PdfRender::h($v);
 $fmt = fn(?string $v): string => PdfRender::formatDateTime($v);
 
 $siteName = $answers['site_nom'] ?? $answers['site'] ?? '—';

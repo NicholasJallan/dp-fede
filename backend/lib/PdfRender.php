@@ -67,8 +67,13 @@ table td { border-bottom: 1px solid #e2e8f0; padding: 7px 8px; vertical-align: t
 CSS;
     }
 
-    /** Échappe une valeur pour HTML. */
-    public static function h(?string $v): string
+    /**
+     * Échappe une valeur pour HTML. Pas de type déclaré : $answers vient du JSON
+     * stocké en DB, où un champ de formulaire `type:'number'` (ex. distance_cote)
+     * arrive en int/float, pas en string — un ?string strict ferait planter le
+     * rendu PDF (strict_types=1 n'autorise pas la coercition implicite).
+     */
+    public static function h($v): string
     {
         return htmlspecialchars((string)$v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }

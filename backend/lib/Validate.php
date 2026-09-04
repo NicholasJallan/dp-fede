@@ -45,8 +45,8 @@ class Validate {
         if ($this->errors) Json::abort(422, implode('; ', $this->errors));
     }
 
-    public function str(string $key, string $default = ''): string {
-        return trim((string)($this->data[$key] ?? $default));
+    public function str(string $key, ?string $default = ''): string {
+        return trim((string)($this->data[$key] ?? $default ?? ''));
     }
 
     public function nullable(string $key): ?string {

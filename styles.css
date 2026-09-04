@@ -1609,6 +1609,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   padding: 28px 28px 20px;
   border-bottom: 1px solid var(--line);
   background: var(--marine-50);
+  flex-shrink: 0;
 }
 .splash-ffessm-logo {
   width: 52px;
@@ -1644,6 +1645,9 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   padding: 20px 28px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 @media (max-width: 560px) {
   .splash-cards { grid-template-columns: 1fr; }
@@ -1686,6 +1690,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   border-top: 1px solid var(--line);
   padding: 16px 28px;
   justify-content: center;
+  flex-shrink: 0;
 }
 .splash-foot .btn.primary { min-width: 160px; }
 

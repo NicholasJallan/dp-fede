@@ -11,7 +11,7 @@ if ($method === 'GET' && $path === '/api/users') {
     $rows = Db::all(
         'SELECT id,email,nom,prenom,role,club_nom,club_numero,club_siret,
                 created_at,last_login
-         FROM users ORDER BY created_at'
+         FROM users WHERE kind = \'person\' ORDER BY created_at'
     );
     Json::ok($rows);
 }
@@ -27,6 +27,7 @@ if ($method === 'GET' && $path === '/api/users/stats') {
           (SELECT COUNT(*) FROM sites  s WHERE s.user_id=u.id AND s.deleted_at IS NULL) AS nb_sites,
           (SELECT COUNT(*) FROM dives  v WHERE v.user_id=u.id AND v.deleted_at IS NULL) AS nb_fiches
         FROM users u
+        WHERE u.kind = \'person\'
         ORDER BY u.created_at DESC
     ');
     Json::ok($rows);

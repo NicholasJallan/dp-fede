@@ -39,6 +39,12 @@ if ($method === 'POST' && $path === '/api/auth/google') {
     RateLimit::hitOrAbort('login', 10, 900, 'Trop de tentatives. Réessayez dans 15 minutes.');
 }
 
+// Rate-limit sur le code d'invitation d'une structure : sans ça un code court
+// se brute-force. 10 essais / 15 min / IP, comme le login.
+if ($method === 'POST' && $path === '/api/workspaces/join') {
+    RateLimit::hitOrAbort('wsjoin', 10, 900, 'Trop d\'essais. Réessayez dans 15 minutes.');
+}
+
 // Rate-limit écriture (POST/PATCH/DELETE) sur les ressources métier.
 // 120 mutations/min par IP — couvre largement un usage normal (auto-save
 // debouncé 500 ms + outbox drain ~3 items/s) mais coupe les abus.
@@ -55,7 +61,7 @@ if (in_array($method, $writeMethods, true)) {
 
 // Router — load matching route file
 $routed = false;
-foreach (['auth','divers','sites','users','dives','sync','pdf','proxy','csp'] as $r) {
+foreach (['auth','workspaces','divers','sites','users','dives','sync','pdf','proxy','csp'] as $r) {
     $file = __DIR__ . "/routes/{$r}.php";
     require $file;
 }

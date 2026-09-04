@@ -57,6 +57,16 @@ const api = {
     setRole:    (id, role)   => apiFetch(`/users/${id}/role`, { method: 'PATCH', body: { role } }),
     delete:     (id)         => apiFetch(`/users/${id}`, { method: 'DELETE', body: {} }),
   },
+  workspaces: {
+    // Structures partagées : le scope actif est porté par la session côté
+    // serveur, pas par le client — d'où l'absence d'id dans les autres appels.
+    list:     ()      => apiFetch('/workspaces'),
+    all:      ()      => apiFetch('/workspaces/all'),
+    join:     (code)  => apiFetch('/workspaces/join', { method: 'POST', body: { code } }),
+    activate: (id)    => apiFetch('/workspaces/activate', { method: 'POST', body: { workspace_id: id } }),
+    create:   (d)     => apiFetch('/workspaces', { method: 'POST', body: d }),
+    leave:    (id)    => apiFetch(`/workspaces/${id}/members/me`, { method: 'DELETE', body: {} }),
+  },
   dives: {
     list:   ()           => apiFetch('/dives'),
     get:    (id)         => apiFetch(`/dives/${id}`),

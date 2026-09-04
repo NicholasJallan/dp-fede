@@ -12,6 +12,12 @@ function ScreenAdminUsers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
+  // Structures partagées : un stage / club dont les membres mettent en commun
+  // annuaire, sites et fiches. Créer une structure = une ligne + un code.
+  const [workspaces, setWorkspaces] = useState([]);
+  const [wsForm, setWsForm] = useState({ name: '', join_code: '' });
+  const [wsBusy, setWsBusy] = useState(false);
+  const [wsError, setWsError] = useState('');
 
   const isSuperAdmin = me?.email === SUPER_ADMIN_EMAIL;
 
@@ -21,7 +27,25 @@ function ScreenAdminUsers() {
       .then(setStats)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
+    api.workspaces.all().then(setWorkspaces).catch(() => {});
   }, [isSuperAdmin]);
+
+  async function createWorkspace(ev) {
+    ev.preventDefault();
+    setWsError(''); setWsBusy(true);
+    try {
+      const ws = await api.workspaces.create({
+        name: wsForm.name.trim(),
+        join_code: wsForm.join_code.trim().toUpperCase(),
+      });
+      setWorkspaces(list => [ws, ...list]);
+      setWsForm({ name: '', join_code: '' });
+    } catch (e) {
+      setWsError(e.message);
+    } finally {
+      setWsBusy(false);
+    }
+  }
 
   if (!isSuperAdmin) {
     return (
@@ -70,6 +94,53 @@ function ScreenAdminUsers() {
 
       {error && <Alert tone="warn">{error}</Alert>}
       {loading && <div className="muted">Chargement…</div>}
+
+      <div className="card">
+        <div className="card-head"><h2>Structures partagées</h2>
+          <span className="hint">{workspaces.length} structure{workspaces.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div className="card-body">
+          <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
+            Les membres d'une structure partagent le même annuaire de plongeurs,
+            les mêmes sites et les mêmes fiches de sécurité. Ils la rejoignent
+            avec le code d'invitation, à la connexion.
+          </p>
+
+          {workspaces.map(ws => (
+            <div className="diver-admin-row" key={ws.id}>
+              <div className="info">
+                <b>{ws.name}</b>
+                <div className="meta-row">
+                  <Pill tone="marine">{ws.join_code}</Pill>
+                  <span className="muted" style={{ fontSize: 12 }}>
+                    {ws.members_count} membre{ws.members_count !== 1 ? 's' : ''} ·{' '}
+                    {ws.divers_count || 0} plongeur{ws.divers_count !== 1 ? 's' : ''} ·{' '}
+                    {ws.dives_count || 0} fiche{ws.dives_count !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+          {workspaces.length === 0 && <div className="empty">Aucune structure.</div>}
+
+          <form onSubmit={createWorkspace} style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <input className="input" style={{ flex: '2 1 200px' }}
+              placeholder="Nom (ex. BEPPA Hendaye 2026)"
+              value={wsForm.name}
+              onChange={e => setWsForm({ ...wsForm, name: e.target.value })} />
+            <input className="input" style={{ flex: '1 1 160px' }}
+              placeholder="Code (ex. BEPPA-2026)"
+              value={wsForm.join_code}
+              autoCapitalize="characters" autoCorrect="off" spellCheck="false"
+              onChange={e => setWsForm({ ...wsForm, join_code: e.target.value.toUpperCase() })} />
+            <button className="btn primary" type="submit"
+              disabled={wsBusy || wsForm.name.trim().length < 2 || wsForm.join_code.trim().length < 3}>
+              Créer
+            </button>
+          </form>
+          {wsError && <Alert tone="warn">{wsError}</Alert>}
+        </div>
+      </div>
 
       <div className="diver-admin-list">
         {stats.map(u => (

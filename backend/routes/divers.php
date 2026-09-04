@@ -19,13 +19,13 @@ if ($method === 'GET' && $path === '/api/divers') {
             'SELECT * FROM divers
              WHERE user_id=? AND (updated_at >= ? OR deleted_at >= ?)
              ORDER BY nom, prenom',
-            [$user['id'], $sinceSql, $sinceSql]
+            [$user['scope_id'], $sinceSql, $sinceSql]
         );
     } else {
         // Liste « live » : on exclut les soft-deletes côté snapshot complet.
         $rows = Db::all(
             'SELECT * FROM divers WHERE user_id=? AND deleted_at IS NULL ORDER BY nom, prenom',
-            [$user['id']]
+            [$user['scope_id']]
         );
     }
     Json::ok(array_map('decodeDiver', $rows));
@@ -51,7 +51,7 @@ if ($method === 'POST' && $path === '/api/divers') {
     $id       = $clientId && SyncHelpers::isValidUuid($clientId) ? $clientId : Db::uuid();
 
     $params = [
-        $id, $user['id'],
+        $id, $user['scope_id'], $user['id'],
         $v->str('nom'), $v->str('prenom'), $v->str('licence'),
         buildLegacyNiveau($v),
         $v->nullable('niveau_plongeur'), $v->nullable('niveau_encadrant'),
@@ -60,10 +60,15 @@ if ($method === 'POST' && $path === '/api/divers') {
         $v->nullable('medical'), $v->str('notes'),
     ];
 
+    // Les ids sont fournis par le client et deviennent visibles entre membres
+    // d'une structure : sans cette garde, un upsert pourrait écraser une ligne
+    // appartenant à un autre scope.
+    wsRejectForeignId('divers', $id, (int)$user['scope_id']);
+
     Db::q(
         'INSERT INTO divers
-           (id, user_id, nom, prenom, licence, niveau, niveau_plongeur, niveau_encadrant, qualifs, aptitudes_sup, medical, notes)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+           (id, user_id, created_by, nom, prenom, licence, niveau, niveau_plongeur, niveau_encadrant, qualifs, aptitudes_sup, medical, notes)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
          ON DUPLICATE KEY UPDATE
            nom=VALUES(nom), prenom=VALUES(prenom), licence=VALUES(licence),
            niveau=VALUES(niveau), niveau_plongeur=VALUES(niveau_plongeur),
@@ -73,13 +78,13 @@ if ($method === 'POST' && $path === '/api/divers') {
         // created_at n'est pas mis à jour : réactivation = même ressource logique.
         $params
     );
-    Json::ok(decodeDiver(Db::row('SELECT * FROM divers WHERE id=? AND user_id=?', [$id, $user['id']])), 201);
+    Json::ok(decodeDiver(Db::row('SELECT * FROM divers WHERE id=? AND user_id=?', [$id, $user['scope_id']])), 201);
 }
 
 // GET /api/divers/:id
 if ($method === 'GET' && preg_match('#^/api/divers/([^/]+)$#', $path, $m)) {
     $user = Auth::require();
-    $row  = ownerOrAbort($user['id'], $m[1]);
+    $row  = ownerOrAbort($user['scope_id'], $m[1]);
     Json::ok(decodeDiver($row));
 }
 
@@ -87,7 +92,7 @@ if ($method === 'GET' && preg_match('#^/api/divers/([^/]+)$#', $path, $m)) {
 if ($method === 'PUT' && preg_match('#^/api/divers/([^/]+)$#', $path, $m)) {
     Csrf::verify();
     $user = Auth::require();
-    ownerOrAbort($user['id'], $m[1]);
+    ownerOrAbort($user['scope_id'], $m[1]);
 
     $v = new Validate(Json::body());
     $v->required('nom', 'Nom')
@@ -110,7 +115,7 @@ if ($method === 'PUT' && preg_match('#^/api/divers/([^/]+)$#', $path, $m)) {
             json_encode(buildQualifs($v, $DIPLOMES_PRO, $RECYCLEURS_OK), JSON_UNESCAPED_UNICODE),
             json_encode($v->arr('aptitudes_sup'), JSON_UNESCAPED_UNICODE),
             $v->nullable('medical'), $v->str('notes'),
-            $m[1], $user['id'],
+            $m[1], $user['scope_id'],
         ]
     );
     Json::ok(decodeDiver(Db::row('SELECT * FROM divers WHERE id=?', [$m[1]])));
@@ -124,8 +129,8 @@ if ($method === 'PUT' && preg_match('#^/api/divers/([^/]+)$#', $path, $m)) {
 if ($method === 'DELETE' && preg_match('#^/api/divers/([^/]+)$#', $path, $m)) {
     Csrf::verify();
     $user = Auth::require();
-    ownerOrAbort($user['id'], $m[1]);
-    Db::q('UPDATE divers SET deleted_at=NOW() WHERE id=? AND user_id=?', [$m[1], $user['id']]);
+    ownerOrAbort($user['scope_id'], $m[1]);
+    Db::q('UPDATE divers SET deleted_at=NOW() WHERE id=? AND user_id=?', [$m[1], $user['scope_id']]);
     Log::action('diver.deleted', ['diver_id' => $m[1]]);
     Json::ok(null);
 }
@@ -185,3 +190,15 @@ function decodeDiver(array $row): array {
     return $row;
 }
 
+
+/**
+ * Refuse en 409 un upsert visant un id déjà détenu par un autre scope.
+ * Partagé par divers.php et sites.php (les routes vivent dans un espace de
+ * noms global : tous les fichiers de routes/ sont require'd à chaque requête).
+ */
+function wsRejectForeignId(string $table, string $id, int $scopeId): void {
+    $owner = Db::row("SELECT user_id FROM {$table} WHERE id=?", [$id]);
+    if ($owner && (int)$owner['user_id'] !== $scopeId) {
+        Json::abort(409, 'Cet identifiant appartient déjà à un autre espace.');
+    }
+}

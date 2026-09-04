@@ -21,3 +21,7 @@ playwright-report/
 backend/vendor/
 backend/composer.lock
 .phpunit.result.cache
+
+# Clés SSH déposées à la racine — ne jamais committer
+github_nja
+github_nja.pub

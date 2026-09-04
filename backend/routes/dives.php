@@ -87,7 +87,7 @@ if ($method === 'GET' && $path === '/api/dives') {
     $allowed = ['prepared', 'in_progress', 'archived'];
 
     $where  = ['d.user_id=?'];
-    $params = [$user['id']];
+    $params = [$user['scope_id']];
 
     if ($since) {
         $sinceSql = SyncHelpers::parseSinceParam($since);
@@ -146,7 +146,7 @@ if ($method === 'GET' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
            FROM dives d
            LEFT JOIN dive_runtime_state r ON r.dive_id = d.id
           WHERE d.id=? AND d.user_id=? AND d.deleted_at IS NULL',
-        [$m[1], $user['id']]
+        [$m[1], $user['scope_id']]
     );
     if (!$row) {
         $row = Db::row(
@@ -154,7 +154,7 @@ if ($method === 'GET' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
                FROM dives d
                LEFT JOIN dive_runtime_state r ON r.dive_id = d.id
               WHERE d.client_uuid=? AND d.user_id=? AND d.deleted_at IS NULL',
-            [$m[1], $user['id']]
+            [$m[1], $user['scope_id']]
         );
     }
     if (!$row) Json::abort(404, 'Plongée introuvable');
@@ -182,7 +182,7 @@ if ($method === 'POST' && $path === '/api/dives') {
     if ($clientUuid) {
         $existing = Db::row(
             'SELECT id, status FROM dives WHERE user_id=? AND client_uuid=?',
-            [$user['id'], $clientUuid]
+            [$user['scope_id'], $clientUuid]
         );
         if ($existing) {
             Json::ok(['id' => $existing['id'], 'duplicate' => true], 200);
@@ -198,17 +198,17 @@ if ($method === 'POST' && $path === '/api/dives') {
     // avancé (in_progress ou archived = sync offline d'une session déjà terminée).
     // Pour 'prepared', la palanquée peut être incomplète → pas de blocage.
     if (!empty($body['palanquees']) && in_array($status, ['in_progress', 'archived'], true)) {
-        validatePalanqueesOrAbort($body['palanquees'], $body['answers'] ?? [], $user['id']);
+        validatePalanqueesOrAbort($body['palanquees'], $body['answers'] ?? [], $user['scope_id']);
     }
 
     $id = Db::uuid();
     Db::q(
         'INSERT INTO dives
-         (id, user_id, client_uuid, status, site_nom, date_plongee, planned_at,
+         (id, user_id, created_by, client_uuid, status, site_nom, date_plongee, planned_at,
           dp_nom, dp_qual, activite, answers, palanquees, drive_link)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
         [
-            $id, $user['id'], $clientUuid, $status,
+            $id, $user['scope_id'], $user['id'], $clientUuid, $status,
             substr((string)($body['site_nom']   ?? ''), 0, 255),
             $dpDate,
             $planned,
@@ -245,7 +245,7 @@ if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
 
     $row = Db::row(
         'SELECT id, status FROM dives WHERE (id=? OR client_uuid=?) AND user_id=? AND deleted_at IS NULL',
-        [$m[1], $m[1], $user['id']]
+        [$m[1], $m[1], $user['scope_id']]
     );
     if (!$row) Json::abort(404, 'Plongée introuvable');
 
@@ -339,7 +339,7 @@ if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
             $existingAnswers = Db::row('SELECT answers FROM dives WHERE id=?', [$row['id']]);
             $ans = json_decode($existingAnswers['answers'] ?? '{}', true) ?? [];
         }
-        validatePalanqueesOrAbort($body['palanquees'], $ans, $user['id']);
+        validatePalanqueesOrAbort($body['palanquees'], $ans, $user['scope_id']);
     }
 
     if (!empty($sets)) {
@@ -362,7 +362,7 @@ if ($method === 'DELETE' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
 
     $row = Db::row(
         'SELECT id, status FROM dives WHERE (id=? OR client_uuid=?) AND user_id=? AND deleted_at IS NULL',
-        [$m[1], $m[1], $user['id']]
+        [$m[1], $m[1], $user['scope_id']]
     );
     if (!$row) Json::abort(404, 'Plongée introuvable');
     if ($row['status'] === 'archived') {

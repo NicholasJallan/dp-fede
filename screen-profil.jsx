@@ -372,11 +372,11 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
   useEffect(() => {
     if (answers.urgence_num) return;
     const code = selectedSite?.pays_code || '';
-    const userDefault = user?.urgence_defaut || '18';
+    const userDefault = (user?.scope?.urgence_defaut || user?.urgence_defaut) || '18';
     if (code === 'CH') setAnswer('urgence_num', '144');
     else if (code === 'FR') setAnswer('urgence_num', '18');
     else setAnswer('urgence_num', userDefault);
-  }, [selectedSite?.pays_code, user?.urgence_defaut]);
+  }, [selectedSite?.pays_code, (user?.scope?.urgence_defaut || user?.urgence_defaut)]);
 
   // Scroll-spy
   useEffect(() => {
@@ -406,8 +406,9 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
   }, [answers.prof_max]);
 
   // Structure type display
-  const structureLabel = user?.structure_type
-    ? (window.STRUCTURE_LABELS[user.structure_type] || user.structure_type)
+  const scope = user?.scope || user || {};
+  const structureLabel = scope.structure_type
+    ? (window.STRUCTURE_LABELS[scope.structure_type] || scope.structure_type)
     : null;
 
   const renderQuestion = (q) => {
@@ -437,7 +438,7 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
         <Field key={q.id} label={q.label} hint={q.hint}>
           <div className="muted" style={{ padding:'8px 0', fontStyle: structureLabel ? 'normal' : 'italic' }}>
             {structureLabel || 'Non renseigné — à définir dans Paramètres → Mon compte'}
-            {user?.club_nom ? <span style={{ marginLeft:8, color:'var(--ink-2)' }}>· {user.club_nom}</span> : null}
+            {scope.club_nom ? <span style={{ marginLeft:8, color:'var(--ink-2)' }}>· {scope.club_nom}</span> : null}
           </div>
         </Field>
       );

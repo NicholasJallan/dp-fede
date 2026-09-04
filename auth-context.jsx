@@ -68,6 +68,10 @@ function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   // 'online' = session confirmée par le serveur ; 'offline' = fallback snapshot
   const [authMode, setAuthMode] = useState('online');
+  // Vrai juste après un login Google : on demande dans quel espace travailler
+  // (personnel ou structure) avant d'entrer dans l'app. Au rechargement suivant
+  // le choix est déjà porté par la session serveur, donc on ne redemande pas.
+  const [needsScopeChoice, setNeedsScopeChoice] = useState(false);
 
   // Au démarrage : tente /api/auth/me, fallback snapshot si KO.
   useEffect(() => {
@@ -131,6 +135,10 @@ function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     await api.auth.logout().catch(() => {});
+    // Les caches locaux (IndexedDB, snapshots, cache SW des réponses API) ne
+    // sont pas namespacés par utilisateur : sans purge, le compte suivant à se
+    // connecter sur ce navigateur verrait l'annuaire du précédent.
+    if (window.purgeLocalScope) await window.purgeLocalScope().catch(() => {});
     clearLastUser();
     setUser(null);
     setAuthMode('online');
@@ -144,14 +152,26 @@ function AuthProvider({ children }) {
       writeLastUser(u);
       setUser(u);
       setAuthMode('online');
+      setNeedsScopeChoice(true);
       prefetchUserData();
     } catch (err) {
       console.error('Google auth error:', err);
     }
   }, []);
 
+  // Bascule d'espace : window.switchScope (lib/scope.js) refuse tant que
+  // l'outbox n'est pas vide, appelle l'API puis purge les caches locaux.
+  // On recharge ensuite pour repartir d'un état propre partout.
+  const switchScope = useCallback(async (workspaceId) => {
+    await window.switchScope(workspaceId);
+    window.location.reload();
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, logout, handleGoogleCredential, setUser, authMode }}>
+    <AuthContext.Provider value={{
+      user, loading, logout, handleGoogleCredential, setUser, authMode,
+      switchScope, needsScopeChoice, setNeedsScopeChoice,
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -182,8 +182,11 @@ ${styles}
     csa:  'Convention de Section d\'Activité (CSA)',
     autre:'Autre',
   };
-  const structure = user?.club_nom
-    ? `${user.club_nom}${user.structure_type ? ' — ' + structureLabels[user.structure_type] : ''}${user.club_numero ? ' (' + user.club_numero + ')' : ''}`
+  // Espace partagé : l'identité portée par la fiche est celle de la structure
+  // active, pas celle du club personnel du DP qui la remplit.
+  const sc = user?.scope || user || {};
+  const structure = sc.club_nom
+    ? `${sc.club_nom}${sc.structure_type ? ' — ' + structureLabels[sc.structure_type] : ''}${sc.club_numero ? ' (' + sc.club_numero + ')' : ''}`
     : 'Structure non renseignée (à compléter dans Mon compte)';
 
   // Mélanges agrégés par palanquée
@@ -237,7 +240,7 @@ ${styles}
             <b>{formatDateTime(answers.date)}</b>
             <div>DP : {answers.dp_nom || '—'} ({answers.dp_qual || '—'})</div>
             <div>Activité : {answers.activite || '—'}</div>
-            <div>Urgences : <b>{answers.urgence_num || user?.urgence_defaut || '18'}</b>
+            <div>Urgences : <b>{answers.urgence_num || (user?.scope?.urgence_defaut || user?.urgence_defaut) || '18'}</b>
               {answers.site_pays_code === 'CH' && <span className="muted" style={{ fontWeight:400, fontSize:11 }}> · 1414 (REGA)</span>}
             </div>
           </div>
@@ -439,7 +442,7 @@ ${styles}
           <div>• Pavillon Alpha : <b>{answers.pavillon_alpha || answers.bouee_surface ? 'Hissé / présent' : '—'}</b></div>
           <div>• Eau douce potable : <b>{answers.eau_potable ? 'Oui' : 'Non'}</b></div>
           <div>• Moyen de rappel : <b>{answers.rappel ? 'Oui' : '—'}</b></div>
-          <div>• Numéro d'urgence : <b>{answers.urgence_num || user?.urgence_defaut || '18'}</b></div>
+          <div>• Numéro d'urgence : <b>{answers.urgence_num || (user?.scope?.urgence_defaut || user?.urgence_defaut) || '18'}</b></div>
         </div>
 
         <h2>Conduite à tenir — déclenchement des secours</h2>
@@ -448,7 +451,7 @@ ${styles}
             const emi = window.getEmergencyInfo(answers.site_pays_code, answers.milieu);
             return (<>
               <div style={{ fontWeight:700, fontSize:13 }}>
-                ☎ URGENCE : {answers.urgence_num || user?.urgence_defaut || '18'}
+                ☎ URGENCE : {answers.urgence_num || (user?.scope?.urgence_defaut || user?.urgence_defaut) || '18'}
                 <span className="muted" style={{ fontWeight:400 }}> · {emi.secondaryNums}</span>
               </div>
               <div style={{ marginTop:4 }}>1. Sortir la victime de l'eau · 2. O₂ normobare 15 L/min · 3. Alerter les secours · 4. Surveiller / réanimer si besoin.</div>

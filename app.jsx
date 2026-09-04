@@ -6,7 +6,16 @@ import { ToastProvider, useToasts } from './toast.jsx';
 import { AuthProvider, useAuth } from './auth-context.jsx';
 import { useAutoSave } from './lib/use-auto-save.jsx';
 import { Pill, SyncDrawer, formatDateTime } from './components.jsx';
+// lib/net.js est un script « window global », chargé hors bundle : son hook
+// window.useOnline() référence un `React` global. Avant esbuild, React venait du
+// CDN unpkg ; le build supprime ces balises et bundle React, il faut donc le
+// réexposer — sinon le premier composant qui appelle useOnline() (app.jsx,
+// ScreenLogin, ScreenHome, ScreenArchive) lève « React is not defined » et rien
+// ne monte du tout.
+window.React = React;
+
 import { ScreenLogin } from './screen-login.jsx';
+import { ScreenWorkspace } from './screen-workspace.jsx';
 import { ScreenHome } from './screen-home.jsx';
 import { ScreenProfil } from './screen-profil.jsx';
 import { ScreenPalanquees } from './screen-palanquees.jsx';
@@ -34,7 +43,7 @@ const SUPER_ADMIN_EMAIL = "nicholas.jallan@gmail.com";
 const isSuperAdmin = (u) => !!u && u.email === SUPER_ADMIN_EMAIL;
 
 function AppInner() {
-  const { user, loading: authLoading, logout, authMode } = useAuth();
+  const { user, loading: authLoading, logout, authMode, needsScopeChoice, setNeedsScopeChoice } = useAuth();
   const { showToast } = useToasts();
   const online = window.useOnline ? window.useOnline() : true;
   const [authExpired, setAuthExpired] = useState(false);
@@ -450,6 +459,12 @@ function AppInner() {
 
   if (!user) return <ScreenLogin />;
 
+  // Choix de l'espace de travail : affiché après une connexion Google, et
+  // rouvrable depuis la topbar. Le scope actif vit dans la session serveur.
+  if (needsScopeChoice) {
+    return <ScreenWorkspace onDone={() => setNeedsScopeChoice(false)} />;
+  }
+
   const selectedSite = sites.find(s => s.id === answers.site_id);
   const siteName = selectedSite?.nom || answers.site_nom || answers.site || '—';
   const departParts = [answers.depart_bord && 'Du bord', answers.depart_bateau && 'En bateau'].filter(Boolean);
@@ -533,7 +548,15 @@ function AppInner() {
           </button>
         )}
         <span className="muted topbar-sep" style={{ color:"var(--ink-4)" }}>·</span>
-        <span className="topbar-user-label" style={{ fontSize:13 }}>{user.club_nom || user.email}</span>
+        <button
+          className="session-link topbar-user-label"
+          style={{ fontSize:13 }}
+          onClick={() => setNeedsScopeChoice(true)}
+          title="Changer d'espace de travail"
+        >
+          {(user.scope && user.scope.name) || user.club_nom || user.email}
+          {user.workspace ? ' ⇄' : ''}
+        </button>
         <span className="meta">
           <button onClick={() => setDrawerOpen(true)} className="session-link"
             title={online
@@ -770,7 +793,7 @@ function AppInner() {
                 const emi = window.getEmergencyInfo(answers.site_pays_code, answers.milieu);
                 return (<>
                   <div style={{ fontSize:22, fontWeight:800 }}>
-                    {answers.urgence_num || user?.urgence_defaut || '18'}
+                    {answers.urgence_num || (user?.scope?.urgence_defaut || user?.urgence_defaut) || '18'}
                   </div>
                   <div className="muted" style={{ fontSize:12 }}>
                     {emi.secondaryNums}
@@ -793,7 +816,7 @@ function AppInner() {
               })()}
             </div>
             <div className="modal-foot">
-              <a className="btn primary" href={`tel:${answers.urgence_num || user?.urgence_defaut || '18'}`}
+              <a className="btn primary" href={`tel:${answers.urgence_num || (user?.scope?.urgence_defaut || user?.urgence_defaut) || '18'}`}
                 style={{ textDecoration:'none' }}>Appeler</a>
               <button className="btn" onClick={() => setUrgenceOpen(false)}>Fermer</button>
             </div>

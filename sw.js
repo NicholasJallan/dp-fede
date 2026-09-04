@@ -9,7 +9,7 @@
 //
 // Bumper manuellement la VERSION ci-dessous à chaque déploiement frontend
 // (sinon le navigateur garde l'ancien cache). Format : dp-{YYYYMMDD}-{sha7}.
-const VERSION = 'dp-20260613-fiche-cols';
+const VERSION = 'dp-20260904-workspaces2';
 
 const SHELL_CACHE  = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
@@ -34,6 +34,7 @@ const PRECACHE_URLS = [
   '/lib/outbox.js',
   '/lib/sync.js',
   '/lib/offline-api.js',
+  '/lib/scope.js',
   '/lib/storage-keys.js',
   '/lib/google-drive.js',
   '/lib/drive-upload.js',

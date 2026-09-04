@@ -32,7 +32,7 @@ if ($method === 'POST' && $path === '/api/pdf/fiche') {
                FROM dives d
                JOIN users u ON u.id = d.user_id
               WHERE (d.id=? OR d.client_uuid=?) AND d.user_id=? AND d.deleted_at IS NULL',
-            [$diveId, $diveId, $user['id']]
+            [$diveId, $diveId, $user['scope_id']]
         );
         if (!$dive) Json::abort(404, 'Plongée introuvable');
 
@@ -56,7 +56,7 @@ if ($method === 'POST' && $path === '/api/pdf/fiche') {
             $rows = Db::all(
                 "SELECT id, nom, prenom, licence, niveau_plongeur, niveau_encadrant FROM divers
                   WHERE id IN ({$phs}) AND user_id=? AND deleted_at IS NULL",
-                [...$ids, $user['id']]
+                [...$ids, $user['scope_id']]
             );
             foreach ($rows as $row) { $diversById[$row['id']] = $row; }
         }

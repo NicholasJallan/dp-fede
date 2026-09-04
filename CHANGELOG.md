@@ -5,6 +5,37 @@ Dates en ISO 8601.
 
 ## [Unreleased]
 
+### Added — Structures partagées
+- Espaces de travail partagés : plusieurs moniteurs mettent en commun annuaire
+  de plongeurs, sites et fiches de sécurité. On rejoint une structure avec un
+  code d'invitation, à la connexion ou depuis la topbar.
+- `backend/migrations/002_workspaces.sql` : tables `workspaces` et
+  `workspace_members`, colonnes `users.kind`, `sessions.workspace_id` et
+  `created_by` sur `divers`/`sites`/`dives`.
+- `backend/routes/workspaces.php` : liste, join par code (rate-limité), bascule
+  de scope, départ ; création et liste globale réservées au super-admin.
+- `Auth::current()` résout `scope_id` / `workspace` / `scope` ; refuse toute
+  session rattachée à un compte-structure.
+- `lib/scope.js` : `purgeLocalScope()` et `switchScope()` — purge IndexedDB,
+  snapshots `dp-cache-*` et cache SW `*-api` à chaque bascule, refuse de basculer
+  si l'outbox n'est pas vide.
+- `screen-workspace.jsx` : sélecteur d'espace après connexion et depuis la topbar.
+- Section « Structures » dans l'écran Administration.
+- Tests : `tests/scope-purge.test.js` (6 cas) et
+  `backend/tests-php/WorkspaceScopeTest.php` (garde-fou : aucune route de données
+  ne doit scoper sur `$user['id']`).
+
+### Fixed — Structures partagées
+- **`React is not defined` au démarrage** : `lib/net.js` (hors bundle) référence
+  un `React` global que `build.js` avait cessé de fournir en supprimant les
+  balises unpkg. Aucun composant ne montait, la page restait sur le fallback
+  « Chargement impossible ». `app.jsx` réexpose `window.React`.
+- `logout()` purge désormais les caches locaux : sur une tablette partagée, le
+  compte suivant ne voit plus l'annuaire du précédent.
+- `POST /api/divers` et `/api/sites` refusent en 409 un upsert visant un id
+  détenu par un autre espace.
+- Les comptes-structure sont masqués de `GET /api/users` et `/api/users/stats`.
+
 ### Added — Sprint 4 (sécurité durcie)
 - `docs/security/README.md` : vue d'ensemble architecture sécurité + table de surfaces d'attaque.
 - `docs/security/gcp-checklist.md` : audit trimestriel GCP (OAuth Consent Screen, OAuth Client, API Keys, Quotas).

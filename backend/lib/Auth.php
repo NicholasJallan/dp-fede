@@ -154,7 +154,7 @@ class Auth {
         if (!$id || strlen($id) !== 64) return null;
 
         $session = Db::row(
-            'SELECT s.user_id, s.expires_at FROM sessions s WHERE s.id=?',
+            'SELECT s.user_id, s.expires_at, s.workspace_id FROM sessions s WHERE s.id=?',
             [$id]
         );
         if (!$session) return null;
@@ -174,7 +174,95 @@ class Auth {
             self::setCookie($id);
         }
 
-        return Db::row('SELECT * FROM users WHERE id=?', [$session['user_id']]);
+        $user = Db::row('SELECT * FROM users WHERE id=?', [$session['user_id']]);
+        if (!$user) return null;
+
+        // Un compte-structure n'est pas un compte connectable : aucune session ne
+        // doit pouvoir s'y rattacher (cf. migration 002, users.kind).
+        if (($user['kind'] ?? 'person') === 'workspace') return null;
+
+        return self::withScope($user, $session['workspace_id'] ?? null, $id);
+    }
+
+    /**
+     * Enrichit la ligne utilisateur avec le scope de données actif.
+     *
+     *   $user['id']       → identité : auth, super-admin, created_by. Jamais modifié.
+     *   $user['scope_id'] → propriétaire des données (divers / sites / dives) :
+     *                       soi-même en espace personnel, le compte-structure
+     *                       quand une structure est active sur la session.
+     *
+     * L'appartenance est revérifiée à chaque requête : retirer un membre ou
+     * archiver la structure le renvoie immédiatement dans son espace personnel.
+     */
+    private static function withScope(array $user, $workspaceId, string $sessionId): array {
+        $user['scope_id']  = (int)$user['id'];
+        $user['workspace'] = null;
+
+        if ($workspaceId) {
+            $ws = Db::row(
+                'SELECT w.id, w.name, w.slug, w.data_user_id, m.role
+                   FROM workspaces w
+                   JOIN workspace_members m ON m.workspace_id = w.id AND m.user_id = ?
+                  WHERE w.id = ? AND w.archived_at IS NULL',
+                [$user['id'], $workspaceId]
+            );
+            if ($ws) {
+                $user['scope_id']  = (int)$ws['data_user_id'];
+                $user['workspace'] = [
+                    'id'   => (int)$ws['id'],
+                    'name' => $ws['name'],
+                    'slug' => $ws['slug'],
+                    'role' => $ws['role'],
+                ];
+            } else {
+                // Structure archivée ou membre retiré → retour en espace personnel.
+                Db::q('UPDATE sessions SET workspace_id=NULL WHERE id=?', [$sessionId]);
+            }
+        }
+
+        $user['scope'] = self::scopeIdentity($user);
+        return $user;
+    }
+
+    /**
+     * Champs « structure » consommés par la fiche de sécurité (Art. A322-72),
+     * l'écran profil et le numéro d'urgence. En espace personnel ce sont ceux
+     * du compte ; dans une structure, ceux du compte-structure — pour que la
+     * fiche porte le nom du stage et non le club personnel du DP.
+     */
+    private static function scopeIdentity(array $user): array {
+        $src = $user;
+        if ($user['workspace'] !== null && (int)$user['scope_id'] !== (int)$user['id']) {
+            $row = Db::row('SELECT * FROM users WHERE id=?', [$user['scope_id']]);
+            if ($row) $src = $row;
+        }
+        return [
+            'id'               => (int)$user['scope_id'],
+            'kind'             => $user['workspace'] === null ? 'personal' : 'workspace',
+            'name'             => $user['workspace'] === null
+                                    ? (($user['club_nom'] ?? '') !== '' ? $user['club_nom'] : 'Mon espace')
+                                    : $user['workspace']['name'],
+            'club_nom'         => $src['club_nom'] ?? '',
+            'club_numero'      => $src['club_numero'] ?? '',
+            'club_siret'       => $src['club_siret'] ?? '',
+            'structure_type'   => $src['structure_type'] ?? null,
+            'president_prenom' => $src['president_prenom'] ?? null,
+            'president_nom'    => $src['president_nom'] ?? null,
+            'president_tel'    => $src['president_tel'] ?? null,
+            'urgence_defaut'   => $src['urgence_defaut'] ?? null,
+        ];
+    }
+
+    /**
+     * Bascule le scope de la session courante. $wsId null = espace personnel.
+     * L'appartenance doit avoir été vérifiée par l'appelant (routes/workspaces.php).
+     */
+    public static function setWorkspace(?int $wsId): bool {
+        $sid = $_COOKIE[self::COOKIE] ?? '';
+        if (!$sid || strlen($sid) !== 64) return false;
+        Db::q('UPDATE sessions SET workspace_id=? WHERE id=?', [$wsId, $sid]);
+        return true;
     }
 
     // Require authenticated user or abort 401

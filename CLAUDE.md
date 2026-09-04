@@ -165,6 +165,56 @@ Avant chaque déploiement frontend, bumper **manuellement** la constante
 `VERSION` dans `sw.js` (format `dp-{YYYYMMDD}-{sha7}`). Sans ce bump, le
 navigateur considère que le SW n'a pas changé et conserve l'ancien cache.
 
+### TLS / Let's Encrypt — renouvellement automatique
+
+Un seul certificat couvre `dp-fede` : `www.bullesenvalais.ch`, qui porte
+en SAN `bullesenvalais.ch`, `dive`, `dp-fede`, `shop`, `www`. Les certs
+`silence.bullesenvalais.ch` et `fede.bullesenvalais.ch` sont séparés.
+Authenticator : `webroot` (challenge http-01), webroot dp-fede =
+`/var/www/html/dp-fede`, les autres `/var/www/html/dive`.
+
+Diagnostic :
+
+```bash
+ssh pi@bullesenvalais.ch "sudo certbot certificates"        # dates d'expiration
+ssh pi@bullesenvalais.ch "sudo certbot renew --dry-run"     # teste toute la chaîne
+ssh pi@bullesenvalais.ch "sudo tail -40 /var/log/certbot-alert.log"
+```
+
+**Le challenge ACME doit rester joignable en HTTP simple.** Trois règles,
+chacune correspondant à une panne déjà survenue (certificat expiré le
+30/08/2026, `dp-fede` inaccessible) :
+
+1. Chaque vhost port 80 sert le challenge **avant** de rediriger. Un
+   `return 301` au niveau *server* court-circuite la sélection de
+   `location` : la redirection doit être dans `location / { }`, jamais
+   nue dans le bloc `server`.
+2. La `location` ACME utilise le préfixe **`^~`** :
+   `location ^~ /.well-known/acme-challenge/ { root <webroot>; }`. En
+   préfixe simple elle perd contre la regex `location ~ /\. { deny all; }`
+   (blocage des dot-dirs) qui matche aussi `/.well-known/…` → **403**.
+3. Le hook `/etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh`
+   (`nginx -t && systemctl reload nginx`) doit exister : sans lui nginx
+   continue de servir l'ancien certificat, même expiré, jusqu'au
+   prochain reload manuel.
+
+Alerte en cas d'échec — `OnFailure=certbot-alert@%n.service` sur
+`certbot.service` (drop-in `/etc/systemd/system/certbot.service.d/onfailure.conf`)
+lance `/usr/local/bin/certbot-alert.sh`, qui écrit dans
+`/var/log/certbot-alert.log`, journalise en `daemon.err` et poste dans la
+mailbox locale `pi`. La bannière `/etc/profile.d/zz-certbot-alert.sh`
+avertit en rouge au login SSH si `certbot.service` est en échec ou si un
+certificat expire sous 14 jours.
+
+> Le mail **externe** (Gmail) est rejeté en `550-5.7.26` : le SPF de
+> `bullesenvalais.ch` est `v=spf1 include:mx.ovh.com ~all` et n'autorise
+> pas l'IP du Pi (213.230.59.20). Pour l'activer : ajouter
+> `ip4:213.230.59.20` au TXT SPF chez OVH, ou configurer un `relayhost`
+> Postfix authentifié. Sans ça, s'appuyer sur la bannière SSH et le log.
+
+Après échec corrigé : `sudo systemctl reset-failed certbot.service`
+(sinon la bannière continue de signaler l'échec précédent).
+
 ## Tests métier
 
 Lancer : `npm test` (utilise `node --test`, Node 20+ requis, zéro dépendance NPM).
@@ -202,8 +252,66 @@ Tout est dans `data.js` (aucun build requis) :
 
 - `.main` dans `styles.css` n'a PAS de `max-width` ni `margin: auto` — il est pleine largeur comme la topbar et le stepper. Si on les rajoute, le contenu se décale visuellement vers la droite.
 
+## Structures partagées (workspaces)
+
+Un stage / club dont les membres partagent **annuaire de plongeurs, sites et
+fiches de sécurité**. Première instance : « BEPPA Hendaye 2026 », code
+`BEPPA-HENDAYE-2026`.
+
+Le cloisonnement n'a **pas** été refait en multi-tenant (pas de colonne
+`workspace_id` sur `divers`/`sites`/`dives`) : les 25 clauses `user_id = ?`
+inlinées dans les routes, les 7 index menés par `user_id` et l'unique
+`uniq_dives_client` restent tels quels. À la place, une **indirection de
+scope** :
+
+- Chaque structure possède un **compte-structure** : une ligne `users` avec
+  `kind='workspace'`, `google_sub` synthétique, `email` en `@dp-fede.invalid`.
+  Il ne peut jamais se connecter (`Auth::current()` refuse `kind='workspace'`)
+  et c'est lui qui **possède** les données du stage.
+- `Auth::current()` résout et ajoute à la ligne utilisateur :
+  - `scope_id` — propriétaire des données : soi-même, ou le compte-structure si
+    `sessions.workspace_id` est posé **et** que l'appartenance est vérifiée
+    (revalidée à chaque requête → retirer un membre a un effet immédiat) ;
+  - `workspace` — `{id,name,slug,role}` ou `null` ;
+  - `scope` — identité affichée (`club_nom`, `structure_type`, `president_*`,
+    `urgence_defaut`…) : celle de la structure quand elle est active, pour que
+    la fiche de sécurité porte le nom du stage (Art. A322-72).
+
+> **Règle absolue** : dans `routes/divers|sites|dives|sync|pdf.php`, la clé de
+> propriété est **`$user['scope_id']`**, jamais `$user['id']` (sauf pour
+> `created_by`, qui trace l'auteur réel). Dans `routes/auth|users|workspaces.php`,
+> c'est l'inverse : identité = `$user['id']`, jamais de `scope_id`.
+> `backend/tests-php/WorkspaceScopeTest.php` fait échouer la CI si la règle est
+> violée (il lit le code sans les commentaires).
+
+Tables : `workspaces` (nom, slug, `join_code`, `data_user_id`, `archived_at`) et
+`workspace_members` (`workspace_id`, `user_id`, `role owner|member`).
+Colonnes ajoutées : `users.kind`, `sessions.workspace_id`, `created_by` sur
+`divers`/`sites`/`dives`. Migration `002_workspaces.sql`, ré-entrante
+(`IF NOT EXISTS` partout : `Migrator` ne marque appliqué qu'après succès complet,
+un échec en cours de route doit pouvoir être rejoué).
+
+Routes : `GET /api/workspaces`, `POST /api/workspaces/join` (code, rate-limité
+10/15 min/IP), `POST /api/workspaces/activate`, `DELETE
+/api/workspaces/:id/members/me`, plus `GET /api/workspaces/all` et
+`POST /api/workspaces` réservés au super-admin (écran Administration).
+
+Côté client : `lib/scope.js` expose `purgeLocalScope()` et `switchScope(id)`.
+**Toute bascule d'espace purge les caches locaux** — stores IndexedDB
+`divers/sites/dives/archives/meta`, snapshots `dp-cache-*`, et le cache SW
+`*-api`. Sans ça le membre verrait les données du scope précédent au premier
+paint (le SW sert `/api/divers`, `/api/sites`, `/api/dives` et `/api/sync/state`
+en stale-while-revalidate, keyés par URL seule) et hériterait d'un curseur
+`meta.sync` faussé. L'outbox est **conservée** mais la bascule est **refusée**
+tant qu'elle n'est pas vide : ses items ne portent pas de scope et partiraient
+au mauvais endroit. `logout()` purge aussi (plusieurs moniteurs sur une tablette).
+
+Créer un stage suivant : Administration → Structures → nom + code, puis
+distribuer le code. Rien d'autre.
+
 ## Pièges connus
 
+- **Renouvellement TLS** : toute `location ~ /\.` (deny dot-dirs) ajoutée à un vhost casse le challenge ACME si la `location` `/.well-known/acme-challenge/` n'est pas en `^~` — le certificat expire alors en silence. Cf. section « TLS / Let's Encrypt ». Après toute modif nginx touchant un vhost en HTTPS : `sudo certbot renew --dry-run` doit rester vert.
 - **Clé Google Maps** : `DP Assistant.html` ligne 70 doit contenir le placeholder `__GOOGLE_MAPS_API_KEY__`, jamais une vraie clé `AIza…`. Une vraie clé qui s'y glisse fuite dans GitHub (Secret Scanning) à la première push. nginx (`sub_filter` côté Pi) injecte la vraie clé au serve — cf. section « Clé Google Maps ». Si le sélecteur de sites n'affiche plus la carte après modif nginx : vérifier que `sub_filter` est bien dans le bloc `location ~* \.(jsx|js|css|html)$` (sinon il ne s'applique pas au HTML, qui est servi par ce bloc à cause de l'extension).
 - `buildQualifs()` dans `backend/routes/divers.php` : utiliser `$recs` (variable locale filtrée) et NON `compact('recycleurs')` qui capturerait le paramètre de fonction (liste complète).
 - `DIPLOMES_PRO` = `['BEES1','DEJEPS','DESJEPS','Autre']` — MF1/MF2 sont des brevets fédéraux, pas des diplômes professionnels d'État.
@@ -226,4 +334,17 @@ Tout est dans `data.js` (aucun build requis) :
 - **Cycle de vie** : plongée créée à `status='prepared'` dès le clic "+ Nouvelle plongée". Transition → `in_progress` au 1er `heuresDebut` posé (détectée dans `app.jsx` via useEffect). Transition → `archived` à l'archivage Drive. PATCH refusé en rétrograde (`archived` → autre statut).
 - **Auto-save** : debounce 500 ms vers `api.dives.update(currentDiveId, { answers, palanquees, render_state })`. Flush immédiat au retour accueil (`flushSave`) et lors de `loadDive` (bascule entre plongées).
 - **`diveMode`** dans `app.jsx` : `'prepare'` (étapes 1-3) ou `'execute'` (étapes 3-5). Check-list filtre les phases selon `mode`.
+- **`window.React` doit rester exposé** (`app.jsx`, juste avant les imports
+  d'écrans). `lib/net.js` est un script « window global » hors bundle et son hook
+  `window.useOnline()` référence un `React` global : avant esbuild il venait du
+  CDN unpkg, mais `build.js` supprime ces balises et bundle React. Sans
+  `window.React = React`, le premier composant qui appelle `useOnline()`
+  (`app.jsx:40`, `ScreenLogin`, `ScreenHome`, `ScreenArchive`) lève
+  « React is not defined » et **rien ne monte** : la page reste sur le fallback
+  « Chargement impossible » d'`inline-boot.js`. Symptôme trompeur — il ressemble
+  à un problème de cache ou de session.
+- **Pas de `pi-scripts/`** dans le repo malgré les mentions ci-dessus : le
+  déploiement est manuel (`npm run build`, bump manuel de `VERSION` dans `sw.js`,
+  puis `rsync dist/`). Idem backend : `rsync backend/` en excluant `config.php`
+  et `vendor/`.
 - **Outbox kinds** : `dive.create`, `dive.update`, `dive.delete`, `dive.drive` (drive registered par ScreenArchive) ; `diver.create`, `diver.update`, `diver.delete` ; `site.create`, `site.update`, `site.delete`. Handlers dans `lib/sync.js` (`DEFAULT_HANDLERS`).

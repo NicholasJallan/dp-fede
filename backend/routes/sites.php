@@ -14,12 +14,12 @@ if ($method === 'GET' && $path === '/api/sites') {
             'SELECT * FROM sites
              WHERE user_id=? AND (updated_at >= ? OR deleted_at >= ?)
              ORDER BY nom',
-            [$user['id'], $sinceSql, $sinceSql]
+            [$user['scope_id'], $sinceSql, $sinceSql]
         );
     } else {
         $rows = Db::all(
             'SELECT * FROM sites WHERE user_id=? AND deleted_at IS NULL ORDER BY nom',
-            [$user['id']]
+            [$user['scope_id']]
         );
     }
     Json::ok(array_map('decodeSite', $rows));
@@ -51,9 +51,11 @@ if ($method === 'POST' && $path === '/api/sites') {
     $id       = $clientId && SyncHelpers::isValidUuid($clientId) ? $clientId : Db::uuid();
     $coord    = $v->arr('coordonnees');
 
+    wsRejectForeignId('sites', $id, (int)$user['scope_id']);
+
     Db::q(
-        'INSERT INTO sites (id, user_id, nom, milieu, profondeur_max, coordonnees, notes, depart_bord, depart_bateau, shot_line, ville, pays, pays_code, region, acces_secours, caisson)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        'INSERT INTO sites (id, user_id, created_by, nom, milieu, profondeur_max, coordonnees, notes, depart_bord, depart_bateau, shot_line, ville, pays, pays_code, region, acces_secours, caisson)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
          ON DUPLICATE KEY UPDATE
            nom=VALUES(nom), milieu=VALUES(milieu), profondeur_max=VALUES(profondeur_max),
            coordonnees=VALUES(coordonnees), notes=VALUES(notes),
@@ -62,7 +64,7 @@ if ($method === 'POST' && $path === '/api/sites') {
            pays_code=VALUES(pays_code), region=VALUES(region),
            acces_secours=VALUES(acces_secours), caisson=VALUES(caisson), deleted_at=NULL',
         [
-            $id, $user['id'],
+            $id, $user['scope_id'], $user['id'],
             $v->str('nom'), $v->str('milieu') ?: 'En mer',
             $v->float('profondeur_max'),
             $coord ? json_encode($coord, JSON_UNESCAPED_UNICODE) : null,
@@ -78,13 +80,13 @@ if ($method === 'POST' && $path === '/api/sites') {
             $v->str('caisson'),
         ]
     );
-    Json::ok(decodeSite(Db::row('SELECT * FROM sites WHERE id=? AND user_id=?', [$id, $user['id']])), 201);
+    Json::ok(decodeSite(Db::row('SELECT * FROM sites WHERE id=? AND user_id=?', [$id, $user['scope_id']])), 201);
 }
 
 // GET /api/sites/:id
 if ($method === 'GET' && preg_match('#^/api/sites/([^/]+)$#', $path, $m)) {
     $user = Auth::require();
-    $row  = siteOwnerOrAbort($user['id'], $m[1]);
+    $row  = siteOwnerOrAbort($user['scope_id'], $m[1]);
     Json::ok(decodeSite($row));
 }
 
@@ -92,7 +94,7 @@ if ($method === 'GET' && preg_match('#^/api/sites/([^/]+)$#', $path, $m)) {
 if ($method === 'PUT' && preg_match('#^/api/sites/([^/]+)$#', $path, $m)) {
     Csrf::verify();
     $user = Auth::require();
-    siteOwnerOrAbort($user['id'], $m[1]);
+    siteOwnerOrAbort($user['scope_id'], $m[1]);
 
     $v = new Validate(Json::body());
     $v->required('nom', 'Nom du site')
@@ -128,7 +130,7 @@ if ($method === 'PUT' && preg_match('#^/api/sites/([^/]+)$#', $path, $m)) {
             $v->str('region'),
             $v->str('acces_secours'),
             $v->str('caisson'),
-            $m[1], $user['id'],
+            $m[1], $user['scope_id'],
         ]
     );
     Json::ok(decodeSite(Db::row('SELECT * FROM sites WHERE id=?', [$m[1]])));
@@ -138,8 +140,8 @@ if ($method === 'PUT' && preg_match('#^/api/sites/([^/]+)$#', $path, $m)) {
 if ($method === 'DELETE' && preg_match('#^/api/sites/([^/]+)$#', $path, $m)) {
     Csrf::verify();
     $user = Auth::require();
-    siteOwnerOrAbort($user['id'], $m[1]);
-    Db::q('UPDATE sites SET deleted_at=NOW() WHERE id=? AND user_id=?', [$m[1], $user['id']]);
+    siteOwnerOrAbort($user['scope_id'], $m[1]);
+    Db::q('UPDATE sites SET deleted_at=NOW() WHERE id=? AND user_id=?', [$m[1], $user['scope_id']]);
     Log::action('site.deleted', ['site_id' => $m[1]]);
     Json::ok(null);
 }

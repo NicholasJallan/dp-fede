@@ -18,17 +18,17 @@ if ($method === 'GET' && $path === '/api/sync/state') {
 
     $divers = Db::row(
         'SELECT MAX(updated_at) AS u, MAX(deleted_at) AS d FROM divers WHERE user_id=?',
-        [$user['id']]
+        [$user['scope_id']]
     ) ?? ['u' => null, 'd' => null];
 
     $sites = Db::row(
         'SELECT MAX(updated_at) AS u, MAX(deleted_at) AS d FROM sites WHERE user_id=?',
-        [$user['id']]
+        [$user['scope_id']]
     ) ?? ['u' => null, 'd' => null];
 
     $dives = Db::row(
         'SELECT MAX(updated_at) AS u, MAX(deleted_at) AS d FROM dives WHERE user_id=?',
-        [$user['id']]
+        [$user['scope_id']]
     ) ?? ['u' => null, 'd' => null];
 
     Json::ok([

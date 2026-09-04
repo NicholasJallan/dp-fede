@@ -8,7 +8,7 @@
 //
 // Bumper manuellement la VERSION ci-dessous à chaque déploiement frontend
 // (sinon le navigateur garde l'ancien cache). Format : dp-{YYYYMMDD}-{sha7}.
-const VERSION = 'dp-20260904-pdf-beppa2';
+const VERSION = 'dp-20260904-pal-colors';
 
 const SHELL_CACHE  = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;

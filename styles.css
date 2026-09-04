@@ -1668,7 +1668,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 }
 .splash-card--marine .splash-card-badge { background: var(--marine); }
 .splash-card--kelp   .splash-card-badge { background: var(--kelp); }
-.splash-card--coral  .splash-card-badge { background: var(--coral); }
+.splash-card--sun    .splash-card-badge { background: var(--sun); color: var(--ink); }
 .splash-card-body {
   padding: 12px;
   background: var(--surface);
@@ -1733,15 +1733,18 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 }
 
 /* ===== Palanquée type colors (pastel) =====
-   Palette harmonisée (cohérente écran palanquées + fiche de sécurité) :
-   - exploration autonome (PA12/20/40/60 max 3)   → vert clair
-   - exploration guidée   (GP + PE20/40)          → bleu clair
-   - formation            (E1→E4 + élèves PE)     → rouge saumon clair
-   - baptême              (Baptême + E1→E4)       → corail saturé (existant)
+   Palette harmonisée (cohérente popup PA/PE/GP + écran palanquées + fiche
+   de sécurité) — un rouge clair sur "formation" faisait croire aux DP à un
+   souci/erreur, alors que c'est un type de palanquée normal :
+   - exploration autonome (PA12/20/40/60 max 3)   → vert clair   (PA)
+   - exploration guidée   (GP + PE20/40)          → bleu clair   (GP)
+   - formation            (E1→E4 + élèves PE)     → jaune clair  (PE)
+   - baptême              (Baptême + E1→E4)       → corail saturé (existant,
+     volontairement le plus visible : dive à encadrement individuel strict)
 */
 .pal-explo   { background: oklch(97% 0.018 155); border-color: oklch(86% 0.06 155); }
 .pal-guidee  { background: oklch(97% 0.018 240); border-color: oklch(86% 0.06 240); }
-.pal-form    { background: oklch(96% 0.025 32);  border-color: oklch(85% 0.07 32);  }
+.pal-form    { background: oklch(96% 0.030 95);  border-color: oklch(85% 0.09 95);  }
 .pal-bapteme { background: oklch(94% 0.05 32);   border-color: oklch(80% 0.10 32);  }
 
 .pal-type-badge {
@@ -1757,13 +1760,13 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 }
 .pal-type-badge.pal-explo   { background: oklch(92% 0.04 155); border-color: oklch(78% 0.08 155); color: oklch(35% 0.10 155); }
 .pal-type-badge.pal-guidee  { background: oklch(92% 0.04 240); border-color: oklch(78% 0.08 240); color: oklch(38% 0.11 240); }
-.pal-type-badge.pal-form    { background: oklch(91% 0.06 32);  border-color: oklch(78% 0.10 32);  color: oklch(42% 0.14 32);  }
+.pal-type-badge.pal-form    { background: oklch(90% 0.09 95);  border-color: oklch(76% 0.13 95);  color: oklch(40% 0.11 95);  }
 .pal-type-badge.pal-bapteme { background: oklch(88% 0.10 32);  border-color: oklch(72% 0.14 32);  color: oklch(38% 0.16 32);  }
 
 /* ===== Couleur de fond par type — fiche de sécurité ===== */
 .fiche tr.row-exploration > td { background: oklch(97% 0.020 155); }
 .fiche tr.row-guidee      > td { background: oklch(97% 0.020 240); }
-.fiche tr.row-formation   > td { background: oklch(96% 0.028 32);  }
+.fiche tr.row-formation   > td { background: oklch(96% 0.032 95);  }
 .fiche tr.row-bapteme     > td { background: oklch(93% 0.055 32);  }
 .fiche tr[class^="row-"] > td,
 .fiche tr[class*=" row-"] > td {

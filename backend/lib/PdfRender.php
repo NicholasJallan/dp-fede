@@ -62,7 +62,7 @@ table td { border-bottom: 1px solid #e2e8f0; padding: 7px 8px; vertical-align: t
 }
 .row-exploration td { background: #f0fdf6; }
 .row-guidee      td { background: #eff6ff; }
-.row-formation   td { background: #fff7ed; }
+.row-formation   td { background: #fefce8; }
 .row-bapteme     td { background: #fef2f2; }
 CSS;
     }

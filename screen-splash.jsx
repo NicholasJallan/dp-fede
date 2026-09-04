@@ -25,7 +25,7 @@ function SplashScreen({ user, onClose }) {
 
         <div className="splash-cards">
 
-          <div className="splash-card splash-card--marine">
+          <div className="splash-card splash-card--kelp">
             <div className="splash-card-badge">PA</div>
             <div className="splash-card-body">
               <div className="splash-card-title">Plongeur Autonome</div>
@@ -37,7 +37,7 @@ function SplashScreen({ user, onClose }) {
             </div>
           </div>
 
-          <div className="splash-card splash-card--kelp">
+          <div className="splash-card splash-card--sun">
             <div className="splash-card-badge">PE</div>
             <div className="splash-card-body">
               <div className="splash-card-title">Plongeur Encadré</div>
@@ -49,7 +49,7 @@ function SplashScreen({ user, onClose }) {
             </div>
           </div>
 
-          <div className="splash-card splash-card--coral">
+          <div className="splash-card splash-card--marine">
             <div className="splash-card-badge">GP</div>
             <div className="splash-card-body">
               <div className="splash-card-title">Guide de Palanquée</div>

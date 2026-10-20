@@ -655,6 +655,7 @@ function currentUser(state) {
 
 function apiResponse(method, path, search, body, state) {
   if (path === '/api/auth/me') return ok(currentUser(state));
+  if (path === '/api/auth/google') return ok(currentUser(state));
   if (path === '/api/divers/import') {
     const dryRun = search.includes('dry_run=1');
     state.imports.push(dryRun ? 'dry_run' : 'apply');

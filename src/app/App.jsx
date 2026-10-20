@@ -87,7 +87,7 @@ function useAppController() {
   const { user, loading: authLoading, logout } = useAuth();
   const { showToast } = useToasts();
   const online = useOnline();
-  const authExpired = useAuthExpired();
+  const authExpired = useAuthExpired(user?.id);
   const outboxItems = useOutboxItems(user);
   const [drawerOpen, setDrawerOpen] = useState(false);
   // 'prepare' : étapes 1-3 (profil→palanquées→check-list phase 1)

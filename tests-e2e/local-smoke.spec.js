@@ -752,6 +752,32 @@ test.describe('build local — socle club', () => {
     await expect(banner.getByRole('button', { name: 'Supprimer les données de cet appareil' })).toBeVisible();
   });
 
+  test('401 reçu avant la connexion : pas de bandeau « Session expirée » une fois connecté', async ({ page }) => {
+    // Déconnecté : /api/auth/me → null, la synchro démarrée au boot reçoit 401.
+    state.deleted = true;
+    state.unauthorized = true;
+    // Google Identity Services simulé : on garde le callback de connexion.
+    await page.addInitScript(() => {
+      window.google = {
+        accounts: { id: { initialize: (o) => (window.__gsiCallback = o.callback), renderButton() {}, prompt() {} } },
+      };
+    });
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'Connexion' })).toBeVisible();
+    await expect.poll(() => state.calls.includes('GET /api/sync/state')).toBe(true);
+
+    state.deleted = false;
+    state.unauthorized = false;
+    await page.waitForFunction(() => typeof window.__gsiCallback === 'function');
+    await page.evaluate(() => window.__gsiCallback({ credential: 'jeton-de-test' }));
+    await page
+      .getByRole('dialog', { name: /Bonjour/ })
+      .getByRole('button', { name: 'Commencer' })
+      .click();
+    await expect(page.getByRole('button', { name: /Nouvelle plongée/ })).toBeVisible();
+    await expect(page.locator('.banner', { hasText: 'Session expirée' })).toHaveCount(0);
+  });
+
   test("rôle « lecture » : actions d'écriture masquées, pas d'alertes", async ({ page }) => {
     state.role = 'lecture';
     await page.goto('/');

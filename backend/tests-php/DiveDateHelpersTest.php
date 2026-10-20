@@ -45,6 +45,19 @@ final class DiveDateHelpersTest extends TestCase
         $this->assertStringStartsWith('2026-06-12 ', $result);
     }
 
+    /** toISOString() côté front : converti dans le fuseau du serveur. */
+    public function testParseIsoWithTimezone(): void
+    {
+        $prev = date_default_timezone_get();
+        date_default_timezone_set('Europe/Paris');
+        try {
+            $this->assertSame('2026-06-12 08:30:00', \parseDiveDateToMySql('2026-06-12T06:30:00.000Z'));
+            $this->assertSame('2026-06-12 08:30:00', \parseDiveDateToMySql('2026-06-12T08:30:00+02:00'));
+        } finally {
+            date_default_timezone_set($prev);
+        }
+    }
+
     public function testParseEmptyReturnsNull(): void
     {
         $this->assertNull(\parseDiveDateToMySql(''));

@@ -3,17 +3,18 @@
 // Stratégies par destination :
 //   - App shell local (/, *.css, app.js, /lib/*) : cache-first, precache à l'install
 //   - CDN tiers (fonts.googleapis.com, fonts.gstatic.com) : cache-first runtime
-//   - GET /api/auth/me, /api/divers, /api/sites, /api/dives (liste) : stale-while-revalidate
-//   - Tout autre /api/* : network-only (laisse passer pour que l'app gère la queue)
-//   - Reste : network-first avec fallback cache
+//   - /api/* : JAMAIS mis en cache par le SW (network-only). Le mode hors-ligne
+//     des données est assuré par IndexedDB (lib/offline-store.js), propre à
+//     l'utilisateur et purgé au logout. Un cache SW partagé servait des
+//     réponses périmées, voire celles d'un autre compte sur un appareil commun.
+//   - Reste : relais réseau explicite
 //
-// Bumper manuellement la VERSION ci-dessous à chaque déploiement frontend
-// (sinon le navigateur garde l'ancien cache). Format : dp-{YYYYMMDD}-{sha7}.
-const VERSION = 'dp-20260613-fiche-cols';
+// VERSION est remplacée au build par un hash du contenu de dist/ (build.js) :
+// tout changement de fichier publié déclenche l'installation d'un nouveau SW.
+const VERSION = '__SW_VERSION__';
 
 const SHELL_CACHE  = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
-const API_CACHE     = `${VERSION}-api`;
 
 // Précache : app shell local. Toute requête à la racine du domaine doit
 // pouvoir être servie depuis ce cache après install.
@@ -55,16 +56,6 @@ const CDN_ORIGINS = [
   // https://cdnjs.cloudflare.com retiré : jsPDF/html2canvas supprimés (PDF côté serveur via mPDF)
 ];
 
-// Endpoints API à cacher en stale-while-revalidate. Lecture seule.
-// NB : /api/auth/me est intentionnellement absent — la session doit toujours
-// être vérifiée en direct (un cache stale "connecté" bloquerait la reconnexion).
-const API_SWR_PATHS = [
-  '/api/divers',
-  '/api/sites',
-  '/api/dives',
-  '/api/sync/state',
-];
-
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(SHELL_CACHE);
@@ -84,8 +75,8 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
-    // Purge sèche des anciens caches : les archives historiques sont jetables,
-    // pas de migration. Tout cache qui ne matche pas VERSION saute.
+    // Purge sèche des anciens caches (dont les anciens caches « -api ») :
+    // tout cache qui ne matche pas VERSION saute.
     const names = await caches.keys();
     await Promise.all(names
       .filter(n => !n.startsWith(VERSION))
@@ -109,13 +100,8 @@ self.addEventListener('fetch', (event) => {
 
   // Same-origin
   if (url.origin === self.location.origin) {
-    if (url.pathname.startsWith('/api/')) {
-      if (API_SWR_PATHS.some(p => url.pathname === p || url.pathname.startsWith(p + '/'))) {
-        event.respondWith(staleWhileRevalidate(req, API_CACHE));
-      }
-      // sinon : network-only — laisse passer, l'app gère
-      return;
-    }
+    // API : network-only, laisse passer — l'app gère le hors-ligne via IndexedDB.
+    if (url.pathname.startsWith('/api/')) return;
     event.respondWith(cacheFirst(req, SHELL_CACHE));
     return;
   }
@@ -168,36 +154,6 @@ async function cacheFirst(req, cacheName) {
     }
     throw err;
   }
-}
-
-async function staleWhileRevalidate(req, cacheName) {
-  const cache  = await caches.open(cacheName);
-  const cached = await cache.match(req);
-
-  // no-store : bypass le cache HTTP de Chrome pour que les réponses API
-  // viennent toujours du serveur, même si une ancienne réponse est en cache.
-  const networkReq = new Request(req, { cache: 'no-store' });
-  const network = fetch(networkReq)
-    .then(res => {
-      if (res.ok) cache.put(req, res.clone()).catch(() => {});
-      return res;
-    })
-    .catch(() => null);
-
-  // Cache-first si présent, sinon attend le réseau.
-  if (cached) {
-    // Refresh en arrière-plan, ne bloque pas la réponse.
-    network.catch(() => {});
-    return cached;
-  }
-  const res = await network;
-  if (res) return res;
-  // Offline + pas de cache : renvoyer une enveloppe JSON minimale pour que
-  // l'app puisse distinguer ce cas de l'erreur HTTP.
-  return new Response(JSON.stringify({ ok: false, error: 'offline', offline: true }), {
-    status: 503,
-    headers: { 'Content-Type': 'application/json' },
-  });
 }
 
 async function notifyClients(payload) {

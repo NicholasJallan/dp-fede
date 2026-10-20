@@ -62,6 +62,41 @@ async function prefetchUserData() {
   }
 }
 
+// Lie les données locales (IndexedDB, caches) à l'utilisateur courant.
+// Si un autre compte se connecte sur l'appareil, les données du précédent
+// (annuaire, plongées, outbox) sont purgées : elles ne doivent ni lui être
+// montrées ni être rejouées avec sa session.
+async function bindLocalDataToUser(u) {
+  if (!u || !window.offlineStore) return;
+  try {
+    const owner = await window.offlineStore.get('meta', 'owner');
+    if (owner && owner !== u.id) await purgeLocalData();
+    await window.offlineStore.put('meta', 'owner', u.id);
+    // Session (re)confirmée : les actions en attente repartent immédiatement.
+    if (window.outbox?.retryNow) await window.outbox.retryNow();
+  } catch (err) {
+    console.error('[auth] liaison des données locales :', err?.message || err);
+  }
+}
+
+// Purge complète des données locales de l'appareil.
+async function purgeLocalData() {
+  try {
+    if (window.offlineStore?.clearAll) await window.offlineStore.clearAll();
+  } catch (err) {
+    console.error('[auth] purge IndexedDB :', err?.message || err);
+  }
+  try {
+    [SKEYS.CACHE_DIVERS, SKEYS.CACHE_SITES].forEach(k => localStorage.removeItem(k));
+  } catch { /* stockage indisponible : rien à purger */ }
+  try {
+    if (window.caches) {
+      const names = await caches.keys();
+      await Promise.all(names.filter(n => n.endsWith('-api')).map(n => caches.delete(n)));
+    }
+  } catch { /* Cache API indisponible */ }
+}
+
 function AuthProvider({ children }) {
   // undefined = chargement, null = non connecté, objet = connecté
   const [user, setUser]     = useState(undefined);
@@ -78,6 +113,8 @@ function AuthProvider({ children }) {
         if (cancelled) return;
         if (u) {
           writeLastUser(u);
+          await bindLocalDataToUser(u);
+          if (cancelled) return;
           setUser(u);
           setAuthMode('online');
           // Pré-cache en arrière-plan, non bloquant pour le splash.
@@ -114,6 +151,7 @@ function AuthProvider({ children }) {
           .then(u => {
             if (u) {
               writeLastUser(u);
+              bindLocalDataToUser(u);
               setUser(u);
               setAuthMode('online');
             } else {
@@ -129,9 +167,14 @@ function AuthProvider({ children }) {
     return () => window.removeEventListener('dp:netchange', onNet);
   }, [authMode, user]);
 
-  const logout = useCallback(async () => {
-    await api.auth.logout().catch(() => {});
+  // La purge locale efface aussi l'outbox : l'appelant doit avoir prévenu
+  // l'utilisateur s'il reste des actions non synchronisées.
+  // keepLocal : reconnexion après expiration de session — l'outbox du même
+  // utilisateur est conservée et rejouée au prochain login.
+  const logout = useCallback(async ({ keepLocal = false } = {}) => {
+    await api.auth.logout().catch(err => console.warn('[auth] logout serveur :', err?.message));
     clearLastUser();
+    if (!keepLocal) await purgeLocalData();
     setUser(null);
     setAuthMode('online');
     window.location.reload();
@@ -142,6 +185,7 @@ function AuthProvider({ children }) {
     try {
       const u = await api.auth.google(response.credential);
       writeLastUser(u);
+      await bindLocalDataToUser(u);
       setUser(u);
       setAuthMode('online');
       prefetchUserData();

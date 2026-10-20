@@ -315,18 +315,7 @@ if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
         $params[] = substr((string)$body['drive_link'], 0, 500);
     }
 
-    // H4 : render_state → dive_runtime_state (UPSERT sans toucher dives.updated_at)
-    // Traité séparément même si $sets est vide (render_state seul est valide).
     $hasRenderState = isset($body['render_state']);
-    if ($hasRenderState) {
-        $rsJson = json_encode($body['render_state'], JSON_UNESCAPED_UNICODE);
-        Db::q(
-            'INSERT INTO dive_runtime_state (dive_id, state) VALUES (?,?)
-             ON DUPLICATE KEY UPDATE state=VALUES(state)',
-            [$row['id'], $rsJson]
-        );
-    }
-
     if (empty($sets) && !$hasRenderState) Json::abort(422, 'Aucun champ à mettre à jour');
 
     // Validation règles métier uniquement lors d'une transition de statut significative
@@ -340,6 +329,27 @@ if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
             $ans = json_decode($existingAnswers['answers'] ?? '{}', true) ?? [];
         }
         validatePalanqueesOrAbort($body['palanquees'], $ans, $user['id']);
+    }
+
+    // Garde-fou anti-écrasement : un client qui aurait ouvert la plongée sans
+    // son contenu (ex. hors-ligne) ne doit pas vider une composition existante.
+    if ($curStatus !== 'archived' && isEmptyDivePayload($body)) {
+        $existing = Db::row('SELECT palanquees FROM dives WHERE id=?', [$row['id']]);
+        $existingPals = json_decode($existing['palanquees'] ?? '[]', true) ?: [];
+        if (!empty($existingPals)) {
+            Json::abort(409, 'Mise à jour refusée : elle viderait une plongée existante');
+        }
+    }
+
+    // H4 : render_state → dive_runtime_state (UPSERT sans toucher dives.updated_at),
+    // écrit seulement après validation.
+    if ($hasRenderState) {
+        $rsJson = json_encode($body['render_state'], JSON_UNESCAPED_UNICODE);
+        Db::q(
+            'INSERT INTO dive_runtime_state (dive_id, state) VALUES (?,?)
+             ON DUPLICATE KEY UPDATE state=VALUES(state)',
+            [$row['id'], $rsJson]
+        );
     }
 
     if (!empty($sets)) {
@@ -392,7 +402,26 @@ function parseDiveDateToMySql(string $raw): ?string {
         $dt = DateTimeImmutable::createFromFormat($fmt, $raw);
         if ($dt !== false) return $dt->format('Y-m-d H:i:s');
     }
+    // ISO 8601 avec fuseau (ex. toISOString() → 2026-06-12T06:30:00.000Z) :
+    // converti dans le fuseau du serveur, comme les dates saisies localement.
+    if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/', $raw)) {
+        try {
+            $dt = new DateTimeImmutable($raw);
+            return $dt->setTimezone(new DateTimeZone(date_default_timezone_get()))->format('Y-m-d H:i:s');
+        } catch (Exception $e) {
+            return null;
+        }
+    }
     return null;
+}
+
+/**
+ * Vrai si le PATCH porte answers ET palanquees vides : signature d'un client
+ * qui écrirait un état jamais chargé.
+ */
+function isEmptyDivePayload(array $body): bool {
+    if (!array_key_exists('answers', $body) || !array_key_exists('palanquees', $body)) return false;
+    return empty($body['answers']) && empty($body['palanquees']);
 }
 
 function normalizeDiveDate(?string $sqlDate): ?string {

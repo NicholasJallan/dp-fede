@@ -5,6 +5,15 @@ Dates en ISO 8601.
 
 ## [Unreleased]
 
+### Intégration de la branche de production (juin → 5 septembre 2026)
+- Fusion de `origin/main` ; inventaire commit par commit : `docs/integration-upstream.md`.
+- Structures partagées (`002_workspaces`, appliquée en production) reprises en **clubs** par la migration 007 (un club par structure, membres, club courant, auteurs) ; nos migrations renumérotées 003 → 011 ; plan / vérification automatiques au déploiement (`bin/workspaces-plan.php`) ; `/api/workspaces*` → 410.
+- Synchro terrain : items interrompus remis en file, pull périodique, listes annuaire réconciliées, premier rattachement des appareils anciens.
+- Fiche : saisie rapide − / + des paramètres de sortie, paliers de déco réalisés (cadran, fiche, PDF) ; PDF lisible en noir et blanc, plus de rouge hors bloquant.
+- Archivage jamais bloqué par Google Drive : le serveur archive les PDF, copie Drive facultative (préférence de l'appareil).
+- Palanquées côte à côte sur tablette portrait (requêtes de conteneur).
+- PHP 8.5 en production (pool dédié à côté du pool « dive », CI 8.2 / 8.5), cache JWKS signé dans l'APCu partagé ; `PdfAutoload` / `psr-log-shim` supprimés.
+
 ### Conformité Code du sport (texte consolidé du 08/10/2026)
 - Moteur de règles réécrit à partir des annexes III-15 a à III-18 c (`src/domain/cds-tables.js`, `pal-rules.js`) et porté à l'identique en PHP ; 95 cas réglementaires partagés JS/PHP (`tests/fixtures/pal-rules.json`), revus de façon indépendante.
 - Situations auparavant autorisées à tort désormais bloquées : E1 avec 2 baptêmes, air > 60 m, trimix autonome à 6, âge minimal en autonomie, DP E1/E2 en fosse > 6 m, nitrox en formation, GP à 0-60 m, PpO₂ > 1,6 bar…

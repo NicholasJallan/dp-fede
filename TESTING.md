@@ -105,7 +105,9 @@ describe('Ma nouvelle règle', () => {
 
 ## Couverture
 
-État actuel : **261 tests, 39 suites**, ~150 ms d'exécution (node 20+ sans aucune dépendance NPM).
+État actuel : **391 tests JS** (node 20+), **407 tests PHPUnit** (PHP 8.2 et 8.5 en CI), **42 tests e2e locaux** (Playwright, API simulée).
+
+Recette de la migration des structures de production en clubs, sur un MariaDB jetable : `php deploy/recette-migration-clubs.php` (variables `DP_RECETTE_DSN`, `DP_RECETTE_USER`, `DP_RECETTE_PASS`).
 
 Modules couverts :
 
@@ -128,6 +130,10 @@ Modules couverts :
 | `src/domain/questions.js`, `checklist.js` | filtrage milieu / phase | items conditionnels piscine/fosse/mer |
 | Dive lifecycle | transitions prepared → in_progress → archived | refus rétrograde, auto-save flush |
 | Home buckets | groupement par statut + tri | ordre date, pending Drive |
+| `src/offline/*` (synchro terrain) | `recoverInflight`, `nextWakeMs`, `listWithFallback`, `purgeSyncedClubData` | `tests/sync-terrain.test.js` |
+| `src/domain/paliers.js`, `fiche/fin-rules.js` | `formatPaliers`, bornes de saisie | `tests/paliers.test.js` (fixtures `tests/fixtures/paliers.json` partagées avec PHPUnit) |
+| `src/api/drive-preference.js` | copie Drive facultative | `tests/drive-preference.test.js` |
+| Backend `LegacyWorkspaces` + `007_clubs.sql` | reprise des structures (règles, plan sur volumes de production, ordre SQL via `RecordingPdo`) | `LegacyWorkspacesTest.php`, `MigratorTest.php` |
 
 ## Backend PHP (Sprint 2)
 

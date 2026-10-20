@@ -120,7 +120,7 @@ remplacé par `deploy/`.
 - **Backend PHP** : `/var/www/dp-fede-api/`
 - **Config secrète** : `/etc/dp-fede/config.php`
 - **DB** : MariaDB `dp_fede` / user `dp_fede_user@localhost`
-- **nginx** : `/etc/nginx/sites-available/bullesenvalais` (bloc dp-fede en bas, contient aussi la clé Google Maps via `sub_filter` — cf. section « Clé Google Maps »)
+- **nginx** : `/etc/nginx/sites-available/dp-fede` (fichier propre depuis le 20/10/2026, généré depuis `deploy/nginx-dp-fede.conf` ; contient la clé Google Maps via `sub_filter` — cf. section « Clé Google Maps ») + en-têtes `/etc/nginx/snippets/dp-fede-security-headers.conf`. Les autres sites (site, shop, dive…) restent dans `sites-available/bullesenvalais` : ne pas y toucher.
 - **GitHub** : https://github.com/NicholasJallan/dp-fede
 - **Google OAuth Client ID** : `813155202106-jlddu3nmfuq552p9673odcegrf5kuke7.apps.googleusercontent.com`
 - **GCP Project** : `api-project-813155202106`
@@ -136,7 +136,7 @@ ssh pi@bullesenvalais.ch "sudo nginx -t && sudo systemctl reload nginx"
 `index.html` (template source, copié tel quel dans `dist/`) contient le
 placeholder `__GOOGLE_MAPS_API_KEY__` dans la balise `<script>` Maps. nginx remplace
 ce placeholder par la vraie clé au moment du serve via `sub_filter`
-dans le bloc `location ~* \.(jsx|js|css|html)$` du site dp-fede :
+dans le bloc `location ~* \.(?:html|js|jsx|css)$` du site dp-fede :
 
 ```nginx
 sub_filter '__GOOGLE_MAPS_API_KEY__' '<nouvelle-clé-AIza…>';
@@ -148,7 +148,7 @@ on`. Ne pas ajouter `sub_filter_types text/html;` : c'est le défaut,
 nginx warn « duplicate MIME type ».)
 
 La clé vit donc UNIQUEMENT dans
-`/etc/nginx/sites-available/bullesenvalais` sur le Pi. **Jamais dans
+`/etc/nginx/sites-available/dp-fede` sur le Pi (mode 640, root). **Jamais dans
 git.** Le rsync de déploiement frontend envoie le placeholder tel quel,
 nginx s'occupe du reste — rien à faire de spécial au déploiement.
 
@@ -158,8 +158,8 @@ audit trimestriel) :
 1. GCP Console → APIs & Services → Credentials → créer la nouvelle clé,
    la restreindre (HTTP referrer `https://dp-fede.bullesenvalais.ch/*` +
    APIs Maps JS + Places), supprimer l'ancienne.
-2. SSH Pi : `sudo $EDITOR /etc/nginx/sites-available/bullesenvalais`,
-   remplacer la valeur dans la directive `sub_filter` du bloc dp-fede.
+2. SSH Pi : `sudo $EDITOR /etc/nginx/sites-available/dp-fede`,
+   remplacer la valeur dans la directive `sub_filter`.
 3. `sudo nginx -t && sudo systemctl reload nginx`.
 4. Vérifier : `curl -s https://dp-fede.bullesenvalais.ch/ | grep AIza`
    doit renvoyer la nouvelle clé.
@@ -169,45 +169,43 @@ Aucun redéploiement frontend nécessaire.
 Pré-commit guard : `git grep -E 'AIza[0-9A-Za-z_-]{35}'` doit ne rien
 renvoyer.
 
-### CSP — origines whitelistées dans `connect-src`
+### CSP et en-têtes de sécurité
 
-Toute nouvelle API externe appelée via `fetch()` doit être ajoutée à
-`connect-src` dans `/etc/nginx/sites-available/bullesenvalais` du bloc
-dp-fede. Sans ça, le navigateur émet « Failed to fetch » silencieusement.
+Source de vérité : `deploy/nginx-dp-fede-security-headers.conf` (installé dans
+`/etc/nginx/snippets/dp-fede-security-headers.conf`), inclus au niveau
+`server` ET dans chaque `location` qui pose ses propres `add_header` (nginx
+n'hérite pas des `add_header` sinon). Toute nouvelle API externe appelée via
+`fetch()` doit être ajoutée à `connect-src` dans ce fichier, puis réinstallée
+sur le Pi (`sudo install -m 644 … && sudo nginx -t && sudo systemctl reload nginx`).
+Sans ça, le navigateur émet « Failed to fetch » silencieusement.
 
-État au 13/06/2026 (Sprint 4 sécurité durcie) :
+État au 20/10/2026 :
 
-- `'self'`
-- `https://maps.googleapis.com`, `https://maps.gstatic.com` (Maps + Places)
-- `https://api.open-meteo.com` (bouton « Précompléter depuis météo »)
-- `https://www.googleapis.com` (Google Drive : list/create/upload files)
-- `https://oauth2.googleapis.com`, `https://accounts.google.com`
-  (token endpoints — OAuth Drive scope)
-- `https://unpkg.com`, `https://cdnjs.cloudflare.com`,
-  `https://fonts.googleapis.com`, `https://fonts.gstatic.com`
-  (REQUIS pour le Service Worker qui fait du runtime-fetch sur ces CDN)
+- `connect-src` : `'self'`, `maps.googleapis.com`, `maps.gstatic.com` (Maps +
+  Places), `api.open-meteo.com` (météo), `www.googleapis.com` (Drive),
+  `oauth2.googleapis.com`, `accounts.google.com` (jetons), Google Fonts.
+  Plus d'unpkg/cdnjs : React est bundlé dans `app.js`.
+- `img-src` : `'self' data: blob:` + `*.googleapis.com`, `*.gstatic.com`,
+  `*.google.com`, `*.googleusercontent.com`, `*.ggpht.com` (tuiles Maps
+  satellite `khms*.googleapis.com`, avatars Google).
+- `worker-src 'self' blob:`, `manifest-src 'self'`, `form-action 'self'`,
+  `frame-ancestors 'none'`.
+- `Cross-Origin-Opener-Policy: same-origin-allow-popups` (popup Google
+  Identity Services), HSTS preload, `Permissions-Policy` (geolocation `self`
+  pour le bouton météo).
+- `sw.js` : `no-cache, no-store, must-revalidate` + `Service-Worker-Allowed: /` ;
+  `site.webmanifest` : `no-cache`.
 
 CSP report-uri configurée : violations envoyées à `/api/csp/report` →
 log `/var/log/dp-fede-csp.log` (chown www-data:www-data, mode 640).
 Vérifier régulièrement ce fichier pour identifier les nouvelles
 violations.
 
-Headers sécurité associés :
-
-- `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`
-  (préinscription HSTS effective si soumise à hstspreload.org).
-- `Permissions-Policy: camera=(), microphone=(), geolocation=(self), payment=(), usb=()`
-  (geolocation `self` car le bouton météo l'utilise).
-- `form-action 'self'` dans la CSP.
-
-### CSP / nginx — Service Worker et mode offline
-
-Pour le mode offline (PWA + SW) ajouter à la CSP du bloc dp-fede :
-`worker-src 'self'; manifest-src 'self';`
-
-Ajouter aussi les directives `location` pour `sw.js` (no-cache strict) et
-`site.webmanifest` (no-cache). Configuration de référence versionnée :
-`deploy/nginx-dp-fede.conf` + `deploy/nginx-dp-fede-security-headers.conf`.
+Certificat : SAN partagé `www.bullesenvalais.ch` (site, dive, shop, dp-fede),
+renouvelé par certbot en mode **webroot** (`webroot_map` dp-fede →
+`/var/www/html/dp-fede`) : le bloc port 80 doit continuer à servir
+`/.well-known/acme-challenge/` sans redirection. Contrôle :
+`sudo certbot renew --cert-name www.bullesenvalais.ch --dry-run`.
 
 La constante `VERSION` de `public/sw.js` vaut `__SW_VERSION__` dans le dépôt ;
 `build.js` la remplace par un hash du contenu de `dist/` (`dp-{hash12}`). Ne
@@ -261,7 +259,7 @@ Modules purs dans `src/domain/` (ré-exportés par `src/domain/index.js`) :
 
 ## Pièges connus
 
-- **Clé Google Maps** : la balise Maps de `index.html` doit contenir le placeholder `__GOOGLE_MAPS_API_KEY__`, jamais une vraie clé `AIza…`. Une vraie clé qui s'y glisse fuite dans GitHub (Secret Scanning) à la première push. nginx (`sub_filter` côté Pi) injecte la vraie clé au serve — cf. section « Clé Google Maps ». Si le sélecteur de sites n'affiche plus la carte après modif nginx : vérifier que `sub_filter` est bien dans le bloc `location ~* \.(jsx|js|css|html)$` (sinon il ne s'applique pas au HTML, qui est servi par ce bloc à cause de l'extension).
+- **Clé Google Maps** : la balise Maps de `index.html` doit contenir le placeholder `__GOOGLE_MAPS_API_KEY__`, jamais une vraie clé `AIza…`. Une vraie clé qui s'y glisse fuite dans GitHub (Secret Scanning) à la première push. nginx (`sub_filter` côté Pi) injecte la vraie clé au serve — cf. section « Clé Google Maps ». Si le sélecteur de sites n'affiche plus la carte après modif nginx : vérifier que `sub_filter` est bien dans le bloc `location ~* \.(?:html|js|jsx|css)$` de `/etc/nginx/sites-available/dp-fede` (sinon il ne s'applique pas au HTML, qui est servi par ce bloc à cause de l'extension).
 - `buildQualifs()` dans `backend/routes/divers.php` : utiliser `$recs` (variable locale filtrée) et NON `compact('recycleurs')` qui capturerait le paramètre de fonction (liste complète).
 - `DIPLOMES_PRO` = `['BEES1','DEJEPS','DESJEPS','Autre']` — MF1/MF2 sont des brevets fédéraux, pas des diplômes professionnels d'État.
 - `getMilieuType()` est case-insensitive (`.toLowerCase()`) pour gérer les valeurs sites ('Lac', 'Carrière') et les anciennes valeurs questions.

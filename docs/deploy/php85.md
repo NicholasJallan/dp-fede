@@ -235,25 +235,36 @@ une invitation nominative (lien à usage unique, `docs/api-club.md`).
 
 ## 7. Configuration nginx versionnée (après la bascule)
 
-Remplace le bloc dp-fede historique par `deploy/nginx-dp-fede.conf` (CSP sans
-unpkg/cdnjs, en-têtes hérités correctement par sw.js, limite de corps CSP…).
+**Appliquée le 20/10/2026** : le bloc dp-fede historique a été retiré de
+`/etc/nginx/sites-available/bullesenvalais` (sauvegarde :
+`/root/nginx-bak-20261020-231117/`) et remplacé par
+`/etc/nginx/sites-available/dp-fede` (lien dans `sites-enabled/`), généré depuis
+`deploy/nginx-dp-fede.conf`, + `/etc/nginx/snippets/dp-fede-security-headers.conf`.
+
+Réalités du Pi prises en compte par le fichier versionné :
+
+- certificat SAN partagé `www.bullesenvalais.ch` (`__CERT_NAME__`), sans
+  `options-ssl-nginx.conf` ni `ssl-dhparams.pem` (obtenu en mode webroot :
+  réglages TLS globaux de `nginx.conf`) ;
+- renouvellement certbot **webroot** : `/.well-known/acme-challenge/` servi
+  en HTTP depuis `/var/www/html/dp-fede`, sans redirection ;
+- journaux `/var/log/nginx/dp-fede.{access,error}_log` ;
+- le routeur PHP lit `REQUEST_URI` (fourni par `fastcgi_params`).
+
+Mise à jour ultérieure (nouvelle CSP, nouvel en-tête…) :
 
 ```bash
-sudo install -o root -g root -m 644 /tmp/nginx-dp-fede-security-headers.conf \
-  /etc/nginx/snippets/dp-fede-security-headers.conf
-sudo install -o root -g root -m 644 /tmp/nginx-dp-fede.conf /etc/nginx/sites-available/dp-fede
-
-# Placeholders : nom du certificat et VRAIE clé Maps (reprise de l'ancien sub_filter)
-sudo certbot certificates | grep -A2 dp-fede
-sudo grep -n "sub_filter '__GOOGLE_MAPS_API_KEY__'" /etc/nginx/sites-available/bullesenvalais
-sudo $EDITOR /etc/nginx/sites-available/dp-fede   # __CERT_NAME__, __VRAIE_CLE_MAPS__
-
-# Retirer le bloc dp-fede de l'ancien fichier (server 443 ET redirection 80),
-# sinon nginx signale « conflicting server name ».
-sudo $EDITOR /etc/nginx/sites-available/bullesenvalais
-
-sudo ln -s /etc/nginx/sites-available/dp-fede /etc/nginx/sites-enabled/dp-fede
-sudo nginx -t && sudo systemctl reload nginx
+scp deploy/nginx-dp-fede.conf deploy/nginx-dp-fede-security-headers.conf pi@bullesenvalais.ch:/tmp/
+ssh pi@bullesenvalais.ch
+TS=$(date +%Y%m%d-%H%M%S); sudo mkdir -p /root/nginx-bak-$TS
+sudo cp -a /etc/nginx/sites-available/dp-fede /etc/nginx/snippets/dp-fede-security-headers.conf /root/nginx-bak-$TS/
+sudo install -o root -g root -m 644 /tmp/nginx-dp-fede-security-headers.conf /etc/nginx/snippets/dp-fede-security-headers.conf
+# Le fichier du site porte la vraie clé Maps : la reprendre du fichier en place.
+KEY=$(sudo grep -oE "AIza[0-9A-Za-z_-]{35}" /etc/nginx/sites-available/dp-fede | sort -u)
+sed -e "s/__CERT_NAME__/www.bullesenvalais.ch/g" -e "s/__VRAIE_CLE_MAPS__/$KEY/" /tmp/nginx-dp-fede.conf \
+  | sudo install -o root -g root -m 640 /dev/stdin /etc/nginx/sites-available/dp-fede
+sudo nginx -t && sudo systemctl reload nginx   # sinon : recopier /root/nginx-bak-$TS/*
+sudo certbot renew --cert-name www.bullesenvalais.ch --dry-run   # défi ACME toujours servi
 ```
 
 ## 8. Vérifications

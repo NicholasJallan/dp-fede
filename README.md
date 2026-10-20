@@ -730,7 +730,7 @@ ssh pi@bullesenvalais.ch "sudo nginx -t && sudo systemctl reload nginx"
 
 ### CSP — origines whitelistées dans `connect-src`
 
-Toute nouvelle API externe appelée via `fetch()` doit être ajoutée à `connect-src` dans `/etc/nginx/sites-available/bullesenvalais` (bloc `dp-fede`).
+Toute nouvelle API externe appelée via `fetch()` doit être ajoutée à `connect-src` dans `deploy/nginx-dp-fede-security-headers.conf`, puis réinstallée sur le Pi (`/etc/nginx/snippets/dp-fede-security-headers.conf`).
 
 | Origine                         | Usage                        |
 | ------------------------------- | ---------------------------- |

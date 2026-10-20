@@ -1,277 +1,258 @@
 # Règles métier — DP Assistant
 
-Synthèse exhaustive des règles métier appliquées par l'outil. Source : Code du Sport (Art. A322-71 à A322-101), MFT FFESSM et règles internes du club.
+Règles réglementaires appliquées par l'outil, telles qu'elles sont codées.
 
-> **Base réglementaire** : règles à jour au **26/11/2025** (derniers textes pris en compte : arrêtés des 17 oct. 2025 et 24 nov. 2025 modifiant l'annexe III-15a — qualifications DP). La date de référence est centralisée dans `window.REGLEMENTATION` (`data.js`) et affichée sur la fiche et l'écran compte.
+**Source** : Code du sport, articles A322-71 à A322-101 et annexes III-14 a à III-18 c. Vérification faite sur le texte consolidé du **08/10/2026** (arrêtés des 17/10/2025 et 24/11/2025 inclus).
 
-> **Dérogation piscine / fosse ≤ 6 m** : en milieu artificiel d'une profondeur ≤ 6 m, la fiche de sécurité n'est **pas obligatoire** et un DP de niveau minimum **E1** suffit (Art. A322-72). L'outil affiche un bandeau informatif dans ce cas et la fiche reste produisible comme trace volontaire.
+**Date de référence** : `window.REGLEMENTATION` (`data.js`), affichée sur la fiche et l'écran compte.
 
-> **Avertissement** : outil d'aide à la décision. Ne se substitue pas à la responsabilité personnelle du Directeur de Plongée.
+> **Outil d'aide à la décision.** Il ne remplace pas la responsabilité du directeur de plongée (A322-72).
+
+## Où vivent les règles
+
+| Élément | Fichier |
+|---|---|
+| Tableaux des annexes (données pures) | `lib/cds-tables.js` |
+| Moteur de validation (`validatePal`) | `lib/pal-rules.js` |
+| Aptitudes d'un plongeur, profondeurs, type de palanquée | `data.js` |
+| Portage serveur (comportement identique) | `backend/lib/Rules.php` |
+| **Cas réglementaires partagés JS + PHP** (95 cas, chacun avec son article) | `tests/fixtures/pal-rules.json` |
+
+Toute modification de règle :
+1. commence par un cas dans la fixture ;
+2. doit passer `npm test` **et** `composer test`.
+
+Chaque issue de validation porte :
+- un `code` stable ;
+- une référence `ref` au texte ;
+- les `ids` des plongeurs concernés, mis en évidence dans l'interface.
 
 ---
 
-## Sommaire
+## 1. Contexte d'une palanquée
 
-1. [Niveaux et aptitudes](#1-niveaux-et-aptitudes)
-2. [Directeur de Plongée — qualifications acceptées](#2-directeur-de-plongée--qualifications-acceptées)
-3. [Profondeurs maximales par DP](#3-profondeurs-maximales-par-dp)
-4. [Mélanges respiratoires — qualifications DP requises](#4-mélanges-respiratoires--qualifications-dp-requises)
-5. [Composition des palanquées](#5-composition-des-palanquées)
-6. [Code couleur fiche de sécurité](#6-code-couleur-fiche-de-sécurité)
-7. [Check-list conditionnelle](#7-check-list-conditionnelle)
-8. [Articles Code du Sport référencés](#8-articles-code-du-sport-référencés)
+### Mode : enseignement ou exploration (A322-75)
+
+- L'exploration se définit comme la plongée « en dehors de toute action d'enseignement ».
+- Le DP choisit le mode **par palanquée** dès qu'un enseignant y figure.
+- Un **baptême relève toujours de l'enseignement** (III-16 a).
+- Si le mode n'est pas précisé et qu'un enseignant est présent, la palanquée est traitée en enseignement, avec l'avertissement `MODE_IMPLICIT`.
+
+### Milieu (A322-98)
+
+- **Milieu naturel** : mer, lac, carrière.
+- **Piscine ou fosse de plus de 6 m** : règles du milieu naturel.
+- **Piscine ou fosse de 6 m au plus** : régime dérogatoire (§6).
+- **Profondeur du bassin inconnue** :
+  - une fosse est présumée de plus de 6 m ;
+  - une piscine est présumée de 6 m au plus si la plongée l'est.
+
+### Gaz
+
+- Mélanges déclarés par palanquée : `Air`, `Nx ≤ 40%`, `Nx > 40%`, `Tx`.
+- Le pourcentage d'O₂ du nitrox (`pal.o2`) sert au contrôle de la PpO₂.
 
 ---
 
-## 1. Niveaux et aptitudes
+## 2. Limites absolues (A322-73, A322-76, A322-92)
 
-### Niveaux plongeur (autonomes / encadrés)
+| Règle | Code |
+|---|---|
+| Air et nitrox : 60 m maximum. Si de l'air figure avec du trimix, il limite aussi la palanquée (A322-73). | `AIR_60` |
+| Trimix encadré : 80 m maximum. Trimix autonome : 120 m maximum. | `TX_DEPTH` |
+| Nitrox : PpO₂ ≤ 1,6 bar, soit une profondeur maximale d'utilisation de `⌊(1,6 / FO₂ − 1) × 10⌋` m. | `PPO2_MAX` |
+| Nitrox : % d'O₂ non saisi → avertissement. | `O2_UNKNOWN` |
+| Au trimix, le nitrox déclaré est un gaz de décompression : pas de contrôle de PpO₂ au fond. | — |
+| Une palanquée compte au moins deux plongeurs. | `PAL_SOLO` |
+| La profondeur est limitée par l'aptitude la plus restrictive. Le **panachage d'aptitudes est autorisé**. | `APT_DEPTH` |
 
-| Niveau | Aptitudes encadrées (PE) | Aptitudes autonomes (PA) | Rôle encadrement |
+---
+
+## 3. Aptitudes des plongeurs (III-14 a/b, A322-77)
+
+| Brevet | Aptitudes |
+|---|---|
+| Débutant (aucun brevet) | Baptême, PE-12, PE-20 — uniquement en formation, ou en exploration de 0 à 6 m |
+| N1 | PE-20 (+ PA-12 / PA-20 si acquises) |
+| N2 | PE-40, PA-20 (+ PA-40 si acquise) |
+| N3 | PE-60, PA-60 |
+| E1 (initiateur) | aptitudes de son niveau plongeur : N2 par défaut, N3 si saisi |
+| N4 / GP, E2 → E4 | aptitudes N3 + rôle d'encadrement |
+
+- **E-2 = initiateur ET guide de palanquée** (III-15 b) : rôle GP de droit. C'est vrai pour le GIP FFESSM. Les équivalents CMAS et FSGT de la ligne E-2 ne sont pas distingués (application orientée FFESSM).
+- **Bonus de formation, uniquement en enseignement à l'air** (III-16 a, « en cours de formation vers… ») :
+  - un N1 peut viser PE-40 avec un E3 ou un E4 ;
+  - un N2 peut viser PE-60 avec un E4 ;
+  - même chose pour PA-40 et PA-60, s'il détient déjà PA-20 ou PA-40.
+- **Pas de bonus au nitrox ni au trimix** : l'élève y justifie déjà l'aptitude PE de l'espace (III-17 b, III-18 b).
+- Une aptitude choisie qui n'est pas justifiée par les brevets est bloquante : `APT_NOT_JUSTIFIED` (A322-77).
+- La **compétence d'encadrement est celle de la personne** (brevet détenu), pas seulement du rôle choisi (III-16 b « E3 ou GP ou P4 »).
+
+---
+
+## 4. Air en milieu naturel
+
+### Enseignement (III-16 a)
+
+| Espace | Élèves | Encadrant minimal | Effectif (encadrant non compris) |
 |---|---|---|---|
-| **Débutant** (aucun brevet) | PE20 (en formation) ou Baptême | — | — |
-| **N1** | PE20 | PA12, PA20 (optionnelles) | — |
-| **N2** | PE20, PE40 | PA12, PA20 ; PA40 optionnelle | — |
-| **N3** | PE20, PE40, PE60 | PA12, PA20, PA40, **PA60** | — |
-| **N4** (GP) | PE20, PE40, PE60 | PA12, PA20, PA40, PA60 | GP (guide de palanquée) |
-| **N5** (DP plongeur) | PE20, PE40, PE60 | PA12, PA20, PA40, PA60 | DP exploration seulement |
+| 0-6 m | baptême | E1 | **1** (*) |
+| 0-6 m | débutants | E1 | 4 (*) |
+| 0-12 m | débutants → PE-12 / PA-12 | E2 | 4 (*) |
+| 0-20 m | débutants ou PE-12 → PE-20 / PA-20 | E2 | 4 (*) |
+| 0-40 m | PE-20 ou PA-20 → PE-40 / PA-40 | E3 | 4 (*) |
+| 0-60 m | PE-40 ou PA-40 → PE-60 / PA-60 | E4 | 4 |
 
-> **Licencié débutant** : un plongeur enregistré dans l'annuaire **sans aucun niveau** (ni plongeur, ni encadrant) est considéré comme totalement débutant. Il peut uniquement faire un Baptême (≤ 6 m) ou être PE20 (≤ 20 m), exclusivement dans une palanquée de **formation** (présence obligatoire d'un enseignant E1→E4).
+**(\*) Plongeur supplémentaire** : un plongeur de plus, au minimum GP ou P4, est admis.
+- Un second encadrant E2, E3 ou E4 compte comme ce plongeur supplémentaire.
+- Un GP ou P4 inscrit avec une aptitude PE aussi.
+- Au-delà : `EXTRA_TOO_MANY`. Dans un espace sans (\*) : `EXTRA_NOT_ALLOWED`.
 
-### Niveaux encadrant fédéraux
+Codes : `ENS_NO_ENSEIGNANT`, `ENS_LEVEL`, `EFFECTIF_BAPTEME`, `EFFECTIF_ENCADRES`, `EXTRA_NOT_GP`.
 
-| Niveau | Description | Enseignement max (air) | Exploration max (air) | Peut être DP ? |
+### Exploration encadrée (III-16 b)
+
+| Espace | Encadrés | Encadrant minimal | Effectif |
+|---|---|---|---|
+| 0-6 m | débutants | E1, GP ou P4 | 4 (*) |
+| 0-12 m | PE-12 | E2, GP ou P4 | 4 (*) |
+| 0-20 m | PE-20 | E2, GP ou P4 | 4 (*) |
+| 0-40 m | PE-40 | E3, GP ou P4 | 4 (*) |
+| 0-60 m | PE-60 | **E4** | 4 |
+
+Codes :
+- `EXPLO_COMPETENCE` ;
+- `DEBUTANT_EXPLO` (débutants au-delà de 6 m ou au nitrox) ;
+- `EFFECTIF_ENCADRES`.
+
+### Autonomie (III-16 b, A322-73, A322-89)
+
+- 3 plongeurs maximum (`AUTO_EFFECTIF`).
+- Aptitudes PA uniquement :
+  - un plongeur PE sans encadrant est bloquant (`AUTO_PE`) ;
+  - un baptême ou un débutant sans encadrant est bloquant (`AUTO_ENCADREMENT`).
+- Âge minimal :
+
+  | Autonomie | Âge minimal |
+  |---|---|
+  | PA-12, PA-20 | 16 ans |
+  | PA-40 | 17 ans |
+  | PA-60 | 18 ans |
+  | Trimix | majeurs uniquement |
+
+  Âge insuffisant → `AGE_AUTONOMIE`. Date de naissance absente → avertissement `AGE_UNKNOWN`.
+
+---
+
+## 5. Mélanges
+
+### Nitrox (A322-95, III-17 a/b/c)
+
+- **Exploration et autonomie** : chaque plongeur justifie PN (`NX_PN`).
+- **Enseignement** :
+
+  | Espace | Élèves | PN exigé |
+  |---|---|---|
+  | 0-6 m | débutants admis | non |
+  | 0-12 m, 0-20 m | PE-12 / PE-20 en formation PN ; débutants interdits (`NX_DEBUTANT`) | non |
+  | 0-40 m, 0-60 m | PE-40 / PE-60 | **oui** |
+
+- **Encadrant** : PN-C (`NX_ENCADRANT`) ; en enseignement, E2 minimum même de 0 à 6 m.
+- **Plongeur supplémentaire** : GP ou P4 + PN-C (`EXTRA_NX`).
+- **Nx > 40 % d'O₂** : PN-C requis (`NX_PNC`).
+  - Pour un élève **déjà PN** en formation PN-C : simple avertissement.
+  - Sinon : bloquant.
+- **Exploration à 0-6 m** : III-17 c n'a pas de ligne pour cet espace, donc le minimum est PE-12 + PN.
+
+### Trimix / héliox (A322-96, III-18 a/b/c)
+
+Qualifications, de la moins à la plus étendue : PN-C ⊂ PTH-40 ⊂ PTH-70 ⊂ PTH-120.
+
+| Espace | Enseignement : élèves / encadrant | Exploration encadrée : plongeurs / encadrant | Autonomie |
+|---|---|---|---|
+| 0-40 m | PE-40 + PN-C / E3 + PTH-70 | PE-40 + PTH-40 / E3 + PTH-40 | PA-40 + PTH-40 |
+| 0-70 m | PE-60 + PTH-40 / E4 + PTH-120 | PE-60 + PTH-70 / E4 + PTH-70 | PA-60 + PTH-70 |
+| 0-80 m | PE-60 + PTH-70 / E4 + PTH-120 | PE-60 + PTH-120 / E4 + PTH-120 | PA-60 + PTH-120 |
+| 80-120 m | — | — | PA-60 + PTH-120 |
+
+- Effectif : 4 encadrés, ou 3 en autonomie.
+- Pas de plongeur supplémentaire.
+- Un GP ne peut pas encadrer.
+- Baptêmes et débutants interdits.
+
+Codes : `TX_GP`, `TX_ENCADRANT`, `TX_ENCADRANT_QUAL`, `TX_AIR`, `TX_QUAL`, `TX_PUBLIC`, `TX_ROLE_NO_GAS`.
+
+---
+
+## 6. Piscine ou fosse de 6 m au plus (A322-98)
+
+- **DP** : enseignant **E1 minimum**. Lecture littérale : un N5 / DPE n'est pas un niveau d'enseignement, il est donc refusé.
+- **Autonomie** : les PE-12 et au-delà peuvent plonger en autonomie.
+- **Baptêmes** : ils peuvent être effectués par un GP ou un P4.
+- **Débutants** : jamais autonomes ; en enseignement, un enseignant est requis (`BASSIN_DEBUTANT`).
+- **Fiche de sécurité** : facultative (bandeau informatif).
+- **Effectif** : au-delà de 4 plongeurs par encadrant, simple avertissement (`BASSIN_EFFECTIF`), car les tableaux du milieu naturel ne s'appliquent pas.
+
+---
+
+## 7. Directeur de plongée (A322-72, III-15 a, A322-98)
+
+| Qualification | Milieu naturel | Bassin ≤ 6 m | Enseignement | Trimix |
 |---|---|---|---|---|
-| **E1** | Initiateur club | 6 m | — | Non (par défaut) |
-| **E2** | Initiateur / MF1 stagiaire | 20 m | — | Non (par défaut) |
-| **E3** | MF1 | 40 m | 60 m | **Oui** |
-| **E4** | MF2 / BEES2 / DES-JEPS | 60 m | 60 m | **Oui** |
+| N5 (P5 / DPE) | oui | non | **non** (exploration seule) | non |
+| E1, E2 | non | oui | oui | non |
+| E3 (MF1) | oui | oui | oui | enseignement ≤ 40 m, exploration ≤ 70 m |
+| E4 (MF2 / BEPPA) | oui | oui | oui | enseignement ≤ 80 m, exploration ≤ 120 m |
 
-> Les encadrants héritent de toutes les aptitudes plongeur N3 (PE20→60, PA12→60) + rôle d'enseignant et de GP.
+Le DP doit en outre justifier PN-C au nitrox et PTH-120 au trimix (A322-72).
 
-### Aptitudes complémentaires
-
-| Aptitude | Condition / pré-requis | Profondeur max |
-|---|---|---|
-| **PN** | Plongeur Nitrox | dépend du mélange ≤40 % O₂ |
-| **PN-C** | Nitrox Confirmé (>40 % O₂) | dépend du mélange |
-| **PTH-70** | **PN-C + niveau N3 (ou encadrant)** | 70 m |
-| **PTH-120** | **PN-C + niveau N3 (ou encadrant)** | 120 m |
-| **CCR / SCR** | Recycleur (modèle déclaré) | selon constructeur |
-
-> **Règle stricte Trimix** : un plongeur ne peut détenir PTH-70 ou PTH-120 qu'à condition d'être PN-C **et** d'avoir le niveau N3 (ou être encadrant E1→E4 / N4 / N5, qui héritent des aptitudes N3). L'application verrouille ces cases tant que les pré-requis ne sont pas réunis et nettoie automatiquement les qualifications devenues invalides si l'on retire PN-C ou si l'on change le niveau.
-
-> **Plongée trimix interdite aux N1 et N2** : aucun plongeur N1, N2, débutant ou baptême ne peut être membre d'une palanquée utilisant le mélange Tx, **même en formation vers le N3**. La palanquée doit être composée exclusivement de N3 et/ou d'encadrants, tous détenteurs de PTH-70 ou PTH-120.
+Codes : `DP_QUAL_MILIEU`, `DP_MODE`, `DP_GAS`, `DP_DEPTH`, `DP_MISSING`.
 
 ---
 
-## 2. Directeur de Plongée — qualifications acceptées
+## 8. Fiche de sécurité et durées
 
-Le DP doit être de l'un des niveaux suivants :
-
-- **E3** ou **E4** : peut diriger toutes activités (exploration et enseignement).
-- **N5** : peut diriger l'exploration uniquement.
-- **E1, E2** : exclus du `DPPicker` (interface) sauf cas particuliers club. L'outil les bloque par défaut.
-
-### Restrictions sites selon DP
-
-| DP | Sites autorisés |
-|---|---|
-| **E1** | Piscine ≤ 6 m |
-| **E2** | Piscine ou fosse ≤ 20 m |
-| **E3, E4, N5** | Tous milieux (mer, lac, carrière, piscine, fosse) |
+- **Fiche (A322-72)** :
+  - contenu : noms, prénoms, aptitudes et fonctions des plongeurs, paramètres **prévus et réalisés** ;
+  - conservation : **un an** par l'établissement.
+- **DTR** : **saisie par le DP**, jamais calculée par l'outil. Le Code du sport ne fixe aucune formule ; une valeur calculée affichée comme certaine sur la fiche serait trompeuse.
+- **Certificat médical** :
+  - expiré à la date de la plongée (émission + 1 an) → `MEDICAL_EXPIRED` ;
+  - absent → avertissement `MEDICAL_MISSING` ;
+  - non exigé pour un baptême.
 
 ---
 
-## 3. Profondeurs maximales par DP
+## 9. Check-list
 
-### À l'air (mélange par défaut)
+Items conditionnels de `CHECKLIST_RULES` (`data.js`).
 
-| DP | Formation | Exploration |
-|---|---|---|
-| E1 | 6 m | — |
-| E2 | 20 m | — |
-| E3 | 40 m | 60 m |
-| E4 | 60 m | 60 m |
-| N5 | — | 60 m |
+**Phase 1 — préparation**
+- Secours (A322-78) :
+  - plan de secours écrit et à jour ;
+  - oxygénothérapie normobare ;
+  - BAVU avec 3 masques et masque à haute concentration ;
+  - couverture isothermique et eau douce ;
+  - fiches d'évacuation (annexe III-19) ;
+  - bouteille d'air de secours avec détendeur ;
+  - tablette immergeable ;
+  - tables de décompression (milieu naturel) ;
+  - VHF en mer au départ d'une embarcation.
+- Identification des blocs nitrox (A322-93).
+- TIV et requalification des blocs.
 
-### En Trimix (DP **PTH-120 obligatoire**, E3 ou E4 uniquement)
-
-| DP | Formation Trimix | Exploration Trimix |
-|---|---|---|
-| **E1, E2** | **Interdit** | **Interdit** |
-| E3 + PTH-120 | 40 m | 70 m |
-| E4 + PTH-120 | **80 m** | **120 m** |
-
-> ⚠ Un DP PTH-70 seul **ne suffit pas** pour diriger une plongée trimix. PTH-70 reste utile en tant qu'aptitude individuelle de plongeur.
-
----
-
-## 4. Mélanges respiratoires — qualifications DP requises
-
-Le sélecteur de mélanges par palanquée filtre automatiquement les options selon les qualifications du DP. Les mélanges interdits apparaissent grisés.
-
-| Mélange | DP requis | Article CdS |
-|---|---|---|
-| **Air** | aucun | — |
-| **Nx ≤ 40 % (Nitrox)** | DP **PN-C** | A322-89 |
-| **Nx > 40 % (Nitrox confirmé)** | DP **PN-C** | A322-89 |
-| **Tx (Trimix / Héliox)** | DP **PTH-120** ET (E3 ou E4) | A322-91 |
-
-> Règle interne stricte : tout mélange suroxygéné (même ≤ 40 %) impose un DP PN-C. C'est plus strict que la règle CdS minimale (PN suffit pour Nx ≤ 40 %).
-
-### Qualifications individuelles requises (exploration & guidée)
-
-En **plongée d'exploration** ou **plongée guidée**, chaque plongeur doit individuellement détenir la qualification correspondant au mélange respiré :
-
-| Mélange dans la palanquée | Qualification individuelle requise |
-|---|---|
-| **Nx ≤ 40 %** | PN (ou PN-C) |
-| **Nx > 40 %** | PN-C |
-| **Tx** | PTH-70 (ou PTH-120) |
-
-> Un plongeur ne peut pas faire plus que ce qu'il est déclaré savoir faire (aptitudes, niveau, PN/PNC, PTH-70/120). En **formation** (palanquée avec un E1→E4), cette règle est levée : l'élève peut apprendre un mélange qu'il ne maîtrise pas encore, sous la responsabilité de l'enseignant.
-
-### Trimix interdit en plongée guidée
-
-Une palanquée dont la composition comporte un **GP** (palanquée guidée, ou toute palanquée incluant un guide) ne peut **jamais** mobiliser le mélange **Tx**, même si tous les autres pré-requis sont remplis. Le trimix n'est autorisé qu'en exploration autonome ou en formation dirigée par un E3/E4 PTH-120.
-
-### Comportement de l'outil
-
-- Cases mélanges interdites au niveau DP = grisées + tooltip explicatif.
-- Si le DP change et qu'une palanquée avait un mélange devenu interdit → nettoyage automatique (fallback sur Air).
-- Validation bloquante au moment de l'enregistrement si :
-  - une palanquée a un mélange incompatible avec le DP,
-  - une palanquée Trimix contient un membre N1, N2, débutant ou baptême (même en formation vers N3),
-  - une palanquée avec GP contient le mélange Tx,
-  - en exploration ou guidée, un membre n'a pas la qualification nitrox/trimix requise par le mélange sélectionné.
+**Phase 2 — sur site**
+- Équipement des plongeurs et des encadrants (A322-80).
+- **Un parachute de palier par palanquée** en milieu naturel (A322-80).
+- Moyen de rappel depuis l'embarcation.
+- Trimix (A322-97) : ligne lestée, copie des planifications, embarcation avec pilote.
+- Recycleurs (A322-94).
 
 ---
 
-## 5. Composition des palanquées
+## 10. Limites connues
 
-### Tailles maximales par type
-
-| Type | Composition | Taille max |
-|---|---|---|
-| **Exploration autonome** | PA uniquement (PA12, PA20, PA40, PA60), tous de même aptitude | **3** |
-| **Exploration guidée — 1 GP** | 1 GP + 4 PE (PE20 ou PE40, tous de même aptitude) | **5** |
-| **Exploration guidée — 2 GP** | 2 GP (dont serre-file en queue) + jusqu'à 4 PE | **6** |
-| **Formation** | ≥ 1 encadrant E1→E4 + élèves PE (même aptitude), plusieurs encadrants possibles | **5** |
-| **Baptême** | ≥ 1 encadrant E1→E4 + baptisé(s) | 6 (max 2 baptisés pour E1) |
-
-> Toute palanquée doit comporter au minimum 2 personnes (binôme).
-
-### Règles d'encadrement
-
-- **GP** : ne peut encadrer que des PE20 ou PE40 (pas de PE60, pas de PA, pas d'enseignant). Pas de panachage PE20/PE40 dans une même palanquée. Max 4 encadrés par GP.
-- **Serre-file** (6e personne) : doit être GP, E3 ou E4. Palanquée à 6 → 2 encadrants minimum.
-- **E1** : enseignement et baptême en piscine uniquement, max 6 m, max 2 baptisés.
-- **E2** : enseignement piscine ou fosse, max 20 m.
-- **E3** : tous environnements, formation max 40 m. Ne peut pas encadrer un PE60 (réservé E4).
-- **E4** : tous environnements, formation max 60 m (80 m en trimix).
-
-> **Limite formation du DP** : la profondeur de formation maximale est celle **du DP**, pas de l'encadrant de la palanquée. Si le DP est E3 (max 40 m en formation), une palanquée de formation reste limitée à 40 m même si son encadrant est E4. L'outil valide cette règle au moment de l'enregistrement de chaque palanquée.
-- **PE sans encadrement** : interdit. Un PE doit toujours être accompagné d'un GP ou d'un E.
-- **PA autonomes** : palanquée 100 % PA, max 3, pas de panachage PA12/PA20/PA40/PA60.
-- **Baptême en milieu naturel** : E3 ou E4 obligatoire (E1/E2 limités à la piscine).
-
-### Profondeur ≤ aptitude
-
-La profondeur prévue de la palanquée est comparée à la profondeur max de chaque aptitude (`aptitudeMaxDepth`). Tout dépassement → erreur bloquante.
-
-### Propagation automatique des aptitudes
-
-Quand le DP choisit une aptitude pour un membre, l'outil tente de l'appliquer automatiquement à tous les autres membres **dont l'aptitude n'a pas encore été saisie**, à condition que l'aptitude choisie figure parmi leurs aptitudes disponibles (`getDiverAptitudes`). La profondeur max de la palanquée est recalculée après chaque changement.
-
-### Baptêmes — no déco obligatoire
-
-Toute palanquée comportant au moins un baptisé est automatiquement marquée `no_deco = true`. Le toggle no déco est verrouillé en lecture seule pour ces palanquées. Ce statut est propagé à l'étape 4 (fiche) où un rappel visible est affiché pour les palanquées planifiées sans déco obligatoire.
-
-### Certificat médical
-
-Chaque plongeur (hors baptême) doit avoir un certificat médical en cours de validité à la date prévue de la plongée (validité 1 an à compter de la date d'émission). Sinon → erreur bloquante.
-
----
-
-## 6. Code couleur fiche de sécurité
-
-Les palanquées sont colorées selon leur type (déterminé automatiquement par `getPalType`) sur l'écran de constitution ET sur la fiche de sécurité imprimée.
-
-| Type | Couleur | Détection |
-|---|---|---|
-| **Exploration autonome** | 🟢 Vert clair | PA only |
-| **Exploration guidée** | 🔵 Bleu clair | GP + PE |
-| **Formation** | 🟠 Saumon clair | au moins un E1→E4 + PE |
-| **Baptême** | 🔴 Corail saturé | au moins un Baptême |
-
-> Les couleurs sont conservées à l'impression PDF (`print-color-adjust: exact`).
-
----
-
-## 7. Check-list conditionnelle
-
-La check-list est générée dynamiquement selon les réponses du profil (`answers`). Chaque item a une condition `when` qui détermine sa visibilité.
-
-### Phase 1 — Préparation (avant l'arrivée sur site)
-
-Météo, marée, dates de réépreuve TIV / requalification blocs, gonflage, analyse Nitrox (PN-C si > 40 %), analyse Trimix, blocs relais, check-list constructeur recycleur, O₂ secours, trousse, documents plongeurs, autorisations parentales mineurs, évaluation E3 brevets étrangers, VHF, carburant, shot-line, coordonnées secours, fiche pré-remplie.
-
-### Phase 2 — Sur site (avant la mise à l'eau)
-
-Appel nominatif, briefing, rappels sécurité (moyen de rappel, perte palanquée), composition palanquée, sécurité surface, fiche accessible, pavillon Alpha, échelle, shot-line, signature analyse Nitrox, aptitudes recycleur, planifs déco Trimix, points d'entrée/sortie, décision finale DP (`go / no-go`).
-
----
-
-## 8. Articles Code du Sport référencés
-
-| Article | Sujet | URL Légifrance |
-|---|---|---|
-| **A322-72** | Directeur de plongée — responsabilités | [LEGIARTI000025393876](https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025393876) |
-| **A322-77** | Information des pratiquants | [LEGIARTI000025705105](https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025705105) |
-| **A322-78** | Matériel de secours et d'assistance | [LEGIARTI000025393863](https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025393863) |
-| **A322-86** | Espaces d'évolution — profondeurs | [LEGIARTI000025393833](https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025393833) |
-| **A322-89** | Plongée au Nitrox | [LEGIARTI000025393827](https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025393827) |
-| **A322-91** | Plongée Trimix / Héliox | [LEGIARTI000025393819](https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025393819) |
-| **A322-94** | Plongée en recycleur (CCR / SCR) | [LEGIARTI000025393813](https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000025393813) |
-
----
-
-## Fraîcheur des données
-
-Les annuaires plongeurs et sites sont rafraîchis automatiquement depuis le backend à chaque démarrage d'une plongée :
-- création d'une nouvelle plongée (« Nouvelle plongée » depuis l'accueil),
-- reprise d'un brouillon,
-- clonage d'une archive.
-
-Une évolution de niveau ou d'aptitude saisie depuis un autre poste, ou par un autre utilisateur, est donc immédiatement visible sans redémarrer l'application.
-
----
-
-## Validations bloquantes vs alertes
-
-L'outil distingue trois niveaux dans `validatePal` :
-
-| Niveau | Effet UI | Exemples |
-|---|---|---|
-| **OK** ✅ | Composition conforme | Palanquée valide |
-| **ALERTE** ⚠ | Avertissement, n'empêche pas l'enregistrement | Palanquée vide, aucun mélange sélectionné, membres sans aptitude |
-| **BLOQUANT** ❌ | Erreur, doit être corrigée | Taille hors limites, profondeur > aptitude, mélange incompatible DP, certificat médical expiré, encadrement manquant |
-
----
-
-## Référence rapide — qualifications minimales DP par scénario
-
-| Scénario | DP minimum |
-|---|---|
-| Baptême piscine | E1 |
-| Baptême mer/lac | E3 |
-| Formation N1 piscine (6 m) | E1 |
-| Formation N2 piscine/fosse (20 m) | E2 |
-| Exploration jusqu'à 60 m air | E3, E4 ou N5 |
-| Formation PE40 / PA40 (40 m) | E3 |
-| Formation PE60 (60 m) | E4 |
-| Plongée Nitrox (toute concentration) | E3, E4 ou N5 **avec PN-C** |
-| Exploration Trimix 70 m | E3 ou E4 **avec PTH-120** |
-| Formation Trimix 80 m | E4 **avec PTH-120** |
-| Exploration Trimix 120 m | E4 **avec PTH-120** |
+- **Mélanges déclarés par palanquée** : l'app ne sait pas quel plongeur respire quel gaz, donc les exigences PN s'appliquent à tous les membres.
+- **Stagiaires DEJEPS / DESJEPS** : E-3 au sens de III-15 b, mais absents de III-15 a comme DP. L'app ne distingue pas les stagiaires.
+- **PpO₂ minimale (0,16 bar)** des mélanges hypoxiques : non contrôlée, car le % d'O₂ du trimix n'est pas saisi.
+- **Hors Code du sport** : règles enfants du Manuel de formation technique FFESSM (8-14 ans), plongée de nuit, altitude.

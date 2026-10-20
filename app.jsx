@@ -36,7 +36,7 @@ const SUPER_ADMIN_EMAIL = "nicholas.jallan@gmail.com";
 const isSuperAdmin = (u) => !!u && u.email === SUPER_ADMIN_EMAIL;
 
 function AppInner() {
-  const { user, loading: authLoading, logout, authMode } = useAuth();
+  const { user, loading: authLoading, logout } = useAuth();
   const { showToast } = useToasts();
   const online = useOnline();
   const [authExpired, setAuthExpired] = useState(false);
@@ -101,7 +101,7 @@ function AppInner() {
 
   // Migration one-time : supprimer l'ancien brouillon localStorage v1 (désormais obsolète)
   useEffect(() => {
-    try { localStorage.removeItem(window.STORAGE_KEYS?.LEGACY_V1 || 'dp-assistant-v1'); } catch {}
+    try { localStorage.removeItem(window.STORAGE_KEYS?.LEGACY_V1 || 'dp-assistant-v1'); } catch { /* stockage indisponible : rien à nettoyer */ }
   }, []);
 
   useEffect(() => {
@@ -118,7 +118,7 @@ function AppInner() {
           const key = window.STORAGE_KEYS?.CACHE_DIVERS || 'dp-cache-divers';
           const raw = localStorage.getItem(key);
           if (raw) { const { list } = JSON.parse(raw); if (Array.isArray(list)) setDivers(list); }
-        } catch {}
+        } catch (err) { console.warn('[DP] cache annuaire illisible :', err.message); }
         setDiversLoaded(true);
       });
   }, [user, diversLoaded]);
@@ -132,7 +132,7 @@ function AppInner() {
           const key = window.STORAGE_KEYS?.CACHE_SITES || 'dp-cache-sites';
           const raw = localStorage.getItem(key);
           if (raw) { const { list } = JSON.parse(raw); if (Array.isArray(list)) setSites(list); }
-        } catch {}
+        } catch (err) { console.warn('[DP] cache sites illisible :', err.message); }
         setSitesLoaded(true);
       });
   }, [user, sitesLoaded]);
@@ -142,7 +142,10 @@ function AppInner() {
       const [d, s] = await Promise.all([api.divers.list(), api.sites.list()]);
       setDivers(d);
       setSites(s);
-    } catch {}
+    } catch (err) {
+      // Rafraîchissement d'arrière-plan : l'annuaire déjà affiché reste valable.
+      console.warn('[DP] rafraîchissement annuaire/sites :', err.message);
+    }
   }, []);
 
   // ── Auto-save debounced vers le serveur ──────────────────────────────────
@@ -368,16 +371,16 @@ function AppInner() {
   const derived = useMemo(() => {
     const notes = [];
     const profNum = parseFloat(answers.prof_max);
-    if (answers.activite === "Enseignement" && profNum > 40 && answers.dp_qual !== "E4") {
-      notes.push({ tone:"warn", text:"Enseignement > 40 m : un E4 est requis comme DP (Annexe III-16a)." });
+    if (answers.activite !== "Exploration" && profNum > 40) {
+      notes.push({ tone:"info", text:"Enseignement au-delà de 40 m : l'encadrant de la palanquée doit être E4 (Annexe III-16 a)." });
     }
     if (answers.recycleur && profNum > 6) {
       notes.push({ tone:"info", text:"Recycleur > 6 m : un secours circuit-ouvert est obligatoire (Art. A322-94)." });
     }
-    if (answers.depart_bateau && !answers.vhf) {
-      notes.push({ tone:"warn", text:"Sortie en bateau sans VHF déclarée — moyen de communication à confirmer." });
+    if (answers.depart_bateau && !answers.vhf && window.getMilieuType(answers.milieu) === 'mer') {
+      notes.push({ tone:"warn", text:"En mer au départ d'une embarcation, une VHF est obligatoire (Art. A322-78)." });
     }
-    if (window.getMilieuType(answers.milieu) === 'piscine') {
+    if (window.isBassinDerogation(answers, profNum || 0)) {
       notes.push({ tone:"info", text:"En piscine ≤ 6 m : la fiche de sécurité n'est pas obligatoire (Art. A322-98)." });
     }
     return { notes };

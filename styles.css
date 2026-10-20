@@ -1922,3 +1922,39 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   border-radius: 4px;
 }
 .error-screen-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* ── Palanquées : mode, points bloquants mis en évidence ─────────────── */
+.seg {
+  display: inline-flex;
+  margin: 8px 0 4px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.seg button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  background: var(--surface);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.seg button + button { border-left: 1px solid var(--line-2); }
+.seg button.on { background: var(--marine); color: #fff; }
+.seg button:focus-visible { outline: 3px solid var(--marine-100); outline-offset: -3px; }
+.pal.pal-blocked { box-shadow: inset 4px 0 0 var(--coral); }
+.pal-blocked-summary {
+  margin: 6px 0;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--coral-50);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+.diver-row.flagged { background: var(--coral-50); box-shadow: inset 3px 0 0 var(--coral); }
+.role-sel.invalid { border-color: var(--coral); }
+.v-ref { color: var(--ink-3); font-family: var(--t-mono); font-size: 11px; }

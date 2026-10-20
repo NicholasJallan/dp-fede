@@ -78,7 +78,9 @@
   <script src="lib/sync.js"></script>
   <script src="lib/offline-api.js"></script>
 
-  <!-- Logique métier pure (chargée avant data.js — exporte validatePal, peLevel, getMaxEnsLevel, computePalHardLimit, clampProfMax) -->
+  <!-- Logique métier pure (chargée avant data.js) : tableaux du Code du sport,
+       plafond de profondeur, validation des palanquées -->
+  <script src="lib/cds-tables.js"></script>
   <script src="lib/depth-clamp.js"></script>
   <script src="lib/pal-rules.js"></script>
 

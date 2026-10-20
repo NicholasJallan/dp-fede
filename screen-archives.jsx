@@ -55,7 +55,7 @@ function ArchiveDetail({ item, onBack }) {
               return (
                 <div key={p.id || pi} style={{ padding:'12px 16px', borderBottom:'1px solid var(--line)' }}>
                   <div style={{ fontWeight:700, fontFamily:'var(--t-mono)', fontSize:12, marginBottom:8, color:'var(--ink-2)' }}>
-                    P{pi + 1} · {p.profMax} m · {p.duree} min · DTR {window.calcDTR(p.profMax)} min · {p.melange || 'Air'}
+                    P{pi + 1} · {p.profMax} m · {p.duree} min · DTR {p.dtr != null ? `${p.dtr} min` : '—'} · {(p.melanges || []).join(', ') || 'Air'}
                   </div>
                   <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
                     {sorted.map((m, mi) => (

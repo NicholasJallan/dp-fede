@@ -4,12 +4,18 @@ const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 
 const win = require('./setup');
-const { getDiverAptitudes, aptitudeMaxDepth, getMilieuType, getPalType, sortMembresForFiche, getFormationBonusAptitudes } = win;
+const { getDiverAptitudes, aptitudeMaxDepth, getMilieuType, getPalType, sortMembresForFiche } = win;
 
 describe('getDiverAptitudes — par niveau', () => {
-  test('Débutant (rien) → Baptême + PE20', () => {
+  test('Débutant (rien) → Baptême, PE12, PE20 (formation III-16 a)', () => {
     const apts = getDiverAptitudes({});
-    assert.deepEqual(apts, ['Baptême', 'PE20']);
+    assert.deepEqual(apts, ['Baptême', 'PE12', 'PE20']);
+  });
+
+  test('E2 → GP de droit (initiateur + guide de palanquée, III-15 b)', () => {
+    const apts = getDiverAptitudes({ niveau_encadrant: 'E2' });
+    assert.ok(apts.includes('GP'));
+    assert.ok(apts.includes('E2'));
   });
 
   test('N1 → PE20', () => {
@@ -87,6 +93,24 @@ describe('getDiverAptitudes — par niveau', () => {
     assert.ok(apts.includes('PE60'));
   });
 
+  test('Bonus formation : jamais en exploration', () => {
+    const apts = getDiverAptitudes(
+      { niveau_plongeur: 'N1' },
+      false,
+      { maxEnsLevel: 'E3', mode: 'exploration' },
+    );
+    assert.ok(!apts.includes('PE40'));
+  });
+
+  test('Bonus formation : N1 + PA20 + E3 → PA40 accessible', () => {
+    const apts = getDiverAptitudes(
+      { niveau_plongeur: 'N1', aptitudes_sup: ['PA12', 'PA20'] },
+      false,
+      { maxEnsLevel: 'E3', mode: 'enseignement' },
+    );
+    assert.ok(apts.includes('PA40'));
+  });
+
   test('Bonus formation : N1 + E2 → pas de PE40 (E2 enseigne max PE20)', () => {
     const apts = getDiverAptitudes(
       { niveau_plongeur: 'N1' },
@@ -100,9 +124,10 @@ describe('getDiverAptitudes — par niveau', () => {
 describe('aptitudeMaxDepth', () => {
   const cases = {
     'Baptême': 6,
-    'PE20': 20, 'PE40': 40, 'PE60': 60,
+    'PE12': 12, 'PE20': 20, 'PE40': 40, 'PE60': 60,
     'PA12': 12, 'PA20': 20, 'PA40': 40, 'PA60': 60,
-    'GP': 60,
+    // GP / P4 : exploration encadrée jusqu'à 40 m (0-60 m réservé à l'E4, III-16 b)
+    'GP': 40,
     'E1': 6, 'E2': 20, 'E3': 40, 'E4': 60,
     'PTH70': 70, 'PTH120': 120,
   };
@@ -111,8 +136,8 @@ describe('aptitudeMaxDepth', () => {
       assert.equal(aptitudeMaxDepth(apt), depth);
     });
   }
-  test('Aptitude inconnue → fallback 60', () => {
-    assert.equal(aptitudeMaxDepth('GLOUBI'), 60);
+  test('Aptitude inconnue → 0 (aucune profondeur par défaut)', () => {
+    assert.equal(aptitudeMaxDepth('GLOUBI'), 0);
   });
 });
 

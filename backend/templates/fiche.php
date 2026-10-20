@@ -175,10 +175,11 @@ $heuresFin   = $renderState['heuresFin']   ?? [];
   $real     = $realises[$p['id']]    ?? null;
   $gpCount  = count(array_filter($sorted, fn($m) => ($m['aptitude'] ?? '') === 'GP'));
   $isSFPal  = $gpCount >= 2;
-  $palType  = Rules::getPalType($p['membres'] ?? []);
+  $palType  = Rules::getPalType($p['membres'] ?? [], $p['mode'] ?? null);
   $rowCls   = "row-{$palType}";
   $palLabel = 'Mx';
-  $dtrPrevu = $p['dtr'] ?? (int)ceil(($p['profMax'] ?? 0) / 10);
+  // DTR prévue saisie par le DP — jamais calculée d'office.
+  $dtrPrevu = (isset($p['dtr']) && $p['dtr'] !== '' && $p['dtr'] !== null) ? $h((string)$p['dtr']) . ' min' : '—';
   foreach ($sorted as $mi => $m):
     $isBapt  = !empty($m['_bapteme']);
     $d       = $isBapt ? $m : ($diversById[$m['diverId'] ?? ''] ?? []);
@@ -227,7 +228,7 @@ $heuresFin   = $renderState['heuresFin']   ?? [];
           </div>
         </td>
         <td rowspan="<?= count($sorted) ?>" style="vertical-align:top;">
-          <div class="label">Prévu</div><b><?= $dtrPrevu ?> min</b>
+          <div class="label">Prévu</div><b><?= $dtrPrevu ?></b>
           <?php if (!empty($p['no_deco'])): ?><div style="font-size:9px;color:#2d8653;font-weight:600;margin-top:2px;">▲ no déco</div><?php endif; ?>
           <div style="margin-top:6px;padding-top:4px;border-top:1px solid #e2e8f0;">
             <div class="label">Réalisé</div>

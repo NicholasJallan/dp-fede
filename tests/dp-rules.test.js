@@ -1,11 +1,11 @@
-// Tests métier — règles de profondeur du Directeur de Plongée
-// (CdS A322-86 + extensions PTH-120 pour E3/E4)
+// Tests métier — profondeur maximale dirigée par le DP
+// (annexe III-15 a, A322-76, A322-98)
 
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 
 const win = require('./setup');
-const { getDpMaxDepth, getProfOptions, getAvailableMelanges } = win;
+const { getDpMaxDepth, getAvailableMelanges } = win;
 
 // =========================================================================
 // getDpMaxDepth — limites par qualification DP
@@ -13,11 +13,13 @@ const { getDpMaxDepth, getProfOptions, getAvailableMelanges } = win;
 describe('getDpMaxDepth — limites de base à l\'air', () => {
   const cases = [
     // [niveau, palType, expected]
+    // E1 / E2 : DP uniquement en piscine ou fosse ≤ 6 m (A322-98)
     ['E1', 'formation',   6],
-    ['E1', 'exploration', 0],
-    ['E2', 'formation',   20],
-    ['E2', 'exploration', 0],
-    ['E3', 'formation',   40],
+    ['E1', 'exploration', 6],
+    ['E2', 'formation',   6],
+    ['E2', 'exploration', 6],
+    // E3 (MF1) : air/nitrox en enseignement ou en exploration (III-15 a)
+    ['E3', 'formation',   60],
     ['E3', 'exploration', 60],
     ['E4', 'formation',   60],
     ['E4', 'exploration', 60],
@@ -38,9 +40,9 @@ describe('getDpMaxDepth — extensions PTH-120', () => {
     assert.equal(getDpMaxDepth('exploration', dp), 70);
   });
 
-  test('E3 + PTH-120 en formation → 40 m (pas d\'extension)', () => {
+  test('E3 + PTH-120 en formation → 60 m (air ; trimix limité à 40 m)', () => {
     const dp = { niveau_encadrant: 'E3', trimix: ['PTH-120'] };
-    assert.equal(getDpMaxDepth('formation', dp), 40);
+    assert.equal(getDpMaxDepth('formation', dp), 60);
   });
 
   test('E4 + PTH-120 en exploration → 120 m', () => {
@@ -72,7 +74,7 @@ describe('getDpMaxDepth — extensions PTH-120', () => {
 describe('getDpMaxDepth — baptême', () => {
   test('baptême est traité comme une formation', () => {
     const dp = { niveau_encadrant: 'E3', trimix: [] };
-    assert.equal(getDpMaxDepth('bapteme', dp), 40);
+    assert.equal(getDpMaxDepth('bapteme', dp), 60);
   });
 
   test('N5 ne peut pas faire un baptême (formation=0)', () => {
@@ -124,36 +126,5 @@ describe('getAvailableMelanges', () => {
     const dp = null;
     const opts = getAvailableMelanges(dp);
     assert.equal(opts.find(o => o.value === 'Air').allowed, true);
-  });
-});
-
-// =========================================================================
-// getProfOptions
-// =========================================================================
-describe('getProfOptions', () => {
-  test('E3 sans PTH → max 60 m', () => {
-    const opts = getProfOptions('E3', 'Exploration', { trimix: [] }, null);
-    assert.deepEqual(opts, ['6 m', '12 m', '20 m', '40 m', '60 m']);
-  });
-
-  test('E4 + PTH-120 → jusqu\'à 120 m', () => {
-    const opts = getProfOptions('E4', 'Exploration', { trimix: ['PTH-120'] }, null);
-    assert.ok(opts.includes('120 m'));
-    assert.ok(opts.includes('80 m'));
-  });
-
-  test('Site 25m → propose 40m comme échelon juste au-dessus', () => {
-    const opts = getProfOptions('E3', 'Exploration', { trimix: [] }, { profondeur_max: 25 });
-    assert.deepEqual(opts, ['6 m', '12 m', '20 m', '40 m']);
-  });
-
-  test('N5 → exploration uniquement, 60 m max', () => {
-    const opts = getProfOptions('N5', 'Exploration', { trimix: [] }, null);
-    assert.deepEqual(opts, ['6 m', '12 m', '20 m', '40 m', '60 m']);
-  });
-
-  test('E1 → formation 6m seulement', () => {
-    const opts = getProfOptions('E1', 'Enseignement', { trimix: [] }, null);
-    assert.deepEqual(opts, ['6 m']);
   });
 });

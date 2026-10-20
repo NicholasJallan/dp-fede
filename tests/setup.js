@@ -19,7 +19,7 @@ globalThis.window = win;
 
 const indirectEval = eval;  // call site → scope global
 
-for (const rel of ['lib/depth-clamp.js', 'lib/pal-rules.js', 'data.js']) {
+for (const rel of ['lib/cds-tables.js', 'lib/depth-clamp.js', 'lib/pal-rules.js', 'data.js']) {
   const code = fs.readFileSync(path.join(projectRoot, rel), 'utf8');
   indirectEval(code);
 }

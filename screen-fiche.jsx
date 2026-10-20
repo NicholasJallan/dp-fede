@@ -69,15 +69,16 @@ function ScreenFiche({ answers, palanquees, divers, setAnswer, pressions, setPre
     const endTime  = nowHHMM();
     const debut    = heuresDebut[palId];
     const elapsed  = debut ? diffMinutes(debut, endTime) : null;
-    const dtrBrut  = pal.dtr || window.calcDTR(pal.profMax);
-    const dtrCapped = (elapsed !== null && dtrBrut > elapsed) ? elapsed : dtrBrut;
+    // DTR prévue saisie par le DP (jamais calculée d'office) ; bornée à la durée réelle.
+    const dtrPrevue = pal.dtr ?? null;
+    const dtrCapped = (dtrPrevue !== null && elapsed !== null && dtrPrevue > elapsed) ? elapsed : dtrPrevue;
     const previous = realises[palId];
     // Profondeur plafonnée par le site (answers.site_prof_max) si disponible
     const siteProfMax = answers.site_prof_max ? parseInt(answers.site_prof_max, 10) : null;
     setFinForm({
       duree:       elapsed !== null ? String(elapsed) : '',
       profMax:     String(pal.profMax || ''),
-      dtr:         String(dtrCapped),
+      dtr:         dtrCapped === null ? '' : String(dtrCapped),
       commentaire: previous?.commentaire || '',
     });
     setFinModal({ palId, endTime, elapsed, debut, siteProfMax });
@@ -187,12 +188,12 @@ function ScreenFiche({ answers, palanquees, divers, setAnswer, pressions, setPre
         </div>
       </div>
 
-      {!window.isMilieuNaturel(answers.milieu) && (
+      {window.isBassinDerogation(answers, Math.max(0, ...palanquees.map(p => Number(p.profMax) || 0))) && (
         <div className="no-print">
           <Alert tone="info">
             <b>Dérogation piscine / fosse ≤ 6 m.</b> En milieu artificiel d'une
             profondeur ≤ 6 m, la fiche de sécurité n'est <b>pas obligatoire</b>
-            {' '}et un DP de niveau minimum E1 suffit <CdsLink art="A322-72" compact />.
+            {' '}et un DP de niveau minimum E1 suffit <CdsLink art="A322-98" compact />.
             Vous pouvez tout de même compléter cette fiche comme trace volontaire.
           </Alert>
         </div>
@@ -273,7 +274,7 @@ function ScreenFiche({ answers, palanquees, divers, setAnswer, pressions, setPre
               const gpCount = sorted.filter(m => m.aptitude === 'GP').length;
               // Serre-file dès qu'il y a 2 GP (cohérent avec sortMembresForFiche)
               const isSFPal = gpCount >= 2;
-              const palType = window.getPalType(p.membres || []);
+              const palType = window.getPalType(p.membres || [], p.mode);
               const rowCls  = `row-${palType}`;
 
               return (
@@ -333,7 +334,7 @@ function ScreenFiche({ answers, palanquees, divers, setAnswer, pressions, setPre
                             <td rowSpan={sorted.length} style={{ verticalAlign:'top' }}>
                               <div style={{ paddingBottom:3, marginBottom:4, borderBottom:'1px solid #ddd' }}>
                                 <div style={{ fontSize:9, color:'#888', textTransform:'uppercase', letterSpacing:'0.04em', marginBottom:1 }}>Prévu</div>
-                                <b>{p.dtr || window.calcDTR(p.profMax)} min</b>
+                                <b>{p.dtr != null ? `${p.dtr} min` : '—'}</b>
                                 {p.no_deco && <div style={{ fontSize:9, color:'#2d8653', fontWeight:600, marginTop:2 }}>▲ no déco</div>}
                               </div>
                               <div>

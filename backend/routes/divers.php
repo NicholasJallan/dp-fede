@@ -45,6 +45,7 @@ if ($method === 'POST' && $path === '/api/divers') {
       ->maxLen('licence', 50, 'Numéro de licence')
       ->required('medical', 'Date du certificat médical')
       ->date('medical', 'Date du certificat médical')
+      ->date('date_naissance', 'Date de naissance')
       ->abortIfErrors();
 
     $clientId = $v->nullable('id');
@@ -63,18 +64,19 @@ if ($method === 'POST' && $path === '/api/divers') {
         json_encode(buildQualifs($v, $DIPLOMES_PRO, $RECYCLEURS_OK), JSON_UNESCAPED_UNICODE),
         json_encode($v->arr('aptitudes_sup'), JSON_UNESCAPED_UNICODE),
         $v->nullable('medical'), $v->str('notes'),
+        $v->nullable('date_naissance') ?: null,
     ];
 
     Db::q(
         'INSERT INTO divers
-           (id, user_id, nom, prenom, licence, niveau, niveau_plongeur, niveau_encadrant, qualifs, aptitudes_sup, medical, notes)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+           (id, user_id, nom, prenom, licence, niveau, niveau_plongeur, niveau_encadrant, qualifs, aptitudes_sup, medical, notes, date_naissance)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
          ON DUPLICATE KEY UPDATE
            nom=VALUES(nom), prenom=VALUES(prenom), licence=VALUES(licence),
            niveau=VALUES(niveau), niveau_plongeur=VALUES(niveau_plongeur),
            niveau_encadrant=VALUES(niveau_encadrant), qualifs=VALUES(qualifs),
            aptitudes_sup=VALUES(aptitudes_sup), medical=VALUES(medical),
-           notes=VALUES(notes), deleted_at=NULL',
+           notes=VALUES(notes), date_naissance=VALUES(date_naissance), deleted_at=NULL',
         // created_at n'est pas mis à jour : réactivation = même ressource logique.
         $params
     );
@@ -101,12 +103,13 @@ if ($method === 'PUT' && preg_match('#^/api/divers/([^/]+)$#', $path, $m)) {
       ->maxLen('licence', 50, 'Numéro de licence')
       ->required('medical', 'Date du certificat médical')
       ->date('medical', 'Date du certificat médical')
+      ->date('date_naissance', 'Date de naissance')
       ->abortIfErrors();
 
     Db::q(
         'UPDATE divers SET nom=?, prenom=?, licence=?, niveau=?,
           niveau_plongeur=?, niveau_encadrant=?, qualifs=?, aptitudes_sup=?, medical=?, notes=?,
-          deleted_at=NULL
+          date_naissance=?, deleted_at=NULL
          WHERE id=? AND user_id=?',
         [
             $v->str('nom'), $v->str('prenom'), $v->str('licence'),
@@ -115,6 +118,7 @@ if ($method === 'PUT' && preg_match('#^/api/divers/([^/]+)$#', $path, $m)) {
             json_encode(buildQualifs($v, $DIPLOMES_PRO, $RECYCLEURS_OK), JSON_UNESCAPED_UNICODE),
             json_encode($v->arr('aptitudes_sup'), JSON_UNESCAPED_UNICODE),
             $v->nullable('medical'), $v->str('notes'),
+            $v->nullable('date_naissance') ?: null,
             $m[1], $user['id'],
         ]
     );
@@ -152,7 +156,7 @@ function buildLegacyNiveau(Validate $v): string {
 
 function buildQualifs(Validate $v, array $diplomes, array $recycleurs): array {
     $nitrox    = array_values(array_intersect($v->arr('nitrox'),    ['PN','PN-C']));
-    $trimix    = array_values(array_intersect($v->arr('trimix'),    ['PTH-70','PTH-120']));
+    $trimix    = array_values(array_intersect($v->arr('trimix'),    ['PTH-40','PTH-70','PTH-120']));
     $recs      = array_values(array_intersect($v->arr('recycleurs'), $recycleurs));
     $diplome   = in_array($v->str('diplome_pro'), $diplomes, true) ? $v->str('diplome_pro') : null;
     $rifap     = (bool)($v->nullable('rifap') ?? false);
@@ -175,7 +179,7 @@ function decodeDiver(array $row): array {
     } else {
         // Legacy flat array — map to new fields best-effort
         $row['nitrox']    = array_values(array_intersect($raw, ['PN','PN-C']));
-        $row['trimix']    = array_values(array_intersect($raw, ['PTH-70','PTH-120']));
+        $row['trimix']    = array_values(array_intersect($raw, ['PTH-40','PTH-70','PTH-120']));
         $row['recycleurs']= [];
         $row['diplome_pro']= null;
         $row['rifap']     = in_array('RIFAP', $raw, true);

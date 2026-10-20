@@ -2,18 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { Alert, Pill, diverFullName } from './components.jsx';
+import { TrimixQualToggles, toggleTrimixQual, trimixPrereq, BirthDateField, DiverExtraQuals, plongeurForEncadrant } from './diver-form.jsx';
 
 const NIVEAUX_PLONGEUR  = ['N1','N2','N3'];
 const NIVEAUX_ENCADRANT = ['N4','N5','E1','E2','E3','E4'];
-const DIPLOMES_PRO      = ['BEES1','DEJEPS','DESJEPS','Autre'];
-const RECYCLEURS_LIST   = ['Revo','AP','Triton','JJccr','Xccr','Megalodon','Shark','Submatix','Autre'];
 
 const emptyDiver = () => ({
   nom:'', prenom:'', licence:'',
   niveau_plongeur:'', niveau_encadrant:'',
   nitrox:[], trimix:[], recycleurs:[],
   diplome_pro:'', rifap:false, tiv:false,
-  aptitudes_sup:[], medical:'', notes:''
+  aptitudes_sup:[], medical:'', notes:'', date_naissance:''
 });
 
 // Aptitudes obligatoires pour un niveau (non décochables)
@@ -97,6 +96,7 @@ function ScreenAdminDivers({ divers, setDivers, diversLoaded }) {
       rifap: !!d.rifap, tiv: !!d.tiv,
       aptitudes_sup: d.aptitudes_sup || [],
       medical: d.medical || '', notes: d.notes || '',
+      date_naissance: d.date_naissance || '',
     });
     setEditing(d);
     setError('');
@@ -109,7 +109,7 @@ function ScreenAdminDivers({ divers, setDivers, diversLoaded }) {
     setForm(f => ({
       ...f,
       niveau_encadrant: ne,
-      niveau_plongeur: ne ? 'N3' : f.niveau_plongeur,
+      niveau_plongeur: plongeurForEncadrant(ne, f.niveau_plongeur),
       rifap: ne ? true : f.rifap,
     }));
   };
@@ -133,7 +133,7 @@ function ScreenAdminDivers({ divers, setDivers, diversLoaded }) {
         ...f,
         diplome_pro: val,
         niveau_encadrant: ne,
-        niveau_plongeur: ne ? 'N3' : f.niveau_plongeur,
+        niveau_plongeur: plongeurForEncadrant(ne, f.niveau_plongeur),
         rifap: ne ? true : f.rifap,
         nitrox: nx,
       };
@@ -155,20 +155,8 @@ function ScreenAdminDivers({ divers, setDivers, diversLoaded }) {
     });
   };
 
-  // Trimix cascade : PTH-120 implique PTH-70
-  const toggleTrimix = (val) => {
-    setForm(f => {
-      let tx = [...f.trimix];
-      if (tx.includes(val)) {
-        tx = tx.filter(x => x !== val);
-        if (val === 'PTH-70') tx = tx.filter(x => x !== 'PTH-120');
-      } else {
-        tx.push(val);
-        if (val === 'PTH-120' && !tx.includes('PTH-70')) tx.push('PTH-70');
-      }
-      return { ...f, trimix: tx };
-    });
-  };
+  // Trimix cascade : PTH-120 ⊃ PTH-70 ⊃ PTH-40 (annexe III-18 a)
+  const toggleTrimix = (val) => setForm(f => ({ ...f, trimix: toggleTrimixQual(f.trimix, val) }));
 
   const toggleRecycleur = (val) => setForm(f => ({
     ...f,
@@ -177,16 +165,11 @@ function ScreenAdminDivers({ divers, setDivers, diversLoaded }) {
       : [...f.recycleurs, val]
   }));
 
-  // PTH-70 / PTH-120 nécessitent PN-C + (N3 ou encadrant).
-  const canHoldTrimix = form.nitrox.includes('PN-C')
-    && (form.niveau_plongeur === 'N3' || !!form.niveau_encadrant);
-
   // Nettoyage automatique si les pré-requis disparaissent
   useEffect(() => {
-    if (form.trimix.length > 0 && !canHoldTrimix) {
-      setForm(f => ({ ...f, trimix: [] }));
-    }
-  }, [canHoldTrimix, form.trimix.length]);
+    const kept = form.trimix.filter(q => !trimixPrereq(form, q));
+    if (kept.length !== form.trimix.length) setForm(f => ({ ...f, trimix: kept }));
+  }, [form.nitrox, form.niveau_plongeur, form.niveau_encadrant]);
 
   const onSave = async () => {
     if (!form.nom.trim())   { setError('Le nom est requis'); return; }
@@ -282,6 +265,7 @@ function ScreenAdminDivers({ divers, setDivers, diversLoaded }) {
                 {(d.nitrox || []).includes('PN')   && !(d.nitrox||[]).includes('PN-C') && <Pill tone="kelp">PN</Pill>}
                 {(d.trimix || []).includes('PTH-120') && <Pill tone="sun">PTH-120</Pill>}
                 {(d.trimix || []).includes('PTH-70')  && !(d.trimix||[]).includes('PTH-120') && <Pill tone="sun">PTH-70</Pill>}
+                {(d.trimix || []).includes('PTH-40')  && !(d.trimix||[]).includes('PTH-70') && <Pill tone="sun">PTH-40</Pill>}
                 {(d.recycleurs || []).length > 0 && <Pill tone="coral">CCR</Pill>}
                 {d.rifap && <Pill>RIFAP</Pill>}
                 {d.tiv   && <Pill>TIV</Pill>}
@@ -338,11 +322,11 @@ function ScreenAdminDivers({ divers, setDivers, diversLoaded }) {
                   <label>Niveau plongeur</label>
                   <select className="input" value={form.niveau_plongeur}
                     onChange={e => setField('niveau_plongeur', e.target.value)}
-                    disabled={!!form.niveau_encadrant}>
+                    disabled={!!form.niveau_encadrant && form.niveau_encadrant !== 'E1'}>
                     <option value="">— aucun / baptême —</option>
                     {NIVEAUX_PLONGEUR.map(n => <option key={n} value={n}>{n}</option>)}
                   </select>
-                  {form.niveau_encadrant && <div className="field-hint">Forcé à N3 (niveau encadrant sélectionné)</div>}
+                  {form.niveau_encadrant && <div className="field-hint">N3 pour un encadrant (N2 possible pour un E1)</div>}
                 </div>
                 <div className="field">
                   <label>Niveau encadrant</label>
@@ -382,82 +366,20 @@ function ScreenAdminDivers({ divers, setDivers, diversLoaded }) {
                 </div>
               </div>
 
-              <div className="qualif-section">
-                <div className="qualif-section-label">Trimix / PTH</div>
-                <div className="qualif-row">
-                  {['PTH-70','PTH-120'].map(q => {
-                    const on = form.trimix.includes(q);
-                    const lockedByImpl = q === 'PTH-70' && form.trimix.includes('PTH-120');
-                    const locked = lockedByImpl || !canHoldTrimix;
-                    const reason = !canHoldTrimix
-                      ? 'PTH-70 / PTH-120 requièrent PN-C et niveau N3 (ou encadrant)'
-                      : (lockedByImpl ? 'PTH-70 implicite via PTH-120' : '');
-                    return (
-                      <label key={q}
-                        className={`qualif-toggle ${on ? 'on' : ''} ${locked ? 'locked' : ''}`}
-                        title={reason}>
-                        <input type="checkbox" checked={on}
-                          onChange={() => !locked && toggleTrimix(q)} disabled={locked} />
-                        {q}{q === 'PTH-120' ? ' (implique PTH-70)' : ''}
-                      </label>
-                    );
-                  })}
-                </div>
-                {!canHoldTrimix && (
-                  <div className="field-hint" style={{ marginTop:4 }}>
-                    Trimix verrouillé : pré-requis = PN-C + niveau N3 (ou encadrant).
-                  </div>
-                )}
-              </div>
+              <TrimixQualToggles form={form} onToggle={toggleTrimix} />
 
-              <div className="qualif-section">
-                <div className="qualif-section-label">Recycleur (CCR)</div>
-                <div className="qualifs-grid" style={{ gridTemplateColumns:'repeat(auto-fill, minmax(130px,1fr))' }}>
-                  {RECYCLEURS_LIST.map(q => {
-                    const on = form.recycleurs.includes(q);
-                    return (
-                      <label key={q} className={`qualif-toggle ${on ? 'on' : ''}`}>
-                        <input type="checkbox" checked={on} onChange={() => toggleRecycleur(q)} />
-                        {q}
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginTop:10 }}>
-                <div className="qualif-section">
-                  <div className="qualif-section-label">Diplôme professionnel</div>
-                  <select className="input" value={form.diplome_pro}
-                    onChange={e => setDiplomePro(e.target.value)}>
-                    <option value="">— aucun —</option>
-                    {DIPLOMES_PRO.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                  {form.diplome_pro === 'DEJEPS' && <div className="field-hint">DEJEPS → E3 min, PN + PN-C automatiques</div>}
-                  {form.diplome_pro === 'DESJEPS' && <div className="field-hint">DESJEPS → E4, PN + PN-C automatiques</div>}
-                </div>
-
-                <div className="qualif-section">
-                  <div className="qualif-section-label">Autres qualifications</div>
-                  <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                    {[['rifap','RIFAP'], ['tiv','TIV']].map(([k, label]) => (
-                      <label key={k} className={`qualif-toggle ${form[k] ? 'on' : ''}`}>
-                        <input type="checkbox" checked={!!form[k]}
-                          onChange={() => setField(k, !form[k])} />
-                        {label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <DiverExtraQuals form={form} setField={setField}
+                onToggleRecycleur={toggleRecycleur} onDiplomePro={setDiplomePro} />
 
               <hr />
 
               <div className="field" style={{ marginTop:10 }}>
-                <label>Certificat médical (date d'émission) *</label>
-                <input className="input" type="date" value={form.medical}
+                <label htmlFor="admin-diver-medical">Certificat médical (date d'émission) *</label>
+                <input id="admin-diver-medical" className="input" type="date" value={form.medical}
                   onChange={e => setField('medical', e.target.value)} required />
               </div>
+
+              <BirthDateField value={form.date_naissance} onChange={v => setField('date_naissance', v)} />
 
               <div className="field" style={{ marginTop:10 }}>
                 <label>Notes</label>

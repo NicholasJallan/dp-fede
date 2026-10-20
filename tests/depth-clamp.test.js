@@ -35,7 +35,7 @@ describe('computePalHardLimit', () => {
     assert.equal(limit, 30);
   });
 
-  test('Palanquée formation à 50m avec DP E3 → bornée à 40 (formation E3 max)', () => {
+  test('Palanquée formation E3 + PE40 → bornée à 40 par l\'aptitude de l\'élève', () => {
     const limit = computePalHardLimit({
       membres: [{ aptitude: 'E3' }, { aptitude: 'PE40' }],
       dp: { niveau_encadrant: 'E3', trimix: [] },
@@ -44,13 +44,40 @@ describe('computePalHardLimit', () => {
     assert.equal(limit, 40);
   });
 
-  test('PTH-120 sur E4 en exploration → 120 m possible', () => {
+  test('Air : jamais au-delà de 60 m (A322-76), même avec des aptitudes PTH', () => {
     const limit = computePalHardLimit({
       membres: [{ aptitude: 'PTH120' }, { aptitude: 'PTH120' }],
       dp: { niveau_encadrant: 'E4', trimix: ['PTH-120'] },
-      sessionMax: Infinity, ...deps,
+      sessionMax: Infinity, melanges: ['Air'], ...deps,
+    });
+    assert.equal(limit, 60);
+  });
+
+  test('Trimix autonome sous DP E4 PTH-120 → 120 m possible', () => {
+    const limit = computePalHardLimit({
+      membres: [{ aptitude: 'PA60' }, { aptitude: 'PA60' }],
+      dp: { niveau_encadrant: 'E4', trimix: ['PTH-120'] },
+      sessionMax: Infinity, melanges: ['Tx'], ...deps,
     });
     assert.equal(limit, 120);
+  });
+
+  test('Trimix encadré → 80 m max (A322-76)', () => {
+    const limit = computePalHardLimit({
+      membres: [{ aptitude: 'E4' }, { aptitude: 'PE60' }],
+      dp: { niveau_encadrant: 'E4', trimix: ['PTH-120'] },
+      sessionMax: Infinity, melanges: ['Tx'], mode: 'exploration', ...deps,
+    });
+    assert.equal(limit, 80);
+  });
+
+  test('Membre sans aptitude ignoré (pas de plafond à 0)', () => {
+    const limit = computePalHardLimit({
+      membres: [{ aptitude: '' }, { aptitude: 'PA40' }],
+      dp: { niveau_encadrant: 'E3', trimix: [] },
+      sessionMax: Infinity, ...deps,
+    });
+    assert.equal(limit, 40);
   });
 });
 

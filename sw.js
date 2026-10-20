@@ -28,6 +28,7 @@ const PRECACHE_URLS = [
   '/api.js',
   '/data.js',
   '/app.js',
+  '/lib/cds-tables.js',
   '/lib/depth-clamp.js',
   '/lib/pal-rules.js',
   '/lib/net.js',

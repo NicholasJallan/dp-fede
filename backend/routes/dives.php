@@ -27,7 +27,7 @@ function validatePalanqueesOrAbort(array $palanquees, array $answers, int $userI
         $phs   = implode(',', array_fill(0, count($ids), '?'));
         $rows  = Db::all(
             "SELECT id, nom, prenom, niveau_plongeur, niveau_encadrant,
-                    aptitudes_sup, qualifs, medical
+                    aptitudes_sup, qualifs, medical, date_naissance
                FROM divers
               WHERE id IN ({$phs}) AND user_id=? AND deleted_at IS NULL",
             [...$ids, $userId]
@@ -40,7 +40,7 @@ function validatePalanqueesOrAbort(array $palanquees, array $answers, int $userI
                 $row['trimix'] = $raw['trimix'] ?? [];
             } else {
                 $row['nitrox'] = array_values(array_intersect((array)$raw, ['PN', 'PN-C']));
-                $row['trimix'] = array_values(array_intersect((array)$raw, ['PTH-70', 'PTH-120']));
+                $row['trimix'] = array_values(array_intersect((array)$raw, ['PTH-40', 'PTH-70', 'PTH-120']));
             }
             $row['aptitudes_sup'] = json_decode($row['aptitudes_sup'] ?? '[]', true) ?? [];
             $diversById[$row['id']] = $row;
@@ -58,7 +58,7 @@ function validatePalanqueesOrAbort(array $palanquees, array $answers, int $userI
         if ($dpRow) {
             $raw = json_decode($dpRow['qualifs'] ?? '[]', true) ?? [];
             $dpRow['nitrox'] = isset($raw['nitrox']) ? ($raw['nitrox'] ?? []) : array_values(array_intersect((array)$raw, ['PN', 'PN-C']));
-            $dpRow['trimix'] = isset($raw['trimix']) ? ($raw['trimix'] ?? []) : array_values(array_intersect((array)$raw, ['PTH-70', 'PTH-120']));
+            $dpRow['trimix'] = isset($raw['trimix']) ? ($raw['trimix'] ?? []) : array_values(array_intersect((array)$raw, ['PTH-40', 'PTH-70', 'PTH-120']));
             $dp = $dpRow;
         }
     }

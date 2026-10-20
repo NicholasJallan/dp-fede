@@ -9,8 +9,8 @@ use ReflectionProperty;
 
 /**
  * Faux PDO pour tester le SQL émis par les fonctions d'accès base sans
- * MariaDB : chaque requête préparée est journalisée (SQL + paramètres) et
- * reçoit des lignes scriptées (respond()). Les transactions sont réelles
+ * MariaDB : chaque requête (prepare/execute, query, exec) est journalisée
+ * (SQL + paramètres) et reçoit des lignes scriptées (respond()). Les transactions sont réelles
  * (SQLite en mémoire) et journalisées comme 'BEGIN' / 'COMMIT' / 'ROLLBACK'.
  *
  *   $pdo = RecordingPdo::install();          // devient Db::get()
@@ -61,6 +61,21 @@ final class RecordingPdo extends PDO
     {
         $st = parent::prepare('SELECT 1');
         if ($st instanceof RecordingStatement) $st->sql = $query;
+        return $st;
+    }
+
+    /** exec() (DDL, migrations) : journalisé, jamais exécuté. */
+    public function exec(string $statement): int|false
+    {
+        [, $count] = $this->record($statement, []);
+        return $count;
+    }
+
+    /** query() : journalisée, lignes scriptées comme pour prepare()/execute(). */
+    public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): PDOStatement|false
+    {
+        $st = $this->prepare($query);
+        $st->execute();
         return $st;
     }
 
@@ -137,7 +152,16 @@ final class RecordingStatement extends PDOStatement
     {
         $rows = $this->rows;
         $this->rows = [];
+        if ($mode === PDO::FETCH_COLUMN) {
+            return array_map(static fn(array $r): mixed => reset($r), $rows);
+        }
         return $rows;
+    }
+
+    public function fetchColumn(int $column = 0): mixed
+    {
+        $row = array_shift($this->rows);
+        return $row === null ? false : (array_values($row)[$column] ?? false);
     }
 
     public function rowCount(): int

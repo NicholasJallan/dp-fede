@@ -215,9 +215,11 @@ class Migrator
     private static function baseTablesExist(PDO $pdo): bool
     {
         foreach (['users', 'dives', 'divers', 'sites'] as $t) {
-            $st = $pdo->prepare('SHOW TABLES LIKE ?');
+            // Pas de « SHOW TABLES LIKE ? » : MariaDB refuse les paramètres
+            // dans SHOW en requête préparée native (Db : EMULATE_PREPARES off).
+            $st = $pdo->prepare('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?');
             $st->execute([$t]);
-            if (!$st->fetchColumn()) return false;
+            if ((int)$st->fetchColumn() === 0) return false;
         }
         return true;
     }

@@ -108,4 +108,17 @@ class ValidateTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         \Validate::encodeJsonObject(['x' => "\xB1\x31"], 1024, 'render_state');
     }
+
+    /**
+     * PATCH /api/auth/account renvoyait 500 (production, 04/09/2026) : un
+     * appelant passait `$user['champ'] ?? null` en défaut alors que la
+     * signature exigeait une chaîne (strict_types). Le défaut est nullable.
+     */
+    public function testStrAcceptsANullDefault(): void
+    {
+        $v = new \Validate(['nom' => '  Dupont ']);
+        $this->assertSame('Dupont', $v->str('nom', null));
+        $this->assertSame('', $v->str('president_nom', null));
+        $this->assertSame('x', $v->str('absent', 'x'));
+    }
 }

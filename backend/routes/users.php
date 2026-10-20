@@ -19,6 +19,7 @@ if ($method === 'GET' && $path === '/api/users') {
                 u.created_at, u.last_login
            FROM users u
            LEFT JOIN clubs c ON c.id = u.current_club_id
+          WHERE u.kind = \'person\'
           ORDER BY u.created_at'
     );
     Json::ok($rows);
@@ -36,6 +37,7 @@ if ($method === 'GET' && $path === '/api/users/stats') {
           (SELECT COUNT(*) FROM dives  v WHERE v.user_id=u.id AND v.deleted_at IS NULL) AS nb_fiches
         FROM users u
         LEFT JOIN clubs c ON c.id = u.current_club_id
+        WHERE u.kind = 'person'
         ORDER BY u.created_at DESC
     ');
     Json::ok($rows);
@@ -51,7 +53,8 @@ if ($method === 'PATCH' && preg_match('#^/api/users/(\d+)/role$#', $path, $m)) {
     $role = $body['role'] ?? '';
     if (!in_array($role, ['admin','user'], true)) Json::abort(422, 'Rôle invalide');
 
-    $target = Db::row('SELECT id,email FROM users WHERE id=?', [$m[1]]);
+    // Comptes-structure (migration 002) : hors gestion, comme s'ils n'existaient pas.
+    $target = Db::row("SELECT id,email FROM users WHERE id=? AND kind='person'", [$m[1]]);
     if (!$target) Json::abort(404, 'Utilisateur introuvable');
 
     Db::q('UPDATE users SET role=? WHERE id=?', [$role, $m[1]]);
@@ -65,7 +68,7 @@ if ($method === 'DELETE' && preg_match('#^/api/users/(\d+)$#', $path, $m)) {
     $me = Auth::requireSuperAdmin();
     if ((int)$m[1] === (int)$me['id']) Json::abort(400, 'Impossible de supprimer votre propre compte');
 
-    $target = Db::row('SELECT id,email FROM users WHERE id=?', [$m[1]]);
+    $target = Db::row("SELECT id,email FROM users WHERE id=? AND kind='person'", [$m[1]]);
     if (!$target) Json::abort(404, 'Utilisateur introuvable');
     // Garde-fou anti-suppression du super-admin par lui-même (déjà bloqué
     // par le test id-self ci-dessus, mais on double pour la postérité).

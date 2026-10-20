@@ -44,12 +44,16 @@ perdre les fiches que le club doit conserver un an.
 
 | Version | Contenu |
 |---|---|
-| 007 | `clubs`, `club_members`, `club_invitations`, `users.current_club_id`, `club_id` sur divers/sites/dives ; **reprise** : un club par utilisateur (depuis `users.club_*`), l'utilisateur responsable, toutes ses lignes rattachées ; `user_id` devient l'auteur (FK `ON DELETE SET NULL`) |
+| 007 | `clubs`, `club_members`, `club_invitations`, `users.current_club_id`, `club_id` sur divers/sites/dives ; **reprise** : un club personnel par compte `users.kind='person'` (depuis `users.club_*`), l'utilisateur responsable, ses lignes rattachées ; **un club par structure** (`workspaces`, migration 002 de production) avec ses lignes et ses membres (owner → responsable, member → dp) ; club courant = structure si elle était active sur la dernière session du membre ; `user_id` devient l'auteur (FK `ON DELETE SET NULL`), `created_by` pour les lignes d'une structure. Détail : [php85.md](php85.md#reprise-des-structures) |
 | 008 | divers : `source`, `external_id` (unique par club et source), `licence_fin`, `representant_legal`, `autorisation_parentale_saison` |
 | 009 | `dives.documents_status`, `dive_documents`, `dive_participants` |
 | 010 | `clubs.deleted_at`, `clubs.retention_until` : suppression d'un club avec conservation légale des fiches (A322-72) |
 
-Les quatre fichiers sont idempotents (rejouables après un échec partiel).
+Les fichiers sont idempotents (rejouables après un échec partiel ; pour 007,
+vérifié sur MariaDB en coupant la migration après chacune de ses instructions
+de données). `deploy/deploy-backend.sh` encadre la reprise par
+`bin/workspaces-plan.php` (plan enregistré avant, comparé après : un écart
+bloque la bascule du code).
 Vérifications après déploiement :
 
 ```bash
@@ -59,8 +63,10 @@ sudo mysql dp_fede -e "SELECT COUNT(*) FROM users WHERE current_club_id IS NULL;
                        SELECT COUNT(*) FROM divers WHERE club_id IS NULL;"
 ```
 
-Attendu : 0 utilisateur sans club courant, autant de responsables que
-d'utilisateurs existants, 0 plongeur sans club.
+Attendu : 0 utilisateur sans club courant (le compte-structure, `kind =
+'workspace'`, n'en a pas et n'est pas compté s'il est filtré :
+`WHERE kind = 'person'`), autant de responsables que de comptes personnes
+plus un par structure (production : 18 + 1), 0 plongeur sans club.
 
 > Les colonnes `users.club_*` sont conservées (lecture seule) et pourront être
 > supprimées par une migration ultérieure, une fois le nouveau front en place.

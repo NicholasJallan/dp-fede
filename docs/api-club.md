@@ -531,6 +531,7 @@ libellé.
 | 409 | `DOCUMENTS_COMPLETE` | régénération refusée : documents complets et intègres |
 | 409 | `DOCUMENTS_PENDING` | régénération refusée : génération en cours |
 | 422 | `ARCHIVED_IMMUTABLE` | modification d'une plongée archivée (render_state, statut, suppression) |
+| 410 | `WORKSPACES_REPLACED` | ancienne route `/api/workspaces*` (structures de la production, remplacées par les clubs ; rejoindre un club = invitation du responsable) |
 
 **Outbox hors-ligne** (`src/offline/sync.js`) : un `409` n'est compté comme
 succès (rejeu idempotent) que si la réponse porte `duplicate: true` ou le code

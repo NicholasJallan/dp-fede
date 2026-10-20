@@ -20,7 +20,7 @@ if (is_file($root . '/vendor/autoload.php')) {
 }
 foreach (['Config', 'Json', 'Db', 'Auth', 'Csrf', 'Validate', 'SyncHelpers', 'RateLimit', 'Log', 'Account', 'Migrator', 'Retention',
           'Club', 'ClubInvitation', 'ClubAlerts', 'ClubStats', 'LevelMapper', 'DiverImport', 'DiverImportPlan',
-          'DivePdf', 'DivePolicy', 'DiveStore', 'DiveArchive', 'ClubRetention'] as $cls) {
+          'DivePdf', 'DivePolicy', 'DiveStore', 'DiveArchive', 'ClubRetention', 'LegacyWorkspaces'] as $cls) {
     require_once $root . "/lib/{$cls}.php";
 }
 

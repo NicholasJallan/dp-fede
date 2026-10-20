@@ -14,8 +14,13 @@
 #   2. rsync  : backend/ → répertoire de STAGING sur le Pi (hors prod) ;
 #   3. distant: composer install --no-dev --optimize-autoloader (en www-data) ;
 #   4. distant: sauvegarde MariaDB (si dp-fede-backup est installé) ;
-#   5. distant: php bin/migrate.php depuis le staging — les migrations sont
-#               additives : l'ANCIEN code continue de tourner pendant ce temps ;
+#   5. distant: php bin/migrate.php depuis le staging, encadré par
+#               bin/workspaces-plan.php (plan de reprise des structures en
+#               clubs enregistré avant, vérifié après : tout écart bloque la
+#               bascule). La plupart des migrations sont additives et l'ANCIEN
+#               code continue de tourner pendant ce temps ; la reprise des
+#               structures (007) ne l'est pas : API en maintenance pour ce
+#               déploiement-là (docs/deploy/php85.md) ;
 #   6. distant: bascule staging → prod (rsync local au Pi), chown www-data,
 #               reload PHP-FPM (vide l'opcache) ;
 #   7. local  : test de fumée HTTPS sur /api/auth/me.
@@ -108,7 +113,9 @@ if (( DRY_RUN == 1 )); then
   rsync backend/ → ${STAGE_DIR}/ (staging)
   sudo -u www-data ${PHP_BIN} composer install --no-dev --optimize-autoloader (dans ${STAGE_DIR})
   sudo ${BACKUP_CMD}   (si installé, sauf --skip-backup)
+  sudo -u www-data ${PHP_BIN} ${STAGE_DIR}/bin/workspaces-plan.php --save /var/lib/dp-fede/workspaces-plan.json
   sudo -u www-data ${PHP_BIN} ${STAGE_DIR}/bin/migrate.php
+  sudo -u www-data ${PHP_BIN} ${STAGE_DIR}/bin/workspaces-plan.php --verify …   (si un plan a été enregistré)
   sudo rsync -a --delete ${STAGE_DIR}/ ${APP_DIR}/   (config.php et lib/Smtp.php protégés)
   sudo chown -R www-data:www-data ${APP_DIR} && sudo systemctl reload ${FPM_SERVICE}
 EOF
@@ -150,8 +157,24 @@ else
   say "ATTENTION : $BACKUP_CMD absent — pas de sauvegarde avant migration (voir deploy/backup.sh)"
 fi
 
+# Reprise des structures (002_workspaces) en clubs : plan calculé AVANT la
+# migration 007, comparé APRÈS. Sans effet si la base est déjà migrée.
+PLAN_FILE=/var/lib/dp-fede/workspaces-plan.json
+sudo install -d -o www-data -g www-data -m 750 /var/lib/dp-fede
+say "Plan de reprise des structures"
+sudo -u www-data "$PHP_BIN" "$STAGE_DIR/bin/workspaces-plan.php" --save "$PLAN_FILE"
+
 say "Migrations"
 sudo -u www-data "$PHP_BIN" "$STAGE_DIR/bin/migrate.php"
+
+if sudo test -f "$PLAN_FILE"; then
+  say "Vérification de la reprise des structures"
+  if ! sudo -u www-data "$PHP_BIN" "$STAGE_DIR/bin/workspaces-plan.php" --verify "$PLAN_FILE"; then
+    say "ERREUR : reprise non conforme au plan — code NON basculé. Restaurer la sauvegarde (deploy/restore.md) avant toute nouvelle tentative."
+    exit 1
+  fi
+  sudo mv "$PLAN_FILE" "${PLAN_FILE%.json}-$(date +%Y%m%d%H%M%S).ok.json"
+fi
 
 say "Bascule staging → prod"
 # P = protect : lib/Smtp.php n'existe plus dans le dépôt mais l'ancien

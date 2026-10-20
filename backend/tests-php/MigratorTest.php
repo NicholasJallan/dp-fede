@@ -107,7 +107,10 @@ final class MigratorTest extends TestCase
             . '|ALTER TABLE \\w+\\s+MODIFY '
             . '|CREATE (UNIQUE )?INDEX IF NOT EXISTS'
             . '|INSERT IGNORE INTO'
+            . '|INSERT INTO club_members .+\\s+ON DUPLICATE KEY UPDATE role = \'responsable\'$'
             . '|UPDATE .+ WHERE .+ IS NULL$'
+            // 007 (e) : ne touche que les lignes encore attribuées au compte-structure.
+            . '|UPDATE (divers|sites|dives) \\w+\\s+JOIN workspaces w ON w\\.data_user_id = \\w+\\.user_id\\s+LEFT JOIN users a ON .+ SET \\w+\\.user_id = .+$'
             . '|SET @\\w+ :='
             . '|PREPARE fk_stmt FROM @ddl$|EXECUTE fk_stmt$|DEALLOCATE PREPARE fk_stmt$)/s';
         foreach (['007_clubs.sql', '008_divers_club_fields.sql', '009_dive_archive.sql', '010_clubs_soft_delete.sql'] as $file) {

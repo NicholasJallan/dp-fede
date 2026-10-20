@@ -275,10 +275,10 @@ class Club
         return Db::row('SELECT * FROM clubs WHERE id=? AND deleted_at IS NULL', [$clubId]);
     }
 
-    /** Représentation publique d'un club (sans auto_created_for, dates ISO). */
+    /** Représentation publique d'un club (sans marqueurs de reprise, dates ISO). */
     public static function publicClub(array $club): array
     {
-        unset($club['auto_created_for'], $club['deleted_at'], $club['retention_until']);
+        unset($club['auto_created_for'], $club['legacy_workspace_id'], $club['deleted_at'], $club['retention_until']);
         foreach (['created_at', 'updated_at'] as $k) {
             if (array_key_exists($k, $club)) $club[$k] = SyncHelpers::toIso($club[$k]);
         }

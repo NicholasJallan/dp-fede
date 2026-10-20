@@ -208,6 +208,7 @@ class Retention
         $ids = Db::all(
             "SELECT u.id FROM users u
               WHERE u.role <> 'admin'
+                AND u.kind = 'person'
                 AND u.email <> ?
                 AND COALESCE(u.last_seen_at, u.last_login, u.created_at) < ?
                 AND NOT EXISTS (

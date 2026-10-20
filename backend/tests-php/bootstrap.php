@@ -51,6 +51,7 @@ require_once __DIR__ . '/../lib/DivePolicy.php';
 require_once __DIR__ . '/../lib/DiveStore.php';
 require_once __DIR__ . '/../lib/DiveArchive.php';
 require_once __DIR__ . '/../lib/ClubRetention.php';
+require_once __DIR__ . '/../lib/LegacyWorkspaces.php';
 
 // Charge les helpers de routes utilisés (parseDiveDateToMySql, normalizeDiveDate).
 // Sans définir $method/$path → les blocs if du fichier ne se déclenchent pas,

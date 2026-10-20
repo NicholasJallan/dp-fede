@@ -192,7 +192,10 @@ class Auth {
         }
 
         $user = Db::row('SELECT * FROM users WHERE id=?', [$session['user_id']]);
-        if ($user) Log::setActor((int)$user['id']);
+        // Compte-structure (migration 002) : jamais connectable, même avec une
+        // session forgée en base.
+        if (!$user || LegacyWorkspaces::isTechnicalAccount($user)) return null;
+        Log::setActor((int)$user['id']);
         return $user;
     }
 

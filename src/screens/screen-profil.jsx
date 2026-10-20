@@ -1,6 +1,6 @@
 // DP Assistant — Profilage de la plongée (v2)
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useEffectEvent, useMemo } from 'react';
 import { useAuth } from '../auth/auth-context.jsx';
 import {
   Alert,
@@ -341,14 +341,21 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
   // Site sélectionné
   const selectedSite = useMemo(() => sites.find((s) => s.id === answers.site_id), [sites, answers.site_id]);
 
+  // Les propagations ci-dessous ne se déclenchent que sur leur clé (DP, site,
+  // pays…) : un rechargement de l'annuaire ne doit pas réécrire la saisie.
+  // useEffectEvent lit les valeurs courantes sans en faire des dépendances.
+
   // Quand DP change → propager dp_qual
-  useEffect(() => {
+  const propagateDp = useEffectEvent(() => {
     setAnswer('dp_qual', dpQual || '');
     setAnswer('dp_nom', selectedDP ? diverFullName(selectedDP) : '');
+  });
+  useEffect(() => {
+    propagateDp();
   }, [answers.dp_id]);
 
   // Quand site change → propager milieu + depart_bord/bateau + shot_line par défaut + détection Atlantique
-  useEffect(() => {
+  const propagateSite = useEffectEvent(() => {
     if (selectedSite) {
       setAnswer('milieu', selectedSite.milieu);
       setAnswer('depart_bord', selectedSite.depart_bord);
@@ -371,10 +378,13 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
       const isAtlantique = typeof lng === 'number' && lng < 7;
       setAnswer('site_atlantique', isAtlantique);
     }
+  });
+  useEffect(() => {
+    propagateSite();
   }, [answers.site_id]);
 
   // Date/heure initialisée à la prochaine heure pleine
-  useEffect(() => {
+  const initDate = useEffectEvent(() => {
     if (!answers.date) {
       const d = new Date();
       d.setMinutes(0, 0, 0);
@@ -384,32 +394,39 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
       const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
       setAnswer('date', iso);
     }
+  });
+  useEffect(() => {
+    initDate();
   }, []);
 
   // Numéro d'urgence par défaut selon pays du site + compte utilisateur
-  useEffect(() => {
+  const defaultUrgence = useEffectEvent(() => {
     if (answers.urgence_num) return;
     const code = selectedSite?.pays_code || '';
     const userDefault = user?.urgence_defaut || '18';
     if (code === 'CH') setAnswer('urgence_num', '144');
     else if (code === 'FR') setAnswer('urgence_num', '18');
     else setAnswer('urgence_num', userDefault);
+  });
+  useEffect(() => {
+    defaultUrgence();
   }, [selectedSite?.pays_code, user?.urgence_defaut]);
 
-  // Scroll-spy
+  // Scroll-spy (lit toujours les sections visibles courantes)
+  const onScroll = useEffectEvent(() => {
+    let current = visibleSections[0]?.id;
+    for (const s of visibleSections) {
+      const el = document.getElementById('sect-' + s.id);
+      if (!el) continue;
+      if (el.getBoundingClientRect().top < 160) current = s.id;
+    }
+    setActiveId(current);
+  });
   useEffect(() => {
-    const onScroll = () => {
-      let current = visibleSections[0]?.id;
-      for (const s of visibleSections) {
-        const el = document.getElementById('sect-' + s.id);
-        if (!el) continue;
-        if (el.getBoundingClientRect().top < 160) current = s.id;
-      }
-      setActiveId(current);
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, [visibleSections.length]);
+    const handler = () => onScroll();
+    window.addEventListener('scroll', handler, { passive: true });
+    return () => window.removeEventListener('scroll', handler);
+  }, []);
 
   const scrollTo = (id) => {
     const el = document.getElementById('sect-' + id);
@@ -422,9 +439,12 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
   };
 
   // Forcer paliers obligatoires si prof ≥ 60m
-  useEffect(() => {
+  const forcePaliers = useEffectEvent(() => {
     const prof = parseInt(String(answers.prof_max || '').replace(/\D/g, ''), 10);
     if (prof >= 60 && !answers.paliers) setAnswer('paliers', true);
+  });
+  useEffect(() => {
+    forcePaliers();
   }, [answers.prof_max]);
 
   // Structure type display

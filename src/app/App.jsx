@@ -74,10 +74,11 @@ function useLegacyDraftCleanup() {
 // Écran d'accueil animé affiché à chaque connexion d'un utilisateur.
 function useSplash(user) {
   const [showSplash, setShowSplash] = useState(false);
+  const userId = user?.id;
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     setShowSplash(true);
-  }, [user?.id]);
+  }, [userId]);
   return [showSplash, setShowSplash];
 }
 

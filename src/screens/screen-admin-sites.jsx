@@ -1,6 +1,6 @@
 // DP Assistant — Administration des sites de plongée
 
-import React, { useState, useEffect, useRef, useId } from 'react';
+import React, { useState, useEffect, useEffectEvent, useRef, useId } from 'react';
 import { Alert, Pill } from '../components/components.jsx';
 import { ConfirmDialog, Dialog } from '../components/dialog.jsx';
 import { Icon, StatusIcon } from '../components/icons.jsx';
@@ -76,17 +76,20 @@ function MapPicker({ coordonnees, onChange }) {
     return () => window.removeEventListener('gmaps:ready', onReady);
   }, []);
 
+  // La carte est créée une fois (quand Maps est prêt) sur les coordonnées du
+  // moment ; ses écouteurs remontent toujours vers le onChange courant.
+  const initialCoords = useEffectEvent(() => coordonnees);
+  const emitCoords = useEffectEvent((coords) => onChange(coords));
+
   useEffect(() => {
     if (!ready || !containerRef.current) return;
 
-    const center =
-      coordonnees?.lat && coordonnees?.lng
-        ? { lat: Number(coordonnees.lat), lng: Number(coordonnees.lng) }
-        : MAP_DEFAULT;
+    const initial = initialCoords();
+    const center = initial?.lat && initial?.lng ? { lat: Number(initial.lat), lng: Number(initial.lng) } : MAP_DEFAULT;
 
     const map = new google.maps.Map(containerRef.current, {
       center,
-      zoom: coordonnees?.lat && coordonnees?.lng ? 13 : 7,
+      zoom: initial?.lat && initial?.lng ? 13 : 7,
       mapTypeId: 'hybrid',
       mapTypeControl: true,
       mapTypeControlOptions: {
@@ -98,9 +101,9 @@ function MapPicker({ coordonnees, onChange }) {
     });
     mapRef.current = map;
 
-    if (coordonnees?.lat && coordonnees?.lng) {
+    if (initial?.lat && initial?.lng) {
       const m = new google.maps.Marker({ position: center, map, draggable: true });
-      m.addListener('dragend', (e) => onChange({ lat: e.latLng.lat(), lng: e.latLng.lng() }));
+      m.addListener('dragend', (e) => emitCoords({ lat: e.latLng.lat(), lng: e.latLng.lng() }));
       markerRef.current = m;
     }
 
@@ -111,10 +114,10 @@ function MapPicker({ coordonnees, onChange }) {
         markerRef.current.setPosition(e.latLng);
       } else {
         const m = new google.maps.Marker({ position: e.latLng, map, draggable: true });
-        m.addListener('dragend', (ev) => onChange({ lat: ev.latLng.lat(), lng: ev.latLng.lng() }));
+        m.addListener('dragend', (ev) => emitCoords({ lat: ev.latLng.lat(), lng: ev.latLng.lng() }));
         markerRef.current = m;
       }
-      onChange({ lat, lng });
+      emitCoords({ lat, lng });
     });
 
     if (searchRef.current) {
@@ -137,10 +140,10 @@ function MapPicker({ coordonnees, onChange }) {
             map,
             draggable: true,
           });
-          m.addListener('dragend', (ev) => onChange({ lat: ev.latLng.lat(), lng: ev.latLng.lng() }));
+          m.addListener('dragend', (ev) => emitCoords({ lat: ev.latLng.lat(), lng: ev.latLng.lng() }));
           markerRef.current = m;
         }
-        onChange({ lat, lng });
+        emitCoords({ lat, lng });
         if (place.name) window.__lastPlaceName = place.name;
       });
     }

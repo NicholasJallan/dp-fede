@@ -77,6 +77,22 @@ export function createOutbox({ store, uuid = randomUUID, getClubId = () => null 
     return item;
   }
 
+  // Démarrage : un item resté 'inflight' (onglet fermé ou application
+  // rechargée pendant l'envoi) est exclu de ready() — sans ce rattrapage il ne
+  // repartirait jamais et la saisie serait perdue en silence. Le rejeu est sûr :
+  // POST divers/sites = upsert par id client, POST dives = dédoublonné par
+  // client_uuid (duplicate: true), PUT/PATCH/DELETE idempotents.
+  async function recoverInflight() {
+    const stuck = (await store.all(STORE)).filter(it => it.status === 'inflight');
+    for (const it of stuck) {
+      await store.put(STORE, it.id, { ...it, status: 'pending', nextRetryAt: Date.now() });
+    }
+    if (stuck.length) {
+      window.dispatchEvent(new CustomEvent('dp:outboxChanged', { detail: { op: 'recover', count: stuck.length } }));
+    }
+    return stuck.length;
+  }
+
   async function get(id) {
     return await store.get(STORE, id);
   }
@@ -213,10 +229,11 @@ export function createOutbox({ store, uuid = randomUUID, getClubId = () => null 
   // Délai jusqu'au prochain retry programmé (ms). Utile pour réveiller le
   // sync orchestrator au bon moment plutôt qu'avec un interval fixe.
   async function nextWakeMs(now = Date.now()) {
-    const all = await store.all(STORE);
-    if (!all.some(it => it.status !== 'review')) return null;
-    const future = all
-      .filter(it => it.status !== 'inflight' && it.status !== 'review')
+    // Ni les items en revue (attendent l'utilisateur) ni ceux en cours d'envoi
+    // (ready() les ignore : les compter réveillait la sync à vide chaque seconde).
+    const waiting = (await store.all(STORE)).filter(it => it.status !== 'inflight' && it.status !== 'review');
+    if (waiting.length === 0) return null;
+    const future = waiting
       .map(it => (it.nextRetryAt || 0) - now)
       .filter(d => d > 0);
     if (future.length === 0) return 0; // au moins un item est prêt maintenant
@@ -225,7 +242,7 @@ export function createOutbox({ store, uuid = randomUUID, getClubId = () => null 
 
   return {
     enqueue, get, update,
-    markInflight, markDone, markFailed, markReview,
+    markInflight, markDone, markFailed, markReview, recoverInflight,
     coalesce, retryNow, purgeClub,
     ready, pending, size, clear,
     nextWakeMs,

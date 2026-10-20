@@ -13,6 +13,8 @@
 //   - dp:sw { type: 'SYNC_TRIGGER' } (Background Sync API)
 //   - sync.trigger() manuel
 //   - timer post-backoff (calculé via outbox.nextWakeMs)
+//   - toutes les 60 s tant que l'onglet est visible (créations et
+//     modifications des autres membres du club)
 //
 // Concurrence : un seul cycle à la fois. Les triggers concurrents sont
 // fusionnés (un seul cycle queue).
@@ -68,6 +70,11 @@ export function isPermanentRefusal(err) {
 // Fabrique : `store` (offline-store), `outbox` (createOutbox) et
 // `getNetStatus` (() => { online }) sont injectés. fetch, window et document
 // sont lus à l'appel (globaux du navigateur, ou faux globaux en test).
+// Pull périodique tant que l'onglet est visible : sans lui, un DP qui garde
+// l'application ouverte au premier plan ne voit jamais les plongeurs ni les
+// fiches créés par les autres membres du club.
+export const PULL_INTERVAL_MS = 60_000;
+
 export function createSync({ store, outbox, getNetStatus }) {
   // ── État interne ────────────────────────────────────────────────────────
   let _cycleInFlight = null;
@@ -167,7 +174,11 @@ export function createSync({ store, outbox, getNetStatus }) {
       }
       const updated = await store.get('dives', client_uuid);
       if (updated) {
-        await store.put('dives', client_uuid, { ...updated, ...patch, _pending: false });
+        // Saisie poursuivie pendant l'envoi : un autre PATCH attend, la fiche
+        // reste _pending (sinon le pull écraserait ce qui n'est pas encore parti).
+        const stillQueued = (await outbox.pending()).some(i => i.id !== item.id
+          && i.kind === 'dive.update' && i.payload?.client_uuid === client_uuid);
+        await store.put('dives', client_uuid, { ...updated, ...patch, _pending: stillQueued });
       }
       window.dispatchEvent(new CustomEvent('dp:dataChanged', { detail: { store: 'dives' } }));
     },
@@ -445,8 +456,15 @@ export function createSync({ store, outbox, getNetStatus }) {
         .catch(() => { /* unsupported ou refusé */ });
     }
 
-    // Premier cycle au démarrage.
-    trigger('boot');
+    setInterval(() => {
+      if (document.visibilityState === 'visible') trigger('interval');
+    }, PULL_INTERVAL_MS);
+
+    // Premier cycle au démarrage, après avoir remis en file les items laissés
+    // 'inflight' par une fermeture d'onglet en plein envoi.
+    Promise.resolve(outbox.recoverInflight ? outbox.recoverInflight() : 0)
+      .catch(() => 0)
+      .then(() => trigger('boot'));
   }
 
   // ── API publique ────────────────────────────────────────────────────────

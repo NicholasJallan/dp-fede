@@ -160,11 +160,13 @@ describe('sync — périmètre club du store local', () => {
 });
 
 describe('club-scope — changement de club', () => {
-  test('premier rattachement : aucune purge (données antérieures au socle club)', async () => {
+  test('premier rattachement : seules les lignes non envoyées sont gardées (cf. sync-terrain)', async () => {
     await win.offlineStore.put('divers', 'd-1', { id: 'd-1' });
+    await win.offlineStore.put('divers', 'd-2', { id: 'd-2', _pending: true });
     const changed = await bindLocalDataToClub(win.offlineStore, CLUB_A);
     assert.equal(changed, false);
-    assert.ok(await win.offlineStore.get('divers', 'd-1'));
+    assert.equal(await win.offlineStore.get('divers', 'd-1'), null);
+    assert.ok(await win.offlineStore.get('divers', 'd-2'));
     assert.equal(await win.offlineStore.get('meta', 'club'), CLUB_A);
   });
 

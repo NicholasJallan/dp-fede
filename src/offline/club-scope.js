@@ -37,20 +37,57 @@ export async function purgeClubData(store) {
   }
 }
 
+// Ligne locale pas encore envoyée (création / modification en attente).
+const isUnsent = (row) => !!row && (row._pending === true || row.synced === false);
+
+/**
+ * Premier rattachement d'un appareil antérieur au socle club : ses données
+ * locales viennent d'un espace inconnu (compte personnel ou structure
+ * partagée de l'ancienne version). Les lignes déjà synchronisées sont
+ * retirées (relues dans le bon club par le pull qui suit) ; celles pas encore
+ * envoyées restent (leur écriture est dans l'outbox).
+ */
+export async function purgeSyncedClubData(store) {
+  for (const name of CLUB_DATA_STORES) {
+    for (const key of await store.allKeys(name)) {
+      if (!isUnsent(await store.get(name, key))) await store.del(name, key);
+    }
+  }
+  await store.del('meta', META_SYNC);
+  try {
+    [STORAGE_KEYS.CACHE_DIVERS, STORAGE_KEYS.CACHE_SITES].forEach(k => localStorage.removeItem(k));
+  } catch { /* stockage indisponible : rien à purger */ }
+  for (const name of ['divers', 'sites', 'dives']) {
+    window.dispatchEvent(new CustomEvent('dp:dataChanged', { detail: { store: name } }));
+  }
+}
+
 /**
  * Rattache les données locales au club `clubId` (devient aussi le club
  * courant des prochaines écritures). Purge celles d'un autre club.
- * Premier rattachement (appareil antérieur au socle club) : aucune purge,
- * les données locales sont celles du club courant.
+ * Premier rattachement (appareil antérieur au socle club) : seules les
+ * lignes non encore envoyées sont gardées (cf. purgeSyncedClubData).
  * @returns {Promise<boolean>} true si le club a changé (purge effectuée)
  */
-export async function bindLocalDataToClub(store, clubId) {
+// Rattachements sérialisés : /api/auth/me et /api/sync/state peuvent
+// répondre en même temps au démarrage ; deux purges concurrentes effaceraient
+// les lignes que le pull vient d'écrire.
+const queues = new WeakMap();
+
+export function bindLocalDataToClub(store, clubId) {
+  const run = (queues.get(store) || Promise.resolve()).then(() => bindNow(store, clubId));
+  queues.set(store, run.catch(() => {}));
+  return run;
+}
+
+async function bindNow(store, clubId) {
   if (!clubId) return false;
   // Les prochaines écritures (outbox) visent ce club.
   setCurrentClubId(clubId);
   const previous = await localClubId(store);
   if (previous === clubId) return false;
   if (previous) await purgeClubData(store);
+  else await purgeSyncedClubData(store);
   await store.put('meta', META_CLUB, clubId);
   if (previous) {
     window.dispatchEvent(new CustomEvent('dp:clubChanged', { detail: { from: previous, to: clubId } }));

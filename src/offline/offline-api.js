@@ -23,23 +23,56 @@ function emitDataChanged(store) {
   window.dispatchEvent(new CustomEvent('dp:dataChanged', { detail: { store } }));
 }
 
-async function listWithFallback(store, storeName, networkCall) {
+// Même tri que le serveur (ORDER BY nom, prenom) : une ligne locale insérée
+// ne fait pas sauter la liste.
+function byNom(a, b) {
+  return String(a.nom || '').localeCompare(String(b.nom || ''))
+    || String(a.prenom || '').localeCompare(String(b.prenom || ''));
+}
+
+const rowKey = (row) => row?.client_uuid || row?.id;
+
+// Liste réconciliée (annuaire, sites) : la réponse serveur fait autorité, sauf
+//   - les lignes `_pending` (créées / modifiées ici, pas encore poussées) :
+//     fusionnées par-dessus, une création ne disparaît jamais au refresh ;
+//   - les suppressions encore en file (`hiddenKeys`) : masquées ;
+//   - les lignes confirmées absentes du serveur (supprimées ailleurs) :
+//     purgées du store, sinon elles ressuscitent au passage hors ligne.
+// Hors ligne : uniquement le store. (La liste sans ?since= exclut les
+// soft-deletes : ce qui n'y est pas et n'est pas en attente n'existe plus.)
+async function listWithFallback(store, storeName, networkCall, hiddenKeys = async () => new Set()) {
+  let list;
   try {
-    const list = await networkCall();
-    if (Array.isArray(list)) {
-      await Promise.all(list.map(async (row) => {
-        const key = row.client_uuid || row.id;
-        if (!key) return;
-        const cur = await store.get(storeName, key);
-        if (cur?._pending) return;
-        await store.put(storeName, key, row);
-      }));
-    }
-    return list;
+    list = await networkCall();
   } catch {
+    const hidden = await hiddenKeys();
     const cached = await store.all(storeName);
-    return cached.filter(r => !r?.deleted);
+    return cached.filter(r => !r?.deleted && !hidden.has(rowKey(r))).sort(byNom);
   }
+  if (!Array.isArray(list)) return list;
+
+  const hidden = await hiddenKeys();
+  const local = await store.all(storeName);
+  const pending = new Map();
+  for (const row of local) {
+    const key = rowKey(row);
+    if (key && row._pending && !row.deleted) pending.set(key, row);
+  }
+  const seen = new Set();
+  for (const row of list) {
+    const key = rowKey(row);
+    if (!key) continue;
+    seen.add(key);
+    if (pending.has(key) || hidden.has(key)) continue;   // nos écritures locales priment
+    await store.put(storeName, key, row);
+  }
+  for (const row of local) {
+    const key = rowKey(row);
+    if (key && !seen.has(key) && !pending.has(key)) await store.del(storeName, key);
+  }
+  const merged = list.filter(row => !hidden.has(rowKey(row))).map(row => pending.get(rowKey(row)) || row);
+  for (const [key, row] of pending) if (!seen.has(key)) merged.push(row);   // création pas encore poussée
+  return merged.sort(byNom);
 }
 
 // ── Divers / Sites (même mécanique, kinds `diver.*` / `site.*`) ────────────
@@ -49,7 +82,11 @@ function decorateDirectory(resource, ctx, storeName, kind) {
   const originalList = resource.list;
   const withId = (payload) => (payload.id ? payload : { ...payload, id: uuid() });
 
-  resource.list = async () => listWithFallback(store, storeName, () => originalList());
+  // Suppressions pas encore parties : la ligne reste masquée même si le
+  // serveur la renvoie encore.
+  const pendingDeletes = async () => new Set((await outbox.pending())
+    .filter(it => it.kind === `${kind}.delete`).map(it => it.payload?.id));
+  resource.list = async () => listWithFallback(store, storeName, () => originalList(), pendingDeletes);
 
   resource.create = async (data) => {
     const payload = withId(data);

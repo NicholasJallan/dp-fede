@@ -22,8 +22,7 @@
     }
   },
   "scripts": {
-    "test": "vendor/bin/phpunit --colors=always",
-    "audit": "composer audit"
+    "test": "vendor/bin/phpunit --colors=always"
   },
   "config": {
     "sort-packages": true,

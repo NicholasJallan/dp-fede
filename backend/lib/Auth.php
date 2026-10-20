@@ -43,7 +43,21 @@ class Auth {
             return null;
         }
         if (((int)($payload['exp'] ?? 0)) < time()) return null;
+        // Adresse e-mail obligatoire et vérifiée par Google : l'e-mail sert
+        // d'identifiant (UNIQUE) et pilote le statut super-admin.
+        if (trim((string)($payload['email'] ?? '')) === '') return null;
+        if (!self::isEmailVerified($payload)) return null;
         return $payload;
+    }
+
+    /**
+     * Vrai si le payload Google atteste un e-mail vérifié. Le JWT décodé
+     * localement porte un booléen ; l'endpoint tokeninfo renvoie la chaîne
+     * "true". Toute autre valeur (absente, false, "false"…) est refusée.
+     */
+    public static function isEmailVerified(array $payload): bool {
+        $v = $payload['email_verified'] ?? null;
+        return $v === true || $v === 'true';
     }
 
     /**
@@ -102,7 +116,7 @@ class Auth {
         $existing = Db::row('SELECT * FROM users WHERE google_sub = ?', [$sub]);
         if ($existing) {
             Db::q(
-                'UPDATE users SET email=?, avatar_url=?, last_login=NOW() WHERE id=?',
+                'UPDATE users SET email=?, avatar_url=?, last_login=NOW(), last_seen_at=NOW() WHERE id=?',
                 [$email, $avatar, $existing['id']]
             );
             return Db::row('SELECT * FROM users WHERE id=?', [$existing['id']]);
@@ -113,8 +127,8 @@ class Auth {
         $role  = ($count == 0) ? 'admin' : 'user';
 
         Db::q(
-            'INSERT INTO users (google_sub, email, nom, prenom, avatar_url, role, last_login)
-             VALUES (?,?,?,?,?,?,NOW())',
+            'INSERT INTO users (google_sub, email, nom, prenom, avatar_url, role, last_login, last_seen_at)
+             VALUES (?,?,?,?,?,?,NOW(),NOW())',
             [$sub, $email, $nom, $prenom, $avatar, $role]
         );
         return Db::row('SELECT * FROM users WHERE google_sub=?', [$sub]);
@@ -133,6 +147,7 @@ class Auth {
         );
 
         self::setCookie($id);
+        Log::setActor($userId);
         return $id;
     }
 
@@ -171,10 +186,14 @@ class Auth {
         if ($remaining < self::SLIDE_THRESHOLD) {
             $newExpires = date('Y-m-d H:i:s', time() + self::TTL);
             Db::q('UPDATE sessions SET expires_at=? WHERE id=?', [$newExpires, $id]);
+            // Dernière activité (RGPD : purge des comptes inactifs, cf. bin/purge.php).
+            Db::q('UPDATE users SET last_seen_at=NOW() WHERE id=?', [$session['user_id']]);
             self::setCookie($id);
         }
 
-        return Db::row('SELECT * FROM users WHERE id=?', [$session['user_id']]);
+        $user = Db::row('SELECT * FROM users WHERE id=?', [$session['user_id']]);
+        if ($user) Log::setActor((int)$user['id']);
+        return $user;
     }
 
     // Require authenticated user or abort 401
@@ -217,17 +236,19 @@ class Auth {
     public static function destroySession(): void {
         $id = $_COOKIE[self::COOKIE] ?? '';
         if ($id) Db::q('DELETE FROM sessions WHERE id=?', [$id]);
+        // Même Domain que setCookie(), sinon le navigateur garde le cookie.
         setcookie(self::COOKIE, '', [
             'expires'  => time() - 3600,
             'path'     => '/',
+            'domain'   => Config::get('app')['domain'] ?? '',
             'secure'   => true,
             'httponly' => true,
             'samesite' => 'Lax',
         ]);
     }
 
-    // Purge expired sessions (call occasionally)
-    public static function purgeExpired(): void {
-        Db::q('DELETE FROM sessions WHERE expires_at < NOW()');
+    /** Purge les sessions expirées (bin/purge.php). Retourne le nombre supprimé. */
+    public static function purgeExpired(): int {
+        return Db::q('DELETE FROM sessions WHERE expires_at < NOW()')->rowCount();
     }
 }

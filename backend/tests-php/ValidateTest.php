@@ -71,4 +71,41 @@ class ValidateTest extends TestCase
     {
         $this->assertFalse($this->hasDateError([]));
     }
+
+    // ── encodeJsonObject (render_state) ─────────────────────────────────────
+
+    public function testEncodeJsonObjectAcceptsArray(): void
+    {
+        $json = \Validate::encodeJsonObject(['pressions' => ['p1-d1' => 50]], 1024, 'render_state');
+        $this->assertSame('{"pressions":{"p1-d1":50}}', $json);
+    }
+
+    /** @dataProvider nonObjects */
+    public function testEncodeJsonObjectRejectsNonArrays($value): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        \Validate::encodeJsonObject($value, 1024, 'render_state');
+    }
+
+    public static function nonObjects(): array
+    {
+        return [
+            'chaîne' => ['{"a":1}'],
+            'entier' => [42],
+            'null'   => [null],
+            'bool'   => [true],
+        ];
+    }
+
+    public function testEncodeJsonObjectRejectsOversizedPayload(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        \Validate::encodeJsonObject(['x' => str_repeat('a', 100)], 50, 'render_state');
+    }
+
+    public function testEncodeJsonObjectRejectsInvalidUtf8(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        \Validate::encodeJsonObject(['x' => "\xB1\x31"], 1024, 'render_state');
+    }
 }

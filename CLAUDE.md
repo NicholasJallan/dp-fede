@@ -1,7 +1,7 @@
 # CLAUDE.md — DP Assistant
 
 Outil d'aide au Directeur de Plongée (FFESSM / Code du Sport).
-Frontend : React 18 + esbuild. Backend : PHP 7.4-FPM (API) + PHP 8.2 (CLI, PHPUnit) + MariaDB sur Raspberry Pi.
+Frontend : React 18 + esbuild. Backend : PHP 8.2-FPM (pool dédié dp-fede, cf. `docs/deploy/php82-migration.md`) + MariaDB sur Raspberry Pi. PrestaShop/WordPress restent en PHP 7.4 sur le même Pi.
 
 ## Build frontend
 
@@ -11,7 +11,7 @@ npm run dev             # watch mode   → dist/   (node build.js --watch)
 npm run test:e2e:local  # build + sert dist/ sur :8765 + smoke Playwright (API simulée)
 ```
 
-`dist/` est gitignored — toujours déployer via `pi-scripts/deploy-frontend.sh` (qui lance le build puis rsync `dist/`).
+`dist/` est gitignored — toujours déployer via `deploy/deploy-frontend.sh` (qui lance le build puis rsync `dist/`).
 
 Le bump sw.js VERSION est **automatique** (`build.js` : hash du contenu de `dist/`) — ne pas modifier `VERSION` à la main.
 
@@ -73,21 +73,25 @@ le singleton `api`) → `sync.start()` au tick suivant.
 ## Déployer le frontend
 
 ```bash
-bash pi-scripts/deploy-frontend.sh        # build + rsync dist/ → Pi
-bash pi-scripts/deploy-frontend.sh --dry-run  # test sans déployer
+bash deploy/deploy-frontend.sh        # build + rsync dist/ → Pi
+bash deploy/deploy-frontend.sh --dry-run  # test sans déployer
 ```
 
-Le script fait : `node build.js` → patch VERSION sw.js → `rsync dist/`. Le bump sw.js VERSION est automatique.
+Le script fait : `node build.js` (VERSION sw.js = hash du contenu) → `rsync dist/`.
 
 ## Déployer le backend PHP
 
 ```bash
-rsync -av --rsync-path="sudo rsync" \
-  /Users/nicholas/projects/dpchecklist/backend/ \
-  pi@bullesenvalais.ch:/var/www/dp-fede-api/
-
-ssh pi@bullesenvalais.ch "sudo chown -R www-data:www-data /var/www/dp-fede-api"
+bash deploy/deploy-backend.sh --dry-run   # relire ce qui serait envoyé / supprimé
+bash deploy/deploy-backend.sh             # release → composer install --no-dev → backup → migrations → bascule
 ```
+
+Les migrations ne tournent plus à chaque requête : `php backend/bin/migrate.php`
+(appelé par le script de déploiement, `--status` pour l'état). Purge RGPD et
+sessions : `backend/bin/purge.php` (cron, cf. `deploy/cron.example`).
+Procédure complète, sauvegardes et restauration : `docs/deploy/README.md`,
+`deploy/restore.md`. `pi-scripts/` (non versionné, contient des secrets) est
+remplacé par `deploy/`.
 
 > Ne jamais déployer `backend/config.php` (gitignored) — la config vit sur le Pi dans `/etc/dp-fede/config.php`.
 
@@ -183,8 +187,8 @@ Pour le mode offline (PWA + SW) ajouter à la CSP du bloc dp-fede :
 `worker-src 'self'; manifest-src 'self';`
 
 Ajouter aussi les directives `location` pour `sw.js` (no-cache strict) et
-`site.webmanifest` (no-cache). Voir `nginx-offline-snippet.conf` à la
-racine du repo — à copier dans le bloc server après modification.
+`site.webmanifest` (no-cache). Configuration de référence versionnée :
+`deploy/nginx-dp-fede.conf` + `deploy/nginx-dp-fede-security-headers.conf`.
 
 La constante `VERSION` de `public/sw.js` vaut `__SW_VERSION__` dans le dépôt ;
 `build.js` la remplace par un hash du contenu de `dist/` (`dp-{hash12}`). Ne

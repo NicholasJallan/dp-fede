@@ -6,8 +6,10 @@ declare(strict_types=1);
  * Remplace le compteur APCu (perdu au reload PHP-FPM) par une table SQL
  * dont l'état survit aux redémarrages et est partagé entre workers.
  *
- * Fallback transparent vers APCu si la table n'existe pas encore
- * (premier déploiement avant que Db::migrate() ait tourné).
+ * Fallback transparent vers APCu si la table est inaccessible (base
+ * indisponible, migrations pas encore jouées par bin/migrate.php).
+ * La purge des fenêtres expirées est faite par bin/purge.php (cron) en plus
+ * du GC probabiliste ci-dessous.
  */
 class RateLimit {
     public static function hitOrAbort(
@@ -47,11 +49,17 @@ class RateLimit {
         }
     }
 
-    public static function purge(): void {
+    /**
+     * Supprime les compteurs dont la fenêtre est close depuis plus d'une
+     * heure (plus longue fenêtre utilisée : 1 h pour l'export RGPD).
+     * Retourne le nombre de lignes supprimées, 0 si la table est inaccessible.
+     */
+    public static function purge(): int {
         try {
-            Db::q("DELETE FROM rate_limits WHERE window_start < DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+            return Db::q("DELETE FROM rate_limits WHERE window_start < DATE_SUB(NOW(), INTERVAL 2 HOUR)")->rowCount();
         } catch (\Exception $e) {
-            // silently ignore
+            error_log('[dp-fede] RateLimit::purge : ' . $e->getMessage());
+            return 0;
         }
     }
 

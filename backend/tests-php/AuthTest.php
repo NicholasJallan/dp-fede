@@ -50,4 +50,23 @@ final class AuthTest extends TestCase
     {
         $this->assertFalse(\Auth::isSuperAdmin(['role' => 'admin']));
     }
+
+    /** @dataProvider emailVerifiedValues */
+    public function testIsEmailVerified($value, bool $expected): void
+    {
+        $payload = $value === '__absent__' ? [] : ['email_verified' => $value];
+        $this->assertSame($expected, \Auth::isEmailVerified($payload));
+    }
+
+    public static function emailVerifiedValues(): array
+    {
+        return [
+            'JWT booléen true'      => [true, true],
+            'tokeninfo "true"'      => ['true', true],
+            'false'                 => [false, false],
+            'tokeninfo "false"'     => ['false', false],
+            'absent'                => ['__absent__', false],
+            'entier 1 (non standard)' => [1, false],
+        ];
+    }
 }

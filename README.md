@@ -45,7 +45,7 @@ Profilage de la plongée, check-list conditionnelle, composition des palanquées
 
 | Technologie | Usage | Version |
 |---|---|---|
-| **PHP** | API REST | 7.4 (FPM) |
+| **PHP** | API REST | 8.2 (FPM, pool dédié) |
 | **MariaDB** | Persistance | 10.x |
 | **wkhtmltopdf** | Génération PDF server-side | installé sur le Pi |
 | **nginx** | Reverse proxy + CSP headers | — |
@@ -692,12 +692,11 @@ Vérification locale du build avant déploiement : `npm run test:e2e:local`
 ### Backend PHP
 
 ```bash
-rsync -av --rsync-path="sudo rsync" \
-  /Users/nicholas/projects/dpchecklist/backend/ \
-  pi@bullesenvalais.ch:/var/www/dp-fede-api/
-
-ssh pi@bullesenvalais.ch "sudo chown -R www-data:www-data /var/www/dp-fede-api"
+bash deploy/deploy-backend.sh --dry-run
+bash deploy/deploy-backend.sh
 ```
+
+Détails (PHP 8.2, migrations, sauvegardes, restauration) : `docs/deploy/README.md`.
 
 > Ne jamais déployer `backend/config.php` (gitignored). La config live sur le Pi dans `/etc/dp-fede/config.php`.
 

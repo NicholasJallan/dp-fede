@@ -17,7 +17,7 @@ if ($method === 'POST' && $path === '/api/auth/google') {
     Auth::createSession((int)$user['id']);
     Csrf::token(); // émet le cookie CSRF
 
-    Log::action('auth.login', ['user_id' => $user['id'], 'email' => $user['email'] ?? null]);
+    Log::action('auth.login', ['user_id' => $user['id']]);
     Json::ok(userPublic($user));
 }
 
@@ -31,11 +31,15 @@ if ($method === 'GET' && $path === '/api/auth/me') {
 }
 
 // POST /api/auth/logout
+// Protection CSRF : jeton double-submit OU Origin/Referer de l'application
+// (cf. Csrf::verifyForLogout). Un cookie CSRF manquant ne doit plus empêcher
+// la destruction de la session côté serveur.
 if ($method === 'POST' && $path === '/api/auth/logout') {
-    Csrf::verify();
+    Csrf::verifyForLogout();
     $user = Auth::current();
     Log::action('auth.logout', ['user_id' => $user['id'] ?? null]);
     Auth::destroySession();
+    Csrf::clear();
     Json::ok(null);
 }
 

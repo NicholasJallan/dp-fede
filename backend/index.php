@@ -14,9 +14,20 @@ if (is_file(__DIR__ . '/vendor/autoload.php')) {
 }
 
 // Load libs
-foreach (['Config','Json','Db','Auth','Csrf','Validate','SyncHelpers','RateLimit','Log'] as $cls) {
+foreach (['Config','Json','Db','Auth','Csrf','Validate','SyncHelpers','RateLimit','Log','Account'] as $cls) {
     require_once __DIR__ . "/lib/{$cls}.php";
 }
+
+// Filet de sécurité : toute exception non gérée (base indisponible, schéma
+// non migré…) renvoie un JSON 500 générique et est journalisée côté serveur,
+// sans fuite de détail vers le client.
+set_exception_handler(static function (\Throwable $e): void {
+    error_log('[dp-fede] ' . get_class($e) . ': ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+    if (!headers_sent()) {
+        header('Content-Type: application/json; charset=utf-8');
+    }
+    Json::abort(500, 'Erreur interne du serveur');
+});
 
 // CORS — uniquement le front du même domaine
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -48,11 +59,22 @@ if ($method === 'POST' && $path === '/api/auth/google') {
     RateLimit::hitOrAbort('login', 10, 900, 'Trop de tentatives. Réessayez dans 15 minutes.');
 }
 
+// Rapports CSP : endpoint public (pas d'auth possible) → 30 rapports/min/IP.
+if ($method === 'POST' && $path === '/api/csp/report') {
+    RateLimit::hitOrAbort('csp', 30, 60, 'Trop de rapports CSP.');
+}
+
+// Proxys vers des API tierces (SHOM…) : chaque appel déclenche des requêtes
+// sortantes → 30/min/IP pour ne pas transformer le Pi en relais.
+if (strpos($path, '/api/proxy/') === 0) {
+    RateLimit::hitOrAbort('proxy', 30, 60, 'Trop de requêtes. Réessayez dans une minute.');
+}
+
 // Rate-limit écriture (POST/PATCH/DELETE) sur les ressources métier.
 // 120 mutations/min par IP — couvre largement un usage normal (auto-save
 // debouncé 500 ms + outbox drain ~3 items/s) mais coupe les abus.
 $writeMethods   = ['POST', 'PATCH', 'PUT', 'DELETE'];
-$writePathRoots = ['/api/dives', '/api/divers', '/api/sites'];
+$writePathRoots = ['/api/dives', '/api/divers', '/api/sites', '/api/account'];
 if (in_array($method, $writeMethods, true)) {
     foreach ($writePathRoots as $root) {
         if (strpos($path, $root) === 0) {
@@ -64,7 +86,7 @@ if (in_array($method, $writeMethods, true)) {
 
 // Router — load matching route file
 $routed = false;
-foreach (['auth','divers','sites','users','dives','sync','pdf','proxy','csp'] as $r) {
+foreach (['auth','account','divers','sites','users','dives','sync','pdf','proxy','csp'] as $r) {
     $file = __DIR__ . "/routes/{$r}.php";
     require $file;
 }

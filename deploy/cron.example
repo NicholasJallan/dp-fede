@@ -1,0 +1,21 @@
+# /etc/cron.d/dp-fede — tâches planifiées de DP Assistant.
+#
+# Installation : sudo install -o root -g root -m 644 deploy/cron.example /etc/cron.d/dp-fede
+# (Les fichiers de /etc/cron.d ont un champ « utilisateur » après l'horaire.
+#  Le nom du fichier ne doit contenir ni point ni extension.)
+#
+# Ordre : la sauvegarde passe AVANT la purge, pour qu'une purge erronée reste
+# récupérable depuis la sauvegarde de la nuit.
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=""
+
+# 02:30 — sauvegarde MariaDB (deploy/backup.sh installé en /usr/local/sbin/dp-fede-backup).
+30 2 * * * root /usr/local/sbin/dp-fede-backup >> /var/log/dp-fede-backup.log 2>&1
+
+# 03:15 — purges (sessions expirées, rate-limit, soft-deletes > 180 j ; purges
+# RGPD optionnelles selon 'retention' dans /etc/dp-fede/config.php).
+# Pour activer la purge des plongées archivées de plus de 5 ans, par exemple :
+#   ajouter --archived-dives-years=5 (ou 'archived_dives_years' => 5 dans la config).
+15 3 * * * www-data /usr/bin/php8.2 /var/www/dp-fede-api/bin/purge.php >> /var/log/dp-fede-purge.log 2>&1

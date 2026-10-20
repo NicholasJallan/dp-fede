@@ -15,4 +15,11 @@ return [
     'app' => [
         'domain' => 'dp-fede.bullesenvalais.ch',
     ],
+    // Durées de conservation appliquées par bin/purge.php (cf. docs/rgpd.md).
+    // Les options CLI (--soft-deleted-days=…, etc.) priment sur ces valeurs.
+    'retention' => [
+        'soft_deleted_days'       => 180, // lignes supprimées par l'utilisateur ; 0 = jamais purgées
+        'archived_dives_years'    => 0,   // plongées archivées ; 0 = désactivé, sinon ≥ 1 (A322-72)
+        'inactive_accounts_years' => 0,   // comptes inactifs ; 0 = désactivé, sinon ≥ 2
+    ],
 ];

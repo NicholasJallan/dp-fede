@@ -65,4 +65,44 @@ final class CsrfTest extends TestCase
         $_COOKIE['dp_csrf'] = $existing;
         $this->assertSame($existing, \Csrf::token());
     }
+
+    public function testIsValidRequiresMatchingHeaderAndCookie(): void
+    {
+        $this->assertFalse(\Csrf::isValid());
+        $_COOKIE['dp_csrf'] = str_repeat('a', 64);
+        $this->assertFalse(\Csrf::isValid());
+        $_SERVER['HTTP_X_CSRF_TOKEN'] = str_repeat('b', 64);
+        $this->assertFalse(\Csrf::isValid());
+        $_SERVER['HTTP_X_CSRF_TOKEN'] = str_repeat('a', 64);
+        $this->assertTrue(\Csrf::isValid());
+    }
+
+    /** @dataProvider origins */
+    public function testIsTrustedOrigin(?string $origin, ?string $referer, bool $expected): void
+    {
+        $this->assertSame($expected, \Csrf::isTrustedOrigin($origin, $referer, 'dp-fede.bullesenvalais.ch'));
+    }
+
+    public static function origins(): array
+    {
+        return [
+            'origin exact'               => ['https://dp-fede.bullesenvalais.ch', null, true],
+            'origin casse différente'    => ['https://DP-FEDE.bullesenvalais.ch', null, true],
+            'origin http'                => ['http://dp-fede.bullesenvalais.ch', null, false],
+            'origin tiers'               => ['https://evil.example', null, false],
+            'origin suffixe piégé'       => ['https://dp-fede.bullesenvalais.ch.evil.example', null, false],
+            'origin "null"'              => ['null', 'https://dp-fede.bullesenvalais.ch/', false],
+            'origin prime sur referer'   => ['https://evil.example', 'https://dp-fede.bullesenvalais.ch/', false],
+            'referer seul ok'            => [null, 'https://dp-fede.bullesenvalais.ch/archives?x=1', true],
+            'referer port non standard'  => [null, 'https://dp-fede.bullesenvalais.ch:8443/', false],
+            'referer tiers'              => [null, 'https://evil.example/dp-fede.bullesenvalais.ch', false],
+            'rien'                       => [null, null, false],
+            'vides'                      => ['', '', false],
+        ];
+    }
+
+    public function testIsTrustedOriginFalseWithoutDomain(): void
+    {
+        $this->assertFalse(\Csrf::isTrustedOrigin('https://', null, ''));
+    }
 }

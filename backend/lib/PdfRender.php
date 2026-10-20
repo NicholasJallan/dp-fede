@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * Rendu PDF côté serveur depuis les données métier (dive_id → DB → wkhtmltopdf).
+ * Rendu PDF côté serveur depuis les données métier (dive_id → DB → mPDF).
  * Élimine le LFI par construction : le HTML est 100 % généré par le serveur.
  */
 class PdfRender
@@ -67,16 +67,45 @@ table td { border-bottom: 1px solid #e2e8f0; padding: 7px 8px; vertical-align: t
 CSS;
     }
 
-    /** Échappe une valeur pour HTML. */
-    public static function h(?string $v): string
+    /**
+     * Échappe une valeur pour HTML. Tolère tout type : les réponses JSON du
+     * front contiennent aussi des nombres (profondeurs, durées, numéros…) et
+     * les templates sont en strict_types. Tableaux/objets → chaîne vide.
+     *
+     * @param mixed $v
+     */
+    public static function h($v): string
     {
-        return htmlspecialchars((string)$v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        return htmlspecialchars(self::toText($v), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
-    /** Formate une date ISO en français (ex : 14 juin 2026 — 09:00). */
-    public static function formatDateTime(?string $s): string
+    /**
+     * Conversion texte sûre d'une valeur scalaire (fonction pure, testée).
+     *
+     * @param mixed $v
+     */
+    public static function toText($v): string
     {
-        if (!$s) return '—';
+        if ($v === null) return '';
+        if (is_bool($v)) return $v ? 'oui' : 'non';
+        if (is_int($v) || is_string($v)) return (string)$v;
+        if (is_float($v)) {
+            // 12.0 → « 12 », 12.5 → « 12.5 » (pas de notation scientifique).
+            return rtrim(rtrim(number_format($v, 6, '.', ''), '0'), '.');
+        }
+        if (is_object($v) && method_exists($v, '__toString')) return (string)$v;
+        return '';
+    }
+
+    /**
+     * Formate une date ISO en français (ex : 14 juin 2026 — 09:00).
+     *
+     * @param mixed $s
+     */
+    public static function formatDateTime($s): string
+    {
+        $s = self::toText($s);
+        if ($s === '') return '—';
         try {
             $d = new DateTime($s);
             $months = ['', 'janvier', 'février', 'mars', 'avril', 'mai', 'juin',

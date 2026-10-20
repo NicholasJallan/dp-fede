@@ -844,31 +844,20 @@ pour 0 risque et meilleure perf (cache HTTP maîtrisé).
 Avant de lancer une tâche, vérifier que l'environnement local est prêt :
 
 ```bash
-cd /Users/nicholas/projects/dpchecklist
+cd /Users/nicholas/projects/dp-fede
 node --version          # >= 20
 npm test                # baseline verte
 cd backend
-composer install --dev  # installe PHPUnit
-composer test           # baseline verte (peut nécessiter PHP 8.x local)
+composer install        # installe PHPUnit (dev)
+composer test           # baseline verte (PHP 8.2+)
 ```
 
-Si une tâche modifie le backend, déployer sur le Pi à la fin :
+Si une tâche modifie le backend ou le frontend, déployer sur le Pi à la fin
+avec les scripts versionnés (cf. [deploy/README.md](deploy/README.md)) :
 
 ```bash
-# Déploiement backend
-rsync -av --rsync-path="sudo rsync" \
-  /Users/nicholas/projects/dpchecklist/backend/ \
-  pi@bullesenvalais.ch:/var/www/dp-fede-api/
-ssh pi@bullesenvalais.ch "sudo chown -R www-data:www-data /var/www/dp-fede-api"
-
-# Déploiement frontend (cf. CLAUDE.md)
-rsync -av --rsync-path="sudo rsync" \
-  --exclude='.git' --exclude='backend/' \
-  /Users/nicholas/projects/dpchecklist/ \
-  pi@bullesenvalais.ch:/var/www/html/dp-fede/
-ssh pi@bullesenvalais.ch "sudo chown -R www-data:www-data /var/www/html/dp-fede && \
-  sudo cp '/var/www/html/dp-fede/DP Assistant.html' /var/www/html/dp-fede/index.html && \
-  sudo chown www-data:www-data /var/www/html/dp-fede/index.html"
+deploy/deploy-backend.sh --dry-run && deploy/deploy-backend.sh   # backend/ de CE dépôt
+deploy/deploy-frontend.sh                                         # build + dist/
 ```
 
 ---

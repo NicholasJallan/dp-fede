@@ -200,6 +200,7 @@ if ($method === 'POST' && $path === '/api/dives') {
     if (!empty($body['palanquees']) && in_array($status, ['in_progress', 'archived'], true)) {
         validatePalanqueesOrAbort($body['palanquees'], $body['answers'] ?? [], $user['id']);
     }
+    $rsJson = !empty($body['render_state']) ? renderStateJsonOrAbort($body['render_state']) : null;
 
     $id = Db::uuid();
     Db::q(
@@ -222,10 +223,10 @@ if ($method === 'POST' && $path === '/api/dives') {
     );
 
     // H4 : render_state → table dédiée (n'impacte pas dives.updated_at)
-    if (!empty($body['render_state'])) {
+    if (!empty($rsJson)) {
         Db::q(
             'INSERT INTO dive_runtime_state (dive_id, state) VALUES (?,?)',
-            [$id, json_encode($body['render_state'], JSON_UNESCAPED_UNICODE)]
+            [$id, $rsJson]
         );
     }
 
@@ -344,7 +345,7 @@ if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
     // H4 : render_state → dive_runtime_state (UPSERT sans toucher dives.updated_at),
     // écrit seulement après validation.
     if ($hasRenderState) {
-        $rsJson = json_encode($body['render_state'], JSON_UNESCAPED_UNICODE);
+        $rsJson = renderStateJsonOrAbort($body['render_state']);
         Db::q(
             'INSERT INTO dive_runtime_state (dive_id, state) VALUES (?,?)
              ON DUPLICATE KEY UPDATE state=VALUES(state)',
@@ -382,6 +383,22 @@ if ($method === 'DELETE' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
     Db::q('UPDATE dives SET deleted_at=NOW() WHERE id=?', [$row['id']]);
     Log::action('dive.deleted', ['dive_id' => $row['id']]);
     Json::ok(['id' => $row['id'], 'deleted' => true]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// render_state : objet JSON { pressions, realises, heuresDebut, heuresFin,
+// checked, comments } — refuse les autres types et les charges > 512 Ko.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const RENDER_STATE_MAX_BYTES = 524288;
+
+/** @param mixed $value */
+function renderStateJsonOrAbort($value): string {
+    try {
+        return Validate::encodeJsonObject($value, RENDER_STATE_MAX_BYTES, 'render_state');
+    } catch (InvalidArgumentException $e) {
+        Json::abort(422, $e->getMessage());
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

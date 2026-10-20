@@ -6,8 +6,12 @@ Documentation et procédures sécurité du projet.
 
 - [gcp-checklist.md](gcp-checklist.md) — Audit trimestriel GCP (OAuth Consent
   Screen, OAuth Client, API Keys, Quotas).
-- [composer-audit.md](composer-audit.md) — Audit des dépendances PHP (à venir
-  quand on aura Composer sur le Pi).
+- [composer-audit.md](composer-audit.md) — Dépendances PHP de production
+  (php-jwt, mPDF) et procédure d'audit.
+- [../rgpd.md](../rgpd.md) — Registre simplifié des traitements, durées de
+  conservation, export / suppression de compte.
+- [../deploy/README.md](../deploy/README.md) — Mise en production, sauvegardes,
+  restauration, nginx, PHP 8.2.
 
 ## Architecture sécurité
 
@@ -29,13 +33,15 @@ Documentation et procédures sécurité du projet.
 │  - Cross-Origin-Opener-Policy : same-origin-allow-popups     │
 │  - CSP report-uri → /api/csp/report                          │
 └──────────────────────────────────────────────────────────────┘
-                          │ proxy_pass /api/* → PHP-FPM
+                          │ fastcgi_pass /api/* → PHP-FPM 8.2 (pool dp-fede)
                           ▼
 ┌──────────────────────────────────────────────────────────────┐
-│ PHP backend (per-request)                                    │
+│ PHP 8.2 backend (pool FPM dédié, open_basedir)               │
 │  - Auth::verifyGoogleToken : JWKS local (RS256) + fallback   │
 │    tokeninfo. Audience + issuer + exp toujours revalidés.    │
-│  - Rate-limit APCu : login 10/15min ; writes 120/min/IP.     │
+│  - Rate-limit MariaDB : login 10/15min ; writes 120/min/IP ; │
+│    CSP report 30/min ; proxy 30/min ; export RGPD 10/h.      │
+│  - E-mail Google vérifié (email_verified) exigé au login.    │
 │  - CSRF double-submit obligatoire sur POST/PATCH/PUT/DELETE  │
 │  - Soft-delete avec idempotence client_uuid pour dives,      │
 │    divers, sites.                                            │
@@ -46,7 +52,9 @@ Documentation et procédures sécurité du projet.
 │ MariaDB                                                       │
 │  - users.email UNIQUE — pas de doublons via Google OAuth     │
 │  - sessions FK → users ON DELETE CASCADE                     │
-│  - Tous les FK avec ON DELETE CASCADE → pas d'orphelins      │
+│  - Tous les FK avec ON DELETE CASCADE (migration 004)        │
+│  - Schéma migré au déploiement (bin/migrate.php), jamais     │
+│    pendant une requête HTTP                                  │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -57,8 +65,11 @@ Documentation et procédures sécurité du projet.
 | Login OAuth | Token forgé | Vérif JWT locale RS256 via JWKS Google + revalidation aud/iss/exp |
 | Session vol | Cookie capture | HttpOnly + Secure + SameSite=Lax + TTL 7j sliding |
 | CSRF | State-changing CSRF | Double-submit cookie (`dp_csrf` SameSite=Strict, HttpOnly=false → JS lit) |
-| Brute-force login | Rate-limit IP | 10 essais / 15 min / IP (APCu) |
-| Brute-force écriture | Spam metadata | 120 mutations / min / IP (APCu) |
+| Brute-force login | Rate-limit IP | 10 essais / 15 min / IP (table `rate_limits`, repli APCu) |
+| Brute-force écriture | Spam metadata | 120 mutations / min / IP |
+| Flood CSP / proxy | Remplissage disque, relais sortant | 30 / min / IP ; corps CSP ≤ 8 Ko (413) |
+| Compte Google non vérifié | Usurpation d'e-mail | `email_verified` exigé (`Auth::isEmailVerified`) |
+| Logout sans cookie CSRF | Session laissée vivante | Jeton OU Origin/Referer de l'app (`Csrf::verifyForLogout`) |
 | Injection SQL | Param malicieux | PDO prepared statements partout |
 | XSS | innerHTML | React = jamais innerHTML. Le seul dangerouslySetInnerHTML : aucun. |
 | Drive escalation | Scope abusif | scope=`drive.file` UNIQUEMENT (accès aux fichiers créés par l'app) |
@@ -84,8 +95,10 @@ ssh pi@bullesenvalais.ch "ls -la /etc/dp-fede/"
 
 ### Audit automatique (en CI)
 
-À venir Sprint 5+ :
-- `composer audit` (PHP)
+En place (`.github/workflows/ci.yml`) :
+- `composer audit` + PHPUnit (PHP 8.2 / 8.3)
+
+À venir :
 - `npm audit` (déjà à 0 deps prod, mais Playwright en dev)
 - Snyk ou Dependabot pour les CDN versions
 
@@ -94,7 +107,8 @@ ssh pi@bullesenvalais.ch "ls -la /etc/dp-fede/"
 Voir [gcp-checklist.md §9](gcp-checklist.md#9-réponse-incident) pour la
 procédure complète. Résumé :
 
-1. Identifier l'incident (logs nginx + Auth tokeninfo failures + APCu rate-limit hits).
+1. Identifier l'incident (logs nginx, `/var/log/dp-fede.log` — chaque action porte
+   le `user_id` authentifié —, table `rate_limits`).
 2. Couper l'accès : `DELETE FROM sessions;` (force re-login).
 3. Rotater secrets compromis (DB password, OAuth client si besoin).
 4. Patch + redéployer.

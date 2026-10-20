@@ -68,4 +68,25 @@ class Validate {
     public function jsonArr(string $key): string {
         return json_encode($this->arr($key), JSON_UNESCAPED_UNICODE);
     }
+
+    /**
+     * Encode en JSON un objet/tableau reçu du client, en refusant les autres
+     * types et les charges trop volumineuses (fonction pure, testée).
+     *
+     * @param mixed $value
+     * @throws InvalidArgumentException
+     */
+    public static function encodeJsonObject($value, int $maxBytes, string $label): string {
+        if (!is_array($value)) {
+            throw new InvalidArgumentException("{$label} doit être un objet JSON");
+        }
+        $json = json_encode($value, JSON_UNESCAPED_UNICODE);
+        if ($json === false) {
+            throw new InvalidArgumentException("{$label} n'est pas sérialisable en JSON");
+        }
+        if (strlen($json) > $maxBytes) {
+            throw new InvalidArgumentException("{$label} dépasse la taille maximale autorisée");
+        }
+        return $json;
+    }
 }

@@ -33,6 +33,12 @@ require_once __DIR__ . '/../lib/Rules.php';
 // Db dépend de PDO live → on ne charge pas Auth::current/Session ici (les
 // tests qui en ont besoin doivent mocker explicitement).
 require_once __DIR__ . '/../lib/Db.php';
+require_once __DIR__ . '/../lib/Log.php';
+require_once __DIR__ . '/../lib/RateLimit.php';
+require_once __DIR__ . '/../lib/Account.php';
+require_once __DIR__ . '/../lib/Migrator.php';
+require_once __DIR__ . '/../lib/Retention.php';
+require_once __DIR__ . '/../lib/PdfRender.php';
 
 // Charge les helpers de routes utilisés (parseDiveDateToMySql, normalizeDiveDate).
 // Sans définir $method/$path → les blocs if du fichier ne se déclenchent pas,

@@ -8,8 +8,10 @@ declare(strict_types=1);
  *   $user        array  Utilisateur courant
  */
 
-$h   = fn(?string $v): string => PdfRender::h($v);
-$fmt = fn(?string $v): string => PdfRender::formatDateTime($v);
+// Paramètres non typés : les réponses peuvent contenir des int/float
+// (strict_types → un ?string lèverait une TypeError).
+$h   = fn($v): string => PdfRender::h($v);
+$fmt = fn($v): string => PdfRender::formatDateTime($v);
 
 $STRUCTURE_LABELS = [
     'club'  => 'Club FFESSM associatif',
@@ -31,9 +33,8 @@ $checked  = $renderState['checked']  ?? [];
 $comments = $renderState['comments'] ?? [];
 
 // Règles de check-list (portées depuis data.js CHECKLIST_RULES)
-$milieu  = $answers['milieu'] ?? null;
-$isMilieuNaturel = !in_array(PdfRender::h($milieu ?? ''), [], true)
-    && !in_array(strtolower($milieu ?? ''), ['piscine', 'fosse'], true);
+$milieu  = PdfRender::toText($answers['milieu'] ?? null);
+$isMilieuNaturel = !in_array(strtolower($milieu), ['piscine', 'fosse'], true);
 
 function matchCond(mixed $when, array $a): bool {
     if (!$when) return true;
@@ -52,7 +53,8 @@ function matchCond(mixed $when, array $a): bool {
     return true;
 }
 
-$getMilieuType = function (?string $m): string {
+$getMilieuType = function ($m): string {
+    $m = PdfRender::toText($m);
     if (!$m) return 'mer';
     $ml = strtolower($m);
     if (strpos($ml, 'lac') !== false || strpos($ml, 'carrière') !== false || strpos($ml, 'carriere') !== false) return 'lac';

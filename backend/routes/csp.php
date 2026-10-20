@@ -11,12 +11,25 @@ declare(strict_types=1);
 // pour analyse.
 //
 // Pas de CSRF/Auth : les rapports proviennent du navigateur sans pouvoir
-// porter de cookie de l'app. Rate-limit (en index.php : 120/min/IP) protège
-// du flood.
+// porter de cookie de l'app. Protections :
+//   - rate-limit dédié en index.php (bucket « csp », 30/min/IP) ;
+//   - corps limité à CSP_REPORT_MAX_BYTES (413 au-delà), doublé côté nginx
+//     par client_max_body_size (deploy/nginx-dp-fede.conf).
+
+const CSP_REPORT_MAX_BYTES = 8192;
 
 if ($method === 'POST' && $path === '/api/csp/report') {
-    // Buffer max 8 KB — les rapports CSP sont petits, on coupe les abus.
-    $raw = file_get_contents('php://input', false, null, 0, 8192);
+    $declared = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
+    if ($declared > CSP_REPORT_MAX_BYTES) {
+        http_response_code(413);
+        exit;
+    }
+    // Lecture bornée (+1 octet pour détecter un corps chunked trop long).
+    $raw = file_get_contents('php://input', false, null, 0, CSP_REPORT_MAX_BYTES + 1);
+    if (is_string($raw) && strlen($raw) > CSP_REPORT_MAX_BYTES) {
+        http_response_code(413);
+        exit;
+    }
     if (!$raw) {
         http_response_code(204);
         exit;

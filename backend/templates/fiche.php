@@ -10,8 +10,10 @@ declare(strict_types=1);
  *   $user       array   Utilisateur courant (club_nom, structure_type, ...)
  */
 
-$h   = fn(?string $v): string => PdfRender::h($v);
-$fmt = fn(?string $v): string => PdfRender::formatDateTime($v);
+// Paramètres non typés : les réponses peuvent contenir des int/float
+// (strict_types → un ?string lèverait une TypeError).
+$h   = fn($v): string => PdfRender::h($v);
+$fmt = fn($v): string => PdfRender::formatDateTime($v);
 
 $siteName = $answers['site_nom'] ?? $answers['site'] ?? '—';
 $parts    = [$siteName];
@@ -96,9 +98,9 @@ $gpsLabel = (isset($coords['lat']) && $coords['lat'] !== null)
     : '—';
 
 // Palanquée mélange
-$palMelange = function (array $p): string {
+$palMelange = function (array $p) use ($h): string {
     $arr = $p['melanges'] ?? [];
-    return $arr ? implode(' · ', array_map(fn($m) => htmlspecialchars($m, ENT_QUOTES, 'UTF-8'), $arr)) : 'Air';
+    return $arr ? implode(' · ', array_map($h, $arr)) : 'Air';
 };
 
 $pressions   = $renderState['pressions']   ?? [];
@@ -184,7 +186,7 @@ $heuresFin   = $renderState['heuresFin']   ?? [];
     $isBapt  = !empty($m['_bapteme']);
     $d       = $isBapt ? $m : ($diversById[$m['diverId'] ?? ''] ?? []);
     $fullName = $isBapt
-        ? $h(($m['prenom'] ?? '') . ' ' . mb_strtoupper($m['nom'] ?? ''))
+        ? $h(($m['prenom'] ?? '') . ' ' . mb_strtoupper(PdfRender::toText($m['nom'] ?? '')))
         : PdfRender::diverFullName($d);
     $isLast  = $mi === count($sorted) - 1;
     $isSF    = $isSFPal && $isLast && ($m['aptitude'] ?? '') === 'GP';
@@ -294,7 +296,7 @@ $heuresFin   = $renderState['heuresFin']   ?? [];
     <?php if (!empty($answers['depart_bateau'])): ?><div>• Chef de bord : <b><?= !empty($answers['chef_bord']) ? 'Désigné' : 'Non désigné' ?></b></div><?php endif; ?>
     <?php if (!empty($answers['depart_bateau']) && !empty($answers['distance_cote'])): ?><div>• Distance côte : <b><?= $h($answers['distance_cote']) ?> M nautiques</b></div><?php endif; ?>
     <?php if (!empty($answers['recycleur'])): ?>
-      <div>• Recycleurs : <b>Oui<?= !empty($answers['recycleur_modeles']) ? ' — ' . $h(str_replace("\n", ' / ', $answers['recycleur_modeles'])) : '' ?></b>
+      <div>• Recycleurs : <b>Oui<?= !empty($answers['recycleur_modeles']) ? ' — ' . $h(str_replace("\n", ' / ', PdfRender::toText($answers['recycleur_modeles']))) : '' ?></b>
         <?= !empty($answers['mixage_co_rec']) ? '<span class="muted"> · CO+OC mixés</span>' : '' ?></div>
     <?php endif; ?>
     <?php if (!empty($answers['bloc_relais'])): ?>

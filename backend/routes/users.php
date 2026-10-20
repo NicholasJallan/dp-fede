@@ -64,7 +64,9 @@ if ($method === 'DELETE' && preg_match('#^/api/users/(\d+)$#', $path, $m)) {
         Json::abort(400, 'Impossible de supprimer le super-administrateur');
     }
 
-    Db::q('DELETE FROM users WHERE id=?', [$m[1]]);
-    Log::action('user.deleted', ['target_id' => (int)$m[1], 'target_email' => $target['email'] ?? null]);
+    // Suppression explicite de toutes les données (plongées comprises : avant
+    // la migration 004, dives n'avait pas de FK et restait orpheline).
+    $counts = Account::deleteUserData((int)$m[1]);
+    Log::action('user.deleted', ['target_id' => (int)$m[1], 'rows' => $counts]);
     Json::ok(null);
 }

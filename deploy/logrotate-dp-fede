@@ -1,0 +1,27 @@
+# /etc/logrotate.d/dp-fede — rotation des journaux de DP Assistant.
+#
+# Installation : sudo install -o root -g root -m 644 deploy/logrotate-dp-fede /etc/logrotate.d/dp-fede
+# Test         : sudo logrotate --debug /etc/logrotate.d/dp-fede
+#
+# Fichiers couverts :
+#   /var/log/dp-fede.log         actions métier (NDJSON, Log::action)
+#   /var/log/dp-fede-csp.log     rapports CSP
+#   /var/log/dp-fede-php.log     erreurs PHP du pool php8.2-fpm dp-fede
+#   /var/log/dp-fede-purge.log   sortie de bin/purge.php (cron)
+#   /var/log/dp-fede-backup.log  sortie de dp-fede-backup (cron)
+#
+# Conservation : 12 semaines (adresses IP = données personnelles ; durée
+# documentée dans docs/rgpd.md). PHP ouvre le fichier à chaque écriture
+# (FILE_APPEND) : ni copytruncate ni rechargement de PHP-FPM nécessaires.
+
+/var/log/dp-fede*.log {
+    weekly
+    rotate 12
+    maxsize 20M
+    missingok
+    notifempty
+    compress
+    delaycompress
+    dateext
+    create 0640 www-data www-data
+}

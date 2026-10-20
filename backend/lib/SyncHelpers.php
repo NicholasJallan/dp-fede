@@ -39,4 +39,36 @@ class SyncHelpers {
         $dt = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $sqlDate);
         return $dt ? $dt->format('Y-m-d\TH:i:s') : null;
     }
+    /**
+     * INSERT … ON DUPLICATE KEY UPDATE limité au club (POST idempotents de
+     * plongeurs et sites avec id client). Chaque colonne mise à jour l'est
+     * via IF(club_id = VALUES(club_id), …) : si l'id appartient à un autre
+     * club, la ligne existante reste intacte — atomiquement, sans SELECT
+     * préalable. club_id n'étant jamais réaffecté, la garde vaut pour toutes
+     * les colonnes. L'appelant relit la ligne (id + club) : absente → 404.
+     *
+     * $table et les noms de colonnes sont des constantes internes (validés).
+     *
+     * @param array<string,mixed> $cols   colonne => valeur (id et club_id requis)
+     * @param list<string>        $insertOnly colonnes jamais mises à jour (auteur…)
+     * @return array{0: string, 1: list<mixed>} [sql, paramètres]
+     */
+    public static function clubScopedUpsert(string $table, array $cols, array $insertOnly): array {
+        $ident = '/^[a-z_][a-z0-9_]*$/';
+        if (!preg_match($ident, $table)) throw new InvalidArgumentException("Table invalide : {$table}");
+        if (!array_key_exists('id', $cols) || !array_key_exists('club_id', $cols)) {
+            throw new InvalidArgumentException('id et club_id sont requis');
+        }
+        foreach (array_keys($cols) as $c) {
+            if (!preg_match($ident, (string)$c)) throw new InvalidArgumentException("Colonne invalide : {$c}");
+        }
+        $guard     = 'club_id = VALUES(club_id)';
+        $updatable = array_diff(array_keys($cols), array_merge(['id', 'club_id'], $insertOnly));
+        $updates   = array_map(static fn(string $c): string => "{$c} = IF({$guard}, VALUES({$c}), {$c})", array_values($updatable));
+        $updates[] = "deleted_at = IF({$guard}, NULL, deleted_at)";
+        $sql = "INSERT INTO {$table} (" . implode(', ', array_keys($cols)) . ')'
+             . ' VALUES (' . implode(',', array_fill(0, count($cols), '?')) . ')'
+             . ' ON DUPLICATE KEY UPDATE ' . implode(', ', $updates);
+        return [$sql, array_values($cols)];
+    }
 }

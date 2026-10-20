@@ -119,12 +119,12 @@ if (strpos($path, '/api/club') === 0) {
         $targetId = (int)$m[1];
         $role     = (string)(Json::body()['role'] ?? '');
         if (!Club::isRole($role)) Json::abort(422, 'Rôle invalide (responsable, dp, encadrant, lecture)');
-        $current = Club::memberRole((string)$user['club_id'], $targetId);
-        if ($current === null) Json::abort(404, 'Membre introuvable');
-        if ($current === 'responsable' && $role !== 'responsable' && Club::responsableCount((string)$user['club_id']) <= 1) {
-            Json::abort(409, 'Le club doit garder au moins un responsable');
+        // Contrôle « dernier responsable » et écriture sous verrou (transaction).
+        $violation = Club::changeMemberRole((string)$user['club_id'], $targetId, $role);
+        if ($violation === 'not_member') Json::abort(404, 'Membre introuvable', 'MEMBER_NOT_FOUND');
+        if ($violation === 'last_responsable') {
+            Json::abort(409, 'Le club doit garder au moins un responsable', 'LAST_RESPONSABLE');
         }
-        Db::q('UPDATE club_members SET role=? WHERE club_id=? AND user_id=?', [$role, $user['club_id'], $targetId]);
         Log::action('club.member_role', ['club_id' => $user['club_id'], 'target_id' => $targetId, 'role' => $role]);
         Json::ok(['user_id' => $targetId, 'role' => $role]);
     }
@@ -137,15 +137,13 @@ if (strpos($path, '/api/club') === 0) {
         $targetId = (int)$m[1];
         $isSelf   = $targetId === (int)$user['id'];
         if (!$isSelf) Club::requirePermission($user, 'club.manage');
-        $current = Club::memberRole((string)$user['club_id'], $targetId);
-        if ($current === null) Json::abort(404, 'Membre introuvable');
-        if ($current === 'responsable' && Club::responsableCount((string)$user['club_id']) <= 1) {
+        $violation = Club::removeMember((string)$user['club_id'], $targetId);
+        if ($violation === 'not_member') Json::abort(404, 'Membre introuvable', 'MEMBER_NOT_FOUND');
+        if ($violation === 'last_responsable') {
             Json::abort(409, $isSelf
                 ? 'Vous êtes le seul responsable : confiez ce rôle à un autre membre ou supprimez le club'
-                : 'Le club doit garder au moins un responsable');
+                : 'Le club doit garder au moins un responsable', 'LAST_RESPONSABLE');
         }
-        Db::q('DELETE FROM club_members WHERE club_id=? AND user_id=?', [$user['club_id'], $targetId]);
-        Db::q('UPDATE users SET current_club_id=NULL WHERE id=? AND current_club_id=?', [$targetId, $user['club_id']]);
         Log::action('club.member_removed', ['club_id' => $user['club_id'], 'target_id' => $targetId, 'self' => $isSelf]);
         Json::ok(['user_id' => $targetId, 'removed' => true]);
     }
@@ -174,7 +172,7 @@ if (strpos($path, '/api/club') === 0) {
             'SELECT 1 FROM club_members m JOIN users u ON u.id = m.user_id WHERE m.club_id=? AND LOWER(u.email)=?',
             [$user['club_id'], $email]
         );
-        if ($already) Json::abort(409, 'Cette personne est déjà membre du club');
+        if ($already) Json::abort(409, 'Cette personne est déjà membre du club', 'ALREADY_MEMBER');
         if (ClubInvitation::pendingCount((string)$user['club_id']) >= ClubInvitation::MAX_PENDING) {
             Json::abort(429, 'Trop d\'invitations en attente : annulez-en avant d\'en créer de nouvelles');
         }
@@ -250,6 +248,8 @@ if (strpos($path, '/api/club') === 0) {
     if ($method === 'GET' && $path === '/api/club/stats') {
         $user  = Auth::require();
         Club::requirePermission($user, 'stats.read');
+        // Calcul coûteux (rattrapage des participants, agrégation) : borné par compte.
+        RateLimit::hitOrAbort('stats', 30, 600, 'Trop de demandes de statistiques. Réessayez dans quelques minutes.', 'u' . $user['id']);
         $range = ClubStats::parseRange($_GET['from'] ?? null, $_GET['to'] ?? null, new DateTimeImmutable('today'));
         if (is_string($range)) Json::abort(422, $range);
         $stats = ClubStats::fetch((string)$user['club_id'], $range[0], $range[1]);

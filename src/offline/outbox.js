@@ -12,9 +12,12 @@
 //     lastError:    message du dernier échec,
 //     nextRetryAt:  timestamp ms du prochain essai (backoff exp),
 //     createdAt:    timestamp ms,
-//     club_id:      club courant au moment de la mise en file (ou null) :
-//                   la sync rejoue l'item avec l'en-tête X-DP-Club, il reste
-//                   dans ce club même après un changement de club,
+//     club_id:      club courant au moment de la mise en file : la sync rejoue
+//                   l'item avec l'en-tête X-DP-Club, il reste dans ce club même
+//                   après un changement de club. Club inconnu (null) : l'item
+//                   est créé « à revoir » et n'est jamais envoyé sans club ;
+//                   retryNow() le rattache au club courant une fois celui-ci
+//                   confirmé par le serveur (connexion, bouton Réessayer),
 //     status:       'pending' | 'inflight' | 'review' (les 'done' sont
 //                   supprimés immédiatement). 'review' = refus métier du
 //                   serveur (400/422) : pas de retry automatique, l'item reste
@@ -31,6 +34,9 @@ import { randomUUID } from './uuid.js';
 import { getCurrentClubId } from '../api/club-header.js';
 
 const STORE = 'outbox';
+
+// Motif affiché pour un item mis en file sans club courant connu.
+export const NO_CLUB_ERROR = 'Club courant inconnu sur cet appareil : reconnectez-vous en ligne pour envoyer cette action à votre club.';
 
 // Suite de backoff en secondes, indexée par `attempts` (0 = premier essai).
 // Au-delà du dernier index, on reste au plafond.
@@ -54,14 +60,17 @@ export function createOutbox({ store, uuid = randomUUID, getClubId = () => null 
 
   async function enqueue(kind, payload) {
     const id = uuid();
+    const club = currentClub();
+    // Sans club, l'écriture partirait vers le club courant du SERVEUR, peut-être
+    // un autre que celui de la saisie : elle reste sur l'appareil, « à revoir ».
     const item = {
       id, kind, payload,
-      club_id: currentClub(),
+      club_id: club,
       attempts: 0,
-      lastError: null,
+      lastError: club ? null : NO_CLUB_ERROR,
       nextRetryAt: Date.now(),
       createdAt: Date.now(),
-      status: 'pending',
+      status: club ? 'pending' : 'review',
     };
     await store.put(STORE, id, item);
     window.dispatchEvent(new CustomEvent('dp:outboxChanged', { detail: { kind, id, op: 'enqueue' } }));
@@ -126,8 +135,9 @@ export function createOutbox({ store, uuid = randomUUID, getClubId = () => null 
   // frappe (auto-save) et garantit que seul le dernier état part. Jamais de
   // fusion entre clubs : chaque item part vers le club de sa mise en file.
   async function coalesce(kind, payload, match, merge) {
-    const all = await store.all(STORE);
     const club = currentClub();
+    if (!club) return await enqueue(kind, payload);
+    const all = await store.all(STORE);
     const target = all
       .filter(it => it.kind === kind && it.status !== 'inflight' && (it.club_id || null) === club && match(it))
       .sort((a, b) => b.createdAt - a.createdAt)[0];
@@ -144,14 +154,35 @@ export function createOutbox({ store, uuid = randomUUID, getClubId = () => null 
   }
 
   // Remet tous les items (y compris en revue) à « prêt maintenant ».
-  // Appelé après une reconnexion (login) ou par le bouton « Réessayer ».
+  // Appelé après une reconnexion (login, club confirmé par le serveur) ou par
+  // le bouton « Réessayer ». Les items sans club sont rattachés au club
+  // courant s'il est connu, sinon ils restent en revue.
   async function retryNow() {
     const all = await store.all(STORE);
     const now = Date.now();
+    const club = currentClub();
     await Promise.all(all
       .filter(it => it.status !== 'inflight')
-      .map(it => store.put(STORE, it.id, { ...it, status: 'pending', nextRetryAt: now })));
+      .map(it => {
+        const clubId = it.club_id || club;
+        if (!clubId) return store.put(STORE, it.id, { ...it, status: 'review', lastError: NO_CLUB_ERROR });
+        return store.put(STORE, it.id, { ...it, club_id: clubId, status: 'pending', nextRetryAt: now });
+      }));
     window.dispatchEvent(new CustomEvent('dp:outboxChanged', { detail: { op: 'retry' } }));
+  }
+
+  // Club quitté (403 CLUB_NOT_MEMBER, départ, suppression) : les actions de ce
+  // club ne pourront plus être envoyées. Par défaut seules celles « à revoir »
+  // sont retirées (les autres le seront après leur refus) ; { all: true }
+  // retire aussi celles en attente. Retourne le nombre d'items retirés.
+  async function purgeClub(clubId, { all: everything = false } = {}) {
+    if (!clubId) return 0;
+    const items = await store.all(STORE);
+    const doomed = items.filter(it => it.club_id === clubId && it.status !== 'inflight'
+      && (everything || it.status === 'review'));
+    await Promise.all(doomed.map(it => store.del(STORE, it.id)));
+    if (doomed.length) window.dispatchEvent(new CustomEvent('dp:outboxChanged', { detail: { op: 'purgeClub', clubId } }));
+    return doomed.length;
   }
 
   // Retourne les items prêts à partir (status=pending et nextRetryAt <= now).
@@ -195,7 +226,7 @@ export function createOutbox({ store, uuid = randomUUID, getClubId = () => null 
   return {
     enqueue, get, update,
     markInflight, markDone, markFailed, markReview,
-    coalesce, retryNow,
+    coalesce, retryNow, purgeClub,
     ready, pending, size, clear,
     nextWakeMs,
     // Exposé pour tests/inspection.

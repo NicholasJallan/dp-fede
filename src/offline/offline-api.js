@@ -17,6 +17,7 @@ import { outbox as defaultOutbox } from './outbox.js';
 import { randomUUID } from './uuid.js';
 import { getCsrfToken } from '../api/google-drive.js';
 import { notifyIfAuthExpired } from '../api/auth-events.js';
+import { clubHeaders, getCurrentClubId } from '../api/club-header.js';
 
 function emitDataChanged(store) {
   window.dispatchEvent(new CustomEvent('dp:dataChanged', { detail: { store } }));
@@ -261,7 +262,8 @@ function decorateDiveWrites(dives, ctx) {
     const res  = await fetch(`/api/dives/${encodeURIComponent(local.server_id)}`, {
       method:      'PATCH',
       credentials: 'include',
-      headers:     { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+      // Même club que les autres requêtes métier (cf. src/api/api.js).
+      headers:     { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken(), ...clubHeaders(getCurrentClubId()) },
       body:        JSON.stringify({ drive_link }),
     });
     const json = await res.json().catch(() => ({}));

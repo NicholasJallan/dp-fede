@@ -59,6 +59,14 @@ describe('droits par rôle (matrice docs/api-club.md)', () => {
     assert.match(msg, /responsable du club/);
     assert.match(describeApiError({ status: 403, message: 'Jeton CSRF invalide' }), /refusée par le serveur/);
     assert.match(describeApiError(new Error('Failed to fetch')), /connexion réseau/);
+  });
+
+  test('describeApiError : club quitté et documents archivés complets', () => {
+    const lost = describeApiError({ status: 403, code: 'CLUB_NOT_MEMBER', message: "Vous n'êtes pas membre de ce club" });
+    assert.match(lost, /plus membre/);
+    assert.doesNotMatch(lost, /rôle/);
+    const complete = describeApiError({ status: 409, code: 'DOCUMENTS_COMPLETE', message: 'Documents archivés complets et intègres' }, 'régénérer les PDF');
+    assert.match(complete, /complets/);
     assert.equal(describeApiError({ status: 422, message: 'Champ invalide' }), 'Champ invalide');
   });
 });

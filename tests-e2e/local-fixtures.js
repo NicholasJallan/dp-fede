@@ -11,7 +11,9 @@
 // Socle club (docs/api-club.md) : club courant, membres, invitations,
 // changement de club, alertes, statistiques, import de l'annuaire, PDF
 // archivés, export et suppression du compte. L'en-tête X-DP-Club de chaque
-// requête est relevé dans state.clubHeaders.
+// requête est relevé dans state.clubHeaders. Comme le vrai serveur, un club
+// de state.revokedClubs dans X-DP-Club répond 403 CLUB_NOT_MEMBER ;
+// state.unauthorized fait répondre 401 aux routes hors /api/auth/*.
 
 const pad = (n) => String(n).padStart(2, '0');
 const localInput = (t) =>
@@ -304,6 +306,7 @@ function documentsRoute(method, key, type, state) {
   const dive = findDive(state, key);
   if (!dive) return fail(404, 'Plongée introuvable');
   if (method === 'POST') {
+    state.regenerations.push(dive.id);
     dive.documents_status = 'ok';
     return ok({ dive_id: dive.id, status: 'ok', documents: DOCUMENTS });
   }
@@ -529,6 +532,9 @@ function newState() {
     deleteConflict: false,
     deleted: false,
     accepted: false,
+    revokedClubs: [],
+    unauthorized: false,
+    regenerations: [],
   };
 }
 
@@ -556,6 +562,13 @@ async function mockBackend(context, state) {
     const club = req.headers()['x-dp-club'];
     if (club) state.clubHeaders.push({ call: `${method} ${url.pathname}`, club });
     if (method === 'HEAD') return route.fulfill({ status: 200, body: '' });
+    const json = (status, payload) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(payload) });
+    if (club && state.revokedClubs.includes(club)) {
+      return json(403, { ok: false, error: "Vous n'êtes pas membre de ce club", code: 'CLUB_NOT_MEMBER' });
+    }
+    if (state.unauthorized && !url.pathname.startsWith('/api/auth/')) {
+      return json(401, { ok: false, error: 'Non authentifié' });
+    }
     let body;
     try {
       body = req.postDataJSON() || {};

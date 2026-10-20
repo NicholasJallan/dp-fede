@@ -22,7 +22,7 @@ import { STORAGE_KEYS, TTL } from '../api/storage-keys.js';
 import { offlineStore } from '../offline/offline-store.js';
 import { outbox } from '../offline/outbox.js';
 import { bindLocalDataToClub } from '../offline/club-scope.js';
-import { setCurrentClubId } from '../api/club-header.js';
+import { purgeLocalData, wipeDeviceData } from './local-data.js';
 
 const AuthContext = createContext(null);
 
@@ -90,25 +90,7 @@ async function bindLocalDataToUser(u) {
   }
 }
 
-// Purge complète des données locales de l'appareil (déconnexion, changement
-// d'utilisateur, suppression du compte) : IndexedDB, pré-caches, club courant.
-async function purgeLocalData() {
-  try {
-    if (offlineStore?.clearAll) await offlineStore.clearAll();
-  } catch (err) {
-    console.error('[auth] purge IndexedDB :', err?.message || err);
-  }
-  try {
-    [SKEYS.CACHE_DIVERS, SKEYS.CACHE_SITES, SKEYS.CLUB_SNAPSHOT].forEach(k => localStorage.removeItem(k));
-  } catch { /* stockage indisponible : rien à purger */ }
-  setCurrentClubId(null);
-  try {
-    if (window.caches) {
-      const names = await caches.keys();
-      await Promise.all(names.filter(n => n.endsWith('-api')).map(n => caches.delete(n)));
-    }
-  } catch { /* Cache API indisponible */ }
-}
+// Purge complète des données locales : ./local-data.js (purgeLocalData).
 
 function AuthProvider({ children }) {
   // undefined = chargement, null = non connecté, objet = connecté
@@ -185,13 +167,23 @@ function AuthProvider({ children }) {
   // La purge locale efface aussi l'outbox : l'appelant doit avoir prévenu
   // l'utilisateur s'il reste des actions non synchronisées.
   // keepLocal : reconnexion après expiration de session — l'outbox du même
-  // utilisateur est conservée et rejouée au prochain login.
+  // utilisateur est conservée et rejouée au prochain login. Les écrans qui
+  // proposent keepLocal proposent aussi « Supprimer les données de cet
+  // appareil » (wipeDevice) : appareil partagé, compte ou club quitté.
   const logout = useCallback(async ({ keepLocal = false } = {}) => {
     await api.auth.logout().catch(err => console.warn('[auth] logout serveur :', err?.message));
     clearLastUser();
     if (!keepLocal) await purgeLocalData();
     setUser(null);
     setAuthMode('online');
+    window.location.reload();
+  }, []);
+
+  // « Supprimer les données de cet appareil » : plongées, annuaire, actions
+  // en attente, caches, instantané hors ligne. La page est rechargée : une
+  // session encore valide resynchronise le club courant depuis le serveur.
+  const wipeDevice = useCallback(async () => {
+    await wipeDeviceData();
     window.location.reload();
   }, []);
 
@@ -238,7 +230,7 @@ function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       user, loading, logout, handleGoogleCredential, setUser, authMode,
-      refreshUser, endSession, loginNotice,
+      refreshUser, endSession, loginNotice, wipeDevice,
     }}>
       {children}
     </AuthContext.Provider>

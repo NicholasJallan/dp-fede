@@ -46,9 +46,13 @@ describe('outbox — club de la mise en file', () => {
     assert.equal((await win.outbox.get(item.id)).club_id, CLUB_A);
   });
 
-  test('sans club connu, club_id vaut null', async () => {
+  test('sans club connu : club_id null et item mis en revue (jamais envoyé au club courant du serveur)', async () => {
+    win.clubId = null;
     const item = await win.outbox.enqueue('diver.create', { id: 'd-1' });
     assert.equal(item.club_id, null);
+    assert.equal(item.status, 'review');
+    assert.match(item.lastError, /club/i);
+    assert.deepEqual(await win.outbox.ready(), []);
   });
 
   test('coalesce ne fusionne jamais deux clubs', async () => {
@@ -86,11 +90,15 @@ describe('sync — en-tête X-DP-Club', () => {
     assert.equal(await win.outbox.size(), 0);
   });
 
-  test("item sans club : pas d'en-tête (club courant du serveur)", async () => {
-    await win.outbox.enqueue('site.create', { id: 's-1', nom: 'Lac' });
-    const calls = mockFetch([{ data: { id: 's-1', nom: 'Lac' } }]);
+  test("item sans club (ancien format) : jamais envoyé sans en-tête, mis en revue", async () => {
+    win.clubId = null;
+    const item = await win.outbox.enqueue('site.create', { id: 's-1', nom: 'Lac' });
+    // Ancien item resté « pending » sans club (antérieur au socle club).
+    await win.outbox.update(item.id, { status: 'pending', nextRetryAt: 0 });
+    const calls = mockFetch([]);
     await win.sync._drainOutbox();
-    assert.equal('X-DP-Club' in calls[0].headers, false);
+    assert.equal(calls.length, 0);
+    assert.equal((await win.outbox.get(item.id)).status, 'review');
   });
 
   test('plongée : POST puis PATCH partent tous deux vers le club A', async () => {

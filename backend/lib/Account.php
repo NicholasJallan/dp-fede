@@ -23,7 +23,7 @@ class Account
      * @param int   $otherAdminCount  nombre d'AUTRES comptes role='admin'
      * @param list<array{club_id:string,nom:string}> $clubBlockers clubs partagés dont
      *        l'utilisateur est le seul responsable (cf. clubBlockers)
-     * @return array{0:int,1:string}|null [code HTTP, message] ou null si OK
+     * @return array{0:int,1:string,2?:string}|null [code HTTP, message, code stable] ou null si OK
      */
     public static function deletionError(array $user, array $body, int $otherAdminCount, array $clubBlockers = []): ?array
     {
@@ -32,10 +32,10 @@ class Account
         }
         $isAdmin = ($user['role'] ?? '') === 'admin' || Auth::isSuperAdmin($user);
         if ($isAdmin && $otherAdminCount < 1) {
-            return [409, 'Vous êtes le seul administrateur : promouvez un autre administrateur avant de supprimer votre compte'];
+            return [409, 'Vous êtes le seul administrateur : promouvez un autre administrateur avant de supprimer votre compte', 'LAST_ADMIN'];
         }
         if ($clubBlockers) {
-            return [409, self::clubBlockerMessage($clubBlockers)];
+            return [409, self::clubBlockerMessage($clubBlockers), 'LAST_RESPONSABLE'];
         }
         return null;
     }

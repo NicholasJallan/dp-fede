@@ -1,12 +1,14 @@
 // DP Assistant — Connexion Google.
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../auth/auth-context.jsx';
 import { useOnline } from '../offline/use-online.jsx';
 import { Notice } from '../components/ui.jsx';
 import { BrandMark } from '../components/icons.jsx';
 import { readPendingInvitation } from '../club/invitation.js';
 import { RetainedFacts } from './club/retained-facts.jsx';
+import { DeviceDataPurgeButton } from '../components/device-data-purge.jsx';
+import { hasLocalData } from '../auth/local-data.js';
 
 // Message de fin de session (ex. compte supprimé) : texte du serveur et
 // fiches de sécurité conservées (art. A322-72), s'il y en a.
@@ -19,11 +21,24 @@ function SessionNotice({ notice }) {
   );
 }
 
+// Données restées sur l'appareil (déconnexion « garder mes saisies », session
+// expirée) : proposer de les effacer avant de laisser l'appareil.
+function useLeftoverData() {
+  const [left, setLeft] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    hasLocalData().then(v => { if (!cancelled) setLeft(v); });
+    return () => { cancelled = true; };
+  }, []);
+  return left;
+}
+
 function ScreenLogin() {
   const { handleGoogleCredential, loginNotice } = useAuth();
   const invitation = readPendingInvitation();
   const btnRef = useRef(null);
   const online = useOnline();
+  const leftover = useLeftoverData();
 
   useEffect(() => {
     let cancelled = false;
@@ -68,6 +83,13 @@ function ScreenLogin() {
           <Notice tone="warn" title="Hors ligne">
             La première connexion demande internet. Si vous vous êtes connecté récemment sur cet appareil,
             rechargez la page une fois en ligne.
+          </Notice>
+        )}
+        {leftover && (
+          <Notice tone="info" title="Données présentes sur cet appareil"
+            actions={<DeviceDataPurgeButton />}>
+            Des saisies d'une session précédente sont conservées ici (elles repartiront après connexion avec le même compte).
+            Sur un appareil partagé, supprimez-les.
           </Notice>
         )}
         <p className="login-legal">Données hébergées en Europe, jamais transmises à des tiers.</p>

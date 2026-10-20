@@ -381,10 +381,67 @@ class Club
         return $r ? (string)$r['role'] : null;
     }
 
-    public static function responsableCount(string $clubId): int
+    /**
+     * Le club garde toujours au moins un responsable (pur, testé).
+     * $newRole null = retrait du membre.
+     *
+     * @param list<array{user_id: int|string, role: string}> $members
+     * @return 'not_member'|'last_responsable'|null
+     */
+    public static function lastResponsableViolation(array $members, int $targetId, ?string $newRole): ?string
     {
-        $r = Db::row("SELECT COUNT(*) AS n FROM club_members WHERE club_id=? AND role='responsable'", [$clubId]);
-        return (int)($r['n'] ?? 0);
+        $current = null;
+        $responsables = 0;
+        foreach ($members as $m) {
+            if ($m['role'] === 'responsable') $responsables++;
+            if ((int)$m['user_id'] === $targetId) $current = (string)$m['role'];
+        }
+        if ($current === null) return 'not_member';
+        if ($current === 'responsable' && $newRole !== 'responsable' && $responsables <= 1) return 'last_responsable';
+        return null;
+    }
+
+    /**
+     * Change le rôle d'un membre. Les adhésions du club sont verrouillées
+     * (SELECT … FOR UPDATE) le temps du contrôle « dernier responsable » et
+     * de l'écriture : deux rétrogradations simultanées ne peuvent pas
+     * laisser le club sans responsable.
+     *
+     * @return 'not_member'|'last_responsable'|null null = effectué
+     */
+    public static function changeMemberRole(string $clubId, int $targetId, string $role): ?string
+    {
+        return Db::transaction(static function (PDO $pdo) use ($clubId, $targetId, $role): ?string {
+            $violation = self::lastResponsableViolation(self::lockMembers($pdo, $clubId), $targetId, $role);
+            if ($violation !== null) return $violation;
+            $pdo->prepare('UPDATE club_members SET role=? WHERE club_id=? AND user_id=?')->execute([$role, $clubId, $targetId]);
+            return null;
+        });
+    }
+
+    /**
+     * Retire un membre (ou le membre lui-même quitte le club), même
+     * verrouillage que changeMemberRole.
+     *
+     * @return 'not_member'|'last_responsable'|null null = effectué
+     */
+    public static function removeMember(string $clubId, int $targetId): ?string
+    {
+        return Db::transaction(static function (PDO $pdo) use ($clubId, $targetId): ?string {
+            $violation = self::lastResponsableViolation(self::lockMembers($pdo, $clubId), $targetId, null);
+            if ($violation !== null) return $violation;
+            $pdo->prepare('DELETE FROM club_members WHERE club_id=? AND user_id=?')->execute([$clubId, $targetId]);
+            $pdo->prepare('UPDATE users SET current_club_id=NULL WHERE id=? AND current_club_id=?')->execute([$targetId, $clubId]);
+            return null;
+        });
+    }
+
+    /** Adhésions du club, verrouillées jusqu'à la fin de la transaction. */
+    private static function lockMembers(PDO $pdo, string $clubId): array
+    {
+        $st = $pdo->prepare('SELECT user_id, role FROM club_members WHERE club_id=? FOR UPDATE');
+        $st->execute([$clubId]);
+        return $st->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /** Vrai si le club n'a aucune donnée (même supprimée logiquement). */

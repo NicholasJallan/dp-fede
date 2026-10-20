@@ -72,6 +72,9 @@ const FORBIDDEN_RE = /non autoris|réservé|restreint|membre de ce club/i;
  */
 export function describeApiError(err, action = 'effectuer cette action') {
   const message = err?.message || 'Erreur inconnue';
+  if (err?.status === 403 && err?.code === 'CLUB_NOT_MEMBER') {
+    return 'Vous n\'êtes plus membre de ce club : l\'application revient à votre club courant.';
+  }
   if (err?.status === 403) {
     const detail = FORBIDDEN_RE.test(message) ? message : 'Action refusée par le serveur';
     return `${detail}. Votre rôle dans le club ne permet pas de ${action} : demandez au responsable du club.`;

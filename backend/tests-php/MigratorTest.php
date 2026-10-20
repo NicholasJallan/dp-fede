@@ -80,7 +80,7 @@ final class MigratorTest extends TestCase
         $this->assertContains('003', $versions);
         $this->assertContains('004', $versions);
         $this->assertContains('005', $versions);
-        foreach (['006', '007', '008', '009'] as $v) $this->assertContains($v, $versions);
+        foreach (['006', '007', '008', '009', '010'] as $v) $this->assertContains($v, $versions);
     }
 
     /**
@@ -160,5 +160,37 @@ final class MigratorTest extends TestCase
         $this->assertCount(5, $alterFk);
         $this->assertCount(5, array_filter($stmts, fn(string $s): bool => $s === 'EXECUTE fk_stmt'));
         $this->assertContains('ALTER TABLE dives MODIFY user_id INT UNSIGNED NOT NULL', $stmts);
+    }
+
+    /**
+     * Migration 010 : index unique (club_id, client_uuid) à la place de
+     * (user_id, client_uuid), doublons existants neutralisés avant, colonne
+     * participants_at. Chaque instruction est rejouable.
+     */
+    public function testClientUuidPerClubMigrationIsIdempotent(): void
+    {
+        $sql   = (string)file_get_contents(self::DIR . '/010_dives_client_uuid_club.sql');
+        $stmts = \Migrator::splitStatements($sql);
+        $allowed = '/^(ALTER TABLE \\w+ ADD COLUMN IF NOT EXISTS'
+            . '|CREATE (UNIQUE )?INDEX IF NOT EXISTS'
+            . '|DROP INDEX IF EXISTS'
+            . '|UPDATE dives \\w+\\s+JOIN dives \\w+\\s+ON .+\\s+SET \\w+\\.client_uuid = NULL, \\w+\\.updated_at = \\w+\\.updated_at\\s+WHERE .+'
+            . '|UPDATE dives SET participants_at = .+, updated_at = updated_at\\s+WHERE participants_at IS NULL\\s+AND .+)/s';
+        foreach ($stmts as $stmt) {
+            $this->assertMatchesRegularExpression($allowed, $stmt, "instruction non idempotente : {$stmt}");
+        }
+        $joined = implode("\n", $stmts);
+        // Les doublons sont neutralisés AVANT la création de l'index unique.
+        $this->assertLessThan(
+            strpos($joined, 'CREATE UNIQUE INDEX IF NOT EXISTS uq_dives_club_client ON dives (club_id, client_uuid)'),
+            strpos($joined, 'SET d.client_uuid = NULL')
+        );
+        $this->assertStringContainsString('DROP INDEX IF EXISTS uniq_dives_client ON dives', $joined);
+        // La FK auteur (user_id) garde un index après la suppression de l'ancien.
+        $this->assertLessThan(
+            strpos($joined, 'DROP INDEX IF EXISTS uniq_dives_client'),
+            strpos($joined, 'CREATE INDEX IF NOT EXISTS idx_dives_author ON dives (user_id)')
+        );
+        $this->assertStringContainsString('ALTER TABLE dives ADD COLUMN IF NOT EXISTS participants_at DATETIME NULL', $joined);
     }
 }

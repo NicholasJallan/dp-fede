@@ -39,7 +39,7 @@ try {
                    OR (documents_status = 'pending' AND documents_updated_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)))";
         if ($backfill) {
             $where = "({$where} OR (documents_status IS NULL
-                       AND COALESCE(date_plongee, closed_at, created_at) >= DATE_SUB(NOW(), INTERVAL 1 YEAR)))";
+                       AND " . ClubRetention::REFERENCE_SQL . " >= DATE_SUB(NOW(), INTERVAL 1 YEAR)))";
         }
         $ids = array_column(Db::all(
             "SELECT id FROM dives WHERE status='archived' AND deleted_at IS NULL AND {$where}

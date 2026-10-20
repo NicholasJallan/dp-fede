@@ -1,6 +1,8 @@
 // DP Assistant — PDF archivés par le club pour une plongée (fiche de
 // sécurité et check-list, art. A322-72) : état, téléchargement,
-// régénération (rôles responsable / dp).
+// régénération (rôles responsable / dp) proposée UNIQUEMENT en cas d'échec
+// de génération ou de document manquant (règle du serveur, cf.
+// src/club/documents.js) : une fiche archivée complète ne se réécrit pas.
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useClub } from '../../club/club-context.jsx';
@@ -12,6 +14,7 @@ import { formatDateTime } from '../../components/format.js';
 import { api } from '../../api/api.js';
 import { saveBlob } from '../../api/download.js';
 import { describeApiError } from '../../club/permissions.js';
+import { canRegenerateDocuments } from '../../club/documents.js';
 
 export const DOCUMENT_STATUS = {
   pending: { tone: 'info', label: 'Génération des PDF en cours' },
@@ -101,7 +104,9 @@ export function DiveDocuments({ dive }) {
   };
 
   const documents = docs?.documents || dive.documents || [];
-  const showRegenerate = canGenerate && (status === 'error' || !status);
+  // docs pas encore lus (hors ligne) : on ne propose rien sur la seule foi du résumé local.
+  const showRegenerate = canGenerate && (docs !== null || status === 'error')
+    && canRegenerateDocuments({ status, documents });
 
   return (
     <section className="card" aria-labelledby="arch-docs">

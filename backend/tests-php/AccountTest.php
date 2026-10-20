@@ -32,6 +32,7 @@ final class AccountTest extends TestCase
         $err  = \Account::deletionError($user, self::CONFIRM, 0);
         $this->assertNotNull($err);
         $this->assertSame(409, $err[0]);
+        $this->assertSame('LAST_ADMIN', $err[2]);
     }
 
     public function testSuperAdminWithoutAdminRoleStillCountsAsAdmin(): void
@@ -75,6 +76,7 @@ final class AccountTest extends TestCase
         $err  = \Account::deletionError($user, self::CONFIRM, 0, [['club_id' => 'c1', 'nom' => 'Bulles']]);
         $this->assertSame(409, $err[0]);
         $this->assertStringContainsString('« Bulles »', $err[1]);
+        $this->assertSame('LAST_RESPONSABLE', $err[2]);
         // La confirmation reste vérifiée en premier.
         $this->assertSame(422, \Account::deletionError($user, [], 0, [['club_id' => 'c1', 'nom' => 'Bulles']])[0]);
     }

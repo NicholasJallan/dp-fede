@@ -93,7 +93,7 @@ describe('sync — gestion erreurs et idempotence', () => {
     assert.match(failed.lastError, /network/);
   });
 
-  test('HTTP 409 (déjà existant) est traité comme un succès (idempotence)', async () => {
+  test('HTTP 409 sans marqueur d\'idempotence : mis en revue, jamais compté comme succès', async () => {
     const client_uuid = '22222222-2222-4222-8222-222222222222';
     await win.offlineStore.put('dives', client_uuid, { client_uuid, _pending: true });
     await win.outbox.enqueue('dive.create', {
@@ -107,7 +107,9 @@ describe('sync — gestion erreurs et idempotence', () => {
 
     await win.sync._drainOutbox();
 
-    assert.equal(await win.outbox.size(), 0, 'item retiré comme s\'il avait réussi');
+    const [item] = await win.outbox.pending();
+    assert.equal(item.status, 'review');
+    assert.equal(item.lastError, 'duplicate');
   });
 
   test('handler manquant : l\'item reste en attente sans erreur', async () => {

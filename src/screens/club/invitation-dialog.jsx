@@ -11,6 +11,7 @@ import { Dialog } from '../../components/dialog.jsx';
 import { formatDateTime } from '../../components/format.js';
 import { api } from '../../api/api.js';
 import { roleLabel } from '../../club/permissions.js';
+import { DeviceDataPurgeButton } from '../../components/device-data-purge.jsx';
 
 const STATUS_TEXT = {
   accepted: 'Cette invitation a déjà été utilisée.',
@@ -93,7 +94,9 @@ export function InvitationDialog({ onAccepted }) {
     <Dialog title={title} onClose={club.dismissInvitation} size="sm" icon={mismatch ? 'err' : 'info'}
       footer={<>
         <button type="button" className="btn" onClick={club.dismissInvitation}>Ignorer l'invitation</button>
+        {/* keepLocal : données conservées pour le même compte ; un autre compte les purge à la connexion. */}
         {mismatch && <button type="button" className="btn" onClick={() => logout({ keepLocal: true })}>Changer de compte Google</button>}
+        {mismatch && <DeviceDataPurgeButton />}
         {usable && (
           <button type="button" className="btn primary" onClick={accept} disabled={busy} data-autofocus="">
             {busy ? 'Adhésion…' : `Rejoindre en tant que ${roleLabel(preview.role)}`}

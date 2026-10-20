@@ -16,7 +16,7 @@ if (is_file(__DIR__ . '/vendor/autoload.php')) {
 // Load libs
 foreach (['Config','Json','Db','Auth','Csrf','Validate','SyncHelpers','RateLimit','Log','Account',
           'Club','ClubInvitation','ClubAlerts','ClubStats','LevelMapper','DiverImport','DiverImportPlan',
-          'DivePdf','DiveArchive','ClubRetention'] as $cls) {
+          'DivePdf','DivePolicy','DiveStore','DiveArchive','ClubRetention'] as $cls) {
     require_once __DIR__ . "/lib/{$cls}.php";
 }
 

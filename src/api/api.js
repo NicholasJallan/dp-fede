@@ -2,31 +2,58 @@
 // Reads CSRF token via getCsrfToken (./google-drive.js) and attaches
 // it as a header on state-changing requests.
 //
+// Club : chaque requête métier porte `X-DP-Club: <club courant>` (comme
+// l'outbox) — la réponse concerne le club affiché, jamais un autre choisi
+// côté serveur entre-temps. Exceptions : /auth/* (session et découverte du
+// club courant). 403 CLUB_NOT_MEMBER → événement dp:clubNotMember : l'app
+// resynchronise son club courant (src/club/club-context.jsx).
+//
 // `api` est un singleton partagé : src/offline/offline-api.js le décore en
 // place au démarrage (src/app/bootstrap.js) avant tout usage.
 
 import { getCsrfToken } from './google-drive.js';
 import { notifyIfAuthExpired } from './auth-events.js';
 import { filenameFromDisposition } from './download.js';
+import { clubHeaders, getCurrentClubId } from './club-header.js';
 
 const API_BASE = '/api';
 const WRITE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 const enc = encodeURIComponent;
 
-// Erreur HTTP portant le statut (403 rôle insuffisant, 409 conflit…).
-function httpError(message, status) {
+// Routes sans en-tête de club : session et découverte du club courant.
+const NO_CLUB_HEADER = /^\/auth\//;
+
+// Erreur HTTP portant le statut et le code stable du serveur (403
+// CLUB_NOT_MEMBER, 409 LAST_RESPONSABLE…, cf. docs/api-club.md).
+function httpError(message, status, code = null) {
   const err = new Error(message);
   err.status = status;
+  if (code) err.code = code;
   return err;
 }
 
-async function errorMessage(res) {
+// En-tête du club courant pour `path` (et club ciblé, pour le signalement).
+function clubScope(path) {
+  const clubId = NO_CLUB_HEADER.test(path) ? null : getCurrentClubId();
+  return { clubId, headers: clubHeaders(clubId) };
+}
+
+// Échec HTTP : session expirée, club quitté, puis erreur levée.
+function failure(res, path, clubId, message, code) {
+  notifyIfAuthExpired(res.status, path);
+  if (res.status === 403 && code === 'CLUB_NOT_MEMBER') {
+    window.dispatchEvent(new CustomEvent('dp:clubNotMember', { detail: { clubId } }));
+  }
+  return httpError(message, res.status, code);
+}
+
+async function errorBody(res) {
   const text = await res.text().catch(() => '');
   try {
     const j = JSON.parse(text);
-    if (j?.error) return j.error;
+    if (j?.error) return { message: j.error, code: j.code || null };
   } catch { /* corps non JSON */ }
-  return text.trim().slice(0, 300) || `HTTP ${res.status}`;
+  return { message: text.trim().slice(0, 300) || `HTTP ${res.status}`, code: null };
 }
 
 // options.form (FormData) : envoi multipart, le navigateur pose lui-même
@@ -35,7 +62,8 @@ async function errorMessage(res) {
 async function apiFetch(path, options = {}) {
   const { form, body, headers: extra, ...rest } = options;
   const method = (options.method || 'GET').toUpperCase();
-  const headers = { ...(form ? {} : { 'Content-Type': 'application/json' }), ...(extra || {}) };
+  const scope = clubScope(path);
+  const headers = { ...(form ? {} : { 'Content-Type': 'application/json' }), ...scope.headers, ...(extra || {}) };
 
   if (WRITE_METHODS.includes(method)) {
     headers['X-CSRF-Token'] = getCsrfToken();
@@ -53,8 +81,7 @@ async function apiFetch(path, options = {}) {
   const json = await res.json().catch(() => ({ ok: false, error: 'Réponse invalide' }));
 
   if (!json.ok) {
-    notifyIfAuthExpired(res.status, path);
-    throw httpError(json.error || `HTTP ${res.status}`, res.status);
+    throw failure(res, path, scope.clubId, json.error || `HTTP ${res.status}`, json.code || null);
   }
 
   return json.data;
@@ -62,10 +89,11 @@ async function apiFetch(path, options = {}) {
 
 // Fichier binaire (PDF archivé, CSV) : { blob, filename }.
 async function apiBlob(path, fallbackName) {
-  const res = await fetch(API_BASE + path, { credentials: 'include', cache: 'no-store' });
+  const scope = clubScope(path);
+  const res = await fetch(API_BASE + path, { credentials: 'include', cache: 'no-store', headers: scope.headers });
   if (!res.ok) {
-    notifyIfAuthExpired(res.status, path);
-    throw httpError(await errorMessage(res), res.status);
+    const { message, code } = await errorBody(res);
+    throw failure(res, path, scope.clubId, message, code);
   }
   return {
     blob: await res.blob(),
@@ -95,6 +123,7 @@ const CONFIRM_DELETE = { confirm: 'SUPPRIMER' };
 // Génère un PDF côté serveur (mPDF) depuis les données de la plongée en base.
 // type : 'fiche' | 'checklist'. Retourne un Blob.
 async function fetchPdfBlob(diveId, type = 'fiche') {
+  const scope = clubScope('/pdf/fiche');
   const res = await fetch(`${API_BASE}/pdf/fiche`, {
     method: 'POST',
     credentials: 'include',
@@ -102,12 +131,13 @@ async function fetchPdfBlob(diveId, type = 'fiche') {
     headers: {
       'Content-Type': 'application/json',
       'X-CSRF-Token': getCsrfToken(),
+      ...scope.headers,
     },
     body: JSON.stringify({ dive_id: diveId, type }),
   });
   if (!res.ok) {
-    notifyIfAuthExpired(res.status, '/pdf/fiche');
-    throw httpError(`PDF ${type} — HTTP ${res.status} : ${await errorMessage(res)}`, res.status);
+    const { message, code } = await errorBody(res);
+    throw failure(res, '/pdf/fiche', scope.clubId, `PDF ${type} — HTTP ${res.status} : ${message}`, code);
   }
   return await res.blob();
 }

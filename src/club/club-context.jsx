@@ -5,11 +5,17 @@
 //   club.can('divers.write')   // matrice docs/api-club.md (droits serveur prioritaires)
 //   await club.switchClub(id)  // purge les données locales de l'ancien club puis resynchronise
 //
+// Club quitté ou retiré (403 CLUB_NOT_MEMBER sur n'importe quelle requête,
+// événement dp:clubNotMember) : actions « à revoir » de ce club retirées de
+// l'outbox, club courant oublié puis relu au serveur (données locales de
+// l'ancien club purgées), et avis `lostClub` proposant de supprimer les
+// données de l'appareil.
+//
 // Le dernier GET /api/club est gardé en localStorage : rôle et droits restent
 // connus hors ligne. Sans réponse ni instantané, le rôle de /api/auth/me
 // (club_role) s'applique.
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/api.js';
 import { STORAGE_KEYS } from '../api/storage-keys.js';
 import { useAuth } from '../auth/auth-context.jsx';
@@ -17,6 +23,8 @@ import { offlineStore } from '../offline/offline-store.js';
 import { bindLocalDataToClub } from '../offline/club-scope.js';
 import { sync } from '../offline/sync.js';
 import { can as canRole } from './permissions.js';
+import { handleClubNotMember } from './membership-lost.js';
+import { getCurrentClubId } from '../api/club-header.js';
 import { captureInvitationFromUrl, clearPendingInvitation, readPendingInvitation } from './invitation.js';
 
 const ClubContext = createContext(null);
@@ -66,6 +74,35 @@ function useClubInfo(user, authMode) {
   return { info, setInfo, error, refresh };
 }
 
+// 403 CLUB_NOT_MEMBER (dp:clubNotMember) : purge des actions en revue du club
+// refusé et, s'il s'agissait du club courant, resynchronisation sur le club
+// que choisit le serveur. Un seul traitement à la fois.
+function useLostClub({ info, authMode, applyClubChange }) {
+  const [lostClub, setLostClub] = useState(null);
+  const busy = useRef(false);
+  useEffect(() => {
+    const onLost = async (e) => {
+      if (busy.current) return;
+      busy.current = true;
+      const clubId = e.detail?.clubId || null;
+      const name = clubId && info?.club?.id === clubId ? info.club.nom : null;
+      try {
+        const { removed, wasCurrent } = await handleClubNotMember({ clubId });
+        if (wasCurrent && authMode === 'online') await applyClubChange(await api.club.get());
+        if (wasCurrent || removed > 0) setLostClub({ clubId, name, removed });
+      } catch (err) {
+        console.warn('[club] resynchronisation après club quitté :', err?.message || err);
+      } finally {
+        busy.current = false;
+      }
+    };
+    window.addEventListener('dp:clubNotMember', onLost);
+    return () => window.removeEventListener('dp:clubNotMember', onLost);
+  }, [info, authMode, applyClubChange]);
+  const dismiss = useCallback(() => setLostClub(null), []);
+  return { lostClub, dismiss };
+}
+
 export function ClubProvider({ children }) {
   const { user, authMode, refreshUser } = useAuth();
   const { info, setInfo, error, refresh } = useClubInfo(user, authMode);
@@ -89,8 +126,15 @@ export function ClubProvider({ children }) {
     return applyClubChange(res);
   }, [applyClubChange, dismissInvitation]);
 
-  // Après « quitter le club » ou sa suppression : le serveur choisit le club suivant.
-  const reloadCurrentClub = useCallback(async () => applyClubChange(await api.club.get()), [applyClubChange]);
+  // Après « quitter le club » ou sa suppression : le serveur choisit le club
+  // suivant. Le club quitté est d'abord oublié (sinon X-DP-Club le viserait
+  // encore → 403) et ses actions « à revoir » retirées de l'outbox.
+  const reloadCurrentClub = useCallback(async () => {
+    await handleClubNotMember({ clubId: getCurrentClubId() });
+    return applyClubChange(await api.club.get());
+  }, [applyClubChange]);
+
+  const lost = useLostClub({ info, authMode, applyClubChange });
 
   // Club changé ailleurs (détecté par la sync) : relire club et compte.
   useEffect(() => {
@@ -114,9 +158,10 @@ export function ClubProvider({ children }) {
       can: (permission) => canRole(role, permission, permissions),
       refresh, switchClub, acceptInvitation, reloadCurrentClub, setInfo,
       invitationToken, dismissInvitation,
+      lostClub: lost.lostClub, dismissLostClub: lost.dismiss,
     };
   }, [info, user?.club_id, user?.club_role, user?.club_count, error, refresh, switchClub,
-    acceptInvitation, reloadCurrentClub, setInfo, invitationToken, dismissInvitation]);
+    acceptInvitation, reloadCurrentClub, setInfo, invitationToken, dismissInvitation, lost.lostClub, lost.dismiss]);
 
   return <ClubContext.Provider value={value}>{children}</ClubContext.Provider>;
 }
@@ -128,6 +173,7 @@ const NO_CLUB = {
   refresh: async () => null, switchClub: async () => null, acceptInvitation: async () => null,
   reloadCurrentClub: async () => null, setInfo: () => {},
   invitationToken: null, dismissInvitation: () => {},
+  lostClub: null, dismissLostClub: () => {},
 };
 
 export function useClub() {

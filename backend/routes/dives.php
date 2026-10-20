@@ -161,25 +161,23 @@ if ($method === 'GET' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
 
 // ── POST /api/dives ─────────────────────────────────────────────────────────
 // Crée une nouvelle plongée. Statut par défaut : 'prepared'.
-// Idempotence : si client_uuid existe déjà pour cet utilisateur, renvoie 200.
+// Idempotence (outbox) : un client_uuid déjà porté par une plongée ACTIVE du
+// club courant renvoie 200 { id, duplicate: true }. Porté par une plongée
+// d'un autre club ou supprimée : 409 CLIENT_UUID_CONFLICT (jamais confondu
+// avec un rejeu). Index unique (club_id, client_uuid) : migration 010.
+// Plongée créée directement archivée (sync hors-ligne) : closed_at = heure
+// SERVEUR (base de la conservation légale, cf. ClubRetention).
 if ($method === 'POST' && $path === '/api/dives') {
     Csrf::verify();
     $user = Auth::require();
     Club::requirePermission($user, 'dives.write');
-    $body = Json::body();
+    $body   = Json::body();
+    $clubId = (string)$user['club_id'];
 
     $clientUuid = isset($body['client_uuid']) && SyncHelpers::isValidUuid((string)$body['client_uuid'])
         ? (string)$body['client_uuid'] : null;
 
-    if ($clientUuid) {
-        $existing = Db::row(
-            'SELECT id, status FROM dives WHERE user_id=? AND client_uuid=?',
-            [$user['id'], $clientUuid]
-        );
-        if ($existing) {
-            Json::ok(['id' => $existing['id'], 'duplicate' => true], 200);
-        }
-    }
+    if ($clientUuid) respondIfClientUuidKnown($clientUuid, $clubId);
 
     $status  = in_array($body['status'] ?? '', ['prepared', 'in_progress', 'archived'])
         ? $body['status'] : 'prepared';
@@ -190,29 +188,36 @@ if ($method === 'POST' && $path === '/api/dives') {
     // avancé (in_progress ou archived = sync offline d'une session déjà terminée).
     // Pour 'prepared', la palanquée peut être incomplète → pas de blocage.
     if (!empty($body['palanquees']) && in_array($status, ['in_progress', 'archived'], true)) {
-        validatePalanqueesOrAbort($body['palanquees'], $body['answers'] ?? [], (string)$user['club_id']);
+        validatePalanqueesOrAbort($body['palanquees'], $body['answers'] ?? [], $clubId);
     }
     $rsJson = !empty($body['render_state']) ? renderStateJsonOrAbort($body['render_state']) : null;
 
     $id = Db::uuid();
-    Db::q(
-        'INSERT INTO dives
-         (id, club_id, user_id, client_uuid, status, site_nom, date_plongee, planned_at,
-          dp_nom, dp_qual, activite, answers, palanquees, drive_link)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-        [
-            $id, $user['club_id'], $user['id'], $clientUuid, $status,
-            substr((string)($body['site_nom']   ?? ''), 0, 255),
-            $dpDate,
-            $planned,
-            substr((string)($body['dp_nom']     ?? ''), 0, 200),
-            substr((string)($body['dp_qual']    ?? ''), 0, 20),
-            substr((string)($body['activite']   ?? ''), 0, 50),
-            json_encode($body['answers']    ?? [], JSON_UNESCAPED_UNICODE),
-            json_encode($body['palanquees'] ?? [], JSON_UNESCAPED_UNICODE),
-            substr((string)($body['drive_link'] ?? ''), 0, 500),
-        ]
-    );
+    try {
+        Db::q(
+            'INSERT INTO dives
+             (id, club_id, user_id, client_uuid, status, site_nom, date_plongee, planned_at,
+              dp_nom, dp_qual, activite, answers, palanquees, drive_link, closed_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,' . ($status === 'archived' ? 'NOW()' : 'NULL') . ')',
+            [
+                $id, $clubId, $user['id'], $clientUuid, $status,
+                substr((string)($body['site_nom']   ?? ''), 0, 255),
+                $dpDate,
+                $planned,
+                substr((string)($body['dp_nom']     ?? ''), 0, 200),
+                substr((string)($body['dp_qual']    ?? ''), 0, 20),
+                substr((string)($body['activite']   ?? ''), 0, 50),
+                json_encode($body['answers']    ?? [], JSON_UNESCAPED_UNICODE),
+                json_encode($body['palanquees'] ?? [], JSON_UNESCAPED_UNICODE),
+                substr((string)($body['drive_link'] ?? ''), 0, 500),
+            ]
+        );
+    } catch (PDOException $e) {
+        // Deux rejeux simultanés : l'index unique (club_id, client_uuid) a
+        // arrêté le second → même réponse qu'un rejeu séquentiel.
+        if ($clientUuid && (string)$e->getCode() === '23000') respondIfClientUuidKnown($clientUuid, $clubId);
+        throw $e;
+    }
 
     // H4 : render_state → table dédiée (n'impacte pas dives.updated_at)
     if (!empty($rsJson)) {
@@ -222,7 +227,7 @@ if ($method === 'POST' && $path === '/api/dives') {
         );
     }
 
-    Log::action('dive.created', ['dive_id' => $id, 'club_id' => $user['club_id']]);
+    Log::action('dive.created', ['dive_id' => $id, 'club_id' => $clubId]);
     $documentsStatus = null;
     if ($status === 'archived') {
         // Plongée archivée hors-ligne puis synchronisée : même traitement
@@ -234,21 +239,37 @@ if ($method === 'POST' && $path === '/api/dives') {
     Json::ok(['id' => $id, 'duplicate' => false, 'documents_status' => $documentsStatus], 201);
 }
 
+/**
+ * client_uuid déjà connu : 200 { id, duplicate: true } (rejeu dans le même
+ * club) ou 409 CLIENT_UUID_CONFLICT (autre club, plongée supprimée).
+ * Ne rend la main que si l'uuid est inconnu.
+ */
+function respondIfClientUuidKnown(string $clientUuid, string $clubId): void {
+    [$outcome, $existingId] = DivePolicy::clientUuidOutcome(DiveStore::rowsByClientUuid($clientUuid), $clubId);
+    if ($outcome === 'duplicate') {
+        Json::ok(['id' => $existingId, 'duplicate' => true], 200);
+    }
+    if ($outcome === 'conflict') {
+        Json::abort(409, 'Identifiant client de plongée déjà utilisé (autre club ou plongée supprimée)', DivePolicy::CLIENT_UUID_CONFLICT);
+    }
+}
+
 // ── PATCH /api/dives/:id ────────────────────────────────────────────────────
 // Mise à jour partielle d'une plongée.
 // Autorisée sur tous les champs tant que status != 'archived'.
-// Quand status = 'archived' : seuls drive_link et render_state sont mutables.
-// Transition 'archived' → tout autre statut : refusée.
+// Plongée archivée (A322-72, fiche figée) : seul drive_link est modifiable ;
+// un render_state différent de l'état stocké → 422 ARCHIVED_IMMUTABLE (un
+// rejeu identique du PATCH d'archivage est accepté) ; answers / palanquees
+// sont ignorés. Transition 'archived' → autre statut : 422 ARCHIVED_IMMUTABLE.
+// closed_at est posé par le SERVEUR au passage en 'archived' (valeur cliente
+// ignorée : elle fonde la durée de conservation légale).
 if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
     Csrf::verify();
     $user = Auth::require();
     Club::requirePermission($user, 'dives.write');
     $body = Json::body();
 
-    $row = Db::row(
-        'SELECT id, status FROM dives WHERE (id=? OR client_uuid=?) AND club_id=? AND deleted_at IS NULL',
-        [$m[1], $m[1], $user['club_id']]
-    );
+    $row = DiveStore::findActive($m[1], (string)$user['club_id']);
     if (!$row) Json::abort(404, 'Plongée introuvable');
 
     $curStatus = $row['status'];
@@ -257,7 +278,15 @@ if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
 
     // Transition rétrograde interdite
     if ($newStatus !== null && $curStatus === 'archived' && $newStatus !== 'archived') {
-        Json::abort(422, 'Impossible de modifier le statut d\'une plongée archivée');
+        Json::abort(422, 'Impossible de modifier le statut d\'une plongée archivée', DivePolicy::ARCHIVED_IMMUTABLE);
+    }
+
+    $hasRenderState = isset($body['render_state']);
+    if ($curStatus === 'archived') {
+        $violation = DivePolicy::archivedPatchViolation($body, DiveStore::storedRenderState((string)$row['id']));
+        if ($violation !== null) Json::abort(422, $violation, DivePolicy::ARCHIVED_IMMUTABLE);
+        // État identique (rejeu) : rien à écrire.
+        $hasRenderState = false;
     }
 
     $sets   = [];
@@ -296,6 +325,7 @@ if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
         if ($newStatus !== null) {
             $sets[]   = 'status=?';
             $params[] = $newStatus;
+            if ($newStatus === 'archived') $sets[] = 'closed_at=NOW()';
         }
         if (isset($body['planned_at'])) {
             $sets[]   = 'planned_at=?';
@@ -305,10 +335,6 @@ if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
             $sets[]   = 'started_at=?';
             $params[] = parseDiveDateToMySql((string)$body['started_at']);
         }
-        if (isset($body['closed_at'])) {
-            $sets[]   = 'closed_at=?';
-            $params[] = parseDiveDateToMySql((string)$body['closed_at']);
-        }
     }
 
     // drive_link mutable même après archivage
@@ -317,8 +343,9 @@ if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
         $params[] = substr((string)$body['drive_link'], 0, 500);
     }
 
-    $hasRenderState = isset($body['render_state']);
-    if (empty($sets) && !$hasRenderState) Json::abort(422, 'Aucun champ à mettre à jour');
+    // Rejeu sans effet du PATCH d'archivage (outbox, réponse perdue) : succès.
+    $archivedReplay = $curStatus === 'archived' && $newStatus === 'archived';
+    if (empty($sets) && !$hasRenderState && !$archivedReplay) Json::abort(422, 'Aucun champ à mettre à jour');
 
     // Validation règles métier uniquement lors d'une transition de statut significative
     // (in_progress ou archived). Les auto-saves intermédiaires ('prepared') ne
@@ -339,19 +366,18 @@ if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
         $existing = Db::row('SELECT palanquees FROM dives WHERE id=?', [$row['id']]);
         $existingPals = json_decode($existing['palanquees'] ?? '[]', true) ?: [];
         if (!empty($existingPals)) {
-            Json::abort(409, 'Mise à jour refusée : elle viderait une plongée existante');
+            Json::abort(409, 'Mise à jour refusée : elle viderait une plongée existante', 'EMPTY_OVERWRITE_REFUSED');
         }
     }
 
     // H4 : render_state → dive_runtime_state (UPSERT sans toucher dives.updated_at),
-    // écrit seulement après validation.
+    // écrit seulement après validation, et seulement si la plongée n'a pas été
+    // archivée entre-temps (condition dans la même instruction).
     if ($hasRenderState) {
         $rsJson = renderStateJsonOrAbort($body['render_state']);
-        Db::q(
-            'INSERT INTO dive_runtime_state (dive_id, state) VALUES (?,?)
-             ON DUPLICATE KEY UPDATE state=VALUES(state)',
-            [$row['id'], $rsJson]
-        );
+        if (!DiveStore::writeRuntimeStateUnlessArchived((string)$row['id'], $rsJson)) {
+            Json::abort(422, DivePolicy::ARCHIVED_MESSAGE, DivePolicy::ARCHIVED_IMMUTABLE);
+        }
     }
 
     if (!empty($sets)) {
@@ -374,13 +400,10 @@ if ($method === 'DELETE' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
     $user = Auth::require();
     Club::requirePermission($user, 'dives.write');
 
-    $row = Db::row(
-        'SELECT id, status FROM dives WHERE (id=? OR client_uuid=?) AND club_id=? AND deleted_at IS NULL',
-        [$m[1], $m[1], $user['club_id']]
-    );
+    $row = DiveStore::findActive($m[1], (string)$user['club_id']);
     if (!$row) Json::abort(404, 'Plongée introuvable');
     if ($row['status'] === 'archived') {
-        Json::abort(422, 'Impossible de supprimer une plongée archivée');
+        Json::abort(422, 'Impossible de supprimer une plongée archivée', DivePolicy::ARCHIVED_IMMUTABLE);
     }
 
     Db::q('UPDATE dives SET deleted_at=NOW() WHERE id=?', [$row['id']]);
@@ -422,13 +445,16 @@ if (preg_match('#^/api/dives/([^/]+)/documents(?:/([a-z]+))?$#', $path, $m)) {
         PdfRender::stream($doc['content'], DivePdf::filename($dive, $docType));
     }
     if ($method === 'POST' && $docType === null) {
+        // Régénération : seulement si documents_status = 'error' ou document
+        // manquant / altéré (sinon 409) ; journalisée avec l'ancienne empreinte.
+        // Un document intègre n'est jamais remplacé.
         Csrf::verify();
         $user = Auth::require();
         Club::requirePermission($user, 'documents.generate');
         $dive = archivedDiveOrAbort($m[1], (string)$user['club_id'], true);
-        DiveArchive::refreshParticipants((string)$dive['id']);
-        DiveArchive::setStatus((string)$dive['id'], 'pending');
-        if (!DiveArchive::generateDocuments((string)$dive['id'])) {
+        $res  = DiveArchive::regenerate($dive, new DateTimeImmutable('now'));
+        if ($res['status'] === 'refused') Json::abort(409, $res['message'], $res['code']);
+        if ($res['status'] !== 'ok') {
             Json::abort(500, 'Échec de la génération des documents (détail journalisé côté serveur)');
         }
         Json::ok([
@@ -441,16 +467,13 @@ if (preg_match('#^/api/dives/([^/]+)/documents(?:/([a-z]+))?$#', $path, $m)) {
 
 /** Plongée archivée du club, sinon 404 (409 si non archivée et $mustBeArchived). */
 function archivedDiveOrAbort(string $idOrUuid, string $clubId, bool $mustBeArchived): array {
-    $dive = Db::row(
-        'SELECT id, club_id, status, site_nom, date_plongee, documents_status, documents_updated_at
-           FROM dives
-          WHERE (id=? OR client_uuid=?) AND club_id=? AND deleted_at IS NULL
-          ORDER BY (id = ?) DESC LIMIT 1',
-        [$idOrUuid, $idOrUuid, $clubId, $idOrUuid]
+    $dive = DiveStore::findActive(
+        $idOrUuid, $clubId,
+        'id, club_id, status, site_nom, date_plongee, documents_status, documents_updated_at'
     );
     if (!$dive) Json::abort(404, 'Plongée introuvable');
     if ($mustBeArchived && $dive['status'] !== 'archived') {
-        Json::abort(409, 'Les documents ne sont générés que pour une plongée archivée');
+        Json::abort(409, 'Les documents ne sont générés que pour une plongée archivée', 'DIVE_NOT_ARCHIVED');
     }
     return $dive;
 }

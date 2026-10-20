@@ -75,7 +75,7 @@ if ($method === 'DELETE' && preg_match('#^/api/users/(\d+)$#', $path, $m)) {
 
     // Seul responsable d'un club partagé : transférer d'abord la responsabilité.
     $blockers = Account::clubBlockers((int)$m[1]);
-    if ($blockers) Json::abort(409, Account::clubBlockerMessage($blockers));
+    if ($blockers) Json::abort(409, Account::clubBlockerMessage($blockers), 'LAST_RESPONSABLE');
 
     // Suppression explicite : clubs dont il est le seul membre (avec toutes
     // leurs données), sessions, adhésions ; ses contributions aux clubs

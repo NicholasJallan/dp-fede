@@ -31,7 +31,7 @@ if ($method === 'GET' && $path === '/api/sites') {
 
 // POST /api/sites
 // Idempotent : id optionnel envoyé par le client (UUID v4) → INSERT ... ON
-// DUPLICATE KEY UPDATE. Permet à l'outbox de rejouer sans dupliquer.
+// DUPLICATE KEY UPDATE limité au club. Permet à l'outbox de rejouer sans dupliquer.
 if ($method === 'POST' && $path === '/api/sites') {
     Csrf::verify();
     $user = Auth::require();
@@ -54,41 +54,31 @@ if ($method === 'POST' && $path === '/api/sites') {
 
     $clientId = $v->nullable('id');
     $id       = $clientId && SyncHelpers::isValidUuid($clientId) ? $clientId : Db::uuid();
-    // L'UPSERT ne doit jamais toucher la ligne d'un autre club.
-    $owner = Db::row('SELECT club_id FROM sites WHERE id=?', [$id]);
-    if ($owner && (string)$owner['club_id'] !== (string)$user['club_id']) {
-        Json::abort(409, 'Identifiant déjà utilisé');
-    }
     $coord    = $v->arr('coordonnees');
 
-    Db::q(
-        'INSERT INTO sites (id, club_id, user_id, nom, milieu, profondeur_max, coordonnees, notes, depart_bord, depart_bateau, shot_line, ville, pays, pays_code, region, acces_secours, caisson)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-         ON DUPLICATE KEY UPDATE
-           nom=VALUES(nom), milieu=VALUES(milieu), profondeur_max=VALUES(profondeur_max),
-           coordonnees=VALUES(coordonnees), notes=VALUES(notes),
-           depart_bord=VALUES(depart_bord), depart_bateau=VALUES(depart_bateau),
-           shot_line=VALUES(shot_line), ville=VALUES(ville), pays=VALUES(pays),
-           pays_code=VALUES(pays_code), region=VALUES(region),
-           acces_secours=VALUES(acces_secours), caisson=VALUES(caisson), deleted_at=NULL',
-        [
-            $id, $user['club_id'], $user['id'],
-            $v->str('nom'), $v->str('milieu') ?: 'En mer',
-            $v->float('profondeur_max'),
-            $coord ? json_encode($coord, JSON_UNESCAPED_UNICODE) : null,
-            $v->str('notes'),
-            (int)(bool)$v->nullable('depart_bord'),
-            (int)(bool)$v->nullable('depart_bateau'),
-            (int)(bool)$v->nullable('shot_line'),
-            $v->str('ville'),
-            $v->str('pays'),
-            $v->str('pays_code'),
-            $v->str('region'),
-            $v->str('acces_secours'),
-            $v->str('caisson'),
-        ]
-    );
-    Json::ok(decodeSite(Db::row('SELECT * FROM sites WHERE id=? AND club_id=?', [$id, $user['club_id']])), 201);
+    // UPSERT limité au club, atomique (cf. POST /api/divers) : id d'un autre
+    // club → ligne intacte et 404, comme un site inexistant.
+    [$sql, $params] = SyncHelpers::clubScopedUpsert('sites', [
+        'id'             => $id,
+        'club_id'        => $user['club_id'],
+        'user_id'        => $user['id'],
+        'nom'            => $v->str('nom'),
+        'milieu'         => $v->str('milieu') ?: 'En mer',
+        'profondeur_max' => $v->float('profondeur_max'),
+        'coordonnees'    => $coord ? json_encode($coord, JSON_UNESCAPED_UNICODE) : null,
+        'notes'          => $v->str('notes'),
+        'depart_bord'    => (int)(bool)$v->nullable('depart_bord'),
+        'depart_bateau'  => (int)(bool)$v->nullable('depart_bateau'),
+        'shot_line'      => (int)(bool)$v->nullable('shot_line'),
+        'ville'          => $v->str('ville'),
+        'pays'           => $v->str('pays'),
+        'pays_code'      => $v->str('pays_code'),
+        'region'         => $v->str('region'),
+        'acces_secours'  => $v->str('acces_secours'),
+        'caisson'        => $v->str('caisson'),
+    ], ['user_id']);
+    Db::q($sql, $params);
+    Json::ok(decodeSite(siteInClubOrAbort((string)$user['club_id'], $id)), 201);
 }
 
 // GET /api/sites/:id

@@ -34,7 +34,7 @@ if ($method === 'DELETE' && $path === '/api/account') {
     $uid  = (int)$user['id'];
 
     $err = Account::deletionError($user, Json::body(), Account::otherAdminCount($uid), Account::clubBlockers($uid));
-    if ($err !== null) Json::abort($err[0], $err[1]);
+    if ($err !== null) Json::abort($err[0], $err[1], $err[2] ?? null);
 
     $result = Account::deleteUserData($uid);
     Auth::destroySession();

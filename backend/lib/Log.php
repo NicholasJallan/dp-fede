@@ -16,6 +16,14 @@ class Log {
 
     private static ?int $actorId = null;
 
+    /** @var (callable(string, ?array): void)|null Puits de remplacement (tests). */
+    private static $sink = null;
+
+    /** Redirige les actions vers $sink au lieu du fichier (tests) ; null rétablit le fichier. */
+    public static function capture(?callable $sink): void {
+        self::$sink = $sink;
+    }
+
     public static function setActor(?int $userId): void {
         self::$actorId = $userId;
     }
@@ -25,6 +33,10 @@ class Log {
     }
 
     public static function action(string $kind, ?array $context = null): void {
+        if (self::$sink !== null) {
+            (self::$sink)($kind, $context);
+            return;
+        }
         $entry = self::buildEntry($kind, $context, self::$actorId, $_SERVER);
         @file_put_contents(
             self::LOG_FILE,

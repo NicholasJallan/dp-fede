@@ -143,7 +143,7 @@ class Retention
             $cut = self::cutoff($now, (int)$opts['archived_dives_years'], 'years');
             $out['dives_archived_old'] = self::dives(
                 $dry,
-                "status = 'archived' AND COALESCE(date_plongee, closed_at, created_at) < ?",
+                "status = 'archived' AND " . ClubRetention::REFERENCE_SQL . ' < ?',
                 [$cut]
             );
         }

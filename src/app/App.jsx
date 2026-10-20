@@ -29,7 +29,7 @@ import {
   computeProfilNotes, computeBlockingPalSummary, checklistProgress, areAllPalanqueesFinished,
   exitProgress, GO_DECISION_ID,
 } from './derive.js';
-import { AuthExpiredBanner, ReviewBanner } from './components/AuthExpiredBanner.jsx';
+import { AuthExpiredBanner, ReviewBanner, ClubLostBanner } from './components/AuthExpiredBanner.jsx';
 import { Topbar } from './components/Topbar.jsx';
 import { DiveStepper } from './components/DiveStepper.jsx';
 import { AdminNav } from './components/AdminNav.jsx';
@@ -140,6 +140,7 @@ function AppHeader({ ctl }) {
   const { user, session, flags, screen, setScreen, outboxItems } = ctl;
   const goHome = () => { if (session.currentDiveId) ctl.flushSave(session.currentDiveId); setScreen("home"); };
   const reviewCount = outboxItems.filter(it => it.status === 'review').length;
+  const club = useClub();
   return (<>
     <a className="skip-link" href="#main">Aller au contenu</a>
     <Topbar
@@ -151,7 +152,9 @@ function AppHeader({ ctl }) {
       onNavigate={setScreen}
       onLogout={() => (outboxItems.length > 0 ? ctl.setConfirmLogout(true) : ctl.logout())}
     />
+    {/* keepLocal : l'outbox est rejouée après reconnexion ; le bandeau propose aussi de tout effacer. */}
     {ctl.authExpired && <AuthExpiredBanner onReconnect={() => ctl.logout({ keepLocal: true })} />}
+    {club.lostClub && <ClubLostBanner lost={club.lostClub} onDismiss={club.dismissLostClub} />}
     {reviewCount > 0 && <ReviewBanner count={reviewCount} onOpen={() => ctl.setDrawerOpen(true)} />}
     {flags.isStepScreen && (
       <DiveStepper currentStepIdx={flags.currentStepIdx} diveMode={ctl.diveMode}

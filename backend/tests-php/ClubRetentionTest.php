@@ -16,39 +16,57 @@ final class ClubRetentionTest extends TestCase
         $this->now = new DateTimeImmutable('2026-10-20 15:00:00');
     }
 
-    private function dive(string $id, ?string $closed, ?string $date, array $answers = [], array $pals = []): array
+    private function dive(string $id, ?string $closed, ?string $date, array $answers = [], array $pals = [], string $created = '2020-01-01 00:00:00'): array
     {
         return [
-            'id' => $id, 'closed_at' => $closed, 'date_plongee' => $date, 'created_at' => '2020-01-01 00:00:00',
+            'id' => $id, 'closed_at' => $closed, 'date_plongee' => $date, 'created_at' => $created,
             'answers' => json_encode($answers), 'palanquees' => json_encode($pals),
         ];
     }
 
-    public function testReferenceDateIsLatestOfClosedAtAndDiveDate(): void
+    public function testReferenceDateIsLatestOfServerDatesOnly(): void
     {
-        $d = $this->dive('a', '2026-03-02 18:00:00', '2026-03-01 09:00:00');
+        // closed_at (posé par le serveur à l'archivage) et created_at (serveur) ;
+        // date_plongee, saisie par le client, n'intervient plus.
+        $d = $this->dive('a', '2026-03-02 18:00:00', '2027-01-01 09:00:00');
         $this->assertSame('2026-03-02', \ClubRetention::referenceDate($d)->format('Y-m-d'));
         $d = $this->dive('b', null, '2026-03-01 09:00:00');
-        $this->assertSame('2026-03-01', \ClubRetention::referenceDate($d)->format('Y-m-d'));
-        $d = $this->dive('c', null, null);
         $this->assertSame('2020-01-01', \ClubRetention::referenceDate($d)->format('Y-m-d'));
-        $this->assertNull(\ClubRetention::referenceDate(['id' => 'x']));
+        $d = $this->dive('c', '2019-05-01 10:00:00', null, [], [], '2026-04-01 08:00:00');
+        $this->assertSame('2026-04-01', \ClubRetention::referenceDate($d)->format('Y-m-d'), 'closed_at antérieur à la création : created_at prime');
+        $this->assertNull(\ClubRetention::referenceDate(['id' => 'x', 'date_plongee' => '2026-01-01 00:00:00']));
+    }
+
+    public function testClientDiveDateCannotShortenRetention(): void
+    {
+        // Une date de plongée ancienne envoyée par le client ne fait pas
+        // sortir de la conservation une fiche archivée récemment.
+        $d = $this->dive('a', '2026-10-01 10:00:00', '2001-01-01 09:00:00', [], [], '2026-10-01 09:00:00');
+        $this->assertSame('2027-10-01', \ClubRetention::retentionEnd($d)->format('Y-m-d'));
+        $this->assertSame(['a'], \ClubRetention::plan([$d], $this->now)['dive_ids']);
+    }
+
+    public function testReferenceSqlIgnoresDiveDate(): void
+    {
+        $this->assertStringNotContainsString('date_plongee', \ClubRetention::REFERENCE_SQL);
+        $this->assertStringContainsString('closed_at', \ClubRetention::REFERENCE_SQL);
+        $this->assertStringContainsString('created_at', \ClubRetention::REFERENCE_SQL);
     }
 
     public function testRetentionEndIs365DaysAfterReference(): void
     {
         $end = \ClubRetention::retentionEnd($this->dive('a', '2026-03-02 18:00:00', null));
         $this->assertSame('2027-03-02', $end->format('Y-m-d'));
-        $end = \ClubRetention::retentionEnd($this->dive('b', null, '2024-03-01 09:00:00'));
+        $end = \ClubRetention::retentionEnd($this->dive('b', '2024-03-01 09:00:00', null));
         $this->assertSame('2025-03-01', $end->format('Y-m-d')); // 2024 est bissextile : 365 jours
     }
 
     public function testPlanKeepsOnlyDivesStillUnderRetention(): void
     {
-        $recent = $this->dive('recent', null, '2026-07-14 09:00:00',
+        $recent = $this->dive('recent', '2026-07-14 09:00:00', '2026-07-14 09:00:00',
             ['dp_id' => 'dp1', 'site_id' => 's1', 'sec_surface_membres' => ['ss1']],
             [['membres' => [['diverId' => 'd1'], ['_bapteme' => true, 'diverId' => 'b1'], ['diverId' => 'd2']]]]);
-        $old      = $this->dive('old', null, '2025-06-01 09:00:00', ['site_id' => 's9'], [['membres' => [['diverId' => 'd9']]]]);
+        $old      = $this->dive('old', '2025-06-01 09:00:00', '2025-06-01 09:00:00', ['site_id' => 's9'], [['membres' => [['diverId' => 'd9']]]]);
         $closedLate = $this->dive('late', '2025-10-25 10:00:00', '2025-06-01 09:00:00', [], [['membres' => [['diverId' => 'd1']]]]);
         $boundary = $this->dive('edge', '2025-10-20 08:00:00', null); // fin de conservation = aujourd'hui → conservée
         $expired  = $this->dive('gone', '2025-10-19 08:00:00', null);
@@ -64,7 +82,7 @@ final class ClubRetentionTest extends TestCase
 
     public function testPlanWithNothingToKeep(): void
     {
-        $plan = \ClubRetention::plan([$this->dive('old', null, '2024-01-01 09:00:00')], $this->now);
+        $plan = \ClubRetention::plan([$this->dive('old', '2024-01-01 09:00:00', null)], $this->now);
         $this->assertSame(0, $plan['count']);
         $this->assertNull($plan['until']);
         $this->assertSame([], $plan['dive_ids']);

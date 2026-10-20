@@ -25,14 +25,15 @@
 // ne l'enqueue plus) ; registerHandler reste disponible pour un kind futur.
 
 import { offlineStore } from './offline-store.js';
-import { outbox as defaultOutbox } from './outbox.js';
+import { outbox as defaultOutbox, NO_CLUB_ERROR } from './outbox.js';
 import { netStatus } from './net.js';
 import { getCsrfToken } from '../api/google-drive.js';
 import { notifyIfAuthExpired } from '../api/auth-events.js';
 import { clubHeaders } from '../api/club-header.js';
 import { bindLocalDataToClub, isInLocalScope } from './club-scope.js';
 
-// 400/404/422 : refus métier ; 403 hors CSRF/origine : rôle insuffisant ou
+// 400/404/409/422 : refus métier (un 409 d'idempotence est traité à part,
+// cf. isIdempotentConflict) ; 403 hors CSRF/origine : rôle insuffisant ou
 // club quitté (X-DP-Club refusé). Rejouer ne sert à rien tant que
 // l'utilisateur n'a pas corrigé → revue. Les autres échecs (401, 403 CSRF,
 // 429, 5xx, réseau) sont transitoires.
@@ -41,10 +42,23 @@ const TRANSIENT_403_CODES = new Set(['CSRF_INVALID', 'ORIGIN_FORBIDDEN']);
 // Repli pour un serveur qui n'enverrait pas encore de code stable.
 const TRANSIENT_403 = /csrf|origine/i;
 
+// 409 : succès (rejeu idempotent) UNIQUEMENT si le serveur le dit — corps
+// `duplicate: true` ou code d'idempotence dédié. Tout autre conflit
+// (CLIENT_UUID_CONFLICT, EMPTY_OVERWRITE_REFUSED, LAST_RESPONSABLE…) part en
+// revue avec son message : le compter comme un succès perdrait la donnée.
+const IDEMPOTENT_409_CODES = new Set(['ALREADY_APPLIED']);
+
+/** 409 signalant que l'écriture est déjà appliquée (rejeu sans effet) ? */
+export function isIdempotentConflict(err) {
+  if (err?.status !== 409) return false;
+  const body = err.responseBody || {};
+  return body.duplicate === true || body.data?.duplicate === true || IDEMPOTENT_409_CODES.has(body.code);
+}
+
 /** Échec définitif (revue) plutôt que transitoire (nouvel essai) ? */
 export function isPermanentRefusal(err) {
   if (!err?.status) return false;
-  if (REVIEW_STATUSES.has(err.status)) return true;
+  if (REVIEW_STATUSES.has(err.status) || err.status === 409) return true;
   if (err.status !== 403) return false;
   const code = err.responseBody?.code;
   if (code) return !TRANSIENT_403_CODES.has(code);
@@ -73,10 +87,11 @@ export function createSync({ store, outbox, getNetStatus }) {
     return !!status && !status.online;
   }
 
-  // `item` (optionnel) : item d'outbox rejoué → en-tête X-DP-Club du club
-  // de sa mise en file.
-  async function http(method, path, body, item = null) {
-    const headers = { 'Content-Type': 'application/json', ...clubHeaders(item?.club_id) };
+  // `clubId` (optionnel) : club ciblé (en-tête X-DP-Club) — club de mise en
+  // file d'un item d'outbox, ou club lié du pull. Sans club : club courant du
+  // serveur (seulement pour /api/sync/state, qui sert à le découvrir).
+  async function http(method, path, body, clubId = null) {
+    const headers = { 'Content-Type': 'application/json', ...clubHeaders(clubId) };
     if (['POST','PUT','PATCH','DELETE'].includes(method)) {
       headers['X-CSRF-Token'] = csrfToken();
     }
@@ -89,7 +104,12 @@ export function createSync({ store, outbox, getNetStatus }) {
       notifyIfAuthExpired(res.status, path);
       const err = new Error(json.error || `HTTP ${res.status}`);
       err.status = res.status;
+      err.code = json.code;
       err.responseBody = json;
+      // Club quitté ou retiré : l'app resynchronise son club courant.
+      if (res.status === 403 && json.code === 'CLUB_NOT_MEMBER') {
+        window.dispatchEvent(new CustomEvent('dp:clubNotMember', { detail: { clubId: clubId || null } }));
+      }
       throw err;
     }
     return json.data;
@@ -107,7 +127,7 @@ export function createSync({ store, outbox, getNetStatus }) {
   // ── Handlers par défaut (HTTP-only) ─────────────────────────────────────
   const DEFAULT_HANDLERS = {
     'dive.create': async (item) => {
-      const res = await http('POST', '/api/dives', item.payload, item);
+      const res = await http('POST', '/api/dives', item.payload, item.club_id);
       if (!(await inScope(item))) return;
       const local = await store.get('dives', item.payload.client_uuid);
       await store.put('dives', item.payload.client_uuid, {
@@ -132,10 +152,11 @@ export function createSync({ store, outbox, getNetStatus }) {
         throw new Error(`dive.update: server_id inconnu pour ${client_uuid} — create pas encore synced`);
       }
       try {
-        await http('PATCH', `/api/dives/${encodeURIComponent(target)}`, patch, item);
+        await http('PATCH', `/api/dives/${encodeURIComponent(target)}`, patch, item.club_id);
       } catch (err) {
-        // 409 = le serveur a refusé un patch qui aurait vidé la plongée : on
-        // lève le flag local pour que le prochain pull rapatrie la vraie version.
+        // 409 EMPTY_OVERWRITE_REFUSED = patch qui aurait vidé la plongée : on
+        // lève le flag local pour que le prochain pull rapatrie la vraie
+        // version (l'item part en revue).
         if (err.status === 409 && local) {
           const cur = await store.get('dives', client_uuid);
           if (cur) await store.put('dives', client_uuid, { ...cur, _pending: false });
@@ -157,42 +178,42 @@ export function createSync({ store, outbox, getNetStatus }) {
       // Jamais synchronisée (pas de server_id) : rien à supprimer côté serveur.
       const target = local ? local.server_id : client_uuid;
       if (target) {
-        await http('DELETE', `/api/dives/${encodeURIComponent(target)}`, {}, item);
+        await http('DELETE', `/api/dives/${encodeURIComponent(target)}`, {}, item.club_id);
       }
       await store.del('dives', client_uuid);
       window.dispatchEvent(new CustomEvent('dp:dataChanged', { detail: { store: 'dives' } }));
     },
 
     'diver.create': async (item) => {
-      const res = await http('POST', '/api/divers', item.payload, item);
+      const res = await http('POST', '/api/divers', item.payload, item.club_id);
       await storeDirectoryRow('divers', item, item.payload.id, res);
     },
 
     'diver.update': async (item) => {
       const { id, ...patch } = item.payload;
-      const res = await http('PUT', `/api/divers/${encodeURIComponent(id)}`, patch, item);
+      const res = await http('PUT', `/api/divers/${encodeURIComponent(id)}`, patch, item.club_id);
       await storeDirectoryRow('divers', item, id, res);
     },
 
     'diver.delete': async (item) => {
-      await http('DELETE', `/api/divers/${encodeURIComponent(item.payload.id)}`, {}, item);
+      await http('DELETE', `/api/divers/${encodeURIComponent(item.payload.id)}`, {}, item.club_id);
       await store.del('divers', item.payload.id);
       window.dispatchEvent(new CustomEvent('dp:dataChanged', { detail: { store: 'divers' } }));
     },
 
     'site.create': async (item) => {
-      const res = await http('POST', '/api/sites', item.payload, item);
+      const res = await http('POST', '/api/sites', item.payload, item.club_id);
       await storeDirectoryRow('sites', item, item.payload.id, res);
     },
 
     'site.update': async (item) => {
       const { id, ...patch } = item.payload;
-      const res = await http('PUT', `/api/sites/${encodeURIComponent(id)}`, patch, item);
+      const res = await http('PUT', `/api/sites/${encodeURIComponent(id)}`, patch, item.club_id);
       await storeDirectoryRow('sites', item, id, res);
     },
 
     'site.delete': async (item) => {
-      await http('DELETE', `/api/sites/${encodeURIComponent(item.payload.id)}`, {}, item);
+      await http('DELETE', `/api/sites/${encodeURIComponent(item.payload.id)}`, {}, item.club_id);
       await store.del('sites', item.payload.id);
       window.dispatchEvent(new CustomEvent('dp:dataChanged', { detail: { store: 'sites' } }));
     },
@@ -229,6 +250,13 @@ export function createSync({ store, outbox, getNetStatus }) {
     for (const item of items) {
       const key = entityKey(item);
       if (blocked.has(key)) continue;
+      // Jamais d'envoi sans club (ancien item) : il irait au club courant du
+      // serveur, peut-être pas celui de la saisie.
+      if (!item.club_id) {
+        blocked.add(key);
+        await outbox.markReview(item.id, new Error(NO_CLUB_ERROR));
+        continue;
+      }
       const handler = getHandler(item.kind);
       if (!handler) {
         // Pas de handler enregistré (ex. dive.drive sans écran archive
@@ -241,9 +269,8 @@ export function createSync({ store, outbox, getNetStatus }) {
         await handler(item);
         await outbox.markDone(item.id);
       } catch (err) {
-        if (err.status === 409) {
-          // Idempotence : le serveur a déjà la ressource. Considéré comme
-          // un succès.
+        if (isIdempotentConflict(err)) {
+          // Rejeu : le serveur confirme avoir déjà appliqué l'écriture.
           await outbox.markDone(item.id);
           continue;
         }
@@ -283,6 +310,9 @@ export function createSync({ store, outbox, getNetStatus }) {
     // invitation, retrait) : purge des données de l'ancien club et de ses
     // curseurs, le pull qui suit repart de zéro.
     if (state?.club_id) await bindLocalDataToClub(store, state.club_id);
+    // Les listes sont lues dans CE club (X-DP-Club) : un changement de club
+    // pendant le pull ne peut pas mélanger deux annuaires.
+    const club = state?.club_id || null;
 
     const meta = (await store.get('meta', 'sync')) || {};
 
@@ -313,11 +343,11 @@ export function createSync({ store, outbox, getNetStatus }) {
 
     try {
       await pullIfChanged('divers',
-        (since) => http('GET', `/api/divers?since=${encodeURIComponent(since)}`));
+        (since) => http('GET', `/api/divers?since=${encodeURIComponent(since)}`, null, club));
       await pullIfChanged('sites',
-        (since) => http('GET', `/api/sites?since=${encodeURIComponent(since)}`));
+        (since) => http('GET', `/api/sites?since=${encodeURIComponent(since)}`, null, club));
       // dives : clé = client_uuid (pas id serveur)
-      await pullDivesIfChanged(meta, state);
+      await pullDivesIfChanged(meta, state, club);
     } catch (err) {
       console.warn('[sync] pull incrémental échec :', err.message);
     }
@@ -327,7 +357,7 @@ export function createSync({ store, outbox, getNetStatus }) {
     window.dispatchEvent(new CustomEvent('dp:syncDone', { detail: { at: meta.lastSyncAt } }));
   }
 
-  async function pullDivesIfChanged(meta, state) {
+  async function pullDivesIfChanged(meta, state, club) {
     if (!state.dives) return;
     const remote = Math.max(ts(state.dives.updated_at), ts(state.dives.deleted_at));
     if (!remote) return;
@@ -335,7 +365,7 @@ export function createSync({ store, outbox, getNetStatus }) {
     if (remote <= localTs) return;
 
     const since = meta.dives || '1970-01-01T00:00:00';
-    const list  = await http('GET', `/api/dives?since=${encodeURIComponent(since)}`);
+    const list  = await http('GET', `/api/dives?since=${encodeURIComponent(since)}`, null, club);
     for (const row of list || []) {
       const key = row.client_uuid || row.id;
       if (!key) continue;

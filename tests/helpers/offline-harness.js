@@ -66,10 +66,14 @@ export function installGlobals(win) {
 // Démarre store + outbox + sync neufs, accrochés au faux window :
 //   win.offlineStore, win.outbox, win.sync. `win.netStatus` (optionnel)
 //   est lu à chaque cycle, comme l'ancien window.netStatus.
-//   `win.clubId` (optionnel) : club courant capturé par l'outbox à la mise en file.
+//   `win.clubId` : club courant capturé par l'outbox à la mise en file
+//   (HARNESS_CLUB par défaut ; null = club inconnu → item mis en revue).
+export const HARNESS_CLUB = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+
 export function bootOffline() {
   const win = createWindow();
   installGlobals(win);
+  win.clubId = HARNESS_CLUB;
   win.offlineStore = createOfflineStore();
   // Forcer le fallback localStorage dès le départ.
   win.offlineStore._useFallback();

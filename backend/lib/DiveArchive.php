@@ -184,7 +184,7 @@ class DiveArchive
         });
     }
 
-    /** Recalcule les lignes dive_participants d'une plongée. */
+    /** Recalcule les lignes dive_participants d'une plongée (et pose participants_at). */
     public static function refreshParticipants(string $diveId): int
     {
         $dive = Db::row(
@@ -215,13 +215,19 @@ class DiveArchive
                     $dive['date_plongee'],
                 ]);
             }
+            // Repère « participants calculés », même à zéro participant :
+            // ClubStats::ensureParticipants ne recalcule plus cette plongée.
+            $pdo->prepare('UPDATE dives SET participants_at=NOW(), updated_at=updated_at WHERE id=?')->execute([$dive['id']]);
             return count($rows);
         });
     }
 
     /**
-     * Génère et stocke fiche + check-list. Ne lève jamais d'exception :
-     * l'issue est reflétée dans documents_status et journalisée.
+     * Génère et stocke les documents MANQUANTS ou ALTÉRÉS (fiche, check-list).
+     * Un document intègre n'est jamais remplacé (fiche archivée immuable,
+     * A322-72) ; un remplacement est journalisé avec l'ancienne empreinte.
+     * Ne lève jamais d'exception : l'issue est reflétée dans
+     * documents_status et journalisée.
      */
     public static function generateDocuments(string $diveId): bool
     {
@@ -234,14 +240,15 @@ class DiveArchive
             );
             if (!$dive) throw new RuntimeException('Plongée archivée introuvable');
 
-            $clubId  = (string)$dive['club_id'];
-            $profile = DivePdf::clubProfile($clubId);
-            foreach (DivePdf::TYPES as $type) {
+            $states  = self::documentStates($diveId);
+            $types   = DivePolicy::documentsToGenerate(array_map(static fn(array $s): string => $s['state'], $states));
+            $profile = $types ? DivePdf::clubProfile((string)$dive['club_id']) : [];
+            foreach ($types as $type) {
                 $pdf = DivePdf::render($dive, $type, $profile);
-                self::store($dive, $type, $pdf);
+                self::store($dive, $type, $pdf, $states[$type] ?? null);
             }
             self::setStatus($diveId, 'ok');
-            Log::action('dive.documents_stored', ['dive_id' => $diveId]);
+            Log::action('dive.documents_stored', ['dive_id' => $diveId, 'types' => $types]);
             return true;
         } catch (\Throwable $e) {
             self::logFailure($diveId, 'documents', $e);
@@ -254,8 +261,75 @@ class DiveArchive
         }
     }
 
-    /** Écrit le fichier (écriture atomique) et enregistre dive_documents. */
-    private static function store(array $dive, string $type, string $pdf): void
+    /**
+     * Régénération demandée par un membre (POST /api/dives/:id/documents) :
+     * autorisée seulement si documents_status = 'error' ou si un document
+     * manque / est altéré (DivePolicy::regenerationRefusal). Toute
+     * régénération est journalisée avec l'état et l'empreinte précédents.
+     *
+     * @param array $dive id, documents_status, documents_updated_at
+     * @return array{status: string, code?: string, message?: string}
+     *         status 'refused' (code, message) | 'ok' | 'error'
+     */
+    public static function regenerate(array $dive, DateTimeImmutable $now): array
+    {
+        $diveId  = (string)$dive['id'];
+        $states  = self::documentStates($diveId);
+        $refusal = DivePolicy::regenerationRefusal(
+            $dive['documents_status'] ?? null,
+            array_map(static fn(array $s): string => $s['state'], $states),
+            $dive['documents_updated_at'] ?? null,
+            $now
+        );
+        if ($refusal !== null) return ['status' => 'refused'] + $refusal;
+
+        Log::action('dive.documents_regenerated', [
+            'dive_id'         => $diveId,
+            'previous_status' => $dive['documents_status'] ?? null,
+            'previous'        => $states,
+        ]);
+        self::refreshParticipants($diveId);
+        self::setStatus($diveId, 'pending');
+        return ['status' => self::generateDocuments($diveId) ? 'ok' : 'error'];
+    }
+
+    /**
+     * État de chaque document d'une plongée : 'intact' (fichier présent,
+     * empreinte conforme), 'altered' (ligne présente mais fichier absent ou
+     * altéré), 'missing' (aucune ligne). sha256 = empreinte enregistrée.
+     *
+     * @return array<string, array{state: string, sha256: ?string}>
+     */
+    public static function documentStates(string $diveId): array
+    {
+        $out = array_fill_keys(DivePdf::TYPES, ['state' => 'missing', 'sha256' => null]);
+        $rows = Db::all('SELECT type, path, sha256 FROM dive_documents WHERE dive_id=?', [$diveId]);
+        foreach ($rows as $r) {
+            $type = (string)$r['type'];
+            if (!array_key_exists($type, $out)) continue;
+            $out[$type] = ['state' => self::fileIntact((string)$r['path'], (string)$r['sha256']) ? 'intact' : 'altered',
+                           'sha256' => (string)$r['sha256']];
+        }
+        return $out;
+    }
+
+    private static function fileIntact(string $relative, string $sha256): bool
+    {
+        try {
+            $abs = self::absolutePath($relative);
+        } catch (\InvalidArgumentException $e) {
+            return false;
+        }
+        $content = is_file($abs) ? @file_get_contents($abs) : false;
+        return $content !== false && hash_equals($sha256, hash('sha256', $content));
+    }
+
+    /**
+     * Écrit le fichier (écriture atomique) et enregistre dive_documents.
+     * $previous : état antérieur du document (documentStates) — un
+     * remplacement est journalisé avec l'ancienne empreinte.
+     */
+    private static function store(array $dive, string $type, string $pdf, ?array $previous = null): void
     {
         $relative = self::relativePath((string)$dive['club_id'], (string)$dive['id'], $type, $dive['date_plongee'] ?? null);
         $absolute = self::absolutePath($relative);
@@ -280,6 +354,12 @@ class DiveArchive
                                      bytes=VALUES(bytes), created_at=NOW()',
             [Db::uuid(), $dive['id'], $dive['club_id'], $type, $relative, hash('sha256', $pdf), strlen($pdf)]
         );
+        if ($previous !== null && $previous['sha256'] !== null) {
+            Log::action('dive.document_replaced', [
+                'dive_id' => $dive['id'], 'type' => $type, 'reason' => $previous['state'],
+                'old_sha256' => $previous['sha256'], 'new_sha256' => hash('sha256', $pdf),
+            ]);
+        }
     }
 
     /** documents_status sans toucher dives.updated_at (curseur de sync). */

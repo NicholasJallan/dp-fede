@@ -19,8 +19,15 @@ declare(strict_types=1);
  * bin/purge.php (Retention::run) supprime définitivement les clubs dont
  * retention_until est dépassée.
  *
- * Date de référence d'une plongée : la plus tardive de closed_at et
- * date_plongee (à défaut created_at) — choix conservateur.
+ * Date de référence d'une plongée : la plus tardive de closed_at (posée par
+ * le serveur à l'archivage) et created_at — deux dates SERVEUR. date_plongee,
+ * saisie par le client, n'intervient pas : un client ne peut pas avancer la
+ * fin de conservation d'une fiche.
+ *
+ * Données conservées minimisées : les plongeurs conservés ne gardent que ce
+ * qu'affiche la fiche (identité, licence, niveaux, aptitudes, qualifications) ;
+ * date de naissance, CACI, représentant légal, autorisation parentale, fin de
+ * licence, notes et identifiant externe sont effacés (RGPD art. 5.1.c).
  *
  * plan(), referenceDate(), retentionEnd(), referencedIds(), message() et
  * merge() sont purs (testés).
@@ -29,16 +36,28 @@ class ClubRetention
 {
     public const DAYS = 365;
 
+    /**
+     * Date de référence en SQL (table dives) : même règle que referenceDate().
+     * NULL (aucune date serveur) → jamais purgée.
+     */
+    public const REFERENCE_SQL = 'GREATEST(COALESCE(closed_at, created_at), COALESCE(created_at, closed_at))';
+
+    /** Colonnes des plongeurs conservés effacées (non nécessaires à la fiche). */
+    public const ANONYMIZED_DIVER_COLUMNS = [
+        'date_naissance', 'medical', 'licence_fin', 'representant_legal',
+        'autorisation_parentale_saison', 'notes', 'external_id',
+    ];
+
     // ── Fonctions pures ────────────────────────────────────────────────────
 
     public static function referenceDate(array $dive): ?DateTimeImmutable
     {
         $best = null;
-        foreach (['closed_at', 'date_plongee'] as $k) {
+        foreach (['closed_at', 'created_at'] as $k) {
             $d = self::parse($dive[$k] ?? null);
             if ($d !== null && ($best === null || $d > $best)) $best = $d;
         }
-        return $best ?? self::parse($dive['created_at'] ?? null);
+        return $best;
     }
 
     /** Dernier jour de conservation (référence + 365 jours), ou null. */
@@ -209,6 +228,15 @@ class ClubRetention
             'dives'              => $run("DELETE FROM dives WHERE club_id=?{$notId}", [$clubId, ...$pId]),
             'divers'             => $run("DELETE FROM divers WHERE club_id=?{$notDiver}", [$clubId, ...$pDiver]),
             'sites'              => $run("DELETE FROM sites WHERE club_id=?{$notSite}", [$clubId, ...$pSite]),
+            // Minimisation : seules les données affichées par la fiche restent.
+            'divers_anonymized'  => $run(
+                'UPDATE divers SET ' . implode(', ', array_map(
+                    static fn(string $c): string => "{$c}=NULL",
+                    self::ANONYMIZED_DIVER_COLUMNS
+                )) . ' WHERE club_id=?',
+                [$clubId]
+            ),
+            'sites_anonymized'   => $run('UPDATE sites SET notes=NULL WHERE club_id=?', [$clubId]),
             'club_invitations'   => $run('DELETE FROM club_invitations WHERE club_id=?', [$clubId]),
             'users_current'      => $run('UPDATE users SET current_club_id=NULL WHERE current_club_id=?', [$clubId]),
             'club_members'       => $run('DELETE FROM club_members WHERE club_id=?', [$clubId]),

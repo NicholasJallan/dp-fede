@@ -11,7 +11,7 @@ declare(strict_types=1);
  *   - plongées, plongées dirigées (DP) et minutes par plongeur.
  *
  * Source : dive_participants (rempli à l'archivage ; les plongées archivées
- * avant la phase 5 sont complétées à la volée par ensureParticipants()).
+ * avant la phase 5 sont complétées une seule fois par ensureParticipants()).
  * aggregate() et toCsv() sont purs (testés).
  */
 class ClubStats
@@ -200,10 +200,10 @@ class ClubStats
     }
 
     /**
-     * Remplit dive_participants pour les plongées archivées AVANT la phase 5
-     * (documents_status NULL) qui en ont besoin. Les plongées sans palanquée
-     * sont exclues : elles n'auraient jamais de participant et seraient
-     * recalculées à chaque appel.
+     * Remplit dive_participants pour les plongées archivées dont les
+     * participants n'ont jamais été calculés (archivées avant la phase 5).
+     * refreshParticipants() pose participants_at même à zéro participant :
+     * une plongée n'est donc calculée qu'une fois, pas à chaque appel.
      */
     private static function ensureParticipants(string $clubId, string $from, string $to): void
     {
@@ -211,9 +211,7 @@ class ClubStats
             "SELECT d.id FROM dives d
               WHERE d.club_id=? AND d.status='archived' AND d.deleted_at IS NULL
                 AND d.date_plongee >= ? AND d.date_plongee < DATE_ADD(?, INTERVAL 1 DAY)
-                AND d.documents_status IS NULL
-                AND d.palanquees IS NOT NULL AND d.palanquees NOT IN ('', '[]')
-                AND NOT EXISTS (SELECT 1 FROM dive_participants p WHERE p.dive_id = d.id)
+                AND d.participants_at IS NULL
               LIMIT 500",
             [$clubId, $from . ' 00:00:00', $to]
         );

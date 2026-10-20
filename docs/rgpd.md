@@ -104,8 +104,17 @@ logiciels).
   plongeur (identifiant), palanquée, rôle, aptitude, profondeurs prévue et
   réalisée, durée — base des statistiques du club (assemblée générale).
 - **Base légale** : obligation légale (6.1.c).
-- **Durée** : **1 an minimum** après la plongée (A322-72 : conservation de la
-  fiche de sécurité par l'établissement). Au-delà : purge optionnelle des
+- **Intégrité** : une plongée archivée est figée — son état d'exécution
+  (`render_state`) n'est plus modifiable (`422 ARCHIVED_IMMUTABLE`), seul le
+  lien Google Drive peut être ajouté ; un PDF archivé intègre n'est jamais
+  remplacé, et toute régénération (après échec ou document manquant /
+  altéré) est journalisée avec l'empreinte SHA-256 précédente.
+- **Durée** : **1 an minimum** après l'archivage (A322-72 : conservation de la
+  fiche de sécurité par l'établissement). La date de référence est
+  **calculée par le serveur** : la plus tardive de `closed_at` (heure du
+  serveur au passage en `archived`, la valeur envoyée par le client est
+  ignorée) et `created_at`. La date de plongée saisie par le client
+  n'intervient pas : un client ne peut pas raccourcir la conservation. Au-delà : purge optionnelle des
   plongées archivées de plus de N années (N ≥ 1). Recommandation : N = 5 si la
   structure veut couvrir la prescription civile de droit commun (5 ans) en cas
   d'accident ; à décider par le responsable de traitement. La purge supprime
@@ -125,8 +134,9 @@ unique membre) :
 
 | Données | Sort |
 |---|---|
-| Plongées archivées de moins de 365 jours (référence : la plus tardive de `closed_at` / `date_plongee`), leurs PDF, participants et état d'exécution | **Conservées** jusqu'à `clubs.retention_until` (fin de conservation la plus tardive) |
-| Plongeurs et sites référencés par ces plongées (palanquées, DP, sécurité surface, site) | **Conservés** avec elles |
+| Plongées archivées de moins de 365 jours (référence serveur : la plus tardive de `closed_at` / `created_at`), leurs PDF, participants et état d'exécution | **Conservées** jusqu'à `clubs.retention_until` (fin de conservation la plus tardive) |
+| Plongeurs référencés par ces plongées (palanquées, DP, sécurité surface) | **Conservés, minimisés** : nom, prénom, licence, niveaux, aptitudes et qualifications (ce qu'affiche la fiche) ; date de naissance, date du CACI, fin de licence, représentant légal, autorisation parentale, notes et identifiant externe **effacés** (art. 5.1.c) |
+| Sites référencés par ces plongées | **Conservés**, notes libres effacées |
 | Informations du club (nom, président : en-tête des fiches) | **Conservées** avec elles |
 | Tout le reste (autres plongées, plongeurs, sites, invitations, adhésions, PDF non conservés) | Supprimé immédiatement |
 
@@ -184,8 +194,15 @@ traceur tiers d'audience.
 | Plongeurs (personnes saisies dans l'annuaire d'un club) | Demande adressée à la structure, qui supprime la fiche du plongeur ; effacement définitif sous 180 jours (purge) ou via la suppression du club (immédiat, sauf s'il figure sur une fiche en conservation légale : § 3 bis). Les fiches de sécurité archivées où il figure suivent la durée de conservation des plongées (A322-72). Si le plongeur est de nouveau importé depuis VPDive, sa fiche est réactivée : le supprimer aussi dans VPDive. |
 
 Les données hors-ligne de l'application (IndexedDB / localStorage de
-l'appareil) doivent être effacées par le client lors de la déconnexion et de la
-suppression du compte.
+l'appareil) sont effacées par le client lors de la déconnexion et de la
+suppression du compte. Quand elles sont volontairement conservées (session
+expirée : reconnexion « en gardant mes saisies » ; changement de compte
+Google depuis une invitation) ou qu'un club a été quitté / retiré (`403
+CLUB_NOT_MEMBER`), l'application propose **« Supprimer les données de cet
+appareil »** (bandeau, invitation, écran de connexion) : plongées, annuaire,
+sites, actions en attente, caches et instantané de session sont effacés. Les
+actions « à revoir » destinées à un club quitté sont retirées automatiquement
+(elles ne peuvent plus être envoyées).
 
 ## Purges automatiques (`backend/bin/purge.php`, cron quotidien)
 
@@ -195,7 +212,7 @@ suppression du compte.
 | Clubs supprimés dont la conservation légale est échue (fiches, PDF, plongeurs et sites conservés) | Toujours | — |
 | Invitations utilisées, annulées ou expirées depuis plus de 30 jours | Toujours | — |
 | Plongeurs, sites, plongées supprimés (soft-delete) | 180 jours | `soft_deleted_days` / `--soft-deleted-days=N` (0 = jamais) |
-| Plongées archivées anciennes (+ participants, PDF archivés) | **Désactivée** | `archived_dives_years` / `--archived-dives-years=N` (N ≥ 1) |
+| Plongées archivées anciennes (+ participants, PDF archivés) — âge calculé sur les dates serveur (`closed_at`, `created_at`) | **Désactivée** | `archived_dives_years` / `--archived-dives-years=N` (N ≥ 1) |
 | Comptes inactifs (hors seul responsable d'un club partagé) | **Désactivée** | `inactive_accounts_years` / `--inactive-accounts-years=N` (N ≥ 2) |
 
 Toujours tester un changement avec `--dry-run` :

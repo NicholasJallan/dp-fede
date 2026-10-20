@@ -19,8 +19,11 @@
 //     club, acceptation d'invitation (et e-mail différent), import CSV en
 //     simulation puis confirmation, alertes sur l'accueil, PDF archivés,
 //     statistiques, export du compte, suppression (409 puis succès),
-//     en-tête X-DP-Club sur les écritures de l'outbox ; captures 375 / 1440
-//     des écrans Club et Import, audit axe-core.
+//     en-tête X-DP-Club sur les écritures de l'outbox et les lectures ;
+//     club retiré (403 CLUB_NOT_MEMBER) et session expirée : proposition de
+//     supprimer les données de l'appareil ; régénération des PDF archivés
+//     proposée seulement en erreur ; captures 375 / 1440 des écrans Club et
+//     Import, audit axe-core.
 
 const path = require('path');
 const { test, expect } = require('@playwright/test');
@@ -440,6 +443,7 @@ test.describe('build local — socle club', () => {
     await expect(dlg.locator('.alert.err')).toContainText('autre.personne@example.org');
     await expect(dlg.getByRole('button', { name: /Rejoindre en tant que/ })).toHaveCount(0);
     await expect(dlg.getByRole('button', { name: 'Changer de compte Google' })).toBeVisible();
+    await expect(dlg.getByRole('button', { name: 'Supprimer les données de cet appareil' })).toBeVisible();
     await dlg.getByRole('button', { name: "Ignorer l'invitation" }).click();
     await expect(dlg).toBeHidden();
     expect(state.accepted).toBe(false);
@@ -494,6 +498,20 @@ test.describe('build local — socle club', () => {
     await page.locator('.doc-row', { hasText: 'Fiche de sécurité' }).getByRole('button', { name: 'Télécharger' }).click();
     expect((await download).suggestedFilename()).toBe('2026-10-19-fiche-carriere.pdf');
     expect(state.downloads).toEqual(['srv-4/fiche']);
+    // Documents complets : une fiche archivée ne se régénère pas.
+    await expect(page.getByRole('button', { name: 'Régénérer les PDF' })).toHaveCount(0);
+  });
+
+  test('historique : régénération proposée seulement après un échec de génération', async ({ page }) => {
+    state.dives.find((d) => d.id === 'srv-4').documents_status = 'error';
+    await openHome(page);
+    await openTopbar(page, 'Historique');
+    await page.locator('.archive-row', { hasText: 'sortie club' }).click();
+    await expect(page.locator('.doc-status')).toContainText('Échec de la génération');
+    await page.getByRole('button', { name: 'Régénérer les PDF' }).click();
+    await expect(page.locator('.doc-status')).toContainText('PDF archivés par le club');
+    await expect(page.getByRole('button', { name: 'Régénérer les PDF' })).toHaveCount(0);
+    expect(state.regenerations).toEqual(['srv-4']);
   });
 
   test('statistiques et export CSV', async ({ page }) => {
@@ -561,6 +579,42 @@ test.describe('build local — socle club', () => {
     await page.getByRole('button', { name: /Nouvelle plongée/ }).click();
     await expect.poll(() => state.calls.includes('POST /api/dives')).toBe(true);
     expect(state.clubHeaders).toContainEqual({ call: 'POST /api/dives', club: CLUB_ID });
+  });
+
+  test('lectures API aussi envoyées avec l\'en-tête X-DP-Club du club courant', async ({ page }) => {
+    await openHome(page);
+    await expect.poll(() => state.clubHeaders.some((h) => h.call === 'GET /api/club')).toBe(true);
+    expect(state.clubHeaders).toContainEqual({ call: 'GET /api/club', club: CLUB_ID });
+    expect(state.clubHeaders.some((h) => h.call.startsWith('GET /api/auth/'))).toBe(false);
+  });
+
+  test('club retiré (403 CLUB_NOT_MEMBER) : resynchronisation et suppression des données proposée', async ({ page }) => {
+    await openHome(page);
+    // Retiré du club par son responsable : le serveur choisit un autre club courant.
+    state.revokedClubs = [CLUB_ID];
+    state.currentClub = OTHER_CLUB_ID;
+    await openTopbar(page, 'Club');
+    const banner = page.locator('.banner', { hasText: "Vous n'êtes plus membre" });
+    await expect(banner).toBeVisible();
+    await expect(page.locator('.topbar-club')).toHaveText('Bulles du Lac');
+    expect(await page.evaluate(() => localStorage.getItem('dp-club-id'))).toBe(OTHER_CLUB_ID);
+
+    await banner.getByRole('button', { name: 'Supprimer les données de cet appareil' }).click();
+    const dlg = page.getByRole('dialog', { name: 'Supprimer les données de cet appareil ?' });
+    await expect(dlg).toContainText('ne sont pas touchées');
+    await dlg.getByRole('button', { name: 'Supprimer' }).click();
+    // Page rechargée : session toujours valide → club courant resynchronisé.
+    await expect(page.getByRole('dialog', { name: /Bonjour/ })).toBeVisible();
+  });
+
+  test('session expirée : reconnexion ou suppression des données de l\'appareil', async ({ page }) => {
+    await openHome(page);
+    state.unauthorized = true;
+    await openTopbar(page, 'Club');
+    const banner = page.locator('.banner', { hasText: 'Session expirée' });
+    await expect(banner).toBeVisible();
+    await expect(banner.getByRole('button', { name: 'Se reconnecter' })).toBeVisible();
+    await expect(banner.getByRole('button', { name: 'Supprimer les données de cet appareil' })).toBeVisible();
   });
 
   test('rôle « lecture » : actions d\'écriture masquées, pas d\'alertes', async ({ page }) => {

@@ -49,6 +49,9 @@ if ($method === 'POST' && $path === '/api/divers/import') {
 // Le client peut envoyer son propre id (UUID v4). Si fourni, l'insertion est
 // idempotente via INSERT ... ON DUPLICATE KEY UPDATE : un sync rejoué par
 // l'outbox n'a aucun effet de bord. Sans id, le serveur en génère un.
+// L'UPSERT est limité au club de façon atomique (SyncHelpers::clubScopedUpsert) :
+// un id appartenant à un autre club laisse sa ligne intacte et répond 404,
+// exactement comme un plongeur inexistant (pas d'oracle d'existence).
 if ($method === 'POST' && $path === '/api/divers') {
     Csrf::verify();
     $user = Auth::require();
@@ -58,11 +61,6 @@ if ($method === 'POST' && $path === '/api/divers') {
 
     $clientId = $v->nullable('id');
     $id       = $clientId && SyncHelpers::isValidUuid($clientId) ? $clientId : Db::uuid();
-    // L'UPSERT ne doit jamais toucher la ligne d'un autre club.
-    $owner = Db::row('SELECT club_id FROM divers WHERE id=?', [$id]);
-    if ($owner && (string)$owner['club_id'] !== (string)$user['club_id']) {
-        Json::abort(409, 'Identifiant déjà utilisé');
-    }
 
     $cols = [
         'id' => $id, 'club_id' => $user['club_id'], 'user_id' => $user['id'],
@@ -70,17 +68,10 @@ if ($method === 'POST' && $path === '/api/divers') {
 
     // created_at, user_id (auteur), source et external_id ne sont pas mis à
     // jour : réactivation = même ressource logique.
-    $updatable = array_diff(array_keys($cols), ['id', 'club_id', 'user_id']);
-    $updates   = array_map(static fn(string $c): string => "{$c}=VALUES({$c})", $updatable);
-    $updates[] = 'deleted_at=NULL';
-
-    Db::q(
-        'INSERT INTO divers (' . implode(', ', array_keys($cols)) . ')
-         VALUES (' . implode(',', array_fill(0, count($cols), '?')) . ')
-         ON DUPLICATE KEY UPDATE ' . implode(', ', $updates),
-        array_values($cols)
-    );
-    Json::ok(decodeDiver(Db::row('SELECT * FROM divers WHERE id=? AND club_id=?', [$id, $user['club_id']])), 201);
+    [$sql, $params] = SyncHelpers::clubScopedUpsert('divers', $cols, ['user_id']);
+    Db::q($sql, $params);
+    $row = diverInClubOrAbort((string)$user['club_id'], $id);
+    Json::ok(decodeDiver($row), 201);
 }
 
 // GET /api/divers/:id

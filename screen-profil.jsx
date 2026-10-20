@@ -168,7 +168,7 @@ function MeteoField({ value, onChange, site, date }) {
 
       let data;
       try { data = JSON.parse(rawText); }
-      catch (parseErr) { throw new Error(`JSON invalide : ${parseErr.message}`); }
+      catch (parseErr) { throw new Error(`JSON invalide : ${parseErr.message}`, { cause: parseErr }); }
 
       if (data?.error) throw new Error(`API open-meteo : ${data.reason || 'erreur inconnue'}`);
       if (!data?.hourly?.time?.length) throw new Error('Pas de données horaires retournées');
@@ -272,7 +272,7 @@ function MareeField({ value, onChange, site, date }) {
     setFetching(true);
     setErr('');
     try {
-      const data = await apiFetch(`/proxy/maree?lat=${lat}&lng=${lng}&date=${encodeURIComponent(diveDate)}`);
+      const data = await api.proxy.maree(lat, lng, diveDate);
       // data = { harbor, date, tides }
       const text = `Marées ${data.harbor} (${data.date.split('-').reverse().join('/')}) : ${data.tides}`;
       onChange(text);

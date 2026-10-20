@@ -17,11 +17,16 @@
     "node": ">=20"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.0",
-    "esbuild": "^0.28.1"
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.13.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10"
   },
   "allowScripts": {
-    "esbuild@0.28.1": true
+    "esbuild@0.28.2": true
   },
   "dependencies": {
     "react": "^18.3.1",

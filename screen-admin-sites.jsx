@@ -1,6 +1,6 @@
 // DP Assistant — Administration des sites de plongée
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Alert, Pill } from './components.jsx';
 
 const MILIEUX_LIST = ['En mer','Lac','Carrière','Piscine','Autre'];

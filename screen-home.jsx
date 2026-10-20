@@ -206,7 +206,7 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
     if (finalizing) return;
     setFinalizing(true); setFinalizeMsg('');
     let divers = [];
-    try { divers = await window.offlineStore.all('divers'); } catch {}
+    try { divers = await window.offlineStore.all('divers'); } catch (err) { console.warn('[DP] annuaire local illisible :', err.message); }
     let ok = 0, fail = 0;
     for (const archive of pendingDrive) {
       try {

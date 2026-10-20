@@ -44,7 +44,7 @@ function writeLastUser(user) {
 }
 
 function clearLastUser() {
-  try { localStorage.removeItem(SKEYS.LAST_USER); } catch {}
+  try { localStorage.removeItem(SKEYS.LAST_USER); } catch { /* stockage indisponible */ }
 }
 
 // Pré-cache des listes au login pour bootstrap offline. Best-effort, non bloquant.

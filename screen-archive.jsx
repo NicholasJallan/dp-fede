@@ -3,12 +3,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useToasts } from './toast.jsx';
 import { useOnline } from './lib/use-online.jsx';
-import { Alert, diverFullName, formatDateTime } from './components.jsx';
+import { Alert, formatDateTime } from './components.jsx';
 
 // ---------------------------------------------------------------------------
 // Écran d'archivage principal
 // ---------------------------------------------------------------------------
-function ScreenArchive({ answers, palanquees, divers, user, pressions, realises, heuresDebut, heuresFin, checked, comments, plongeeFigee, onStartNew, onArchiveDone, diveId }) {
+function ScreenArchive({ answers, palanquees, divers, pressions, realises, heuresDebut, heuresFin, checked, comments, onStartNew, onArchiveDone, diveId }) {
   const { showToast } = useToasts();
   // ficheRef / checklistRef supprimés — PDF rendu côté serveur (C1.2)
   const [status,         setStatus]         = useState('idle');
@@ -197,7 +197,10 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
             setAlreadyArchived(true);
             if (dive.drive_link) setSavedDriveLink(dive.drive_link);
           }
-        } catch {}
+        } catch (err) {
+          // Hors-ligne : l'état d'archivage sera relu à la prochaine connexion.
+          console.warn('[DP] état d\'archivage indisponible :', err.message);
+        }
       }
       setInitialized(true);
     }
@@ -221,8 +224,6 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
     uploading:  '3/4 · Envoi vers Google Drive…',
     saving:     '4/4 · Enregistrement de l\'archive…',
   };
-
-  const busy = ['requesting','generating','uploading','saving'].includes(status);
 
   return (
     <div>

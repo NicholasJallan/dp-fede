@@ -9,7 +9,7 @@ const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 
 const win = require('./setup');
-const { QUESTIONS, CHECKLIST_RULES, matchCondition, isMilieuNaturel, getMilieuType, REGLEMENTATION } = win;
+const { QUESTIONS, CHECKLIST_RULES, matchCondition, isMilieuNaturel, REGLEMENTATION } = win;
 
 describe('REGLEMENTATION — veille réglementaire', () => {
   test('constante présente avec date ISO et libellés', () => {

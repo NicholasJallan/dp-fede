@@ -1,6 +1,6 @@
 // DP Assistant — Composants UI partagés
 
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 
 // =========================================================================
 // Pill — pastille de tag/mélange
@@ -363,7 +363,7 @@ function describePayload(item) {
 
 function SyncDrawer({ items, online, onClose, onForceSync }) {
   // Tick toutes les secondes pour ré-afficher les âges et les compte-à-rebours.
-  const [tick, setTick] = useState(0);
+  const [, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(id);

@@ -19,17 +19,6 @@ function copyFile(src, dest) {
   fs.copyFileSync(src, dest);
 }
 
-function copyDir(src, dest) {
-  fs.mkdirSync(dest, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    if (entry.isDirectory()) {
-      copyDir(path.join(src, entry.name), path.join(dest, entry.name));
-    } else {
-      copyFile(path.join(src, entry.name), path.join(dest, entry.name));
-    }
-  }
-}
-
 function buildHtml() {
   let html = fs.readFileSync('DP Assistant.html', 'utf8');
 

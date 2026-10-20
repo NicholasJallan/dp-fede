@@ -6,15 +6,15 @@
 //   - google.accounts.oauth2.initTokenClient mockable
 //   - document.cookie
 
-const { test, describe, beforeEach } = require('node:test');
+const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const fs = require('node:fs');
 
 function loadGoogleDriveInto(win) {
   const src = fs.readFileSync(path.join(__dirname, '..', 'lib', 'google-drive.js'), 'utf8');
-  // eslint-disable-next-line no-eval
-  (function (window) { eval(src); })(win);
+  // Le script lit `window` : on l'exécute dans une fonction qui le fournit.
+  new Function('window', src)(win);
 }
 
 function makeWin({ tokenReply = null, tokenError = null, gisAvailable = true, cookie = '' } = {}) {
@@ -31,7 +31,7 @@ function makeWin({ tokenReply = null, tokenError = null, gisAvailable = true, co
           initTokenClient(opts) {
             lastTokenClient = opts;
             return {
-              requestAccessToken(req) {
+              requestAccessToken() {
                 // Simule la réponse GIS asynchrone.
                 setImmediate(() => {
                   if (tokenError) opts.callback({ error: tokenError });

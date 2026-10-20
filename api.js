@@ -94,6 +94,10 @@ const api = {
   pdf: {
     blob: fetchPdfBlob,
   },
+  proxy: {
+    maree: (lat, lng, date) =>
+      apiFetch(`/proxy/maree?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&date=${encodeURIComponent(date)}`),
+  },
 };
 
 Object.assign(window, { api });

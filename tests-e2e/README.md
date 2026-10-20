@@ -3,6 +3,12 @@
 Tests bout-en-bout contre `dp-fede.bullesenvalais.ch` (prod par défaut) ou
 une URL de staging.
 
+> **Smoke test local** (sans backend ni cookies) : `npm run test:e2e:local`
+> construit `dist/`, le sert sur http://127.0.0.1:8765 et exécute
+> `local-smoke.spec.js` avec les routes `/api/**` simulées
+> (config `playwright.local.config.js`). Ce fichier est ignoré par la
+> config de prod (`playwright.config.js`).
+
 ## Pré-requis
 
 - Node 20+

@@ -1,9 +1,9 @@
 // Tests métier — offline-store (fallback localStorage testé ; le chemin IDB
 // est testé indirectement par outbox/sync et manuellement en navigateur).
 
-const { test, describe, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const { bootOffline } = require('./helpers/offline-harness');
+import { test, describe, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import { bootOffline } from './helpers/offline-harness.js';
 
 let win;
 beforeEach(() => { win = bootOffline(); });

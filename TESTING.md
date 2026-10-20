@@ -15,73 +15,79 @@ npm run test:php
 # End-to-end Playwright (nécessite cookies session — voir tests-e2e/README.md)
 npm run test:e2e
 npm run test:e2e:ui   # mode debug interactif
+
+# Smoke test local du build (dist/ servi sur :8765, API /api/** simulée)
+npm run test:e2e:local
 ```
 
 ## Architecture
 
 ```
-lib/
-  depth-clamp.js      ← computePalHardLimit, clampProfMax
-  pal-rules.js        ← validatePal, peLevel, paLevel, getMaxEnsLevel
-data.js               ← getDpMaxDepth, getDiverAptitudes, getAvailableMelanges, …
+src/domain/            ← règles métier pures (modules ES), ré-exportées par index.js
+  pal-rules.js         ← validatePal (ré-exporte les helpers de pal-helpers.js)
+  pal-helpers.js       ← peLevel, paLevel, getMaxEnsLevel, derivePalMode, contexte
+  depth-clamp.js       ← computePalHardLimit, clampProfMax
+  aptitudes.js         ← getDpMaxDepth, getDiverAptitudes, getAvailableMelanges, …
+  questions.js, checklist.js, conditions.js, milieu.js, fiche.js, …
+src/offline/           ← offline-store, outbox, sync, offline-api (fabriques + singletons)
+src/api/google-drive.js
 
-tests/
-  setup.js            ← charge data.js + lib/* dans un faux `window`
-  helpers/builders.js ← makeDiver, makePal, makeBapteme, PRESET.n1(), …
-  pal-rules.test.js   ← couverture validatePal (~50 cas)
-  dp-rules.test.js    ← couverture getDpMaxDepth, getProfOptions, getAvailableMelanges
-  aptitudes.test.js   ← couverture getDiverAptitudes, aptitudeMaxDepth, getMilieuType, getPalType, sortMembresForFiche
-  depth-clamp.test.js ← couverture computePalHardLimit, clampProfMax
+tests/                 ← modules ES (tests/package.json : "type": "module")
+  setup.js             ← regroupe les exports de src/domain/ dans un objet `win`
+  helpers/builders.js  ← makeDiver, makePal, makeBapteme, PRESET.n1(), …
+  helpers/offline-harness.js ← faux window/localStorage + instances offline neuves
+  fixtures/pal-rules.json    ← cas réglementaires partagés avec PHPUnit (ne pas déplacer)
+  pal-rules.test.js    ← exécute les fixtures sur validatePal
+  dp-rules.test.js     ← getDpMaxDepth, getAvailableMelanges
+  aptitudes.test.js    ← getDiverAptitudes, aptitudeMaxDepth, getMilieuType, getPalType, sortMembresForFiche
+  depth-clamp.test.js  ← computePalHardLimit, clampProfMax
+  checklist-context.test.js, home-buckets.test.js, google-drive.test.js
+  offline-store / outbox / sync / sync-integrity / dive-lifecycle .test.js
+
+tests-e2e/             ← Playwright (CommonJS)
+  0x-*.spec.js         ← golden paths contre la prod (cookies de session)
+  local-smoke.spec.js  ← build local + API simulée (playwright.local.config.js)
 ```
 
 ### Pourquoi `node --test` plutôt que Jest/Vitest ?
 
-- Le projet utilise déjà du **zéro-build** (Babel CDN côté navigateur). On ne veut pas introduire un bundler de tests.
-- Pas de transpilation TypeScript — tout est en JS pur.
+- Les règles métier et la couche offline sont des modules ES sans dépendance :
+  Node les importe directement, sans transpilation ni bundler de tests.
+- Pas de TypeScript — tout est en JS pur (JSDoc).
 - Le runner Node intègre `describe`, `test`, `beforeEach`, `assert/strict` et un reporter spec.
 - Une seule dépendance : Node 20+. C'est tout.
 
-### Pattern UMD léger
+### Modules ES partagés navigateur / Node
 
-Les modules `lib/*.js` sont écrits en UMD léger pour fonctionner à la fois :
-
-- Dans le navigateur : chargés via `<script src="lib/x.js">`, ils assignent à `window.X`.
-- Dans Node : `require('./lib/x.js')` retourne un objet `{X, Y, ...}`.
+Tout le code de `src/` est en modules ES (`src/package.json` déclare
+`"type": "module"`). Le navigateur les reçoit via le bundle esbuild
+(`dist/app.js`), Node les importe tels quels :
 
 ```js
-(function(root) {
-  function maFonction() { /* ... */ }
-
-  const api = { maFonction };
-  if (typeof module !== 'undefined' && module.exports) {
-    module.exports = api;
-  }
-  if (root) Object.assign(root, api);
-})(typeof window !== 'undefined' ? window : globalThis);
+import { validatePal } from '../src/domain/index.js';
 ```
 
-### Setup réseau-free
-
-`tests/setup.js` simule un `window` global puis `eval` indirect les fichiers source. Pas de mocking de DOM nécessaire — la logique métier n'a aucune dépendance DOM.
-
-> Important : on utilise `eval` indirect (et **pas** `vm.createContext`) pour rester dans le même realm V8. Sinon, les `Array` créés dans le contexte VM ont un `prototype` différent et `assert.deepEqual` (mode strict) échoue avec des messages trompeurs (« same structure but not reference-equal »).
+Les modules `src/domain/*` n'utilisent ni DOM ni React. Les modules
+`src/offline/*` lisent les globaux (`window`, `localStorage`, `fetch`,
+`CustomEvent`) **au moment de l'appel** : `tests/helpers/offline-harness.js`
+installe un faux `window` sur `globalThis` puis crée des instances neuves via
+`createOfflineStore()`, `createOutbox()` et `createSync()` — chaque test part
+d'un état vierge, sans `eval` ni rechargement de fichier.
 
 ## Ajouter un test
 
 1. Créer ou éditer `tests/X.test.js`.
-2. Importer les helpers : `const { makeDiver, makePal, ... } = require('./helpers/builders');`
-3. Importer le module testé via le setup : `const win = require('./setup');` puis `const { validatePal } = win;`
+2. Importer les helpers : `import { makeDiver, makePal, ... } from './helpers/builders.js';`
+3. Importer le module testé : `import { validatePal } from '../src/domain/index.js';` (ou via `import win from './setup.js';` puis `const { validatePal } = win;`)
 4. Écrire un `describe` / `test` (AAA : Arrange, Act, Assert).
 
 ### Exemple
 
 ```js
-const { test, describe } = require('node:test');
-const assert = require('node:assert/strict');
-const win = require('./setup');
-const { makeDiver, makePal, makeMembre, makeAnswers, PRESET, errors } = require('./helpers/builders');
-
-const { validatePal } = win;
+import { test, describe } from 'node:test';
+import assert from 'node:assert/strict';
+import { validatePal } from '../src/domain/index.js';
+import { makePal, makeMembre, makeAnswers, PRESET, errors } from './helpers/builders.js';
 
 describe('Ma nouvelle règle', () => {
   test('cas nominal → OK', () => {
@@ -99,27 +105,27 @@ describe('Ma nouvelle règle', () => {
 
 ## Couverture
 
-État actuel : **176+ tests, 40 suites**, ~100 ms d'exécution (node 20 sans aucune dépendance NPM).
+État actuel : **261 tests, 39 suites**, ~150 ms d'exécution (node 20+ sans aucune dépendance NPM).
 
 Modules couverts :
 
 | Module | Fonction | Tests |
 |---|---|---|
-| `lib/pal-rules.js` | `validatePal` | taille, profondeur, GP, encadrants, PA, baptêmes, débutants, médical, mélanges |
-| `lib/depth-clamp.js` | `computePalHardLimit`, `clampProfMax` | bornes session / DP / aptitudes |
-| `lib/outbox.js` | `enqueue`, `ready`, `markFailed` (backoff) | FIFO, backoff exp, nextWakeMs |
-| `lib/offline-store.js` | `put`, `get`, `all`, `del` | IDB-like avec fallback localStorage |
-| `lib/sync.js` | `drainOutbox`, handlers `dive.*` / `diver.*` | succès, 409 idempotent, offline guard |
-| `lib/google-drive.js` | `getDriveToken`, `getCsrfToken` | cache-first, timeout, scope |
-| `data.js` | `getDpMaxDepth` | E1→E4, N5, extensions PTH-120 |
-| `data.js` | `getProfOptions` | options par DP × site × Trimix |
-| `data.js` | `getAvailableMelanges` | filtrage Air / Nx / Tx selon qualif DP |
-| `data.js` | `getDiverAptitudes` | par niveau, bonus formation |
-| `data.js` | `aptitudeMaxDepth` | toutes les aptitudes + fallback |
-| `data.js` | `getMilieuType` | normalisation mer/lac/piscine/fosse |
-| `data.js` | `getPalType` | priorité baptême > formation > guidée > exploration |
-| `data.js` | `sortMembresForFiche` | ordre canonique + serre-file |
-| `screen-checklist.jsx` (extrait) | filtrage milieu / phase | items conditionnels piscine/fosse/mer |
+| `src/domain/pal-rules.js` | `validatePal` | fixtures partagées PHP : taille, profondeur, GP, encadrants, PA, baptêmes, débutants, médical, mélanges |
+| `src/domain/depth-clamp.js` | `computePalHardLimit`, `clampProfMax` | bornes session / DP / aptitudes |
+| `src/offline/outbox.js` | `enqueue`, `ready`, `markFailed`, `coalesce` (backoff) | FIFO, backoff exp, nextWakeMs, revue |
+| `src/offline/offline-store.js` | `put`, `get`, `all`, `del` | fallback localStorage |
+| `src/offline/sync.js` | `drainOutbox`, `pullIncremental`, handlers `dive.*` / `diver.*` | succès, 409 idempotent, offline guard, ordre par entité |
+| `src/offline/offline-api.js` | `dives.get`, `dives.update` | persistance hors-ligne, fusion d'outbox |
+| `src/api/google-drive.js` | `getDriveToken`, `getCsrfToken` | cache-first, timeout, scope |
+| `src/domain/aptitudes.js` | `getDpMaxDepth` | E1→E4, N5, extensions PTH-120 |
+| `src/domain/aptitudes.js` | `getAvailableMelanges` | filtrage Air / Nx / Tx selon qualif DP |
+| `src/domain/aptitudes.js` | `getDiverAptitudes` | par niveau, bonus formation |
+| `src/domain/aptitudes.js` | `aptitudeMaxDepth` | toutes les aptitudes + fallback |
+| `src/domain/milieu.js` | `getMilieuType`, `isMilieuNaturel` | normalisation mer/lac/piscine/fosse |
+| `src/domain/aptitudes.js` | `getPalType` | priorité baptême > formation > guidée > exploration |
+| `src/domain/fiche.js` | `sortMembresForFiche` | ordre canonique + serre-file |
+| `src/domain/questions.js`, `checklist.js` | filtrage milieu / phase | items conditionnels piscine/fosse/mer |
 | Dive lifecycle | transitions prepared → in_progress → archived | refus rétrograde, auto-save flush |
 | Home buckets | groupement par statut + tri | ordre date, pending Drive |
 
@@ -148,7 +154,7 @@ composer test
 
 ## E2E Playwright (Sprint 2)
 
-Trois golden paths dans `tests-e2e/` :
+Trois golden paths contre la prod dans `tests-e2e/` (config `playwright.config.js`) :
 
 | Fichier | Couvre |
 |---|---|
@@ -158,10 +164,24 @@ Trois golden paths dans `tests-e2e/` :
 
 Voir `tests-e2e/README.md` pour le setup cookies + variables d'env.
 
+### Smoke test local (`npm run test:e2e:local`)
+
+`tests-e2e/local-smoke.spec.js` + `playwright.local.config.js` : construit
+`dist/`, le sert sur http://127.0.0.1:8765 (`python3 -m http.server`) et
+simule toutes les routes `/api/**` (utilisateur connecté, annuaire, une
+plongée préparée). Scripts Google (GIS, Maps, Fonts) remplacés par des
+réponses vides. Vérifie :
+
+- l'accueil et la création d'une plongée (étapes 1 → 3, préparation) ;
+- l'exécution d'une plongée (étapes 3 → 5, fiche incluse, modale urgence) ;
+- l'absence d'erreur console ;
+- la coupure réseau en cours d'usage (pas d'écran blanc) et le rechargement
+  hors-ligne servi par le cache du Service Worker.
+
 ## Cibles non encore couvertes
 
 - Composants React rendus (DOM) hors E2E : pas de tests unitaires DOM-level
-  (zéro-build → pas de @testing-library/react sans bundler).
-- Logique CRUD palanquée dans `screen-palanquees.jsx` (addToPal, setAptitude…)
+  (le smoke test local couvre le rendu des étapes 1 → 5).
+- Logique CRUD palanquée dans `src/screens/screen-palanquees.jsx` (addToPal, setAptitude…)
   — testée indirectement via validatePal.
 - Backend : intégration HTTP complète (nécessite stub PDO ou DB de test).

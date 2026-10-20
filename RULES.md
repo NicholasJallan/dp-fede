@@ -4,7 +4,7 @@ Règles réglementaires appliquées par l'outil, telles qu'elles sont codées.
 
 **Source** : Code du sport, articles A322-71 à A322-101 et annexes III-14 a à III-18 c. Vérification faite sur le texte consolidé du **08/10/2026** (arrêtés des 17/10/2025 et 24/11/2025 inclus).
 
-**Date de référence** : `window.REGLEMENTATION` (`data.js`), affichée sur la fiche et l'écran compte.
+**Date de référence** : `REGLEMENTATION` (`src/domain/reglementation.js`), affichée sur la fiche et l'écran compte.
 
 > **Outil d'aide à la décision.** Il ne remplace pas la responsabilité du directeur de plongée (A322-72).
 
@@ -12,9 +12,9 @@ Règles réglementaires appliquées par l'outil, telles qu'elles sont codées.
 
 | Élément | Fichier |
 |---|---|
-| Tableaux des annexes (données pures) | `lib/cds-tables.js` |
-| Moteur de validation (`validatePal`) | `lib/pal-rules.js` |
-| Aptitudes d'un plongeur, profondeurs, type de palanquée | `data.js` |
+| Tableaux des annexes (données pures) | `src/domain/cds-tables.js` |
+| Moteur de validation (`validatePal`) | `src/domain/pal-rules.js` |
+| Aptitudes d'un plongeur, profondeurs, type de palanquée | `src/domain/aptitudes.js` |
 | Portage serveur (comportement identique) | `backend/lib/Rules.php` |
 | **Cas réglementaires partagés JS + PHP** (95 cas, chacun avec son article) | `tests/fixtures/pal-rules.json` |
 
@@ -225,7 +225,7 @@ Codes : `DP_QUAL_MILIEU`, `DP_MODE`, `DP_GAS`, `DP_DEPTH`, `DP_MISSING`.
 
 ## 9. Check-list
 
-Items conditionnels de `CHECKLIST_RULES` (`data.js`).
+Items conditionnels de `CHECKLIST_RULES` (`src/domain/checklist.js`).
 
 **Phase 1 — préparation**
 - Secours (A322-78) :

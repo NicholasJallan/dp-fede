@@ -12,6 +12,9 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'https://dp-fede.bullesenvala
 
 module.exports = defineConfig({
   testDir: 'tests-e2e',
+  // Le smoke test local (dist/ + API simulée) a sa propre config :
+  // playwright.local.config.js (npm run test:e2e:local).
+  testIgnore: /local-smoke\.spec\.js$/,
   // Timeout par test (les golden paths font du I/O, on laisse de la marge).
   timeout: 60_000,
   expect: { timeout: 10_000 },

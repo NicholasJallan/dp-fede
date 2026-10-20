@@ -1,6 +1,12 @@
 // build.js — esbuild bundler for DP Assistant
 // Usage:  node build.js           → production build to dist/
 //         node build.js --watch   → dev watch mode
+//
+// Entrées :
+//   src/app/main.jsx        → dist/app.js     (tout le JS applicatif, modules ES)
+//   src/styles/styles.css   → dist/styles.css
+//   index.html              → dist/index.html (template copié tel quel)
+//   public/**               → dist/**         (icônes, manifest, sw.js, inline-boot.js)
 
 const esbuild = require('esbuild');
 const crypto  = require('crypto');
@@ -10,61 +16,29 @@ const path    = require('path');
 const isWatch = process.argv.includes('--watch');
 const isProd  = !isWatch;
 
-const DIST = path.join(__dirname, 'dist');
+const ROOT   = __dirname;
+const DIST   = path.join(ROOT, 'dist');
+const PUBLIC = path.join(ROOT, 'public');
 
-// ── Asset copy ──────────────────────────────────────────────────────────────
+// ── Fichiers statiques ──────────────────────────────────────────────────────
 
-function copyFile(src, dest) {
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.copyFileSync(src, dest);
+function copyDir(src, dest) {
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const from = path.join(src, entry.name);
+    const to   = path.join(dest, entry.name);
+    if (entry.isDirectory()) copyDir(from, to);
+    else fs.copyFileSync(from, to);
+  }
 }
 
-function buildHtml() {
-  let html = fs.readFileSync('DP Assistant.html', 'utf8');
-
-  // Remove Babel CDN
-  html = html.replace(/<script[^>]*babel[^>]*>.*?<\/script>\s*/gi, '');
-  // Remove React / ReactDOM CDN (unpkg)
-  html = html.replace(/<script[^>]*unpkg\.com\/react[^>]*>.*?<\/script>\s*/gi, '');
-  html = html.replace(/<script[^>]*unpkg\.com\/react-dom[^>]*>.*?<\/script>\s*/gi, '');
-  html = html.replace(/<script[^>]*unpkg\.com\/@babel[^>]*>.*?<\/script>\s*/gi, '');
-  // Remove all text/babel JSX script tags
-  html = html.replace(/<script\s+type="text\/babel"[^>]*><\/script>\s*/gi, '');
-  // Remove lib/use-auto-save.jsx script tag (now bundled)
-  html = html.replace(/<script[^>]*use-auto-save\.jsx[^>]*>.*?<\/script>\s*/gi, '');
-
-  // Add bundle before </body>
-  html = html.replace('</body>', '  <script src="app.js" defer></script>\n</body>');
-
-  fs.writeFileSync(path.join(DIST, 'index.html'), html);
-}
-
-function copyAssets() {
+function copyStatic() {
+  fs.rmSync(DIST, { recursive: true, force: true });
   fs.mkdirSync(DIST, { recursive: true });
-
-  // Static assets
-  const rootFiles = [
-    'styles.css', 'sw.js', 'api.js', 'data.js', 'inline-boot.js',
-    'site.webmanifest',
-    'favicon.ico', 'favicon-16x16.png', 'favicon-32x32.png',
-    'apple-touch-icon.png', 'logo-ffessm.png',
-    'android-chrome-192x192.png', 'android-chrome-512x512.png',
-  ];
-  for (const f of rootFiles) {
-    if (fs.existsSync(f)) copyFile(f, path.join(DIST, f));
-  }
-
-  // lib/ — plain JS files only (JSX files are bundled, not copied)
-  const libSrc  = path.join(__dirname, 'lib');
-  const libDest = path.join(DIST, 'lib');
-  fs.mkdirSync(libDest, { recursive: true });
-  for (const entry of fs.readdirSync(libSrc)) {
-    if (entry.endsWith('.js')) {
-      copyFile(path.join(libSrc, entry), path.join(libDest, entry));
-    }
-  }
-
-  buildHtml();
+  copyDir(PUBLIC, DIST);
+  // index.html est un vrai template : aucune transformation. Le placeholder
+  // __GOOGLE_MAPS_API_KEY__ est remplacé au serve par nginx (sub_filter).
+  fs.copyFileSync(path.join(ROOT, 'index.html'), path.join(DIST, 'index.html'));
 }
 
 // ── Version du Service Worker ───────────────────────────────────────────────
@@ -94,12 +68,17 @@ function stampServiceWorker() {
 
 // ── esbuild ─────────────────────────────────────────────────────────────────
 
-const buildOptions = {
-  entryPoints: ['app.jsx'],
-  bundle:      true,
-  minify:      isProd,
+const shared = {
+  bundle:   true,
+  minify:   isProd,
   // Pas de sourcemap publié en prod (808 Ko, et expose les sources).
-  sourcemap:   isWatch,
+  sourcemap: isWatch,
+  logLevel: 'warning',
+};
+
+const jsOptions = {
+  ...shared,
+  entryPoints: [path.join(ROOT, 'src/app/main.jsx')],
   target:      'es2020',
   loader:      { '.jsx': 'jsx', '.js': 'jsx' },
   outfile:     path.join(DIST, 'app.js'),
@@ -108,21 +87,28 @@ const buildOptions = {
   jsxImportSource: 'react',
 };
 
-if (isWatch) {
-  copyAssets();
-  esbuild.context(buildOptions).then(ctx => {
-    ctx.watch();
-    console.log('[DP] Watching for changes… (Ctrl+C to stop)');
-  });
-} else {
-  copyAssets();
-  fs.rmSync(path.join(DIST, 'app.js.map'), { force: true });
-  esbuild.build(buildOptions).then(() => {
-    const stat = fs.statSync(path.join(DIST, 'app.js'));
-    const version = stampServiceWorker();
-    console.log(`[DP] Build OK — dist/app.js ${(stat.size / 1024).toFixed(1)} KB — SW ${version}`);
-  }).catch(err => {
-    console.error('[DP] Build failed:', err.message);
-    process.exit(1);
-  });
+const cssOptions = {
+  ...shared,
+  entryPoints: [path.join(ROOT, 'src/styles/styles.css')],
+  outfile:     path.join(DIST, 'styles.css'),
+};
+
+async function watch() {
+  copyStatic();
+  const contexts = await Promise.all([esbuild.context(jsOptions), esbuild.context(cssOptions)]);
+  await Promise.all(contexts.map(ctx => ctx.watch()));
+  console.log('[DP] Watching for changes… (Ctrl+C to stop) — public/ et index.html : relancer pour recopier');
 }
+
+async function build() {
+  copyStatic();
+  await Promise.all([esbuild.build(jsOptions), esbuild.build(cssOptions)]);
+  const stat = fs.statSync(path.join(DIST, 'app.js'));
+  const version = stampServiceWorker();
+  console.log(`[DP] Build OK — dist/app.js ${(stat.size / 1024).toFixed(1)} KB — SW ${version}`);
+}
+
+(isWatch ? watch() : build()).catch(err => {
+  console.error('[DP] Build failed:', err.message);
+  process.exit(1);
+});

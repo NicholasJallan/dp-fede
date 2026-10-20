@@ -1,4 +1,4 @@
-// Tests pour lib/google-drive.js — getDriveToken (cache + GIS mock) et
+// Tests pour src/api/google-drive.js — getDriveToken (cache + GIS mock) et
 // getCsrfToken (lecture cookie).
 //
 // On simule un faux `window` global avec :
@@ -6,15 +6,15 @@
 //   - google.accounts.oauth2.initTokenClient mockable
 //   - document.cookie
 
-const { test, describe } = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('node:path');
-const fs = require('node:fs');
+import { test, describe } from 'node:test';
+import assert from 'node:assert/strict';
+import * as googleDrive from '../src/api/google-drive.js';
 
+// Le module lit `window` (global) à l'appel : on installe le faux window
+// comme global et on y accroche les fonctions pour garder `win.xxx()`.
 function loadGoogleDriveInto(win) {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'lib', 'google-drive.js'), 'utf8');
-  // Le script lit `window` : on l'exécute dans une fonction qui le fournit.
-  new Function('window', src)(win);
+  globalThis.window = win;
+  Object.assign(win, googleDrive);
 }
 
 function makeWin({ tokenReply = null, tokenError = null, gisAvailable = true, cookie = '' } = {}) {
@@ -47,7 +47,7 @@ function makeWin({ tokenReply = null, tokenError = null, gisAvailable = true, co
   return { win, getLastTokenClient: () => lastTokenClient };
 }
 
-describe('lib/google-drive — getDriveToken', () => {
+describe('api/google-drive — getDriveToken', () => {
   test('GIS indisponible → reject', async () => {
     const { win } = makeWin({ gisAvailable: false });
     loadGoogleDriveInto(win);
@@ -98,7 +98,7 @@ describe('lib/google-drive — getDriveToken', () => {
   });
 });
 
-describe('lib/google-drive — getCsrfToken', () => {
+describe('api/google-drive — getCsrfToken', () => {
   // getCsrfToken lit `document.cookie` (global). On installe un faux
   // document sur globalThis avant chaque test, on le retire ensuite pour ne
   // pas polluer les autres suites.

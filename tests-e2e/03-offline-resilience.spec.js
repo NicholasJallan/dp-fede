@@ -10,7 +10,7 @@ test.describe('Mode offline', () => {
     await page.goto('/');
     await expect(page.locator('h1')).toContainText('Préparer et diriger');
 
-    // Simule la perte de connexion. Le SW + lib/net.js doivent prendre le relai.
+    // Simule la perte de connexion. Le SW + src/offline/net.js doivent prendre le relai.
     await context.setOffline(true);
 
     // Recharger l'accueil → doit toujours afficher la home depuis le SW cache.

@@ -1,27 +1,11 @@
-// Test harness — charge les modules métier (data.js + lib/*) dans un faux `window`
-// puis renvoie ce window pour utilisation dans les tests.
+// Test harness — expose les modules métier (src/domain/*) sous un objet unique.
 //
-// On utilise `eval` indirect plutôt que `vm.createContext` pour rester dans
-// le même realm V8 : sinon les Array créés dans le contexte VM ont un prototype
-// différent et `assert.deepEqual` (mode strict) échoue.
+// Les règles sont des modules ES purs : plus de faux `window` ni d'eval.
+// L'objet par défaut regroupe tous les exports pour que les tests puissent
+// déstructurer ce dont ils ont besoin (`const { validatePal } = win;`).
 
-const fs   = require('fs');
-const path = require('path');
+import * as domain from '../src/domain/index.js';
 
-const projectRoot = path.join(__dirname, '..');
+const win = { ...domain };
 
-// Faux window partagé — toutes les assignations `window.X = ...` y aboutissent.
-const win = {};
-
-// Expose comme `window` global ET `globalThis.window` (data.js fait window.X = ...).
-global.window     = win;
-globalThis.window = win;
-
-const indirectEval = eval;  // call site → scope global
-
-for (const rel of ['lib/cds-tables.js', 'lib/depth-clamp.js', 'lib/pal-rules.js', 'data.js']) {
-  const code = fs.readFileSync(path.join(projectRoot, rel), 'utf8');
-  indirectEval(code);
-}
-
-module.exports = win;
+export default win;

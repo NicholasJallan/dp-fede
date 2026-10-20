@@ -5,10 +5,10 @@
 //   - suppression des items auto-référents fiche (ex-`p1_fiche_init`/`p2_fiche`)
 //   - masquage des items sans objet en bassin (météo, marée, bouée)
 
-const { test, describe } = require('node:test');
-const assert = require('node:assert/strict');
+import { test, describe } from 'node:test';
+import assert from 'node:assert/strict';
 
-const win = require('./setup');
+import win from './setup.js';
 const { QUESTIONS, CHECKLIST_RULES, matchCondition, isMilieuNaturel, REGLEMENTATION } = win;
 
 describe('REGLEMENTATION — veille réglementaire', () => {

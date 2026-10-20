@@ -3,9 +3,9 @@
 // Scénario de perte de données à prévenir : une plongée préparée en ligne,
 // rouverte hors-ligne, ne doit jamais apparaître vide ni écraser le serveur.
 
-const { test, describe, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const { bootOffline, loadScript } = require('./helpers/offline-harness');
+import { test, describe, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import { bootOffline, loadOfflineApi } from './helpers/offline-harness.js';
 
 let win;
 
@@ -128,8 +128,7 @@ describe('offline-api — lecture d\'une plongée', () => {
       sites:  { list: async () => [] },
       dives:  { list: async () => [], get: async () => remote },
     };
-    win.sync = { start() {} };
-    loadScript(win, 'lib/offline-api.js');
+    loadOfflineApi(win);
   }
 
   test('dives.get en ligne persiste le contenu complet pour un usage hors-ligne', async () => {

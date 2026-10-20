@@ -1,10 +1,10 @@
 // Tests métier — profondeur maximale dirigée par le DP
 // (annexe III-15 a, A322-76, A322-98)
 
-const { test, describe } = require('node:test');
-const assert = require('node:assert/strict');
+import { test, describe } from 'node:test';
+import assert from 'node:assert/strict';
 
-const win = require('./setup');
+import win from './setup.js';
 const { getDpMaxDepth, getAvailableMelanges } = win;
 
 // =========================================================================

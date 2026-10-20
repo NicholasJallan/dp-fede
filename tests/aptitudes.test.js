@@ -1,9 +1,9 @@
 // Tests métier — aptitudes individuelles par niveau plongeur
 
-const { test, describe } = require('node:test');
-const assert = require('node:assert/strict');
+import { test, describe } from 'node:test';
+import assert from 'node:assert/strict';
 
-const win = require('./setup');
+import win from './setup.js';
 const { getDiverAptitudes, aptitudeMaxDepth, getMilieuType, getPalType, sortMembresForFiche } = win;
 
 describe('getDiverAptitudes — par niveau', () => {

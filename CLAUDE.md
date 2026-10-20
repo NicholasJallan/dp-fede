@@ -6,31 +6,48 @@ Frontend : React 18 + esbuild. Backend : PHP 7.4-FPM (API) + PHP 8.2 (CLI, PHPUn
 ## Build frontend
 
 ```bash
-npm run build    # build de prod → dist/   (node build.js)
-npm run dev      # watch mode   → dist/   (node build.js --watch)
+npm run build           # build de prod → dist/   (node build.js, sans sourcemap)
+npm run dev             # watch mode   → dist/   (node build.js --watch)
+npm run test:e2e:local  # build + sert dist/ sur :8765 + smoke Playwright (API simulée)
 ```
 
 `dist/` est gitignored — toujours déployer via `pi-scripts/deploy-frontend.sh` (qui lance le build puis rsync `dist/`).
 
-Le bump sw.js VERSION est **automatique** dans le script de déploiement — ne pas modifier `VERSION` à la main.
+Le bump sw.js VERSION est **automatique** (`build.js` : hash du contenu de `dist/`) — ne pas modifier `VERSION` à la main.
 
 ## Architecture
 
 ```
-Source (JSX, assets) → node build.js → dist/  ← ce qui est déployé
-  app.jsx (entry point esbuild)
-  screen-*.jsx, components.jsx, toast.jsx, auth-context.jsx
-  diver-form.jsx, lib/use-auto-save.jsx
-  data.js (window globals, chargé séparément)
-  lib/*.js (window globals, chargés séparément)
+Source → node build.js → dist/  ← ce qui est déployé
+  index.html                 template HTML source (copié tel quel ; placeholder Maps conservé)
+  public/                    copié tel quel : sw.js, inline-boot.js, manifest, icônes, logo
+  src/app/main.jsx           entrée esbuild → dist/app.js (TOUT le JS applicatif)
+  src/styles/styles.css      → dist/styles.css
+
+src/                         modules ES, organisés par fonctionnalité
+  app/          shell : main.jsx, bootstrap.js, App.jsx, constants.js, derive.js,
+                dive-content.js, hooks/ (use-dive-session, use-dive-actions,
+                use-dive-lifecycle, use-step-navigation, use-directory,
+                use-outbox-items, use-auth-expired), components/ (Topbar,
+                DiveStepper, AdminNav, SideSummary, FootNav, UrgenceModal,
+                ExecuteOverlays, ConfirmModals, ScreenRouter)
+  screens/      screen-*.jsx (un écran par fichier)
+  components/   ui.jsx, cds-link.jsx, format.js, sync-drawer.jsx, toast.jsx,
+                error-boundary.jsx, diver-form.jsx, components.jsx (ré-exports)
+  auth/         auth-context.jsx, super-admin.js
+  domain/       règles métier pures (index.js ré-exporte tout) : cds-tables,
+                pal-rules, pal-helpers, depth-clamp, aptitudes, questions, checklist,
+                conditions, milieu, levels, cds-articles, reglementation,
+                fiche, emergency, types
+  offline/      net.js, uuid.js, offline-store.js, outbox.js, sync.js,
+                offline-api.js, use-online.jsx, use-auto-save.jsx
+  api/          api.js, google-drive.js, drive-upload.js, storage-keys.js
+  package.json  { "type": "module" } (import direct par node --test)
 
 /var/www/html/dp-fede/       ← dist/ rsynced ici
-  index.html, app.js (bundle), styles.css
-  api.js, data.js, inline-boot.js
+  index.html, app.js (bundle), styles.css, inline-boot.js
   sw.js, site.webmanifest        ← PWA (Service Worker + manifest)
-  lib/                           ← plain JS window globals :
-    depth-clamp.js, net.js, offline-api.js,
-    offline-store.js, outbox.js, pal-rules.js, sync.js
+  favicon*, apple-touch-icon.png, android-chrome-*.png, logo-ffessm.png
 
 /var/www/dp-fede-api/        ← backend PHP (nginx → PHP-FPM)
   index.php, lib/, routes/
@@ -39,6 +56,14 @@ Source (JSX, assets) → node build.js → dist/  ← ce qui est déployé
 
 MariaDB : base dp_fede, user dp_fede_user@localhost
 ```
+
+Plus aucun `<script>` applicatif ni global `window.*` partagé : les modules
+s'importent. Seuls restent hors bundle `inline-boot.js` (fallback de
+chargement, `window.GOOGLE_CLIENT_ID`, callback `__gmapsReady`,
+enregistrement du SW), Google Identity Services et Google Maps.
+Ordre d'amorçage (`src/app/bootstrap.js`, appelé par `main.jsx` avant le
+rendu) : `startNetMonitor()` → `decorateApiForOffline(api)` (décore EN PLACE
+le singleton `api`) → `sync.start()` au tick suivant.
 
 - Auth : Google OAuth 2.0 (Google Identity Services) — pas de mot de passe
 - Annuaire plongeurs et sites : per-user, stockés en MariaDB
@@ -87,8 +112,8 @@ ssh pi@bullesenvalais.ch "sudo nginx -t && sudo systemctl reload nginx"
 
 ### Clé Google Maps — injectée au runtime par nginx
 
-`DP Assistant.html` (et donc `index.html`) contient le placeholder
-`__GOOGLE_MAPS_API_KEY__` dans la balise `<script>` Maps. nginx remplace
+`index.html` (template source, copié tel quel dans `dist/`) contient le
+placeholder `__GOOGLE_MAPS_API_KEY__` dans la balise `<script>` Maps. nginx remplace
 ce placeholder par la vraie clé au moment du serve via `sub_filter`
 dans le bloc `location ~* \.(jsx|js|css|html)$` du site dp-fede :
 
@@ -161,56 +186,61 @@ Ajouter aussi les directives `location` pour `sw.js` (no-cache strict) et
 `site.webmanifest` (no-cache). Voir `nginx-offline-snippet.conf` à la
 racine du repo — à copier dans le bloc server après modification.
 
-Avant chaque déploiement frontend, bumper **manuellement** la constante
-`VERSION` dans `sw.js` (format `dp-{YYYYMMDD}-{sha7}`). Sans ce bump, le
-navigateur considère que le SW n'a pas changé et conserve l'ancien cache.
+La constante `VERSION` de `public/sw.js` vaut `__SW_VERSION__` dans le dépôt ;
+`build.js` la remplace par un hash du contenu de `dist/` (`dp-{hash12}`). Ne
+pas la modifier à la main. `PRECACHE_URLS` liste l'app shell : `/`,
+`index.html`, `inline-boot.js`, `styles.css`, `app.js`, icônes, manifest.
 
 ## Tests métier
 
 Lancer : `npm test` (utilise `node --test`, Node 20+ requis, zéro dépendance NPM).
-Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **174 tests**
+Les tests sont des modules ES (`tests/package.json` → `"type": "module"`) qui
+importent directement `src/domain/*` et les fabriques de `src/offline/*`.
+Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **261 tests**
 (métier FFESSM/Code du Sport + offline : outbox, offline-store, sync, dive-lifecycle, home-buckets + contextualisation check-list par milieu).
 
 ## Données métier
 
-Tout est dans `data.js` (aucun build requis) :
-- `QUESTIONS` — sections du questionnaire (A, B, C, E, F, G), questions conditionnelles (`when`)
-- `CHECKLIST_RULES` — 2 phases (préparation / sur site avant mise à l'eau), items conditionnels (`when`)
-- `LEVELS` / `QUALIFICATIONS` — niveaux FFESSM et qualifs complémentaires
-- `APTITUDE_MAP` — mapping niveau → aptitudes mandatory/optional
-- `DP_DEPTH_RULES` — profondeurs max par niveau DP (exploration / formation)
-- `getMilieuType(milieu)` — normalise 'En mer'/'Lac'/'Carrière'/'Piscine'/'Fosse' → 'mer'/'lac'/'piscine'/'fosse'
-- `isMilieuNaturel(milieu)` — vrai en mer/lac/carrière, faux en piscine/fosse ; sert à masquer les questions et items de check-list sans objet en bassin (météo, marée, bouée)
-- `getProfOptions(niveauEncadrant, activite, dp, site)` — liste des profondeurs disponibles ; si exploration=0 pour le DP (E1/E2), fallback sur formation
-- `getDiverAptitudes(diver, isExploration, palContext)` — aptitudes disponibles pour un plongeur ; `palContext` (optionnel) apporte le bonus formation selon l'enseignant de la palanquée
-- `getDpMaxDepth(palType, dp)` — profondeur max autorisée pour un DP selon le type ('formation'/'exploration') ; 0 = type interdit
-- `getFormationBonusAptitudes(diver, maxEnsLevel)` — aptitudes PE bonus accordées en formation selon l'enseignant présent
-- `aptitudeMaxDepth(aptitude)` — profondeur max (m) associée à une aptitude (Baptême=6, PE20=20, …)
-- `sortMembresForFiche(membres)` — tri canonique des membres pour la fiche (encadrant → GP → … ; 2ᵉ GP en serre-file)
-- `getPalType(membres)` — type de palanquée : 'bapteme'/'formation'/'guidee'/'exploration'
-- `calcDTR(profMax)` — DTR sans déco : Math.ceil(profMax / 10)
+Modules purs dans `src/domain/` (ré-exportés par `src/domain/index.js`) :
+- `QUESTIONS` (`questions.js`) — sections du questionnaire (A, B, C, E, F, G), questions conditionnelles (`when`)
+- `CHECKLIST_RULES` (`checklist.js`) — 2 phases (préparation / sur site avant mise à l'eau), items conditionnels (`when`) ; `matchCondition(when, answers)` (`conditions.js`)
+- `LEVELS` / `STRUCTURE_LABELS` (`levels.js`) — libellés des niveaux FFESSM (flag `canBeDP`) et des structures
+- `APTITUDE_MAP` (`aptitudes.js`) — mapping niveau → aptitudes mandatory/optional
+- `REGLEMENTATION` (`reglementation.js`), `CDS_ARTICLES` / `parseCdsRefs` (`cds-articles.js`), `getEmergencyInfo` (`emergency.js`)
+- `CDS` (`cds-tables.js`) — tableaux des annexes III-15 a à III-18 c
+- `getMilieuType(milieu)` (`milieu.js`) — normalise 'En mer'/'Lac'/'Carrière'/'Piscine'/'Fosse' → 'mer'/'lac'/'piscine'/'fosse'
+- `isMilieuNaturel(milieu)` (`milieu.js`) — vrai en mer/lac/carrière, faux en piscine/fosse ; sert à masquer les questions et items de check-list sans objet en bassin (météo, marée, bouée)
+- `getDiverAptitudes(diver, isExploration, palContext)` (`aptitudes.js`) — aptitudes disponibles pour un plongeur ; `palContext` (optionnel) apporte le bonus formation selon l'enseignant de la palanquée
+- `getDpMaxDepth(palType, dp)` (`aptitudes.js`) — profondeur max autorisée pour un DP selon le type ('formation'/'exploration') ; 0 = type interdit
+- `getFormationBonusAptitudes(diver, maxEnsLevel)` (`aptitudes.js`) — aptitudes PE bonus accordées en formation selon l'enseignant présent
+- `aptitudeMaxDepth(aptitude)` (`aptitudes.js`) — profondeur max (m) associée à une aptitude (Baptême=6, PE20=20, …)
+- `getPalType(membres)` (`aptitudes.js`) — type de palanquée : 'bapteme'/'formation'/'guidee'/'exploration'
+- `getAvailableMelanges(dp)` (`aptitudes.js`) — mélanges autorisés selon les qualifications du DP
+- `sortMembresForFiche(membres)` (`fiche.js`) — tri canonique des membres pour la fiche (encadrant → GP → … ; 2ᵉ GP en serre-file)
+- `validatePal` (`pal-rules.js`, règles) ; `derivePalMode`, `isBassinDerogation`, `hasGasQual`, contexte de palanquée (`pal-helpers.js`, ré-exportés par `pal-rules.js`) ; `computePalHardLimit`, `clampProfMax` (`depth-clamp.js`)
+- Graphe d'import sans cycle : `pal-helpers` ← `aptitudes` ← `pal-rules` (garder `pal-helpers.js` indépendant d'`aptitudes.js`).
 
 ## Règles de dérivation automatique (ne pas re-questionner l'utilisateur)
 
-- **`answers.milieu`** : propagé depuis `selectedSite.milieu` dans `screen-profil.jsx` (useEffect sur `answers.site_id`). Ne pas afficher de question milieu en section A.
-- **`answers.activite`** : dérivé dans `screen-palanquees.jsx` (useEffect sur `palanquees`) — 'Enseignement' si palanquée avec E1→E4, 'Exploration' sinon, 'Mixte' si les deux. Ne pas afficher de question activité en section A.
-- **`isExploration`** dans `screen-palanquees.jsx` = `answers.dp_qual === 'N5'` (N5 ne peut faire qu'exploration). Ce n'est PAS dérivé de `answers.activite`.
+- **`answers.milieu`** : propagé depuis `selectedSite.milieu` dans `src/screens/screen-profil.jsx` (useEffect sur `answers.site_id`). Ne pas afficher de question milieu en section A.
+- **`answers.activite`** : dérivé dans `src/screens/screen-palanquees.jsx` (useEffect sur `palanquees`) — 'Enseignement' si palanquée avec E1→E4, 'Exploration' sinon, 'Mixte' si les deux. Ne pas afficher de question activité en section A.
+- **`isExploration`** dans `src/screens/screen-palanquees.jsx` = `answers.dp_qual === 'N5'` (N5 ne peut faire qu'exploration). Ce n'est PAS dérivé de `answers.activite`.
 - **`answers.depart_bord` / `answers.depart_bateau`** : propagés depuis `selectedSite` (même useEffect).
 - **`answers.dp_qual` / `answers.dp_nom`** : propagés depuis le plongeur sélectionné comme DP (useEffect sur `answers.dp_id`).
 
 ## Layout
 
-- `.main` dans `styles.css` n'a PAS de `max-width` ni `margin: auto` — il est pleine largeur comme la topbar et le stepper. Si on les rajoute, le contenu se décale visuellement vers la droite.
+- `.main` dans `src/styles/styles.css` n'a PAS de `max-width` ni `margin: auto` — il est pleine largeur comme la topbar et le stepper. Si on les rajoute, le contenu se décale visuellement vers la droite.
 
 ## Pièges connus
 
-- **Clé Google Maps** : `DP Assistant.html` ligne 70 doit contenir le placeholder `__GOOGLE_MAPS_API_KEY__`, jamais une vraie clé `AIza…`. Une vraie clé qui s'y glisse fuite dans GitHub (Secret Scanning) à la première push. nginx (`sub_filter` côté Pi) injecte la vraie clé au serve — cf. section « Clé Google Maps ». Si le sélecteur de sites n'affiche plus la carte après modif nginx : vérifier que `sub_filter` est bien dans le bloc `location ~* \.(jsx|js|css|html)$` (sinon il ne s'applique pas au HTML, qui est servi par ce bloc à cause de l'extension).
+- **Clé Google Maps** : la balise Maps de `index.html` doit contenir le placeholder `__GOOGLE_MAPS_API_KEY__`, jamais une vraie clé `AIza…`. Une vraie clé qui s'y glisse fuite dans GitHub (Secret Scanning) à la première push. nginx (`sub_filter` côté Pi) injecte la vraie clé au serve — cf. section « Clé Google Maps ». Si le sélecteur de sites n'affiche plus la carte après modif nginx : vérifier que `sub_filter` est bien dans le bloc `location ~* \.(jsx|js|css|html)$` (sinon il ne s'applique pas au HTML, qui est servi par ce bloc à cause de l'extension).
 - `buildQualifs()` dans `backend/routes/divers.php` : utiliser `$recs` (variable locale filtrée) et NON `compact('recycleurs')` qui capturerait le paramètre de fonction (liste complète).
 - `DIPLOMES_PRO` = `['BEES1','DEJEPS','DESJEPS','Autre']` — MF1/MF2 sont des brevets fédéraux, pas des diplômes professionnels d'État.
 - `getMilieuType()` est case-insensitive (`.toLowerCase()`) pour gérer les valeurs sites ('Lac', 'Carrière') et les anciennes valeurs questions.
-- `validatePal` vit dans `lib/pal-rules.js` (extrait de `screen-palanquees.jsx`). Toute modification doit être accompagnée d'un test dans `tests/pal-rules.test.js`.
-- Plafond de profondeur d'une palanquée : `window.computePalHardLimit({...})` (UN seul endroit). Les 4 anciennes duplications ont été supprimées.
-- Super-administrateur : email unique `nicholas.jallan@gmail.com` (constante `SUPER_ADMIN_EMAIL` côté front + `Auth::SUPER_ADMIN_EMAIL` côté back). Le rôle DB `admin` ne donne PAS accès aux endpoints `/api/users/*` — `Auth::requireSuperAdmin()` est requis.
+- `validatePal` vit dans `src/domain/pal-rules.js`. Toute modification doit être accompagnée d'un cas dans `tests/fixtures/pal-rules.json` (lu aussi par PHPUnit — ne pas déplacer ce fichier) et passer `tests/pal-rules.test.js`.
+- Plafond de profondeur d'une palanquée : `computePalHardLimit({...})` de `src/domain/depth-clamp.js` (UN seul endroit). Les 4 anciennes duplications ont été supprimées.
+- Super-administrateur : email unique `nicholas.jallan@gmail.com` (constante `SUPER_ADMIN_EMAIL` de `src/auth/super-admin.js` côté front + `Auth::SUPER_ADMIN_EMAIL` côté back). Le rôle DB `admin` ne donne PAS accès aux endpoints `/api/users/*` — `Auth::requireSuperAdmin()` est requis.
 - **Schéma DB** : géré par `Migrator::run()` (appelé depuis `Db::migrate()`). Migrations dans `backend/migrations/NNN_*.sql`, appliquées dans l'ordre lexicographique, trackées dans `schema_migrations`. `Db::migrate()` conserve aussi les garde-fous `addColumnIfMissing`/`addIndexIfMissing` pour la compatibilité. Nouvelles modifications → ajouter un fichier `NNN_*.sql`.
 - **Table `dives`** : cycle de vie `status ENUM('prepared','in_progress','archived')`. Colonnes : `planned_at`, `started_at`, `closed_at`, `deleted_at`. `render_state` conservé dans `dives` pour backward-compat mais écrits dans `dive_runtime_state` (H4).
 - **Table `dive_runtime_state`** : `(dive_id PK FK, state MEDIUMTEXT, updated_at)`. Écritures render_state (autosave) ici → ne touche PAS `dives.updated_at` (curseur de sync préservé). GET /api/dives/:id fait un LEFT JOIN (COALESCE state/dives.render_state).
@@ -219,11 +249,11 @@ Tout est dans `data.js` (aucun build requis) :
 - `divers` et `sites` font du **soft-delete** : `DELETE` met `deleted_at = NOW()`, la ligne reste pour propager la suppression aux clients via `GET /api/divers?since=`. La liste sans `?since=` exclut les soft-deletes. Champ `deleted: bool` dans la réponse. Même mécanique pour `dives`.
 - `dives.client_uuid` : si le front envoie un `client_uuid` (UUID v4) et qu'une plongée existe déjà avec ce couple `(user_id, client_uuid)`, le POST renvoie 200 `{ id, duplicate: true }` au lieu de créer une 2ᵉ ligne. Permet à l'outbox de rejouer sans dupliquer.
 - `POST /api/divers` et `POST /api/sites` acceptent un `id` optionnel (UUID v4 client) ; en cas de collision PK, ils font un UPSERT (`ON DUPLICATE KEY UPDATE`) et réactivent les soft-deletes (`deleted_at = NULL`).
-- Mode offline : `lib/net.js` expose `window.useOnline()` (hook React) et `window.netStatus()`. Auth-context bascule en `authMode = 'offline'` si `/api/auth/me` échoue mais qu'un snapshot `dp-last-user` < 7 j existe. L'écran archive ne déclenche pas Drive hors-ligne et reprend automatiquement quand `online` repasse à true.
-- Service Worker : `sw.js` à la racine, scope `/`. Avant déploiement frontend, bumper **manuellement** la constante `VERSION` dans `sw.js`. Les anciens caches sont purgés sèchement à l'activation du nouveau SW (pas de migration douce).
+- Mode offline : `src/offline/net.js` exporte `netStatus()` (et `startNetMonitor()`, appelé au démarrage) ; le hook React est `useOnline()` de `src/offline/use-online.jsx`. `offline-store`, `outbox` et `sync` exportent un singleton ET une fabrique (`createOfflineStore`, `createOutbox`, `createSync`) utilisée par les tests pour repartir d'un état vierge. Auth-context bascule en `authMode = 'offline'` si `/api/auth/me` échoue mais qu'un snapshot `dp-last-user` < 7 j existe. L'écran archive ne déclenche pas Drive hors-ligne et reprend automatiquement quand `online` repasse à true.
+- Service Worker : source `public/sw.js`, servi à la racine (scope `/`). `VERSION` est calculée au build (hash de `dist/`), jamais à la main. Tout nouveau fichier statique servi hors `app.js` doit être ajouté à `PRECACHE_URLS`. Les anciens caches sont purgés sèchement à l'activation du nouveau SW (pas de migration douce).
 - `render_state` : JSON sérialisé `{ pressions, realises, heuresDebut, heuresFin, checked, comments }`. Écrit dans `dive_runtime_state` via PATCH /api/dives/:id. Utilisé par les templates PHP (fiche.php, checklist.php) lors de la génération PDF côté serveur (C1.2). `finalizePendingDrive` fait un flush PATCH avant de demander le PDF.
-- **Plan de secours** : `sites.acces_secours` et `sites.caisson` (VARCHAR 500, créés via `Db::migrate`). Propagés dans `answers` par `screen-profil.jsx` (`site_acces_secours`, `site_caisson`, `site_coords`) et affichés dans le bloc « Conduite à tenir » de la fiche/PDF (`screen-fiche.jsx`, `screen-archive.jsx`). Bouton flottant « ☎ URGENCE » en mode `execute` (`app.jsx`).
-- **Cycle de vie** : plongée créée à `status='prepared'` dès le clic "+ Nouvelle plongée". Transition → `in_progress` au 1er `heuresDebut` posé (détectée dans `app.jsx` via useEffect). Transition → `archived` à l'archivage Drive. PATCH refusé en rétrograde (`archived` → autre statut).
-- **Auto-save** : debounce 500 ms vers `api.dives.update(currentDiveId, { answers, palanquees, render_state })`. Flush immédiat au retour accueil (`flushSave`) et lors de `loadDive` (bascule entre plongées).
-- **`diveMode`** dans `app.jsx` : `'prepare'` (étapes 1-3) ou `'execute'` (étapes 3-5). Check-list filtre les phases selon `mode`.
-- **Outbox kinds** : `dive.create`, `dive.update`, `dive.delete`, `dive.drive` (drive registered par ScreenArchive) ; `diver.create`, `diver.update`, `diver.delete` ; `site.create`, `site.update`, `site.delete`. Handlers dans `lib/sync.js` (`DEFAULT_HANDLERS`).
+- **Plan de secours** : `sites.acces_secours` et `sites.caisson` (VARCHAR 500, créés via `Db::migrate`). Propagés dans `answers` par `src/screens/screen-profil.jsx` (`site_acces_secours`, `site_caisson`, `site_coords`) et affichés dans le bloc « Conduite à tenir » de la fiche/PDF (`src/screens/screen-fiche.jsx`, `src/screens/screen-archive.jsx`). Bouton flottant « ☎ URGENCE » en mode `execute` (`src/app/components/ExecuteOverlays.jsx` + `UrgenceModal.jsx`).
+- **Cycle de vie** : plongée créée à `status='prepared'` dès le clic "+ Nouvelle plongée". Transition → `in_progress` au 1er `heuresDebut` posé (`src/app/hooks/use-dive-lifecycle.js`). Transition → `archived` à l'archivage Drive. PATCH refusé en rétrograde (`archived` → autre statut).
+- **Auto-save** (`src/offline/use-auto-save.jsx`) : debounce 500 ms vers `api.dives.update(currentDiveId, { answers, palanquees, render_state })`. Flush immédiat au retour accueil (`flushSave`) et lors de `loadDive` (bascule entre plongées).
+- **`diveMode`** dans `src/app/App.jsx` (`useAppController`) : `'prepare'` (étapes 1-3) ou `'execute'` (étapes 3-5). Check-list filtre les phases selon `mode`.
+- **Outbox kinds** : `dive.create`, `dive.update`, `dive.delete`, `dive.drive` (drive registered par ScreenArchive) ; `diver.create`, `diver.update`, `diver.delete` ; `site.create`, `site.update`, `site.delete`. Handlers dans `src/offline/sync.js` (`DEFAULT_HANDLERS`).

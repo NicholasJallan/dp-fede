@@ -101,7 +101,7 @@ function isOk(issues) {
   return issues.some(i => i.tone === 'ok') && errors(issues).length === 0;
 }
 
-module.exports = {
+export {
   resetIds,
   uid,
   makeDiver,

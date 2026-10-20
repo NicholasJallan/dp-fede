@@ -4,10 +4,12 @@
 // (backend/tests-php/RulesFixturesTest.php) : le front et l'API appliquent
 // exactement les mêmes règles.
 
-const { test, describe } = require('node:test');
-const assert = require('node:assert/strict');
-const win = require('./setup');
-const fixtures = require('./fixtures/pal-rules.json');
+import { test, describe } from 'node:test';
+import assert from 'node:assert/strict';
+import win from './setup.js';
+import { readFileSync } from 'node:fs';
+
+const fixtures = JSON.parse(readFileSync(new URL('./fixtures/pal-rules.json', import.meta.url), 'utf8'));
 
 const { validatePal, derivePalMode, hasGasQual } = win;
 

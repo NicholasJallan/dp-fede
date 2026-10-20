@@ -1,7 +1,7 @@
 // Tests — tri et split des plongées par statut (logique home screen)
 
-const { test, describe } = require('node:test');
-const assert = require('node:assert/strict');
+import { test, describe } from 'node:test';
+import assert from 'node:assert/strict';
 
 // Reproduit la logique de split/tri de screen-home.jsx (pure function)
 function splitAndSort(dives) {

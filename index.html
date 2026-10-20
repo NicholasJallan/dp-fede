@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>DP Assistant — Outil d'aide au Directeur de Plongée</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Favicons (FFESSM logo) -->
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="16x16"  href="/favicon-16x16.png" />
+  <link rel="icon" type="image/png" sizes="32x32"  href="/favicon-32x32.png" />
+  <link rel="apple-touch-icon" sizes="180x180"     href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <meta name="theme-color" content="#0a4a6e" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="root"></div>
+  <!-- Fallback : si React ne monte pas dans les 12 s, afficher un message actionnable. -->
+  <div id="load-fallback" style="display:none;position:fixed;inset:0;background:#F4F1EA;
+    align-items:center;justify-content:center;font-family:sans-serif;z-index:9999">
+    <div style="max-width:360px;padding:24px;background:#fff;border-radius:10px;
+      box-shadow:0 4px 20px rgba(0,0,0,.12);text-align:center">
+      <div style="font-size:24px;margin-bottom:12px">⚠</div>
+      <b style="font-size:16px">Chargement impossible</b>
+      <p style="color:#5A6B7E;font-size:13px;margin:10px 0 18px">
+        Les scripts de l'application n'ont pas pu être chargés.<br>
+        Videz le cache du site puis réessayez.
+      </p>
+      <button onclick="
+        if('serviceWorker' in navigator){
+          navigator.serviceWorker.getRegistrations().then(regs=>{
+            regs.forEach(r=>r.unregister());
+            caches.keys().then(k=>Promise.all(k.map(n=>caches.delete(n)))).then(()=>location.reload());
+          });
+        } else { location.reload(); }
+      " style="background:#0a4a6e;color:#fff;border:0;border-radius:6px;
+        padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer">
+        Vider le cache et recharger
+      </button>
+    </div>
+  </div>
+  <!-- Boot scripts (fallback timer, GOOGLE_CLIENT_ID, gmapsReady callback, SW registration) -->
+  <script src="inline-boot.js"></script>
+
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <!-- Google Maps JS API (Places) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=__GOOGLE_MAPS_API_KEY__&libraries=places&callback=__gmapsReady" async defer></script>
+
+  <!-- Bundle applicatif (esbuild : src/app/main.jsx → dist/app.js).
+       React, la couche offline (store, outbox, sync), l'API et les règles
+       métier sont tous des modules ES compilés dans ce fichier. -->
+  <script src="app.js" defer></script>
+
+  <!-- Service Worker enregistré par inline-boot.js -->
+</body>
+</html>

@@ -30,14 +30,16 @@ Profilage de la plongée, check-list conditionnelle, composition des palanquées
 
 | Technologie | Usage | Version |
 |---|---|---|
-| **React** | UI composants, state management | 18 (CDN) |
-| **Babel** | Transpilation JSX in-browser | CDN (`@babel/standalone`) |
+| **React** | UI composants, state management | 18 (npm, bundlé) |
+| **esbuild** | Bundle JSX + modules ES → `dist/app.js`, CSS → `dist/styles.css` | 0.28 |
 | **Google Identity Services** | OAuth 2.0 sign-in + Drive token | GIS SDK |
 | **Google Drive API v3** | Upload PDF, gestion dossier `dp-fede` | REST via `fetch` |
 | **Open-Meteo API** | Pré-remplissage météo (vent, température) | REST public |
 | **Google Maps / Places API** | Sélecteur de carte pour les sites | JS Maps SDK |
 
-> Aucun bundler, aucun build step. Tous les fichiers `.jsx` sont chargés via `<script type="text/babel">` dans `DP Assistant.html`.
+> Tout le code applicatif est en modules ES sous `src/`, bundlé par esbuild
+> (`npm run build`, entrée `src/app/main.jsx`). `index.html` ne charge plus que
+> `inline-boot.js`, Google Identity Services, Google Maps et `app.js`.
 
 ### Backend
 
@@ -64,7 +66,7 @@ Profilage de la plongée, check-list conditionnelle, composition des palanquées
 
 ```mermaid
 graph TD
-    Browser["Navigateur\n(React 18 + Babel CDN)"]
+    Browser["Navigateur\n(React 18, bundle esbuild)"]
     Nginx["nginx\n(TLS, CSP, proxy)"]
     PHP["PHP-FPM\n/var/www/dp-fede-api"]
     MariaDB["MariaDB\ndp_fede"]
@@ -90,7 +92,7 @@ graph TD
 ```mermaid
 sequenceDiagram
     participant U as Utilisateur
-    participant App as app.jsx (state)
+    participant App as src/app (state)
     participant API as Backend PHP
     participant DB as MariaDB
     participant Drive as Google Drive
@@ -106,7 +108,7 @@ sequenceDiagram
     DB-->>App: liste sites/plongeurs
 
     U->>App: Étape 4 — Fiche (suivi temps réel)
-    App->>App: localStorage auto-save (heuresDebut, heuresFin, pressions)
+    App->>API: auto-save PATCH /api/dives/:id (outbox offline-first)
 
     U->>App: Étape 5 — Archivage
     App->>API: POST /api/pdf/fiche (HTML → wkhtmltopdf)
@@ -122,54 +124,78 @@ sequenceDiagram
 
 ### Structure des fichiers
 
+Organisation par fonctionnalité (`src/`), un template HTML source et les
+fichiers statiques dans `public/`. `dist/` (gitignoré) est produit par
+`npm run build`.
+
 ```
 /
-├── DP Assistant.html       ← Point d'entrée unique — charge tous les scripts
-├── api.js                  ← Wrapper fetch (CSRF header, JSON, erreurs)
-├── auth-context.jsx        ← Context React — Google OAuth, session, logout
-├── toast.jsx               ← Toast notifications (remplace alert())
-├── app.jsx                 ← Shell principal, state global, routing par écran
-├── components.jsx          ← Composants partagés (Pill, CdsLink, etc.)
-├── data.js                 ← Référentiels métier (niveaux, aptitudes, check-list…)
-├── diver-form.jsx          ← Formulaire ajout/édition plongeur
-├── styles.css              ← Design system complet (custom properties, layout)
-├── logo-ffessm.png         ← Logo FFESSM (58×51 px)
+├── index.html                 ← Template HTML source (copié tel quel dans dist/)
+├── build.js                   ← esbuild : src/app/main.jsx → dist/app.js, styles, public/ → dist/
+├── public/                    ← Copié tel quel dans dist/
+│   ├── sw.js                  ← Service Worker (VERSION = hash du build)
+│   ├── inline-boot.js         ← Amorçage hors bundle (fallback, GOOGLE_CLIENT_ID, Maps, SW)
+│   ├── site.webmanifest, favicon*, apple-touch-icon.png, android-chrome-*.png
+│   └── logo-ffessm.png
 │
-├── lib/                    ← Logique métier pure (testable, sans React)
-│   ├── pal-rules.js        ← validatePal + helpers (peLevel, paLevel, getMaxEnsLevel)
-│   └── depth-clamp.js      ← computePalHardLimit, clampProfMax
+├── src/
+│   ├── app/                   ← Shell applicatif
+│   │   ├── main.jsx           ← Entrée du bundle : bootstrap() puis rendu React
+│   │   ├── bootstrap.js       ← net monitor → décoration offline d'api → sync.start()
+│   │   ├── App.jsx            ← Composition (providers, hooks, layout)
+│   │   ├── constants.js       ← STEPS, écrans admin, étapes prepare/execute
+│   │   ├── derive.js          ← Notes profil, palanquées bloquantes, progression
+│   │   ├── dive-content.js    ← Parsing du contenu d'une plongée, dates
+│   │   ├── hooks/             ← useDiveSession, useDiveActions, useDiveLifecycle,
+│   │   │                        useStepNavigation, useDirectory, useOutboxItems, useAuthExpired
+│   │   └── components/        ← Topbar, DiveStepper, AdminNav, SideSummary, FootNav,
+│   │                            UrgenceModal, ExecuteOverlays, ConfirmModals, ScreenRouter
+│   ├── screens/               ← Un fichier par écran (screen-*.jsx)
+│   │   ├── screen-home.jsx        ← Accueil — plongées préparées / en cours / archives
+│   │   ├── screen-login.jsx       ← Mire de connexion Google
+│   │   ├── screen-splash.jsx      ← Splash de bienvenue (une fois par session)
+│   │   ├── screen-profil.jsx      ← Étape 1 — Questionnaire profil de plongée
+│   │   ├── screen-palanquees.jsx  ← Étape 2 — Composition palanquées par aptitude
+│   │   ├── screen-checklist.jsx   ← Étape 3 — Check-list conditionnelle 2 phases
+│   │   ├── screen-fiche.jsx       ← Étape 4 — Fiche Art. A322-72 + suivi temps réel
+│   │   ├── screen-archive.jsx     ← Étape 5 — PDF serveur + archivage Google Drive
+│   │   ├── screen-archives.jsx    ← Historique
+│   │   ├── screen-account.jsx     ← Mon compte
+│   │   └── screen-admin-{divers,sites,users}.jsx ← Administration
+│   ├── components/            ← UI partagée : ui.jsx, cds-link.jsx, format.js,
+│   │                            sync-drawer.jsx, toast.jsx, error-boundary.jsx,
+│   │                            diver-form.jsx, components.jsx (ré-exports)
+│   ├── auth/                  ← auth-context.jsx (Google OAuth, session, offline), super-admin.js
+│   ├── domain/                ← Règles métier pures (sans React ni DOM, testées par node --test)
+│   │   ├── index.js           ← Point d'entrée (ré-exporte tout)
+│   │   ├── cds-tables.js      ← Tableaux des annexes III-15 a à III-18 c
+│   │   ├── pal-rules.js       ← validatePal (règles par annexe)
+│   │   ├── pal-helpers.js     ← rangs, qualifications, contexte de palanquée, derivePalMode
+│   │   ├── depth-clamp.js     ← computePalHardLimit, clampProfMax
+│   │   ├── aptitudes.js       ← APTITUDE_MAP, getDiverAptitudes, getDpMaxDepth, getPalType…
+│   │   ├── questions.js, checklist.js, conditions.js, milieu.js
+│   │   ├── levels.js, cds-articles.js, reglementation.js, fiche.js, emergency.js
+│   │   └── types.js           ← Typedefs JSDoc
+│   ├── offline/               ← net.js, uuid.js, offline-store.js, outbox.js, sync.js,
+│   │                            offline-api.js, use-online.jsx, use-auto-save.jsx
+│   ├── api/                   ← api.js (fetch + CSRF), google-drive.js, drive-upload.js, storage-keys.js
+│   └── styles/styles.css      ← Design system (custom properties, layout)
 │
-├── tests/                  ← Tests métier (node --test, voir TESTING.md)
-│   ├── setup.js            ← Charge data.js + lib/* dans un faux `window`
-│   ├── helpers/builders.js ← makeDiver, makePal, PRESET.n1()…
-│   ├── pal-rules.test.js   ← Couverture validatePal
-│   ├── dp-rules.test.js    ← Couverture getDpMaxDepth, getAvailableMelanges
-│   ├── aptitudes.test.js   ← Couverture getDiverAptitudes, getMilieuType…
-│   └── depth-clamp.test.js ← Couverture plafonds de profondeur
-│
-├── screen-home.jsx         ← Accueil — historique archives + clone plongée
-├── screen-login.jsx        ← Mire de connexion Google
-├── screen-splash.jsx       ← Splash de bienvenue — rappel aptitudes (une fois par session)
-├── screen-profil.jsx       ← Étape 1 — Questionnaire profil de plongée
-├── screen-palanquees.jsx   ← Étape 2 — Composition palanquées par aptitude
-├── screen-checklist.jsx    ← Étape 3 — Check-list conditionnelle 2 phases
-├── screen-fiche.jsx        ← Étape 4 — Fiche Art. A322-72 + suivi temps réel
-├── screen-archive.jsx      ← Étape 5 — Export PDF + archivage Google Drive
-│
-├── screen-archives.jsx     ← Historique (admin) — toutes les plongées
-├── screen-account.jsx      ← Mon compte — infos club, urgences
-├── screen-admin-divers.jsx ← Admin — annuaire plongeurs
-├── screen-admin-sites.jsx  ← Admin — annuaire sites
-└── screen-admin-users.jsx  ← Admin — gestion utilisateurs (nicholas.jallan uniquement)
+├── tests/                     ← Tests unitaires (node --test, modules ES — voir TESTING.md)
+│   ├── setup.js               ← Regroupe les exports de src/domain/
+│   ├── helpers/               ← builders.js, offline-harness.js (fabriques offline neuves par test)
+│   ├── fixtures/pal-rules.json← Cas réglementaires partagés avec PHPUnit
+│   └── *.test.js
+└── tests-e2e/                 ← Playwright (prod) + local-smoke.spec.js (dist/ local, API simulée)
 ```
 
-### State management (`app.jsx`)
+### State management (`src/app/`)
 
-Tout l'état partagé est levé dans `AppInner`. Il est persisté automatiquement dans `localStorage` (clé `dp-assistant-v1`) à chaque modification.
+Tout l'état de la plongée ouverte vit dans `useDiveSession` (`src/app/hooks/use-dive-session.js`), composé par `App.jsx`. Il est sauvegardé automatiquement (debounce 500 ms, `useAutoSave`) via `api.dives.update` → outbox → `PATCH /api/dives/:id`.
 
 ```mermaid
 graph LR
-    subgraph "État global — app.jsx"
+    subgraph "État global — useDiveSession"
         answers["answers\n{site_id, date, dp_id,\n milieu, activite, …}"]
         palanquees["palanquees\n[{id, membres, profMax, duree,\n  melange, …}]"]
         checked["checked\n{p1_meteo: true, …}"]
@@ -190,24 +216,28 @@ graph LR
 | Une palanquée a commencé (`heuresDebut` non vide) | Étapes 1, 2, 3 |
 | Plongée figée (`plongeeFigee = true`) | Étapes 1, 2, 3, 4 |
 
-### Référentiels métier (`data.js`)
+### Référentiels métier (`src/domain/`)
 
-| Export `window.*` | Contenu |
-|---|---|
-| `LEVELS` | Niveaux FFESSM : N1→N5, E1→E4, GP, PE/PA, Baptême |
-| `QUALIFICATIONS` | Qualifications complémentaires : NITROX, RIFAP, PADI, … |
-| `APTITUDE_MAP` | Mapping niveau → aptitudes `{mandatory[], optional[]}` |
-| `DP_DEPTH_RULES` | Prof. max par qualification DP (exploration / formation) |
-| `CHECKLIST_RULES` | 2 phases, items conditionnels (voir ci-dessous) |
-| `PAL_RULES` | Règles composition palanquée (`maxEnc`, `maxPA`) |
-| `STRUCTURE_LABELS` | Labels lisibles pour les types de structure |
-| `getMilieuType(milieu)` | Normalise → `'mer'|'lac'|'piscine'|'fosse'` |
-| `getProfOptions(niveauEncadrant, activite, dp, site)` | Profondeurs disponibles selon qual. encadrant, activité, PTH-120 et profondeur du site |
-| `getDiverAptitudes(diver, isExploration)` | Aptitudes selon niveau + contexte |
-| `getPalType(membres)` | Type palanquée : `'bapteme'|'formation'|'guidee'|'exploration'` |
-| `calcDTR(profMax)` | DTR sans déco : `Math.ceil(profMax / 10)` |
-| `matchCondition(when, answers)` | Évalue une condition check-list |
-| `sortMembresForFiche(membres)` | Tri encadrant → PE/PA → baptême, serre-file en fin |
+Modules ES purs, importés par les écrans (`import { … } from '../domain/index.js'`)
+et par les tests Node.
+
+| Export | Module | Contenu |
+|---|---|---|
+| `LEVELS`, `STRUCTURE_LABELS` | `levels.js` | Libellés des niveaux (flag `canBeDP`) et types de structure |
+| `APTITUDE_MAP` | `aptitudes.js` | Mapping niveau → aptitudes `{mandatory[], optional[]}` |
+| `getDiverAptitudes(diver, isExploration, palContext)` | `aptitudes.js` | Aptitudes selon niveau + contexte |
+| `getDpMaxDepth(palType, dp)` | `aptitudes.js` | Prof. max dirigée par le DP selon le type de palanquée |
+| `getPalType(membres, mode)` | `aptitudes.js` | `'bapteme'|'formation'|'guidee'|'exploration'` |
+| `getAvailableMelanges(dp)` | `aptitudes.js` | Mélanges autorisés selon les qualifications du DP |
+| `QUESTIONS` | `questions.js` | Sections du questionnaire, questions conditionnelles |
+| `CHECKLIST_RULES` | `checklist.js` | 2 phases, items conditionnels (voir ci-dessous) |
+| `matchCondition(when, answers)` | `conditions.js` | Évalue une condition `when` |
+| `getMilieuType(milieu)`, `isMilieuNaturel(milieu)` | `milieu.js` | Normalise → `'mer'|'lac'|'piscine'|'fosse'` |
+| `sortMembresForFiche(membres)` | `fiche.js` | Tri encadrant → PE/PA → baptême, serre-file en fin |
+| `CDS_ARTICLES`, `parseCdsRefs(text)` | `cds-articles.js` | Articles du Code du sport cités |
+| `getEmergencyInfo(paysCode, milieu)` | `emergency.js` | Numéros d'urgence |
+| `validatePal`, `derivePalMode`, `isBassinDerogation`… | `pal-rules.js` | Validation d'une palanquée |
+| `computePalHardLimit`, `clampProfMax` | `depth-clamp.js` | Plafond de profondeur d'une palanquée |
 
 #### Check-list conditionnelle
 
@@ -646,16 +676,18 @@ stateDiagram-v2
 
 ### Frontend
 
-```bash
-rsync -av --rsync-path="sudo rsync" \
-  --exclude='.git' --exclude='backend/' \
-  /Users/nicholas/projects/dpchecklist/ \
-  pi@bullesenvalais.ch:/var/www/html/dp-fede/
+Seul `dist/` est déployé. Le build (`node build.js`) bundle `src/` dans
+`dist/app.js`, copie `index.html` et `public/`, puis remplace
+`__SW_VERSION__` dans `dist/sw.js` par un hash du contenu publié.
 
-ssh pi@bullesenvalais.ch "sudo chown -R www-data:www-data /var/www/html/dp-fede && \
-  sudo cp '/var/www/html/dp-fede/DP Assistant.html' /var/www/html/dp-fede/index.html && \
-  sudo chown www-data:www-data /var/www/html/dp-fede/index.html"
+```bash
+npm run build                               # dist/ (sans sourcemap)
+bash deploy/deploy-frontend.sh --dry-run    # contrôle (build + rsync -n)
+bash deploy/deploy-frontend.sh              # build + rsync dist/ → /var/www/html/dp-fede/
 ```
+
+Vérification locale du build avant déploiement : `npm run test:e2e:local`
+(sert `dist/` sur http://127.0.0.1:8765 et simule l'API).
 
 ### Backend PHP
 

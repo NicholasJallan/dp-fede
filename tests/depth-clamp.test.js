@@ -1,9 +1,9 @@
-// Tests métier — computePalHardLimit et clampProfMax (lib/depth-clamp.js)
+// Tests métier — computePalHardLimit et clampProfMax (src/domain/depth-clamp.js)
 
-const { test, describe } = require('node:test');
-const assert = require('node:assert/strict');
+import { test, describe } from 'node:test';
+import assert from 'node:assert/strict';
 
-const win = require('./setup');
+import win from './setup.js';
 const { computePalHardLimit, clampProfMax, getPalType, aptitudeMaxDepth, getDpMaxDepth } = win;
 
 const deps = { aptitudeMaxDepth, getPalType, getDpMaxDepth };

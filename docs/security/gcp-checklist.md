@@ -41,7 +41,7 @@ GCP Console → APIs & Services → Credentials → OAuth 2.0 Client IDs
 
 GCP Console → APIs & Services → Credentials → API Keys
 
-La clé Maps n'est **jamais** committée. Le fichier `DP Assistant.html`
+La clé Maps n'est **jamais** committée. Le template `index.html`
 contient un placeholder `__GOOGLE_MAPS_API_KEY__` que nginx remplace au
 runtime via `sub_filter` (bloc `location ~* \.(jsx|js|css|html)$` du
 site dp-fede). La vraie clé vit donc uniquement dans

@@ -1,17 +1,16 @@
 // Configuration ESLint (flat config).
 //
-// Deux mondes coexistent tant que la migration vers des modules ES n'est pas
-// terminée : les écrans JSX bundlés par esbuild (modules) et les scripts
-// lib/*.js / data.js chargés en <script> (globals window.*).
+// Tout le code applicatif vit dans src/ sous forme de modules ES bundlés par
+// esbuild (entrée src/app/main.jsx). Seuls public/inline-boot.js (script
+// classique) et public/sw.js (service worker) restent hors bundle.
 
 const js = require('@eslint/js');
 const globals = require('globals');
 const reactHooks = require('eslint-plugin-react-hooks');
 
-// Globals exposés par les scripts classiques et consommés par les modules JSX.
-const appGlobals = {
-  api: 'readonly',
-  google: 'readonly', // Google Identity Services / Maps (scripts tiers)
+// Globals fournis par des scripts tiers chargés dans index.html.
+const thirdPartyGlobals = {
+  google: 'readonly', // Google Identity Services / Maps
 };
 
 const sharedRules = {
@@ -22,15 +21,15 @@ const sharedRules = {
 };
 
 module.exports = [
-  { ignores: ['dist/**', 'node_modules/**', 'backend/vendor/**', 'test-results/**', 'playwright-report/**'] },
+  { ignores: ['dist/**', 'node_modules/**', 'backend/vendor/**', 'test-results/**', 'playwright-report/**', 'tests-e2e-report/**'] },
   js.configs.recommended,
   {
-    files: ['**/*.jsx'],
+    files: ['src/**/*.{js,jsx}'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
       parserOptions: { ecmaFeatures: { jsx: true } },
-      globals: { ...globals.browser, ...appGlobals },
+      globals: { ...globals.browser, ...thirdPartyGlobals },
     },
     plugins: { 'react-hooks': reactHooks },
     rules: {
@@ -40,22 +39,23 @@ module.exports = [
     },
   },
   {
-    files: ['lib/*.js', 'data.js', 'api.js', 'inline-boot.js'],
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: 'script',
-      globals: { ...globals.browser, module: 'readonly' },
-    },
+    files: ['public/inline-boot.js'],
+    languageOptions: { ecmaVersion: 2022, sourceType: 'script', globals: globals.browser },
     rules: sharedRules,
   },
   {
-    files: ['sw.js'],
+    files: ['public/sw.js'],
     languageOptions: { ecmaVersion: 2022, sourceType: 'script', globals: globals.serviceworker },
     rules: sharedRules,
   },
   {
-    files: ['build.js', 'eslint.config.js', 'playwright.config.js', 'tests/**/*.js', 'tests-e2e/**/*.js'],
+    files: ['build.js', 'eslint.config.js', 'playwright.config.js', 'playwright.local.config.js', 'tests-e2e/**/*.js'],
     languageOptions: { ecmaVersion: 2022, sourceType: 'commonjs', globals: { ...globals.node, ...globals.browser } },
+    rules: { ...sharedRules, 'no-console': 'off' },
+  },
+  {
+    files: ['tests/**/*.js'],
+    languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.node, ...globals.browser } },
     rules: { ...sharedRules, 'no-console': 'off' },
   },
 ];

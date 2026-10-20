@@ -1,8 +1,8 @@
 // Tests métier — sync (drain outbox + idempotence + dispatch handlers).
 
-const { test, describe, beforeEach } = require('node:test');
-const assert = require('node:assert/strict');
-const { bootOffline } = require('./helpers/offline-harness');
+import { test, describe, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import { bootOffline } from './helpers/offline-harness.js';
 
 let win;
 

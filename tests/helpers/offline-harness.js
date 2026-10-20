@@ -1,13 +1,18 @@
-// Test harness pour offline-store / outbox / sync.
-// Pose un faux window/localStorage/document, fait passer les fichiers lib/*
-// dans un eval indirect (même realm V8 que les tests, pour assert.deepEqual).
+// Test harness pour offline-store / outbox / sync / offline-api.
+//
+// Pose un faux window/localStorage/document sur globalThis, puis crée des
+// instances NEUVES des modules (fabriques createOfflineStore / createOutbox /
+// createSync) : chaque test part d'un état vierge. Les modules lisent les
+// globaux (window, localStorage, fetch, CustomEvent…) au moment de l'appel.
 
-const fs   = require('fs');
-const path = require('path');
-const projectRoot = path.join(__dirname, '..', '..');
+import { randomUUID } from 'node:crypto';
+import { createOfflineStore } from '../../src/offline/offline-store.js';
+import { createOutbox } from '../../src/offline/outbox.js';
+import { createSync } from '../../src/offline/sync.js';
+import { decorateApiForOffline } from '../../src/offline/offline-api.js';
 
 // Shim localStorage minimaliste.
-function makeLocalStorage() {
+export function makeLocalStorage() {
   const map = new Map();
   return {
     get length() { return map.size; },
@@ -30,19 +35,13 @@ class EventBus {
   dispatchEvent(ev) { (this._listeners[ev.type] || []).forEach(fn => fn(ev)); }
 }
 
-function createWindow() {
+export function createWindow() {
   const win = new EventBus();
   win.localStorage = makeLocalStorage();
-  win.crypto = { randomUUID: () => require('crypto').randomUUID() };
-  win.randomUUID = () => win.crypto.randomUUID();
   win.CustomEvent = class CustomEvent {
     constructor(type, init = {}) { this.type = type; this.detail = init.detail; }
   };
   win.indexedDB = null;   // force fallback localStorage dans offline-store
-  win.setTimeout    = setTimeout;
-  win.clearTimeout  = clearTimeout;
-  win.setInterval   = setInterval;
-  win.clearInterval = clearInterval;
   win.document = Object.assign(new EventBus(), {
     cookie: '',
     visibilityState: 'visible',
@@ -52,31 +51,38 @@ function createWindow() {
   return win;
 }
 
-function loadScript(win, rel) {
-  const code = fs.readFileSync(path.join(projectRoot, rel), 'utf8');
-  global.window       = win;
-  globalThis.window   = win;
-  global.localStorage = win.localStorage;
-  global.indexedDB    = win.indexedDB;
-  global.document     = win.document;
-  global.navigator    = win.navigator;
-  global.CustomEvent  = win.CustomEvent;
-  global.fetch        = win.fetch;
-  // Inject window.addEventListener etc. to globals too — net.js uses them via window.
-  const indirectEval = eval;
-  indirectEval(code);
+// Installe le faux window comme globaux (ce que lisent les modules à l'appel).
+export function installGlobals(win) {
+  globalThis.window       = win;
+  globalThis.localStorage = win.localStorage;
+  globalThis.indexedDB    = win.indexedDB;
+  globalThis.document     = win.document;
+  globalThis.CustomEvent  = win.CustomEvent;
+  globalThis.fetch        = win.fetch;
+  // navigator est un getter en lecture seule depuis Node 21 : on le redéfinit.
+  Object.defineProperty(globalThis, 'navigator', { value: win.navigator, configurable: true, writable: true });
 }
 
-function bootOffline() {
+// Démarre store + outbox + sync neufs, accrochés au faux window :
+//   win.offlineStore, win.outbox, win.sync. `win.netStatus` (optionnel)
+//   est lu à chaque cycle, comme l'ancien window.netStatus.
+export function bootOffline() {
   const win = createWindow();
-  // Ordre : offline-store, outbox, sync. (net.js et offline-api.js dépendent
-  // d'api et de React — pas chargés pour ces tests unitaires.)
-  loadScript(win, 'lib/offline-store.js');
+  installGlobals(win);
+  win.offlineStore = createOfflineStore();
   // Forcer le fallback localStorage dès le départ.
   win.offlineStore._useFallback();
-  loadScript(win, 'lib/outbox.js');
-  loadScript(win, 'lib/sync.js');
+  win.outbox = createOutbox({ store: win.offlineStore, uuid: randomUUID });
+  win.sync = createSync({
+    store: win.offlineStore,
+    outbox: win.outbox,
+    getNetStatus: () => (typeof win.netStatus === 'function' ? win.netStatus() : null),
+  });
   return win;
 }
 
-module.exports = { createWindow, loadScript, bootOffline, makeLocalStorage };
+// Décore win.api (objet api factice) avec la couche offline du harness.
+export function loadOfflineApi(win) {
+  decorateApiForOffline(win.api, { store: win.offlineStore, outbox: win.outbox, uuid: randomUUID });
+  return win.api;
+}

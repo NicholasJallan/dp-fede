@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: Frontend — lint, tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: Aucune clé Google Maps dans le dépôt
+        run: |
+          if git grep -nE 'AIza[0-9A-Za-z_-]{35}'; then
+            echo "::error::Clé AIza… détectée — elle doit rester dans la config nginx du Pi"
+            exit 1
+          fi
+
+  backend:
+    name: Backend — PHPUnit (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.2', '8.3']
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, gd, pdo_mysql, curl, openssl
+          coverage: none
+      - run: composer install --no-interaction --no-progress
+      - run: composer test
+      - run: composer audit

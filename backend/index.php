@@ -4,6 +4,15 @@ error_reporting(E_ALL);
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 
+// Dépendances Composer (mPDF, php-jwt) — installées au déploiement par
+// `composer install --no-dev`. Sans elles, l'API démarre mais la génération
+// PDF échoue et la vérification JWT retombe sur l'endpoint tokeninfo.
+if (is_file(__DIR__ . '/vendor/autoload.php')) {
+    require_once __DIR__ . '/vendor/autoload.php';
+} else {
+    error_log('[dp-fede] vendor/autoload.php absent — exécuter composer install --no-dev');
+}
+
 // Load libs
 foreach (['Config','Json','Db','Auth','Csrf','Validate','SyncHelpers','RateLimit','Log'] as $cls) {
     require_once __DIR__ . "/lib/{$cls}.php";

@@ -19,5 +19,4 @@ playwright-report/
 
 # PHP
 backend/vendor/
-backend/composer.lock
 .phpunit.result.cache

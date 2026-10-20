@@ -4,7 +4,7 @@
   "type": "project",
   "license": "proprietary",
   "require": {
-    "php": ">=7.4",
+    "php": ">=8.2",
     "firebase/php-jwt": "^7.0",
     "mpdf/mpdf": "^8.3"
   },
@@ -12,7 +12,9 @@
     "phpunit/phpunit": "^9.6"
   },
   "autoload": {
-    "classmap": ["lib/"]
+    "classmap": [
+      "lib/"
+    ]
   },
   "autoload-dev": {
     "psr-4": {
@@ -20,9 +22,13 @@
     }
   },
   "scripts": {
-    "test": "vendor/bin/phpunit --colors=always"
+    "test": "vendor/bin/phpunit --colors=always",
+    "audit": "composer audit"
   },
   "config": {
-    "sort-packages": true
+    "sort-packages": true,
+    "platform": {
+      "php": "8.2.28"
+    }
   }
 }

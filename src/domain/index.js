@@ -22,6 +22,7 @@ export { CHECKLIST_RULES } from './checklist.js';
 export { matchCondition } from './conditions.js';
 export { getMilieuType, isMilieuNaturel } from './milieu.js';
 export { sortMembresForFiche } from './fiche.js';
+export { PALIER_DEPTHS, initialPaliers, paliersDone, paliersTotal, formatPaliers } from './paliers.js';
 export { getEmergencyInfo } from './emergency.js';
 export { computePalHardLimit, clampProfMax } from './depth-clamp.js';
 export {

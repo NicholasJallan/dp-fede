@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { CdsLink, diverFullName, formatDateTime } from '../../components/components.jsx';
-import { getEmergencyInfo, getPalType, REGLEMENTATION, STRUCTURE_LABELS, sortMembresForFiche } from '../../domain/index.js';
+import { formatPaliers, getEmergencyInfo, getPalType, REGLEMENTATION, STRUCTURE_LABELS, sortMembresForFiche } from '../../domain/index.js';
 import { pressureKey } from './execution-board.jsx';
 
 const TYPE_SHORT = { exploration: 'Explo.', guidee: 'Guidée', formation: 'Form.', bapteme: 'Bapt.' };
@@ -58,7 +58,8 @@ function PalRows({ p, pi, diversById, heuresDebut, heuresFin, realises, pression
               <td rowSpan={rows}><PrevuReal prevu={p.profMax} real={real?.profMax} unit="m" /></td>
               <td rowSpan={rows}><PrevuReal prevu={p.duree} real={real?.duree} unit="min"
                 extra={debut && <span className="num">{debut} – {fin || '…'}</span>} /></td>
-              <td rowSpan={rows}><PrevuReal prevu={p.dtr} real={real?.dtr} unit="min" /></td>
+              <td rowSpan={rows}><PrevuReal prevu={p.dtr} real={real?.dtr} unit="min"
+                extra={formatPaliers(real) && <span className="paliers"><span className="lbl">Paliers </span>{formatPaliers(real)}</span>} /></td>
             </>}
             <td className="num">{pr ? (pr === AIR_OUT ? AIR_OUT : `${pr} bar`) : '—'}</td>
           </tr>

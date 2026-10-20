@@ -193,6 +193,43 @@ select.input { padding-right: var(--sp-6); }
 .unit-input.is-missing { border-style: dashed; border-color: var(--c-warn); }
 .unit-input.is-missing .unit { color: var(--c-warn); }
 
+/* Saisie rapide « − / + » (StepperField) : cibles de 48 px, appui long = répétition */
+.num-stepper {
+  display: grid;
+  grid-template-columns: var(--touch) minmax(0, 1fr) var(--touch);
+  gap: var(--sp-1);
+  align-items: stretch;
+}
+.num-stepper .unit-input { min-width: 0; }
+.num-stepper-btn {
+  min-height: var(--touch);
+  border: 2px solid var(--c-line);
+  border-radius: var(--r-1);
+  background: var(--c-raised);
+  color: var(--c-ink);
+  font-family: var(--font-text);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  line-height: 1;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.num-stepper-btn:hover:not(:disabled) { background: var(--c-sunken); border-color: var(--c-ink-3); }
+.num-stepper-btn:active:not(:disabled) { background: var(--c-action-tint); border-color: var(--c-action); }
+.num-stepper-btn:focus-visible { outline: 3px solid var(--c-focus); outline-offset: 1px; }
+.num-stepper-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+/* Variante compacte : libellé à gauche (paliers 9 / 6 / 3 m) */
+.stepper-field.is-compact {
+  display: grid;
+  grid-template-columns: 3.5em minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sp-1) var(--sp-3);
+}
+.stepper-field.is-compact > label { margin: 0; font-family: var(--font-num); font-weight: 700; }
+.stepper-field.is-compact .field-hint { grid-column: 2; }
+
 /* ── Options (radio / case à cocher en gros boutons) ───────────────── */
 .opt-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--sp-2); }
 .opt-group.col-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }

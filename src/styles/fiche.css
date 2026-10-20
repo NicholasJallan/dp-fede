@@ -63,6 +63,8 @@
 .fiche .pv { display: grid; gap: 2px; }
 .fiche .pv span { white-space: nowrap; }
 .fiche .pv .lbl { font-size: 10px; color: var(--f-ink-2); }
+/* Paliers réalisés : peuvent être longs (3 paliers + confort), retour à la ligne permis */
+.fiche .pv .paliers { white-space: normal; font-size: 11px; font-family: var(--font-num); }
 .fiche .comment-row td { font-size: 11px; white-space: pre-wrap; border-bottom-style: dashed; }
 
 .fiche .cols-2 { columns: 2; column-gap: var(--sp-5); font-size: 12px; }

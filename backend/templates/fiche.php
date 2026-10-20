@@ -65,7 +65,7 @@ foreach ($palanquees as $p) {
 
 // Sécurité surface
 $secItems = [];
-$secItems[] = '• Sécurité surface : <b>' . ($answers['sec_surface'] ? 'Présente' : 'Non identifiée') . '</b>';
+$secItems[] = '• Sécurité surface : <b>' . (!empty($answers['sec_surface']) ? 'Présente' : 'Non identifiée') . '</b>';
 if (!empty($answers['sec_surface_membres']) && is_array($answers['sec_surface_membres'])) {
     $names = array_filter(array_map(fn($id) => isset($diversById[$id]) ? PdfRender::diverFullName($diversById[$id]) : null, $answers['sec_surface_membres']));
     if ($names) $secItems[] = '• Plongeurs surveillance : <b>' . implode(', ', $names) . '</b>';
@@ -102,6 +102,10 @@ $palMelange = function (array $p) use ($h): string {
     $arr = $p['melanges'] ?? [];
     return $arr ? implode(' · ', array_map($h, $arr)) : 'Air';
 };
+
+// Type de palanquée écrit sous P1, P2… (miroir de TYPE_SHORT, fiche-document.jsx) :
+// la teinte de ligne seule ne survit pas à une impression en noir et blanc.
+$typeShort = ['exploration' => 'Explo.', 'guidee' => 'Guidée', 'formation' => 'Form.', 'bapteme' => 'Bapt.'];
 
 $pressions   = $renderState['pressions']   ?? [];
 $realises    = $renderState['realises']    ?? [];
@@ -199,7 +203,7 @@ $heuresFin   = $renderState['heuresFin']   ?? [];
 ?>
       <tr class="<?= $rowCls ?>">
 <?php if ($mi === 0): ?>
-        <td rowspan="<?= count($sorted) ?>" style="vertical-align:top;font-weight:700;font-family:'Courier New',monospace;">P<?= $pi + 1 ?></td>
+        <td rowspan="<?= count($sorted) ?>" style="vertical-align:top;font-weight:700;font-family:'Courier New',monospace;">P<?= $pi + 1 ?><br><span style="font-size:9px;font-weight:400;"><?= $h($typeShort[$palType] ?? $palType) ?></span></td>
 <?php endif; ?>
         <td>
           <b><?= $fullName ?></b><br>
@@ -218,14 +222,14 @@ $heuresFin   = $renderState['heuresFin']   ?? [];
           <div class="label">Prévu</div><b><?= $h((string)($p['profMax'] ?? '—')) ?> m</b>
           <div style="margin-top:6px;padding-top:4px;border-top:1px solid #e2e8f0;">
             <div class="label">Réalisé</div>
-            <b<?= $real ? '' : ' style="color:#94a3b8;"' ?>><?= $real ? $h((string)$real['profMax']) . ' m' : '—' ?></b>
+            <b<?= $real ? '' : ' style="color:#94a3b8;"' ?>><?= $real ? $h($real['profMax'] ?? '') . ' m' : '—' ?></b>
           </div>
         </td>
         <td rowspan="<?= count($sorted) ?>" style="vertical-align:top;">
           <div class="label">Prévu</div><b><?= $h((string)($p['duree'] ?? '—')) ?> min</b>
           <div style="margin-top:6px;padding-top:4px;border-top:1px solid #e2e8f0;">
             <div class="label">Réalisé</div>
-            <b<?= $real ? '' : ' style="color:#94a3b8;"' ?>><?= $real ? $h((string)$real['duree']) . ' min' : '—' ?></b>
+            <b<?= $real ? '' : ' style="color:#94a3b8;"' ?>><?= $real ? $h($real['duree'] ?? '') . ' min' : '—' ?></b>
             <?php if ($debut): ?><div style="font-size:10px;color:#94a3b8;margin-top:2px;font-family:monospace;"><?= $h($debut) ?><?= $fin ? ' → ' . $h($fin) : ' →…' ?></div><?php endif; ?>
           </div>
         </td>
@@ -234,7 +238,10 @@ $heuresFin   = $renderState['heuresFin']   ?? [];
           <?php if (!empty($p['no_deco'])): ?><div style="font-size:9px;color:#2d8653;font-weight:600;margin-top:2px;">▲ no déco</div><?php endif; ?>
           <div style="margin-top:6px;padding-top:4px;border-top:1px solid #e2e8f0;">
             <div class="label">Réalisé</div>
-            <b<?= $real ? '' : ' style="color:#94a3b8;"' ?>><?= $real ? $h((string)$real['dtr']) . ' min' : '—' ?></b>
+            <b<?= $real ? '' : ' style="color:#94a3b8;"' ?>><?= $real ? $h($real['dtr'] ?? '') . ' min' : '—' ?></b>
+            <?php $palierSummary = PdfRender::formatPaliers($real); if ($palierSummary !== null): ?>
+              <div style="font-size:10px;margin-top:3px;"><span class="label">Paliers</span><br><?= $h($palierSummary) ?></div>
+            <?php endif; ?>
           </div>
         </td>
 <?php endif; ?>

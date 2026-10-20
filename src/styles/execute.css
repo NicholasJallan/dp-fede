@@ -186,6 +186,14 @@
 /* Réalisé + pressions de sortie */
 .cadran-done { display: grid; gap: var(--sp-3); padding: var(--sp-4); }
 .cadran-done-head { display: flex; gap: var(--sp-2); align-items: center; font-weight: 700; }
+.cadran-paliers { font-family: var(--font-num); font-size: var(--fs-sm); color: var(--c-ink-2); }
+.cadran-paliers b { color: var(--c-ink); }
+
+/* Modale de sortie : paliers réalisés */
+.paliers-fieldset { display: grid; gap: var(--sp-3); }
+.paliers-fieldset > legend { font-weight: 700; }
+.paliers-fieldset legend .muted { font-weight: 400; color: var(--c-ink-3); }
+.paliers-grid { display: grid; gap: var(--sp-2); }
 .cadran-comment { font-size: var(--fs-sm); color: var(--c-ink-2); white-space: pre-wrap; border-left: 3px solid var(--c-line); padding-left: var(--sp-3); }
 .pressure-list { display: grid; gap: var(--sp-2); }
 .pressure-row {

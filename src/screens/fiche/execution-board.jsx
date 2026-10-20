@@ -5,7 +5,7 @@
 import React from 'react';
 import { diverFullName } from '../../components/format.js';
 import { Icon, StatusIcon } from '../../components/icons.jsx';
-import { sortMembresForFiche } from '../../domain/index.js';
+import { formatPaliers, sortMembresForFiche } from '../../domain/index.js';
 import { useNow } from '../home-parts.jsx';
 import { elapsedSeconds, formatChrono } from './time.js';
 
@@ -127,6 +127,7 @@ export function Cadran({ pal, index, diversById, debut, fin, real, pressions, on
       {fin && (
         <div className="cadran-done">
           <div className="cadran-done-head"><StatusIcon tone="ok" />Pressions de sortie</div>
+          {formatPaliers(real) && <p className="cadran-paliers">Paliers : <b>{formatPaliers(real)}</b></p>}
           {real?.commentaire && <p className="cadran-comment">{real.commentaire}</p>}
           <div className="pressure-list">
             {membres.map((m, i) => (

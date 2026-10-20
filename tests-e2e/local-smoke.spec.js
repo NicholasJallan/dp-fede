@@ -138,9 +138,19 @@ test.describe('build local — parcours en ligne', () => {
     await expect(nextBtn(page)).toBeDisabled();
     await cadran.getByRole('button', { name: 'SORTIE' }).click();
     const fin = page.getByRole('dialog', { name: /Sortie de l'eau/ });
-    await fin.getByLabel('Durée réelle').fill('1');
+    await fin.getByRole('textbox', { name: 'Durée réelle' }).fill('1');
+    // Saisie rapide : − / + et paliers réalisés (fiche A322-72).
+    const palier3 = fin.getByRole('group', { name: 'Palier à 3 m' });
+    await palier3.getByRole('button', { name: 'Augmenter' }).click();
+    await palier3.getByRole('button', { name: 'Augmenter' }).click();
+    await palier3.getByRole('button', { name: 'Augmenter' }).click();
+    await expect(fin.getByRole('textbox', { name: 'Palier à 3 m' })).toHaveValue('3');
+    await fin.getByRole('checkbox', { name: /Palier de confort/ }).check();
+    await fin.getByRole('textbox', { name: 'Palier de confort, Durée' }).fill('2');
+    expect(await new AxeBuilder({ page }).include('.dialog').withTags(['wcag2a', 'wcag2aa']).analyze().then(r => r.violations)).toEqual([]);
     await fin.getByRole('button', { name: 'Valider la sortie' }).click();
     await expect(cadran.locator('.cadran-state')).toContainText('Sortie');
+    await expect(cadran.locator('.cadran-paliers')).toHaveText('Paliers : 3 m 3 min · confort 3 m 2 min');
     await cadran.getByLabel('Pression de sortie de Léa DURAND (bar)').fill('80');
 
     // ── Archivage : Google indisponible en test → archivage sans Drive, confirmé par le serveur
@@ -152,7 +162,12 @@ test.describe('build local — parcours en ligne', () => {
     await expect(heading(page)).toHaveText('Archiver la plongée');
     await page.getByRole('button', { name: 'Archiver sans Drive' }).click();
     await expect(page.locator('.notice.ok')).toContainText('confirmée par le serveur', { timeout: 15_000 });
-    expect(state.dives.find((d) => d.site_nom === 'Carrière du Test' && d.status === 'archived')).toBeTruthy();
+    const archived = state.dives.find((d) => d.site_nom === 'Carrière du Test' && d.status === 'archived');
+    expect(archived).toBeTruthy();
+    // Paliers réalisés transmis au serveur (render_state → fiche PDF).
+    const realised = Object.values(archived.render_state.realises)[0];
+    expect(realised.paliers).toEqual({ 9: '', 6: '', 3: '3' });
+    expect(realised.confort).toMatchObject({ on: true, duree: '2' });
 
     expect(errors.filter((e) => !isNetworkNoise(e))).toEqual([]);
   });
@@ -343,6 +358,16 @@ test.describe('build local — captures', () => {
         await expect(page.locator('.cadran').nth(1)).toBeVisible();
         await noHorizontalOverflow(page);
         await shot(page, `fiche-${width}-${theme}`);
+
+        // Modale de sortie : saisie « − / + » et paliers réalisés.
+        await page.getByRole('button', { name: 'SORTIE' }).first().click();
+        const fin = page.getByRole('dialog', { name: /Sortie de l'eau/ });
+        await fin.getByRole('checkbox', { name: /Palier de confort/ }).check();
+        const body = fin.locator('.dialog-body');
+        expect(await body.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
+        await page.evaluate(() => document.fonts.ready);
+        await page.screenshot({ path: path.join(SHOTS, `fin-${width}-${theme}.png`) });
+        await page.keyboard.press('Escape');
       });
     }
   }

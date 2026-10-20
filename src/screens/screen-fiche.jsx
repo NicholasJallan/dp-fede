@@ -10,7 +10,7 @@ import { useToasts } from '../components/toast.jsx';
 import { Alert, CdsLink } from '../components/components.jsx';
 import { ConfirmDialog } from '../components/dialog.jsx';
 import { Icon } from '../components/icons.jsx';
-import { isBassinDerogation } from '../domain/index.js';
+import { initialPaliers, isBassinDerogation } from '../domain/index.js';
 import { api } from '../api/api.js';
 import { exitProgress } from '../app/derive.js';
 import { Cadran, ExecSummary, pressureKey } from './fiche/execution-board.jsx';
@@ -23,7 +23,7 @@ import { addMinutes, diffMinutes, nowHHMM } from './fiche/time.js';
 // pour chaque membre (présente dans le PDF même sans saisie).
 function useDiveTracking({ answers, palanquees, heuresDebut, setHeuresDebut, setHeuresFin, realises, setRealises, setPressions }) {
   const [fin, setFin] = useState(null);
-  const [finForm, setFinForm] = useState({ duree: '', profMax: '', dtr: '', commentaire: '' });
+  const [finForm, setFinForm] = useState({ duree: '', profMax: '', dtr: '', commentaire: '', ...initialPaliers(null) });
   const [confirmDepart, setConfirmDepart] = useState(null);
 
   const start = (palId) => {
@@ -44,11 +44,14 @@ function useDiveTracking({ answers, palanquees, heuresDebut, setHeuresDebut, set
     // DTR prévue saisie par le DP (jamais calculée d'office) ; bornée à la durée réelle.
     const dtrPrevue = pal.dtr ?? null;
     const dtr = (dtrPrevue !== null && elapsed !== null && dtrPrevue > elapsed) ? elapsed : dtrPrevue;
+    const previous = realises[pal.id];
     setFinForm({
       duree: elapsed !== null ? String(elapsed) : '',
       profMax: String(pal.profMax || ''),
       dtr: dtr === null ? '' : String(dtr),
-      commentaire: realises[pal.id]?.commentaire || '',
+      commentaire: previous?.commentaire || '',
+      // Paliers et palier de confort : stockés dans render_state.realises (fiche + PDF).
+      ...initialPaliers(previous),
     });
     const siteProfMax = answers.site_prof_max ? parseInt(answers.site_prof_max, 10) : null;
     setFin({ palId: pal.id, endTime, elapsed, debut, siteProfMax });

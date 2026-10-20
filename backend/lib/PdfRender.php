@@ -60,10 +60,12 @@ table td { border-bottom: 1px solid #e2e8f0; padding: 7px 8px; vertical-align: t
     font-size: 11px;
     margin: 2px 2px 2px 0;
 }
+/* Teinte par type de palanquée (le type est aussi écrit sous P1, P2… :
+   lisible en noir et blanc). Jamais de rouge : réservé au bloquant. */
 .row-exploration td { background: #f0fdf6; }
 .row-guidee      td { background: #eff6ff; }
-.row-formation   td { background: #fff7ed; }
-.row-bapteme     td { background: #fef2f2; }
+.row-formation   td { background: #fefce8; }
+.row-bapteme     td { background: #f5f3ff; }
 CSS;
     }
 
@@ -77,6 +79,37 @@ CSS;
     public static function h($v): string
     {
         return htmlspecialchars(self::toText($v), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+
+    /** Paliers saisis par tranche de 3 m (miroir de src/domain/paliers.js). */
+    public const PALIER_DEPTHS = [9, 6, 3];
+
+    /**
+     * Résumé des paliers réalisés d'une palanquée (render_state.realises[id]) :
+     * « 6 m 2 min · 3 m 5 min · confort 5 m 3 min », null sans palier.
+     * Même sortie que formatPaliers() côté front (tests/fixtures/paliers.json).
+     * Texte brut : à échapper par l'appelant.
+     *
+     * @param mixed $real
+     */
+    public static function formatPaliers($real): ?string
+    {
+        if (!is_array($real)) return null;
+        $positive = static function ($v): float {
+            return (is_int($v) || is_float($v) || (is_string($v) && is_numeric(trim($v)))) && (float)$v > 0 ? (float)$v : 0.0;
+        };
+        $parts = [];
+        $paliers = is_array($real['paliers'] ?? null) ? $real['paliers'] : [];
+        foreach (self::PALIER_DEPTHS as $d) {
+            $m = $positive($paliers[$d] ?? ($paliers[(string)$d] ?? null));
+            if ($m > 0) $parts[] = "{$d} m " . self::toText($m) . ' min';
+        }
+        $confort = is_array($real['confort'] ?? null) ? $real['confort'] : [];
+        if (!empty($confort['on']) && $positive($confort['duree'] ?? null) > 0) {
+            $depth = $positive($confort['profondeur'] ?? null);
+            $parts[] = 'confort ' . ($depth > 0 ? self::toText($depth) . ' m ' : '') . self::toText($positive($confort['duree'])) . ' min';
+        }
+        return $parts ? implode(' · ', $parts) : null;
     }
 
     /**

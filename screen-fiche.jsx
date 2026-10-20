@@ -1,6 +1,6 @@
 // DP Assistant — Fiche de sécurité (Art. A322-72)
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from './auth-context.jsx';
 import { useToasts } from './toast.jsx';
 import { Alert, CdsLink, diverFullName, formatDateTime } from './components.jsx';
@@ -9,7 +9,7 @@ const PRESSION_SORTIE_OPTIONS = [
   'panne d\'air','20','30','40','50','60','70','80','90','100+',
 ];
 
-function ScreenFiche({ answers, palanquees, divers, setAnswer, pressions, setPressions, realises, setRealises, heuresDebut, setHeuresDebut, heuresFin, setHeuresFin }) {
+function ScreenFiche({ answers, palanquees, divers, setAnswer, pressions, setPressions, realises, setRealises, heuresDebut, setHeuresDebut, heuresFin, setHeuresFin, diveId, renderState }) {
   const { user } = useAuth();
   const { showToast } = useToasts();
   const diversById = useMemo(() => {
@@ -113,62 +113,33 @@ function ScreenFiche({ answers, palanquees, divers, setAnswer, pressions, setPre
   const setPression = (palId, diverId, v) =>
     setPressions(prev => ({ ...prev, [`${palId}-${diverId}`]: v }));
 
-  // Téléchargement PDF côté serveur (wkhtmltopdf)
-  const onPrintPdf = async () => {
+  // Téléchargement PDF côté serveur (mPDF) : on pousse l'état courant puis
+  // le serveur rend la fiche depuis la base. Hors-ligne ou plongée pas
+  // encore synchronisée → impression navigateur.
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const onDownloadPdf = async () => {
+    if (!diveId) { window.print(); return; }
+    setPdfBusy(true);
     try {
-      const ficheEl = document.querySelector('.fiche');
-      if (!ficheEl) return;
-      // URL absolue pour que wkhtmltopdf puisse charger les feuilles de style
-      const styles = Array.from(document.querySelectorAll('link[rel=stylesheet]'))
-        .map(l => `<link rel="stylesheet" href="${l.href}">`).join('\n');
-      const html = `<!DOCTYPE html><html lang="fr"><head>
-<meta charset="utf-8">
-<title>Fiche de sécurité</title>
-${styles}
-<style>
-  body { background: white; padding: 0; margin: 0; }
-  .fiche { box-shadow: none; max-width: 100%; }
-  .no-print, .fiche-actions { display: none !important; }
-  .print-only { display: block !important; }
-  /* wkhtmltopdf (Qt WebKit 538) ne supporte pas les CSS custom properties :
-     on injecte les valeurs résolues pour que les classes CSS fonctionnent. */
-  .muted { color: #5A6B7E !important; }
-  small.muted { color: #5A6B7E !important; }
-</style>
-</head><body>${ficheEl.outerHTML}</body></html>`;
-
-      const csrf = document.cookie.split('; ').find(c => c.startsWith('dp_csrf='))?.split('=')[1];
-      const res  = await fetch('/api/pdf/fiche', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf || '' },
-        body: JSON.stringify({
-          html,
-          filename: `fiche-securite-${(answers.date || '').slice(0, 10)}.pdf`,
-        }),
+      await window.api.dives.pushNow(diveId, {
+        answers, palanquees,
+        render_state: { ...(renderState || {}), pressions, realises, heuresDebut, heuresFin },
       });
-      if (!res.ok) {
-        const t = await res.text();
-        showToast({
-          tone: 'err',
-          title: `PDF serveur — HTTP ${res.status}`,
-          body: `${t.slice(0, 300)}\n\nBascule sur l'impression navigateur.`,
-        });
-        window.print();
-        return;
-      }
-      const blob = await res.blob();
+      const blob = await window.api.pdf.blob(diveId, 'fiche');
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = `fiche-securite-${(answers.date || '').slice(0, 10)}.pdf`;
       a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
     } catch (err) {
       showToast({
-        tone: 'err',
-        title: 'Erreur PDF',
-        body: `${err?.message || err}\n\nBascule sur l'impression navigateur.`,
+        tone: 'warn',
+        title: 'PDF serveur indisponible',
+        body: `${err?.message || err}\nImpression navigateur à la place.`,
       });
       window.print();
+    } finally {
+      setPdfBusy(false);
     }
   };
 
@@ -208,6 +179,12 @@ ${styles}
         <div className="eyebrow">Étape 4 / 5 · Fiche de sécurité</div>
         <h1>Fiche de sécurité <CdsLink art="A322-72" /></h1>
         <p>Document à compléter avant la mise à l'eau, à conserver 1 an minimum. Imprimable A4 portrait, lisible en noir et blanc.</p>
+        <div className="no-print" style={{ display:'flex', gap:10, marginTop:12 }}>
+          <button type="button" className="btn" onClick={onDownloadPdf} disabled={pdfBusy}>
+            {pdfBusy ? 'Génération…' : 'Télécharger la fiche (PDF)'}
+          </button>
+          <button type="button" className="btn ghost" onClick={() => window.print()}>Imprimer</button>
+        </div>
       </div>
 
       {!window.isMilieuNaturel(answers.milieu) && (

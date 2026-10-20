@@ -2,11 +2,12 @@
 
 import React, { useEffect, useRef } from 'react';
 import { useAuth } from './auth-context.jsx';
+import { useOnline } from './lib/use-online.jsx';
 
 function ScreenLogin() {
   const { handleGoogleCredential } = useAuth();
   const btnRef = useRef(null);
-  const online = window.useOnline ? window.useOnline() : true;
+  const online = useOnline();
 
   useEffect(() => {
     let cancelled = false;

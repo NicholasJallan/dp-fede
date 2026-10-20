@@ -5,6 +5,8 @@ import { createRoot } from 'react-dom/client';
 import { ToastProvider, useToasts } from './toast.jsx';
 import { AuthProvider, useAuth } from './auth-context.jsx';
 import { useAutoSave } from './lib/use-auto-save.jsx';
+import { useOnline } from './lib/use-online.jsx';
+import { ErrorBoundary } from './error-boundary.jsx';
 import { Pill, SyncDrawer, formatDateTime } from './components.jsx';
 import { ScreenLogin } from './screen-login.jsx';
 import { ScreenHome } from './screen-home.jsx';
@@ -36,7 +38,7 @@ const isSuperAdmin = (u) => !!u && u.email === SUPER_ADMIN_EMAIL;
 function AppInner() {
   const { user, loading: authLoading, logout, authMode } = useAuth();
   const { showToast } = useToasts();
-  const online = window.useOnline ? window.useOnline() : true;
+  const online = useOnline();
   const [authExpired, setAuthExpired] = useState(false);
   useEffect(() => {
     const onExpire = () => setAuthExpired(true);
@@ -71,6 +73,7 @@ function AppInner() {
   const [diveMode,     setDiveMode]     = useState('prepare');
   // Modal « Urgence » accessible en un geste pendant le suivi temps réel.
   const [urgenceOpen,  setUrgenceOpen]  = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   // ── Session en cours ─────────────────────────────────────────────────────
   const [currentDiveId, setCurrentDiveId] = useState(null); // client_uuid de la plongée ouverte
@@ -189,11 +192,10 @@ function AppInner() {
   // Charge une plongée depuis le store local (auto-save de la courante si différente)
   const loadDive = useCallback(async (clientUuid, targetScreen, mode = 'prepare') => {
     if (currentDiveId && currentDiveId !== clientUuid) {
-      flushSave(currentDiveId);
+      await flushSave(currentDiveId);
     }
 
-    // Même plongée déjà en mémoire : l'état React est plus à jour que le store
-    // (flushSave est fire-and-forget — la lecture store peut devancer l'écriture).
+    // Même plongée déjà en mémoire : l'état React est plus à jour que le store.
     if (currentDiveId === clientUuid) {
       setDiveMode(mode);
       setArchiveDone(false);
@@ -210,6 +212,15 @@ function AppInner() {
       dive = await window.offlineStore.get('dives', clientUuid);
     }
     if (!dive) { showToast({ tone: 'err', title: 'Plongée introuvable', body: clientUuid }); return; }
+    // Un résumé de liste (sans contenu) ne doit jamais être ouvert : l'état
+    // vide serait ensuite pris pour la vérité et écraserait le serveur.
+    if (!('answers' in dive) && !('palanquees' in dive)) {
+      showToast({
+        tone: 'warn', title: 'Contenu non disponible hors-ligne',
+        body: 'Cette plongée n\'a pas encore été téléchargée sur cet appareil. Reconnectez-vous pour l\'ouvrir.',
+      });
+      return;
+    }
 
     const a  = typeof dive.answers      === 'string' ? JSON.parse(dive.answers)      : (dive.answers      || {});
     const p  = typeof dive.palanquees   === 'string' ? JSON.parse(dive.palanquees)   : (dive.palanquees   || []);
@@ -509,7 +520,7 @@ function AppInner() {
           fontSize: 13, textAlign: 'center', fontWeight: 500,
         }}>
           ⚠ Votre session a expiré côté serveur. Reconnectez-vous pour synchroniser les actions en attente.
-          <button onClick={logout} style={{
+          <button onClick={() => logout({ keepLocal: true })} style={{
             marginLeft: 12, background: 'white', color: '#c0392b',
             border: 0, padding: '4px 10px', borderRadius: 4, cursor: 'pointer',
             fontWeight: 600, fontSize: 12,
@@ -566,7 +577,10 @@ function AppInner() {
               Admin
             </button>
           )}
-          <button className="session-link topbar-logout-btn" onClick={logout}>Déconnexion</button>
+          <button className="session-link topbar-logout-btn"
+            onClick={() => (outboxItems.length > 0 ? setConfirmLogout(true) : logout())}>
+            Déconnexion
+          </button>
         </span>
       </div>
 
@@ -623,6 +637,7 @@ function AppInner() {
 
       <div className={`main ${useSide ? "with-side" : ""}`}>
         <div>
+        <ErrorBoundary resetKey={screen}>
           {screen === "home" && (
             <ScreenHome
               onNew={startPreparation}
@@ -660,7 +675,8 @@ function AppInner() {
               pressions={pressions} setPressions={setPressions}
               realises={realises} setRealises={setRealises}
               heuresDebut={heuresDebut} setHeuresDebut={setHeuresDebut}
-              heuresFin={heuresFin} setHeuresFin={setHeuresFin} />
+              heuresFin={heuresFin} setHeuresFin={setHeuresFin}
+              diveId={currentDiveId} renderState={{ checked, comments }} />
           )}
           {screen === "archive" && (
             <ScreenArchive answers={answers} palanquees={palanquees} divers={divers} user={user}
@@ -680,6 +696,7 @@ function AppInner() {
           )}
           {screen === "admin-users"  && isSuperAdmin(user) && <ScreenAdminUsers />}
           {screen === "account"      && <ScreenAccount />}
+        </ErrorBoundary>
         </div>
 
         {useSide && sideSummary}
@@ -756,6 +773,29 @@ function AppInner() {
           }}>
           ☎ URGENCE
         </button>
+      )}
+
+      {confirmLogout && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setConfirmLogout(false)}>
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="logout-title" style={{ maxWidth:460 }}>
+            <div className="modal-head">
+              <h3 id="logout-title">Actions non synchronisées</h3>
+              <button className="x" aria-label="Fermer" onClick={() => setConfirmLogout(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p>
+                {outboxItems.length} action(s) n'ont pas encore été envoyées au serveur.
+                Se déconnecter maintenant les effacera de cet appareil.
+              </p>
+              <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+                <button className="btn" onClick={() => setConfirmLogout(false)}>Rester connecté</button>
+                <button className="btn danger" onClick={() => { setConfirmLogout(false); logout(); }}>
+                  Effacer et se déconnecter
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {urgenceOpen && (
@@ -904,11 +944,13 @@ function AppInner() {
 
 function App() {
   return (
-    <ToastProvider>
-      <AuthProvider>
-        <AppInner />
-      </AuthProvider>
-    </ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <AuthProvider>
+          <AppInner />
+        </AuthProvider>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 }
 

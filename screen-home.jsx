@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './auth-context.jsx';
+import { useOnline } from './lib/use-online.jsx';
 import { useToasts } from './toast.jsx';
 import { finalizePendingDrive } from './screen-archive.jsx';
 
@@ -123,7 +124,7 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
   const [dives,     setDives]     = useState(null);
   const [cloningId, setCloningId] = useState(null);
   const [cloneErr,  setCloneErr]  = useState('');
-  const online = window.useOnline ? window.useOnline() : true;
+  const online = useOnline();
   const { user } = useAuth();
   const { showToast } = useToasts();
 

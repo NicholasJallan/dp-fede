@@ -83,7 +83,7 @@ curl -sI https://<site de l'application dive>/ | head -n 1   # dive toujours OK
 
 ```bash
 sudo install -o root -g root -m 644 /tmp/php-fpm-dp-fede.conf /etc/php/8.5/fpm/pool.d/dp-fede.conf
-sudo $EDITOR /etc/php/8.5/fpm/pool.d/dp-fede.conf     # décommenter php_admin_value[date.timezone] (valeur du §1)
+# date.timezone = Europe/Paris est fixé dans le pool (PHP 7.4 devinait le fuseau système, PHP 8 vaut UTC)
 
 # Répertoires et journaux écrits par le pool (open_basedir : préfixe /var/log/dp-fede)
 sudo install -d -o www-data -g www-data -m 750 /var/lib/dp-fede /var/lib/dp-fede/documents

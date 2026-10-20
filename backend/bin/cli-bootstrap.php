@@ -14,6 +14,12 @@ if (PHP_SAPI !== 'cli') {
 error_reporting(E_ALL);
 ini_set('display_errors', 'stderr');
 
+// Fuseau des dates de plongée : PHP 8 vaut UTC par défaut (PHP 7.4 devinait
+// celui du système). Les dates saisies sont locales (France / Suisse).
+if (!ini_get('date.timezone')) {
+    date_default_timezone_set('Europe/Paris');
+}
+
 $root = dirname(__DIR__);
 if (is_file($root . '/vendor/autoload.php')) {
     require_once $root . '/vendor/autoload.php';

@@ -21,7 +21,8 @@ export function computeProfilNotes(answers) {
   return { notes };
 }
 
-// Palanquées présentant des erreurs bloquantes : [{ id, nom, errs[] }].
+// Palanquées présentant des erreurs bloquantes :
+// [{ id, nom, errs: [{ code, text, ref }] }].
 export function computeBlockingPalSummary(palanquees, divers, answers) {
   const diversById = {};
   divers.forEach(d => { diversById[d.id] = d; });
@@ -29,18 +30,45 @@ export function computeBlockingPalSummary(palanquees, divers, answers) {
   return palanquees
     .map((p, idx) => {
       const issues = validatePal(p, diversById, answers, dp);
-      const errs = issues.filter(i => i.tone === 'err').map(i => i.text);
+      const errs = issues.filter(i => i.tone === 'err').map(({ code, text, ref }) => ({ code, text, ref }));
       return { id: p.id, nom: p.nom || `Palanquée ${idx + 1}`, errs };
     })
     .filter(s => s.errs.length > 0);
 }
 
-// Progression de la check-list : { total, doneCount }.
-export function checklistProgress(answers, checked) {
-  const total = CHECKLIST_RULES.reduce((n, p) =>
-    n + p.items.filter(it => matchCondition(it.when, answers)).length, 0);
-  const doneCount = Object.values(checked).filter(Boolean).length;
-  return { total, doneCount };
+// Item « décision finale du DP » : verrou avant le passage en exécution.
+export const GO_DECISION_ID = 'p2_go_decision';
+
+function itemVisible(it, answers) {
+  // Ancienne condition personnalisée (dérogation PA-60) conservée pour compat.
+  if (it.when && it.when._custom === 'pa60_derog') {
+    return answers.prof_max === '60 m' && answers.activite === 'Exploration' && !answers.dp_nom;
+  }
+  return matchCondition(it.when, answers);
+}
+
+// Phases de check-list affichées pour un mode : 'prepare' → phase 1,
+// 'execute' → phase 2, autre → toutes. Items filtrés par le profil.
+export function visibleChecklist(answers, mode) {
+  return CHECKLIST_RULES
+    .filter(phase => (mode === 'prepare' ? phase.phase === 1 : mode === 'execute' ? phase.phase === 2 : true))
+    .map(phase => ({ ...phase, items: phase.items.filter(it => itemVisible(it, answers)) }));
+}
+
+// Progression de la check-list du mode courant : { total, doneCount }.
+// Seuls les items visibles comptent (un item coché puis masqué par le profil
+// ne gonfle plus le compteur).
+export function checklistProgress(answers, checked, mode) {
+  const items = visibleChecklist(answers, mode).flatMap(p => p.items);
+  return { total: items.length, doneCount: items.filter(it => checked[it.id]).length };
+}
+
+// Avancement de l'exécution : palanquées à l'eau / sorties.
+export function exitProgress(palanquees, heuresDebut, heuresFin) {
+  const total = palanquees.length;
+  const out = palanquees.filter(p => heuresDebut[p.id] && heuresFin[p.id]).length;
+  const water = palanquees.filter(p => heuresDebut[p.id] && !heuresFin[p.id]).length;
+  return { total, out, water };
 }
 
 // Toutes les palanquées ont une heure de début ET de fin.

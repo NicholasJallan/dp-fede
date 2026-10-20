@@ -6,6 +6,7 @@
 // place au démarrage (src/app/bootstrap.js) avant tout usage.
 
 import { getCsrfToken } from './google-drive.js';
+import { notifyIfAuthExpired } from './auth-events.js';
 
 const API_BASE = '/api';
 
@@ -29,6 +30,7 @@ async function apiFetch(path, options = {}) {
   const json = await res.json().catch(() => ({ ok: false, error: 'Réponse invalide' }));
 
   if (!json.ok) {
+    notifyIfAuthExpired(res.status, path);
     const err = new Error(json.error || `HTTP ${res.status}`);
     err.status = res.status;
     throw err;
@@ -51,6 +53,7 @@ async function fetchPdfBlob(diveId, type = 'fiche') {
     body: JSON.stringify({ dive_id: diveId, type }),
   });
   if (!res.ok) {
+    notifyIfAuthExpired(res.status, '/pdf/fiche');
     const text = await res.text();
     let detail = text.slice(0, 300);
     try { const j = JSON.parse(text); if (j?.error) detail = j.error; } catch { /* texte brut */ }

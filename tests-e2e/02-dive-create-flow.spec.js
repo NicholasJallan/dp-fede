@@ -37,7 +37,7 @@ test.describe('Création d\'une plongée préparée', () => {
     }
 
     // Vérifier qu'au moins une carte "Préparée" est visible.
-    const prepCount = await page.locator('.dive-card-row').count();
+    const prepCount = await page.locator('.dive-row').count();
     expect(prepCount).toBeGreaterThanOrEqual(1);
   });
 });

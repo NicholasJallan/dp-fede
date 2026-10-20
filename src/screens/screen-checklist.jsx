@@ -1,163 +1,143 @@
-// DP Assistant — Écran "Check-list opérationnelle"
+// DP Assistant — Check-list opérationnelle.
+//   mode 'prepare' → phase 1 (avant l'arrivée sur site)
+//   mode 'execute' → phase 2 (sur site) ; la décision finale du DP est le
+//   verrou qui autorise le passage à la fiche (mise à l'eau).
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useId } from 'react';
 import { Pill, CdsLink } from '../components/components.jsx';
-import { CHECKLIST_RULES, matchCondition } from '../domain/index.js';
+import { Icon, StatusIcon } from '../components/icons.jsx';
+import { visibleChecklist, GO_DECISION_ID } from '../app/derive.js';
 
-// mode : 'prepare' → phase 1 uniquement, 'execute' → phase 2 uniquement
+const TAG_LABELS = {
+  meteo: 'Météo', materiel: 'Matériel', nitrox: 'Nitrox', trimix: 'Trimix', recycleur: 'Recycleur',
+  secours: 'Secours', plongeurs: 'Plongeurs', etrangers: 'Brevets étrangers', mineurs: 'Mineurs',
+  bateau: 'Bateau', bord: 'Bord', fiche: 'Fiche',
+};
+
+function RappelCard({ answers, setAnswer }) {
+  const id = useId();
+  const onChange = (v) => {
+    setAnswer('moyen_rappel', v);
+    try { localStorage.setItem('dp-rappel-moyen', v); }
+    catch (err) { console.warn('[DP] mémorisation du moyen de rappel :', err?.message || err); }
+  };
+  return (
+    <section className="card mb-3" aria-labelledby={`${id}-t`}>
+      <div className="card-head"><h2 id={`${id}-t`}>Moyen de rappel des plongeurs</h2></div>
+      <div className="card-body stack">
+        <div className="field plain">
+          <label htmlFor={id}>Signal utilisé pour rappeler les plongeurs en surface</label>
+          <input id={id} className="input" type="text" aria-describedby={`${id}-h`}
+            placeholder="Sondeur, pétard acoustique, coups sur la coque, corde de liaison…"
+            value={answers.moyen_rappel || ''} disabled={!!answers.rappel_impossible}
+            onChange={e => onChange(e.target.value)} />
+          <span className="field-hint" id={`${id}-h`}>
+            {answers.rappel_impossible ? 'Aucun rappel possible déclaré.' : 'Mémorisé et repris à la prochaine plongée.'}
+          </span>
+        </div>
+        <label className={`qualif-toggle ${answers.rappel_impossible ? 'on' : ''}`}>
+          <input type="checkbox" checked={!!answers.rappel_impossible}
+            onChange={e => {
+              setAnswer('rappel_impossible', e.target.checked || undefined);
+              if (e.target.checked) setAnswer('moyen_rappel', '');
+            }} />
+          Pas de rappel possible (départ du bord sans moyen acoustique)
+        </label>
+      </div>
+    </section>
+  );
+}
+
+function ChecklistItem({ it, checked, comment, onToggle, onComment }) {
+  const [open, setOpen] = useState(false);
+  const titleId = useId();
+  const isGate = it.id === GO_DECISION_ID;
+  return (
+    <div className={`cl-item ${checked ? 'done' : ''} ${isGate ? 'is-gate' : ''}`}>
+      <button type="button" role="checkbox" aria-checked={checked} aria-labelledby={titleId}
+        className="cl-check" onClick={onToggle}>
+        <Icon.Check />
+      </button>
+      <div className="cl-body">
+        <span className="title" id={titleId} onClick={onToggle}>{it.text}</span>
+        {isGate && (
+          <span className="cl-gate-note">
+            <StatusIcon tone={checked ? 'ok' : 'warn'} />
+            {checked ? 'Mise à l\'eau autorisée par le DP.' : 'Requis pour passer au suivi des palanquées.'}
+          </span>
+        )}
+        <div className="meta">
+          {it.ref && <CdsLink refText={it.ref} compact />}
+          {(it.tags || []).map(t => <Pill key={t}>{TAG_LABELS[t] || t}</Pill>)}
+          <span className="spacer" />
+          <button type="button" className="btn ghost" aria-expanded={open || !!comment}
+            onClick={() => setOpen(o => !o)}>
+            {comment ? 'Modifier la note' : 'Ajouter une note'}
+          </button>
+        </div>
+        {(open || comment) && (
+          <textarea className="textarea" aria-label={`Note : ${it.text}`} placeholder="Valeur, remarque, signataire…"
+            value={comment || ''} onChange={(e) => onComment(e.target.value)} />
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ScreenChecklist({ answers, setAnswer, checked, setChecked, comments, setComment, mode = 'execute' }) {
-  const phases = useMemo(() => {
-    return CHECKLIST_RULES
-      .filter(phase => {
-        if (mode === 'prepare') return phase.phase === 1;
-        if (mode === 'execute') return phase.phase === 2;
-        return true; // mode inconnu → tout afficher
-      })
-      .map(phase => {
-        const items = phase.items.filter(it => {
-          if (it.when && it.when._custom === "pa60_derog") {
-            const pa60 = (answers.prof_max === "60 m") && answers.activite === "Exploration" && (!answers.dp_nom);
-            return pa60;
-          }
-          return matchCondition(it.when, answers);
-        });
-        return { ...phase, items };
-      });
-  }, [answers, mode]);
-
-  const total = phases.reduce((n, p) => n + p.items.length, 0);
-  const done = phases.reduce((n, p) => n + p.items.filter(i => checked[i.id]).length, 0);
-
-  const [openComment, setOpenComment] = useState({});
+  const phases = useMemo(() => visibleChecklist(answers, mode), [answers, mode]);
+  const items = phases.flatMap(p => p.items);
+  const total = items.length;
+  const done = items.filter(i => checked[i.id]).length;
+  const conditional = items.filter(i => i.when).length;
+  const isPrepare = mode === 'prepare';
 
   return (
     <div>
       <div className="page-head">
-        <div className="eyebrow">
-          {mode === 'prepare'
-            ? 'Étape 3 · Check-list — Phase 1 (préparation)'
-            : mode === 'execute'
-            ? 'Étape 3 · Check-list — Phase 2 (sur site)'
-            : 'Étape 3 / 5 · Check-list opérationnelle'}
-        </div>
-        <h1>
-          {mode === 'prepare'
-            ? 'Avant l\'arrivée sur site'
-            : mode === 'execute'
-            ? 'Sur site — avant la mise à l\'eau'
-            : 'Check-list pré-plongée'}
-        </h1>
-        <p>{total} contrôles{mode !== 'execute' ? ' de préparation' : ' sur site'}, dont {phases.reduce((n,p) => n + p.items.filter(i => i.when).length, 0)} déclenchés par votre profilage.{mode === 'execute' ? ' À la fin : décision finale du DP pour autoriser le départ.' : ''}</p>
+        <p className="step-tag"><span className="num">3</span>Check-list, {isPrepare ? 'phase 1 : préparation' : 'phase 2 : sur site'}</p>
+        <h1>{isPrepare ? 'Avant l\'arrivée sur site' : 'Sur site, avant la mise à l\'eau'}</h1>
+        <p>
+          {total} contrôle{total > 1 ? 's' : ''}, dont {conditional} déclenché{conditional > 1 ? 's' : ''} par le profil de la plongée.
+          {!isPrepare && ' La décision finale du DP autorise la mise à l\'eau.'}
+        </p>
       </div>
 
-      <div className="row" style={{ marginBottom: 18, gap: 8 }}>
-        <Pill tone="marine" className="lg">{done} / {total} actions cochées</Pill>
-        {answers.nitrox && <Pill tone="kelp" className="lg">NITROX</Pill>}
-        {answers.trimix && <Pill tone="sun" className="lg">TRIMIX</Pill>}
-        {answers.recycleur && <Pill tone="coral" className="lg">RECYCLEUR</Pill>}
-        {answers.depart_bateau && <Pill className="lg">BATEAU</Pill>}
-        {answers.mineurs && <Pill className="lg">MINEURS</Pill>}
-        {(answers.activite === "Enseignement" || answers.activite === "Mixte") && <Pill className="lg">ENSEIGNEMENT</Pill>}
-        <span className="spacer"></span>
-        <button className="btn" onClick={() => window.print()}>🖨 Imprimer</button>
-        <button className="btn">🔗 Partager</button>
+      <div className="cl-toolbar">
+        <span className="cl-count">{done}/{total}<small>cochés</small></span>
+        {answers.nitrox && <Pill>Nitrox</Pill>}
+        {answers.trimix && <Pill>Trimix</Pill>}
+        {answers.recycleur && <Pill>Recycleur</Pill>}
+        {answers.depart_bateau && <Pill>Bateau</Pill>}
+        {answers.mineurs && <Pill>Mineurs</Pill>}
+        {(answers.activite === 'Enseignement' || answers.activite === 'Mixte') && <Pill>Enseignement</Pill>}
+        <span className="spacer" />
+        <button type="button" className="btn" onClick={() => window.print()}><Icon.Print />Imprimer</button>
       </div>
 
-      <div className="card" style={{ marginBottom:18 }}>
-        <div className="card-head"><h2>Moyen de rappel des plongeurs</h2></div>
-        <div className="card-body">
-          <label style={{ display:'block', fontSize:13, marginBottom:8, color:'var(--ink-2)' }}>
-            Signal utilisé par le DP pour rappeler les plongeurs à la surface (communiqué avant la mise à l'eau)
-          </label>
-          <input
-            className="input"
-            type="text"
-            placeholder="ex. : sondeur, pétard acoustique, coup de coque, corde de liaison…"
-            value={answers.moyen_rappel || ''}
-            disabled={!!answers.rappel_impossible}
-            style={answers.rappel_impossible ? { opacity:0.4 } : undefined}
-            onChange={e => {
-              setAnswer('moyen_rappel', e.target.value);
-              try { localStorage.setItem('dp-rappel-moyen', e.target.value); }
-              catch (err) { console.warn('[DP] persist moyen_rappel :', err?.message || err); }
-            }}
-          />
-          <label style={{ display:'flex', alignItems:'center', gap:8, marginTop:10, fontSize:13, cursor:'pointer' }}>
-            <input
-              type="checkbox"
-              checked={!!answers.rappel_impossible}
-              onChange={e => {
-                setAnswer('rappel_impossible', e.target.checked || undefined);
-                if (e.target.checked) setAnswer('moyen_rappel', '');
-              }}
-            />
-            Pas de rappel possible (départ du bord sans moyen acoustique)
-          </label>
-          {!answers.rappel_impossible && (
-            <p style={{ margin:'8px 0 0', fontSize:12, color:'var(--ink-3)' }}>
-              Mémorisé automatiquement — repris à la prochaine plongée.
-            </p>
-          )}
-        </div>
-      </div>
+      <RappelCard answers={answers} setAnswer={setAnswer} />
 
       {phases.map(p => {
         const phaseDone = p.items.filter(i => checked[i.id]).length;
         return (
-          <div className="cl-phase" key={p.phase}>
+          <section className="cl-phase" key={p.phase} aria-labelledby={`phase-${p.phase}`}>
             <div className="cl-phase-head">
-              <span className="ix">PHASE {p.phase}</span>
-              <h3>{p.phaseTitle}</h3>
-              <span className="count">{phaseDone} / {p.items.length}</span>
+              <h2 id={`phase-${p.phase}`}>{p.phaseTitle}</h2>
+              <span className="count">{phaseDone}/{p.items.length}</span>
             </div>
-
-            {p.items.length === 0 && (
-              <div className="empty">Aucun item conditionnel pour cette phase.</div>
-            )}
-
-            {p.items.map(it => {
-              const isDone = !!checked[it.id];
-              return (
-                <div className={`cl-item ${isDone ? "done" : ""}`} key={it.id}>
-                  <button
-                    className="cl-check"
-                    onClick={() => setChecked(it.id, !isDone)}
-                    aria-label={isDone ? "Décocher" : "Cocher"}
-                  />
-                  <div className="cl-body">
-                    <div className="title">{it.text}</div>
-                    <div className="meta">
-                      {it.ref && <CdsLink refText={it.ref} compact />}
-                      {(it.tags || []).map(t => <Pill key={t}>{t}</Pill>)}
-                      <span className="spacer"></span>
-                      <button
-                        className="btn ghost"
-                        style={{ padding: "2px 8px", minHeight: 28, fontSize: 12 }}
-                        onClick={() => setOpenComment(c => ({ ...c, [it.id]: !c[it.id] }))}
-                      >
-                        {comments[it.id] ? "Modifier" : "+ Commentaire"}
-                      </button>
-                    </div>
-                    {(openComment[it.id] || comments[it.id]) && (
-                      <textarea
-                        className="textarea"
-                        placeholder="Note / valeur / signataire…"
-                        value={comments[it.id] || ""}
-                        onChange={(e) => setComment(it.id, e.target.value)}
-                        style={{ minHeight: 50, fontSize: 13 }}
-                      />
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+            {p.items.length === 0 && <p className="empty">Aucun contrôle pour cette phase.</p>}
+            {p.items.map(it => (
+              <ChecklistItem key={it.id} it={it} checked={!!checked[it.id]} comment={comments[it.id]}
+                onToggle={() => setChecked(it.id, !checked[it.id])} onComment={v => setComment(it.id, v)} />
+            ))}
+          </section>
         );
       })}
 
-      <div className="disclaimer">
-        Cette check-list est générée à partir de vos réponses et des références Code du Sport / MFT FFESSM rappelées. Elle ne dispense pas le DP de la lecture des textes en vigueur.
-      </div>
+      <p className="disclaimer">
+        Check-list générée à partir du profil de la plongée et des références Code du sport et MFT FFESSM rappelées.
+        Elle ne dispense pas le DP de la lecture des textes en vigueur.
+      </p>
     </div>
   );
 }

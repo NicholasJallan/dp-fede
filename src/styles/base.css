@@ -1,0 +1,168 @@
+/* DP Assistant — Base : reset, typographie, focus, utilitaires, états. */
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-text);
+  font-size: var(--fs-base);
+  line-height: var(--lh-text);
+  background: var(--c-bg);
+  color: var(--c-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+img { max-width: 100%; }
+a { color: var(--c-action); text-decoration: underline; text-underline-offset: 2px; }
+a:hover { color: var(--c-action-hover); }
+hr { border: 0; border-top: 1px solid var(--c-line); margin: var(--sp-4) 0; }
+h1, h2, h3, h4 { line-height: var(--lh-tight); margin: 0; }
+p { margin: 0; }
+code, kbd { font-family: var(--font-num); font-size: 0.92em; }
+
+.num, .mono {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+
+/* ── Focus : toujours visible au clavier ───────────────────────────── */
+:focus { outline: none; }
+:focus-visible {
+  outline: 3px solid var(--c-focus);
+  outline-offset: 2px;
+  border-radius: var(--r-1);
+}
+.topbar :focus-visible,
+.cadran-head :focus-visible { outline-color: var(--c-on-abyss); }
+
+.skip-link {
+  position: absolute;
+  left: var(--sp-2);
+  top: -100px;
+  z-index: 3000;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--c-signal);
+  color: var(--c-on-signal);
+  font-weight: 700;
+  border-radius: var(--r-1);
+}
+.skip-link:focus { top: var(--sp-2); }
+
+.sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Signalétique ISO 3864 : ● conforme, ▲ alerte, ■ bloquant ──────── */
+.sicon {
+  flex-shrink: 0;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.12em;
+}
+.sicon--ok    { color: var(--c-ok); }
+.sicon--warn  { color: var(--c-warn); }
+.sicon--err   { color: var(--c-stop); }
+.sicon--info  { color: var(--c-action); }
+.sicon--muted { color: var(--c-ink-3); }
+
+/* ── Utilitaires ───────────────────────────────────────────────────── */
+.row { display: flex; gap: var(--sp-3); align-items: center; flex-wrap: wrap; }
+.row.tight { gap: var(--sp-2); }
+.row-between { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.stack { display: grid; gap: var(--sp-3); }
+.stack-lg { display: grid; gap: var(--sp-4); }
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+.spacer { flex: 1; }
+.muted { color: var(--c-ink-3); }
+.text-err { color: var(--c-stop); }
+.text-warn { color: var(--c-warn); }
+.text-ok { color: var(--c-ok); }
+.small { font-size: var(--fs-xs); }
+.nowrap { white-space: nowrap; }
+.narrow { max-width: 280px; }
+.wrap-anywhere { overflow-wrap: anywhere; }
+.mt-3 { margin-top: var(--sp-3); }
+.mt-4 { margin-top: var(--sp-4); }
+.mt-5 { margin-top: var(--sp-5); }
+.mb-3 { margin-bottom: var(--sp-3); }
+
+@media (max-width: 520px) {
+  .grid-2 { grid-template-columns: 1fr; }
+}
+
+/* ── États : chargement, vide ──────────────────────────────────────── */
+.skeleton {
+  display: block;
+  border-radius: var(--r-1);
+  background: var(--c-skeleton);
+  background-image: linear-gradient(90deg, transparent 0, rgba(255, 255, 255, 0.45) 50%, transparent 100%);
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-sweep 1.4s linear infinite;
+}
+.skeleton-row {
+  display: grid;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  border-top: 1px solid var(--c-line);
+}
+.skeleton-row:first-child { border-top: 0; }
+.skeleton-line { height: 14px; }
+.skeleton-line.w-60 { width: 60%; }
+.skeleton-line.w-40 { width: 40%; }
+.skeleton-line.w-80 { width: 80%; }
+@keyframes skeleton-sweep {
+  from { background-position: 150% 0; }
+  to   { background-position: -50% 0; }
+}
+
+.empty-state {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-2);
+  padding: var(--sp-5) var(--sp-4);
+  color: var(--c-ink-2);
+}
+.empty-state b { color: var(--c-ink); font-size: var(--fs-md); }
+.empty-state.center { justify-items: center; text-align: center; }
+
+.empty {
+  padding: var(--sp-5) var(--sp-4);
+  color: var(--c-ink-3);
+  text-align: center;
+}
+
+.disclaimer {
+  margin: var(--sp-5) 0 0;
+  padding: var(--sp-3) var(--sp-4);
+  border-left: 3px solid var(--c-line);
+  color: var(--c-ink-3);
+  font-size: var(--fs-xs);
+  max-width: 72ch;
+}
+
+.print-only { display: none; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { display: inline-block; animation: spin 1s linear infinite; }
+
+/* ── Mouvement réduit ──────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .skeleton { background-image: none; }
+}

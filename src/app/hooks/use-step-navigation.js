@@ -3,6 +3,7 @@
 
 import { useCallback } from 'react';
 import { STEPS, ADMIN_SCREENS, FICHE_IDX, CHECKLIST_IDX } from '../constants.js';
+import { GO_DECISION_ID } from '../derive.js';
 
 const smoothTop = () => window.scrollTo({ top:0, behavior:"smooth" });
 
@@ -45,6 +46,8 @@ export function useStepNavigation(ctx) {
       finishPreparation();
       return;
     }
+    // Décision finale du DP : verrou avant le passage à la fiche (mise à l'eau).
+    if (screen === "checklist" && diveMode === 'execute' && !session.checked[GO_DECISION_ID]) return;
     if (screen === "palanquees" && blockingPalSummary.length > 0) {
       setConfirmModal("pal_blocking");
       return;

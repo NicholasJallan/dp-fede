@@ -1,0 +1,230 @@
+/* DP Assistant — Mode exécution : cartes « cadran » par palanquée. */
+
+.exec-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-5);
+  align-items: baseline;
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border: 2px solid var(--c-line-strong);
+  border-radius: var(--r-1);
+}
+.exec-summary .item { display: flex; gap: var(--sp-2); align-items: baseline; }
+.exec-summary .num { font-size: var(--fs-lg); font-weight: 700; }
+.exec-summary .k { color: var(--c-ink-2); }
+
+.cadran-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--sp-4);
+}
+@media (min-width: 1100px) {
+  .cadran-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.cadran {
+  display: grid;
+  align-content: start;
+  border: 2px solid var(--c-line-strong);
+  border-radius: var(--r-2);
+  background: var(--c-surface);
+  overflow: hidden;
+}
+.cadran.is-overtime { border-color: var(--c-warn); box-shadow: inset 0 0 0 2px var(--c-warn); }
+
+.cadran-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: var(--touch-xl);
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--c-abyss);
+  color: var(--c-on-abyss);
+}
+.cadran-id {
+  font-family: var(--font-num);
+  font-weight: 700;
+  font-size: var(--fs-lg);
+  padding-right: var(--sp-3);
+  border-right: 2px solid var(--c-abyss-2);
+}
+.cadran-head h2 {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.cadran-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 4px var(--sp-3);
+  border-radius: 999px;
+  border: 1px solid var(--c-on-abyss-2);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+.cadran-state .sicon { color: currentColor; }
+.cadran.is-water .cadran-state { background: var(--c-on-abyss); color: var(--c-abyss); border-color: var(--c-on-abyss); }
+.cadran.is-out .cadran-state { color: var(--c-on-abyss); }
+
+.cadran-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4) 0;
+}
+
+.cadran-members {
+  list-style: none;
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4);
+  display: grid;
+  gap: var(--sp-1);
+}
+.cadran-members li {
+  display: grid;
+  grid-template-columns: 5.5em minmax(0, 1fr);
+  gap: var(--sp-3);
+  align-items: baseline;
+}
+.cadran-members .apt {
+  font-family: var(--font-num);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  padding: 1px 6px;
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-1);
+  text-align: center;
+}
+.cadran-members .name { font-weight: 700; overflow-wrap: anywhere; }
+.cadran-members .name small { font-weight: 400; color: var(--c-ink-3); margin-left: var(--sp-2); }
+
+/* Jauges : prévu en gros chiffres, réalisé en dessous */
+.gauges {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 2px solid var(--c-line-strong);
+  border-bottom: 2px solid var(--c-line-strong);
+}
+.gauge {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
+  min-width: 0;
+}
+.gauge + .gauge { border-left: 2px solid var(--c-line-strong); }
+.gauge-label { font-size: var(--fs-sm); color: var(--c-ink-2); font-weight: 700; }
+.gauge-value {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-gauge);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+.gauge-value small { font-size: 0.42em; font-weight: 500; letter-spacing: 0; margin-left: 0.15em; color: var(--c-ink-2); }
+.gauge-value.is-missing { font-size: var(--fs-md); color: var(--c-warn); letter-spacing: 0; display: flex; gap: var(--sp-1); align-items: center; }
+.gauge-real { font-family: var(--font-num); font-size: var(--fs-xs); color: var(--c-ink-2); }
+.gauge-real b { color: var(--c-ink); }
+
+/* Chronomètre */
+.chrono {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--sp-1) var(--sp-4);
+  align-items: end;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--c-sunken);
+}
+.chrono-label { grid-column: 1 / -1; font-size: var(--fs-sm); font-weight: 700; color: var(--c-ink-2); }
+.chrono-value {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-chrono);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.chrono-value.is-idle { color: var(--c-ink-3); }
+.chrono-times { display: grid; gap: 2px; text-align: right; font-family: var(--font-num); font-size: var(--fs-sm); color: var(--c-ink-2); }
+.chrono-times b { color: var(--c-ink); }
+.chrono-bar {
+  grid-column: 1 / -1;
+  position: relative;
+  height: 10px;
+  margin-top: var(--sp-2);
+  border: 1px solid var(--c-line-strong);
+  border-radius: 2px;
+  background: var(--c-surface);
+  overflow: hidden;
+}
+.chrono-bar > span { position: absolute; inset: 0 auto 0 0; background: var(--c-ink); }
+.cadran.is-overtime .chrono-bar > span { background: var(--c-warn); }
+.chrono-alert {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  color: var(--c-warn);
+  font-weight: 700;
+}
+
+.cadran-actions { display: grid; gap: var(--sp-2); padding: var(--sp-4); }
+.btn.go { background: var(--c-action); border-color: var(--c-action); color: var(--c-on-action); }
+.btn.go:hover { background: var(--c-action-hover); border-color: var(--c-action-hover); color: var(--c-on-action); }
+.btn.exit { background: var(--c-ink); border-color: var(--c-ink); color: var(--c-bg); }
+.btn.exit:hover { background: var(--c-ink-2); border-color: var(--c-ink-2); color: var(--c-bg); }
+.cadran-actions .btn { min-height: 64px; font-size: var(--fs-lg); letter-spacing: 0.04em; }
+
+/* Réalisé + pressions de sortie */
+.cadran-done { display: grid; gap: var(--sp-3); padding: var(--sp-4); }
+.cadran-done-head { display: flex; gap: var(--sp-2); align-items: center; font-weight: 700; }
+.cadran-comment { font-size: var(--fs-sm); color: var(--c-ink-2); white-space: pre-wrap; border-left: 3px solid var(--c-line); padding-left: var(--sp-3); }
+.pressure-list { display: grid; gap: var(--sp-2); }
+.pressure-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 128px auto;
+  gap: var(--sp-2);
+  align-items: center;
+}
+.pressure-row .who { font-weight: 700; overflow-wrap: anywhere; }
+.pressure-row .who small { display: block; font-weight: 400; color: var(--c-ink-3); font-family: var(--font-num); }
+.pressure-row .unit-input { min-height: var(--touch-xl); }
+.pressure-row .btn { min-height: var(--touch-xl); font-size: var(--fs-sm); padding: 0 var(--sp-3); }
+.pressure-row .btn[aria-pressed="true"] { background: var(--c-stop); border-color: var(--c-stop); color: var(--c-on-stop); }
+.pressure-row.is-air-out .unit-input { opacity: 0.45; }
+@media (max-width: 420px) {
+  .pressure-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .pressure-row .who { grid-column: 1 / -1; }
+}
+
+.exec-notes { margin-top: var(--sp-5); }
+
+/* Bloc « fiche complète » repliable à l'écran, toujours imprimé */
+.fiche-toggle { margin-top: var(--sp-5); }
+.fiche-wrap { margin-top: var(--sp-4); }
+.fiche-wrap.is-collapsed { display: none; }
+
+@media print {
+  .exec-board, .exec-summary, .fiche-toggle { display: none !important; }
+  .fiche-wrap, .fiche-wrap.is-collapsed { display: block !important; margin: 0; }
+}
+
+/* Petits écrans : en-tête sur deux lignes, jauges et chronomètre resserrés */
+.cadran-head { flex-wrap: wrap; }
+.cadran-head h2 { flex: 1 1 8em; }
+@media (max-width: 480px) {
+  .gauge { padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3); }
+  .gauge-label { font-size: var(--fs-xs); }
+  .gauge-real { font-size: 0.75rem; }
+  .chrono { grid-template-columns: minmax(0, 1fr); }
+  .chrono-times { grid-auto-flow: column; justify-content: start; gap: var(--sp-4); text-align: left; }
+  .cadran-members li { grid-template-columns: 4.5em minmax(0, 1fr); }
+}

@@ -4,9 +4,9 @@
 //   {
 //     id:           UUID (client),
 //     kind:         'dive.create'  | 'dive.update'  | 'dive.delete'  |
-//                   'dive.drive'   | 'diver.create' | 'diver.update' |
-//                   'diver.delete' | 'site.create'  | 'site.update'  |
-//                   'site.delete',
+//                   'diver.create' | 'diver.update' | 'diver.delete' |
+//                   'site.create'  | 'site.update'  | 'site.delete',
+//                   (le dépôt Drive n'est pas un kind d'outbox)
 //     payload:      données à envoyer (kind-dépendant),
 //     attempts:     nombre d'essais,
 //     lastError:    message du dernier échec,

@@ -9,15 +9,15 @@
 //   public/**               → dist/**         (icônes, manifest, sw.js, inline-boot.js)
 
 const esbuild = require('esbuild');
-const crypto  = require('crypto');
-const fs      = require('fs');
-const path    = require('path');
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 const isWatch = process.argv.includes('--watch');
-const isProd  = !isWatch;
+const isProd = !isWatch;
 
-const ROOT   = __dirname;
-const DIST   = path.join(ROOT, 'dist');
+const ROOT = __dirname;
+const DIST = path.join(ROOT, 'dist');
 const PUBLIC = path.join(ROOT, 'public');
 
 // ── Fichiers statiques ──────────────────────────────────────────────────────
@@ -26,7 +26,7 @@ function copyDir(src, dest) {
   fs.mkdirSync(dest, { recursive: true });
   for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
     const from = path.join(src, entry.name);
-    const to   = path.join(dest, entry.name);
+    const to = path.join(dest, entry.name);
     if (entry.isDirectory()) copyDir(from, to);
     else fs.copyFileSync(from, to);
   }
@@ -46,7 +46,7 @@ function copyStatic() {
 // version, tout changement de fichier en produit une nouvelle.
 
 function listFiles(dir) {
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     const full = path.join(dir, e.name);
     return e.isDirectory() ? listFiles(full) : [full];
   });
@@ -55,7 +55,9 @@ function listFiles(dir) {
 function stampServiceWorker() {
   const swPath = path.join(DIST, 'sw.js');
   const hash = crypto.createHash('sha256');
-  for (const file of listFiles(DIST).filter(f => f !== swPath && !f.endsWith('.map')).sort()) {
+  for (const file of listFiles(DIST)
+    .filter((f) => f !== swPath && !f.endsWith('.map'))
+    .sort()) {
     hash.update(path.relative(DIST, file));
     hash.update(fs.readFileSync(file));
   }
@@ -69,8 +71,8 @@ function stampServiceWorker() {
 // ── esbuild ─────────────────────────────────────────────────────────────────
 
 const shared = {
-  bundle:   true,
-  minify:   isProd,
+  bundle: true,
+  minify: isProd,
   // Pas de sourcemap publié en prod (808 Ko, et expose les sources).
   sourcemap: isWatch,
   logLevel: 'warning',
@@ -79,24 +81,24 @@ const shared = {
 const jsOptions = {
   ...shared,
   entryPoints: [path.join(ROOT, 'src/app/main.jsx')],
-  target:      'es2020',
-  loader:      { '.jsx': 'jsx', '.js': 'jsx' },
-  outfile:     path.join(DIST, 'app.js'),
-  define:      { 'process.env.NODE_ENV': isProd ? '"production"' : '"development"' },
-  jsx:         'automatic',
+  target: 'es2020',
+  loader: { '.jsx': 'jsx', '.js': 'jsx' },
+  outfile: path.join(DIST, 'app.js'),
+  define: { 'process.env.NODE_ENV': isProd ? '"production"' : '"development"' },
+  jsx: 'automatic',
   jsxImportSource: 'react',
 };
 
 const cssOptions = {
   ...shared,
   entryPoints: [path.join(ROOT, 'src/styles/styles.css')],
-  outfile:     path.join(DIST, 'styles.css'),
+  outfile: path.join(DIST, 'styles.css'),
 };
 
 async function watch() {
   copyStatic();
   const contexts = await Promise.all([esbuild.context(jsOptions), esbuild.context(cssOptions)]);
-  await Promise.all(contexts.map(ctx => ctx.watch()));
+  await Promise.all(contexts.map((ctx) => ctx.watch()));
   console.log('[DP] Watching for changes… (Ctrl+C to stop) — public/ et index.html : relancer pour recopier');
 }
 
@@ -108,7 +110,7 @@ async function build() {
   console.log(`[DP] Build OK — dist/app.js ${(stat.size / 1024).toFixed(1)} KB — SW ${version}`);
 }
 
-(isWatch ? watch() : build()).catch(err => {
+(isWatch ? watch() : build()).catch((err) => {
   console.error('[DP] Build failed:', err.message);
   process.exit(1);
 });

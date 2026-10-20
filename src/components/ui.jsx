@@ -1,33 +1,36 @@
 // DP Assistant — Primitives d'interface : pastilles, alertes, options, champs, questions.
 
-import React from 'react';
+import React, { useId } from 'react';
 import { CdsLink } from './cds-link.jsx';
+import { StatusIcon, STATUS_LABELS } from './icons.jsx';
 
 // =========================================================================
-// Pill — pastille de tag/mélange
+// Pill — pastille (niveau, mélange, contexte). Tons d'état : ok / warn / err.
 // =========================================================================
-function Pill({ tone = "default", children, className = "" }) {
-  return <span className={`pill ${tone} ${className}`}>{children}</span>;
+function Pill({ tone = 'default', children, className = '' }) {
+  return <span className={`pill ${tone} ${className}`.trim()}>{children}</span>;
 }
 
 // =========================================================================
-// Ref — référence réglementaire
+// Ref — référence réglementaire en texte
 // =========================================================================
 function Ref({ children }) {
   if (!children) return null;
-  return <span className="ref" title="Référence réglementaire">{children}</span>;
+  return <span className="ref">{children}</span>;
 }
 
 // =========================================================================
-// Alert
+// Alert — forme + couleur + libellé lu par les lecteurs d'écran
 // =========================================================================
-function Alert({ tone = "info", title, children }) {
-  const labels = { info: "INFO", warn: "ATTENTION", ok: "OK", err: "BLOQUANT" };
+const ALERT_SR = { info: 'Information', warn: 'Alerte', ok: 'Conforme', err: 'Bloquant' };
+
+function Alert({ tone = 'info', title, children, className = '' }) {
   return (
-    <div className={`alert ${tone}`}>
-      <span className="ic">{labels[tone] || tone.toUpperCase()}</span>
-      <div>
-        {title && <b style={{ display: "block", marginBottom: 2 }}>{title}</b>}
+    <div className={`alert ${tone} ${className}`.trim()} role={tone === 'err' ? 'alert' : undefined}>
+      <StatusIcon tone={tone} />
+      <div className="alert-body">
+        <span className="sr-only">{ALERT_SR[tone] || STATUS_LABELS[tone]} : </span>
+        {title && <b>{title}</b>}
         <div>{children}</div>
       </div>
     </div>
@@ -35,17 +38,33 @@ function Alert({ tone = "info", title, children }) {
 }
 
 // =========================================================================
-// Option button (single / multi)
+// Notice — encart d'état dans le contenu (titre + texte + actions)
 // =========================================================================
-function Opt({ checked, onClick, label, hint, multi = false }) {
+function Notice({ tone = 'info', title, children, actions, live = false, className = '' }) {
+  const shape = tone === 'signal' ? 'warn' : tone;
+  return (
+    <section className={`notice ${tone} ${className}`.trim()} role={live ? 'status' : undefined}>
+      {title && <div className="notice-title"><StatusIcon tone={shape} />{title}</div>}
+      {children && <div>{children}</div>}
+      {actions && <div className="notice-actions">{actions}</div>}
+    </section>
+  );
+}
+
+// =========================================================================
+// Opt — gros bouton d'option : radio (choix unique) ou case (choix multiple)
+// =========================================================================
+function Opt({ checked, onClick, label, hint, multi = false, disabled = false }) {
   return (
     <button
       type="button"
-      className={`opt ${multi ? "sq" : ""}`}
-      aria-checked={checked ? "true" : "false"}
+      role={multi ? 'checkbox' : 'radio'}
+      className={`opt ${multi ? 'sq' : ''}`}
+      aria-checked={checked ? 'true' : 'false'}
+      disabled={disabled}
       onClick={onClick}
     >
-      <span className="check"></span>
+      <span className="check" aria-hidden="true"></span>
       <span className="body">
         <span>{label}</span>
         {hint && <small>{hint}</small>}
@@ -55,132 +74,152 @@ function Opt({ checked, onClick, label, hint, multi = false }) {
 }
 
 // =========================================================================
-// Toggle (yes/no)
+// Toggle — interrupteur oui / non (role="switch")
 // =========================================================================
-function Toggle({ checked, onChange, label }) {
+function Toggle({ checked, onChange, label, labelledBy, id }) {
   return (
     <button
       type="button"
-      className="toggle"
-      aria-checked={checked ? "true" : "false"}
-      aria-label={label}
+      id={id}
+      role="switch"
+      className="switch"
+      aria-checked={checked ? 'true' : 'false'}
+      aria-label={labelledBy ? undefined : label}
+      aria-labelledby={labelledBy}
       onClick={() => onChange(!checked)}
-    />
+    >
+      <span className="track" aria-hidden="true"></span>
+      <span className="state" aria-hidden="true">{checked ? 'Oui' : 'Non'}</span>
+    </button>
   );
 }
 
 // =========================================================================
-// Field wrapper
+// Field — libellé relié au contrôle.
+//   - enfant <input>/<select>/<textarea> : id + aria-describedby injectés ;
+//   - children fonction : reçoit { id, labelId, hintId } (contrôles composés) ;
+//   - group : libellé + role="group" (ensembles d'options).
 // =========================================================================
-function Field({ label, hint, regRef, required, children, controls }) {
+const NATIVE_CONTROLS = ['input', 'select', 'textarea'];
+
+function Field({ label, hint, regRef, required, children, controls, group = false, labelOnly = false, id: idProp, className = '' }) {
+  const auto = useId();
+  const id = idProp || `f${auto.replace(/:/g, '')}`;
+  const labelId = `${id}-label`;
+  const hintId = hint ? `${id}-hint` : undefined;
+  const ids = { id, labelId, hintId };
+
+  let content = typeof children === 'function' ? children(ids) : children;
+  if (!group && React.isValidElement(content) && NATIVE_CONTROLS.includes(content.type)) {
+    content = React.cloneElement(content, {
+      id: content.props.id || id,
+      'aria-describedby': content.props['aria-describedby'] || hintId,
+      'aria-required': required || undefined,
+    });
+  }
+  // labelOnly : le contrôle composé se relie lui-même au libellé (aria-labelledby).
+  const LabelTag = group || controls || labelOnly ? 'span' : 'label';
+
   return (
-    <div className="field">
+    <div className={`field ${className}`.trim()}>
       <div className="field-row">
-        <label className="field-label">
+        <LabelTag className="field-label" id={labelId} htmlFor={LabelTag === 'label' ? id : undefined}>
           {label}
-          {required && <span className="req">*</span>}
-        </label>
+          {required && <span className="req" aria-hidden="true">*</span>}
+          {required && <span className="sr-only"> (obligatoire)</span>}
+        </LabelTag>
         {regRef && <CdsLink refText={regRef} compact />}
-        {controls}
+        {controls && <span className="field-controls">{typeof controls === 'function' ? controls(ids) : controls}</span>}
       </div>
-      {hint && <div className="field-hint">{hint}</div>}
-      <div>{children}</div>
+      {hint && <div className="field-hint" id={hintId}>{hint}</div>}
+      {content != null && (group
+        ? <div role="group" aria-labelledby={labelId} aria-describedby={hintId}>{content}</div>
+        : content)}
     </div>
   );
 }
 
 // =========================================================================
-// Dynamic question renderer
+// Question — rendu dynamique d'une question du profil
 // =========================================================================
-function Question({ q, value, onChange }) {
-  const set = (v) => onChange(q.id, v);
-
-  if (q.type === "bool") {
-    return (
-      <Field label={q.label} hint={q.hint} regRef={q.ref} required={q.required}
-        controls={
-          <div style={{ display: "flex", gap: 8, marginLeft: "auto", alignItems: "center" }}>
-            <Toggle checked={!!value} onChange={set} label={q.label} />
-            <span style={{ fontFamily: "var(--t-mono)", fontSize: 11, color: "var(--ink-3)", letterSpacing: ".04em", minWidth: 30 }}>
-              {value ? "OUI" : "NON"}
-            </span>
-          </div>
-        }>
-      </Field>
-    );
-  }
-
-  if (q.type === "choice") {
-    const cols = q.cols || 3;
-    return (
-      <Field label={q.label} hint={q.hint} regRef={q.ref} required={q.required}>
-        <div className={`opt-group col-${cols}`}>
-          {q.options.map(o => (
-            <Opt key={o} label={o} checked={value === o} onClick={() => set(o)} />
-          ))}
+function ChoiceQuestion({ q, value, set }) {
+  const cols = q.cols || 3;
+  return (
+    <Field label={q.label} hint={q.hint} regRef={q.ref} required={q.required} labelOnly>
+      {({ labelId, hintId }) => (
+        <div className={`opt-group col-${cols}`} role="radiogroup" aria-labelledby={labelId} aria-describedby={hintId}>
+          {q.options.map(o => <Opt key={o} label={o} checked={value === o} onClick={() => set(o)} />)}
         </div>
-      </Field>
-    );
-  }
-
-  if (q.type === "multi") {
-    const cols = q.cols || 3;
-    const vals = Array.isArray(value) ? value : [];
-    return (
-      <Field label={q.label} hint={q.hint} regRef={q.ref} required={q.required}>
-        <div className={`opt-group col-${cols}`}>
-          {q.options.map(o => {
-            const on = vals.includes(o);
-            return (
-              <Opt key={o} multi label={o} checked={on}
-                onClick={() => set(on ? vals.filter(x => x !== o) : [...vals, o])} />
-            );
-          })}
-        </div>
-      </Field>
-    );
-  }
-
-  if (q.type === "text") {
-    return (
-      <Field label={q.label} hint={q.hint} regRef={q.ref} required={q.required}>
-        <input className="input" type="text" placeholder={q.placeholder || ""}
-          value={value || ""} onChange={(e) => set(e.target.value)} />
-      </Field>
-    );
-  }
-
-  if (q.type === "textarea") {
-    return (
-      <Field label={q.label} hint={q.hint} regRef={q.ref} required={q.required}>
-        <textarea className="textarea" placeholder={q.placeholder || ""}
-          value={value || ""} onChange={(e) => set(e.target.value)} />
-      </Field>
-    );
-  }
-
-  if (q.type === "number") {
-    return (
-      <Field label={q.label} hint={q.hint} regRef={q.ref} required={q.required}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <input className="input num" type="number" step="0.1"
-            value={value ?? ""} onChange={(e) => set(parseFloat(e.target.value) || 0)} />
-          {q.suffix && <span className="muted" style={{ fontFamily: "var(--t-mono)", fontSize: 12 }}>{q.suffix}</span>}
-        </div>
-      </Field>
-    );
-  }
-
-  if (q.type === "datetime") {
-    return (
-      <Field label={q.label} hint={q.hint} regRef={q.ref} required={q.required}>
-        <input className="input tight" type="datetime-local"
-          value={value || ""} onChange={(e) => set(e.target.value)} />
-      </Field>
-    );
-  }
-
-  return null;
+      )}
+    </Field>
+  );
 }
 
-export { Pill, Ref, Alert, Opt, Toggle, Field, Question };
+function MultiQuestion({ q, value, set }) {
+  const cols = q.cols || 3;
+  const vals = Array.isArray(value) ? value : [];
+  return (
+    <Field label={q.label} hint={q.hint} regRef={q.ref} required={q.required} group>
+      <div className={`opt-group col-${cols}`}>
+        {q.options.map(o => {
+          const on = vals.includes(o);
+          return <Opt key={o} multi label={o} checked={on} onClick={() => set(on ? vals.filter(x => x !== o) : [...vals, o])} />;
+        })}
+      </div>
+    </Field>
+  );
+}
+
+function Question({ q, value, onChange }) {
+  const set = (v) => onChange(q.id, v);
+  const common = { label: q.label, hint: q.hint, regRef: q.ref, required: q.required };
+
+  switch (q.type) {
+    case 'bool':
+      return (
+        <Field {...common}
+          controls={({ id, labelId }) => <Toggle id={id} checked={!!value} onChange={set} labelledBy={labelId} />} />
+      );
+    case 'choice':
+      return <ChoiceQuestion q={q} value={value} set={set} />;
+    case 'multi':
+      return <MultiQuestion q={q} value={value} set={set} />;
+    case 'text':
+      return (
+        <Field {...common}>
+          <input className="input" type="text" placeholder={q.placeholder || ''}
+            value={value || ''} onChange={(e) => set(e.target.value)} />
+        </Field>
+      );
+    case 'textarea':
+      return (
+        <Field {...common}>
+          <textarea className="textarea" placeholder={q.placeholder || ''}
+            value={value || ''} onChange={(e) => set(e.target.value)} />
+        </Field>
+      );
+    case 'number':
+      return (
+        <Field {...common}>
+          {({ id, hintId }) => (
+            <div className="unit-input narrow">
+              <input id={id} aria-describedby={hintId} type="text" inputMode="decimal"
+                value={value ?? ''} onChange={(e) => set(parseFloat(e.target.value.replace(',', '.')) || 0)} />
+              {q.suffix && <span className="unit">{q.suffix}</span>}
+            </div>
+          )}
+        </Field>
+      );
+    case 'datetime':
+      return (
+        <Field {...common}>
+          <input className="input mono narrow" type="datetime-local"
+            value={value || ''} onChange={(e) => set(e.target.value)} />
+        </Field>
+      );
+    default:
+      return null;
+  }
+}
+
+export { Pill, Ref, Alert, Notice, Opt, Toggle, Field, Question };

@@ -1,7 +1,8 @@
-// Stepper des étapes 1 → 5 (masquage selon le mode, verrouillages).
+// Étapes 1 → 5 de la plongée (masquage selon le mode, verrouillages).
 
 import React from 'react';
 import { STEPS, FICHE_IDX, ARCHIVE_IDX, PREPARE_ONLY_STEPS, EXECUTE_ONLY_STEPS } from '../constants.js';
+import { Icon } from '../../components/icons.jsx';
 
 function isStepLocked(i, step, { plongeeFigee, divePlongeesEnCours, diveMode }) {
   if (plongeeFigee) return i < ARCHIVE_IDX;
@@ -9,34 +10,35 @@ function isStepLocked(i, step, { plongeeFigee, divePlongeesEnCours, diveMode }) 
     || (diveMode === 'execute' && PREPARE_ONLY_STEPS.includes(step.id));
 }
 
-export function DiveStepper({ currentStepIdx, diveMode, plongeeFigee, divePlongeesEnCours }) {
-  const lockTitle = plongeeFigee
-    ? "Plongée figée — consultation uniquement"
-    : "Verrouillé";
-  return (
-    <div className="stepper">
-      {STEPS.map((s, i) => {
-        // En mode prepare : masquer fiche + archive ; en mode execute : masquer profil + palanquees
-        const hiddenInPrepare = diveMode === 'prepare' && EXECUTE_ONLY_STEPS.includes(s.id);
-        const hiddenInExecute = diveMode === 'execute' && PREPARE_ONLY_STEPS.includes(s.id);
-        if (hiddenInPrepare || hiddenInExecute) return null;
+function stepState(i, currentStepIdx, locked) {
+  if (i === currentStepIdx) return { cls: 'is-active', sr: 'étape en cours' };
+  if (locked) return { cls: 'is-locked', sr: 'verrouillée' };
+  if (i < currentStepIdx) return { cls: 'is-done', sr: 'terminée' };
+  return { cls: '', sr: 'à venir' };
+}
 
-        const isDone    = i < currentStepIdx;
-        const isActive  = i === currentStepIdx;
-        const isLocked  = isStepLocked(i, s, { plongeeFigee, divePlongeesEnCours, diveMode });
-        return (
-          <div key={s.id}
-            className={`step ${isActive ? "active" : ""} ${isDone ? "done" : ""} ${isLocked ? "locked" : ""}`}
-            title={isLocked ? lockTitle : undefined}
-            aria-current={isActive ? "step" : undefined}>
-            <span className="num">{isLocked ? "🔒" : isDone ? "✓" : (i + 1)}</span>
-            <span className="grp">
-              <span className="label-sub">{s.sub}</span>
-              <span>{s.label}</span>
-            </span>
-          </div>
-        );
-      })}
-    </div>
+export function DiveStepper({ currentStepIdx, diveMode, plongeeFigee, divePlongeesEnCours }) {
+  const visible = STEPS
+    .map((s, i) => ({ s, i }))
+    .filter(({ s }) => !(diveMode === 'prepare' && EXECUTE_ONLY_STEPS.includes(s.id))
+      && !(diveMode === 'execute' && PREPARE_ONLY_STEPS.includes(s.id)));
+  return (
+    <nav className="stepper" aria-label={diveMode === 'execute' ? 'Étapes de l\'exécution' : 'Étapes de la préparation'}>
+      <ol className="stepper-list">
+        {visible.map(({ s, i }) => {
+          const locked = isStepLocked(i, s, { plongeeFigee, divePlongeesEnCours, diveMode });
+          const st = stepState(i, currentStepIdx, locked);
+          return (
+            <li key={s.id} className={`step ${st.cls}`} aria-current={i === currentStepIdx ? 'step' : undefined}>
+              <span className="step-num" aria-hidden="true">
+                {locked && i !== currentStepIdx ? <Icon.Lock /> : st.cls === 'is-done' ? <Icon.Check /> : i + 1}
+              </span>
+              <span className="step-label">{s.label}</span>
+              <span className="sr-only"> ({st.sr})</span>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }

@@ -1,8 +1,10 @@
-// DP Assistant — Écran de connexion Google
+// DP Assistant — Connexion Google.
 
 import React, { useEffect, useRef } from 'react';
 import { useAuth } from '../auth/auth-context.jsx';
 import { useOnline } from '../offline/use-online.jsx';
+import { Notice } from '../components/ui.jsx';
+import { BrandMark } from '../components/icons.jsx';
 
 function ScreenLogin() {
   const { handleGoogleCredential } = useAuth();
@@ -15,27 +17,17 @@ function ScreenLogin() {
 
     function init() {
       if (cancelled) return;
-      // GIS charge async — si pas encore dispo, on repoll toutes les 150 ms.
+      // GIS charge en asynchrone : on réessaie toutes les 150 ms.
       if (!window.google?.accounts?.id) {
         timer = setTimeout(init, 150);
         return;
       }
       const clientId = window.GOOGLE_CLIENT_ID;
       if (!clientId || clientId === 'GOOGLE_CLIENT_ID_PLACEHOLDER') return;
-
-      google.accounts.id.initialize({
-        client_id: clientId,
-        callback: handleGoogleCredential,
-        auto_select: false,
-      });
-
+      google.accounts.id.initialize({ client_id: clientId, callback: handleGoogleCredential, auto_select: false });
       if (btnRef.current) {
         google.accounts.id.renderButton(btnRef.current, {
-          theme: 'outline',
-          size: 'large',
-          text: 'signin_with',
-          locale: 'fr',
-          width: 280,
+          theme: 'outline', size: 'large', text: 'signin_with', locale: 'fr', width: 280,
         });
       }
     }
@@ -45,42 +37,22 @@ function ScreenLogin() {
   }, [handleGoogleCredential]);
 
   return (
-    <div className="login-shell">
+    <main className="login-shell">
       <div className="login-card">
-        <img src="logo-ffessm.png" alt="FFESSM" className="login-ffessm-logo" />
-
-        <div className="login-logo">
-          <span className="dot"></span>
-          <span>DP/ASSISTANT</span>
-        </div>
-
-        <h1 className="login-title">Connexion</h1>
-        <p className="login-sub">
-          Outil d'aide au Directeur de Plongée — FFESSM / Code du Sport
-        </p>
-
+        <img src="logo-ffessm.png" alt="FFESSM" className="login-logo" width="56" height="56" />
+        <div className="login-brand"><BrandMark /><span>DP Assistant</span></div>
+        <h1>Connexion</h1>
+        <p className="login-sub">Aide au directeur de plongée : palanquées, check-list et fiche de sécurité selon le Code du sport.</p>
         <div className="login-btn-wrap" ref={btnRef}></div>
-
         {!online && (
-          <div style={{
-            marginTop: 14, padding: '10px 14px',
-            background: 'rgba(224,120,86,0.08)',
-            border: '1px solid rgba(224,120,86,0.35)',
-            borderRadius: 8, fontSize: 13, color: 'var(--ink-2)',
-            textAlign: 'left', lineHeight: 1.5,
-          }}>
-            <b style={{ color: 'var(--coral, #e07856)' }}>● Hors ligne</b><br />
-            La première connexion exige une connexion internet. Si vous vous
-            êtes déjà connecté récemment, rechargez la page une fois en ligne.
-          </div>
+          <Notice tone="warn" title="Hors ligne">
+            La première connexion demande internet. Si vous vous êtes connecté récemment sur cet appareil,
+            rechargez la page une fois en ligne.
+          </Notice>
         )}
-
-        <p className="login-legal">
-          Vos données sont hébergées sur nos serveurs, en Europe.
-          Aucune donnée n'est transmise à des tiers.
-        </p>
+        <p className="login-legal">Données hébergées en Europe, jamais transmises à des tiers.</p>
       </div>
-    </div>
+    </main>
   );
 }
 

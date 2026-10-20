@@ -1,15 +1,31 @@
-// DP Assistant — Toast notifications (remplace alert())
+// DP Assistant — Notifications (remplacent alert()).
 //
 // Usage :
 //   const { showToast } = useToasts();
 //   showToast({ tone:'err', title:'Erreur PDF', body: err.message });
 //
-// Le tone gère la couleur de bordure (err / warn / ok / info).
-// Les toasts s'auto-ferment après `ttl` ms (défaut 6000). Cliquer × ferme.
+// tone : err / warn / ok / info (forme + couleur). Fermeture automatique
+// après `ttl` ms (6 s par défaut, 0 = reste affiché).
+// La zone live est montée en permanence : les lecteurs d'écran annoncent
+// chaque nouvelle notification (polie ; assertive pour les erreurs).
 
-import React, { useState, useRef, useCallback, createContext, useContext } from 'react';
+import React, { useState, useRef, useCallback, useMemo, createContext, useContext } from 'react';
+import { StatusIcon } from './icons.jsx';
 
 const ToastContext = createContext(null);
+
+function ToastItem({ t, onDismiss }) {
+  return (
+    <div className={`toast ${t.tone}`} role={t.tone === 'err' ? 'alert' : undefined}>
+      <StatusIcon tone={t.tone} />
+      <div>
+        {t.title && <div className="toast-title">{t.title}</div>}
+        {t.body && <div className="toast-body">{t.body}</div>}
+      </div>
+      <button type="button" className="x toast-close" aria-label="Fermer la notification" onClick={() => onDismiss(t.id)}>×</button>
+    </div>
+  );
+}
 
 function ToastProvider({ children }) {
   const [stack, setStack] = useState([]);
@@ -22,39 +38,30 @@ function ToastProvider({ children }) {
   const showToast = useCallback(({ tone = 'info', title, body, ttl = 6000 }) => {
     const id = ++idRef.current;
     setStack(prev => [...prev, { id, tone, title, body }]);
-    if (ttl > 0) {
-      window.setTimeout(() => dismiss(id), ttl);
-    }
+    if (ttl > 0) window.setTimeout(() => dismiss(id), ttl);
     return id;
   }, [dismiss]);
 
+  const value = useMemo(() => ({ showToast, dismiss }), [showToast, dismiss]);
+
   return (
-    <ToastContext.Provider value={{ showToast, dismiss }}>
+    <ToastContext.Provider value={value}>
       {children}
-      {stack.length > 0 && (
-        <div className="toast-stack" role="region" aria-live="polite" aria-label="Notifications">
-          {stack.map(t => (
-            <div key={t.id} className={`toast ${t.tone}`} role={t.tone === 'err' ? 'alert' : 'status'}>
-              <button className="toast-close" aria-label="Fermer" onClick={() => dismiss(t.id)}>×</button>
-              {t.title && <div className="toast-title">{t.title}</div>}
-              {t.body  && <div className="toast-body">{t.body}</div>}
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="toast-region" role="region" aria-label="Notifications" aria-live="polite" aria-relevant="additions">
+        {stack.map(t => <ToastItem key={t.id} t={t} onDismiss={dismiss} />)}
+      </div>
     </ToastContext.Provider>
   );
 }
 
+// Hors fournisseur (ne devrait pas arriver) : journalisation, jamais d'alert() natif.
+const NO_PROVIDER = {
+  showToast: ({ title, body }) => console.warn('[DP] notification hors ToastProvider :', title, body),
+  dismiss: () => {},
+};
+
 function useToasts() {
-  const ctx = useContext(ToastContext);
-  if (!ctx) {
-    return {
-      showToast: ({ title, body }) => window.alert(`${title || ''}\n${body || ''}`.trim()),
-      dismiss:   () => {},
-    };
-  }
-  return ctx;
+  return useContext(ToastContext) || NO_PROVIDER;
 }
 
 export { ToastProvider, useToasts, ToastContext };

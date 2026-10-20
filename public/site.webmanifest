@@ -7,8 +7,8 @@
     { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "/apple-touch-icon.png",       "sizes": "180x180", "type": "image/png", "purpose": "maskable" }
   ],
-  "theme_color": "#0a4a6e",
-  "background_color": "#0a4a6e",
+  "theme_color": "#0B2E4A",
+  "background_color": "#0B2E4A",
   "display": "standalone",
   "orientation": "any",
   "scope": "/",

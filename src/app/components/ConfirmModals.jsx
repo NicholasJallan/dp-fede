@@ -1,133 +1,79 @@
-// Modales de confirmation du shell : déconnexion avec outbox non vide,
-// démarrage hors fenêtre ±4 h, infractions bloquantes, archivage.
+// Confirmations du shell : déconnexion avec actions en attente, démarrage
+// hors fenêtre ±4 h, infractions bloquantes, figer avant archivage.
 
 import React from 'react';
-import { formatDateTime } from '../../components/components.jsx';
+import { ConfirmDialog, Dialog } from '../../components/dialog.jsx';
+import { formatDateTime } from '../../components/format.js';
+import { StatusIcon } from '../../components/icons.jsx';
 
 export function ConfirmLogoutModal({ count, onCancel, onConfirm }) {
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onCancel()}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="logout-title" style={{ maxWidth:460 }}>
-        <div className="modal-head">
-          <h3 id="logout-title">Actions non synchronisées</h3>
-          <button className="x" aria-label="Fermer" onClick={onCancel}>×</button>
-        </div>
-        <div className="modal-body">
-          <p>
-            {count} action(s) n'ont pas encore été envoyées au serveur.
-            Se déconnecter maintenant les effacera de cet appareil.
-          </p>
-          <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
-            <button className="btn" onClick={onCancel}>Rester connecté</button>
-            <button className="btn danger" onClick={onConfirm}>
-              Effacer et se déconnecter
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Fond + carte centrée communs aux modales « plein écran » ci-dessous.
-function CenteredDialog({ maxWidth, children }) {
-  return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', zIndex:1000,
-                  display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-      <div style={{ background:'var(--surface)', borderRadius:12, padding:28, maxWidth, width:'100%',
-                    boxShadow:'0 8px 40px rgba(0,0,0,0.3)', display:'grid', gap:18 }}>
-        {children}
-      </div>
-    </div>
+    <ConfirmDialog title="Actions non envoyées" icon="warn" tone="warn" danger
+      confirmLabel="Effacer et se déconnecter" cancelLabel="Rester connecté"
+      onCancel={onCancel} onConfirm={onConfirm}>
+      <p>
+        <b className="num">{count}</b> action{count > 1 ? 's' : ''} n'{count > 1 ? 'ont' : 'a'} pas encore été
+        envoyée{count > 1 ? 's' : ''} au serveur. Se déconnecter maintenant les efface de cet appareil.
+      </p>
+    </ConfirmDialog>
   );
 }
 
 export function ConfirmStartModal({ confirmStart, onCancel, onConfirm }) {
+  const planned = confirmStart.dive.planned_at || confirmStart.dive.date_plongee;
   return (
-    <CenteredDialog maxWidth={420}>
-      <h2 style={{ margin:0, fontSize:18, color:'var(--sun, #e2a23a)' }}>
-        ⚠ Écart horaire — confirmer ?
-      </h2>
-      <p style={{ margin:0, color:'var(--ink-2)', lineHeight:1.6 }}>
-        Cette plongée était planifiée pour le <b>{formatDateTime(
-          confirmStart.dive.planned_at || confirmStart.dive.date_plongee
-        )}</b>.
-        Il y a actuellement <b>{confirmStart.diffH.toFixed(1)} h</b> d'écart avec maintenant.
+    <ConfirmDialog title="Écart horaire important" icon="warn" tone="warn"
+      confirmLabel="Démarrer cette plongée" onCancel={onCancel} onConfirm={onConfirm}>
+      <p>
+        Cette plongée est prévue le <b>{formatDateTime(planned)}</b>, soit{' '}
+        <b className="num">{confirmStart.diffH.toFixed(1)} h</b> d'écart avec l'heure actuelle.
       </p>
-      <p style={{ margin:0, color:'var(--ink-3)', fontSize:13 }}>
-        Confirmez-vous que c'est bien <em>cette</em> plongée que vous souhaitez démarrer ?
-      </p>
-      <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
-        <button className="btn" onClick={onCancel}>Annuler</button>
-        <button className="btn primary" onClick={onConfirm}>Démarrer quand même</button>
-      </div>
-    </CenteredDialog>
+      <p>Vérifiez qu'il s'agit bien de la plongée à démarrer.</p>
+    </ConfirmDialog>
   );
 }
 
-function PalBlockingContent({ blockingPalSummary, onOverride, onClose }) {
+// Infractions bloquantes au moment de quitter l'écran palanquées.
+function PalBlockingDialog({ blockingPalSummary, onOverride, onClose }) {
+  const n = blockingPalSummary.length;
   return (
-    <>
-      <h2 style={{ margin:0, fontSize:18, color:'var(--coral)' }}>
-        ⚠ Infractions au Code du Sport
-      </h2>
-      <p style={{ margin:0, color:'var(--ink-2)', lineHeight:1.6 }}>
-        {blockingPalSummary.length === 1
-          ? 'Une palanquée présente '
-          : `${blockingPalSummary.length} palanquées présentent `}
-        des erreurs bloquantes. Passer outre engage votre responsabilité personnelle.
+    <Dialog title="Palanquées non conformes" icon="err" tone="err" onClose={onClose}
+      footer={<>
+        <button type="button" className="btn danger" onClick={onOverride}>Continuer sous ma responsabilité</button>
+        <button type="button" className="btn primary" onClick={onClose} data-autofocus="">Corriger les palanquées</button>
+      </>}>
+      <p>
+        {n === 1 ? 'Une palanquée enfreint' : `${n} palanquées enfreignent`} le Code du sport.
+        Passer outre engage la responsabilité personnelle du directeur de plongée.
       </p>
-      <div style={{
-        maxHeight:200, overflowY:'auto',
-        background:'var(--paper-2)', border:'1px solid var(--line)',
-        borderRadius:6, padding:'10px 12px', fontSize:13, lineHeight:1.45,
-      }}>
-        {blockingPalSummary.map(s => (
-          <div key={s.id} style={{ marginBottom:8 }}>
-            <b style={{ color:'var(--ink)' }}>{s.nom}</b>
-            <ul style={{ margin:'4px 0 0 18px', padding:0, color:'var(--ink-2)' }}>
-              {s.errs.map((e, i) => <li key={i}>{e}</li>)}
-            </ul>
-          </div>
-        ))}
-      </div>
-      <div style={{ display:'flex', gap:10, justifyContent:'flex-end', flexWrap:'wrap' }}>
-        <button className="btn" onClick={onOverride} style={{ color:'var(--coral)' }}>
-          Continuer sous ma responsabilité
-        </button>
-        <button className="btn primary" autoFocus onClick={onClose}>
-          Rester et éditer
-        </button>
-      </div>
-    </>
-  );
-}
-
-function ConfirmArchiveContent({ onClose, onConfirm }) {
-  return (
-    <>
-      <h2 style={{ margin:0, fontSize:18 }}>Confirmer et figer la plongée</h2>
-      <p style={{ margin:0, color:'var(--ink-2)', lineHeight:1.6 }}>
-        Vous êtes sur le point de <b>figer définitivement</b> toutes les informations de cette plongée.
-      </p>
-      <p style={{ margin:0, color:'var(--ink-3)', fontSize:13, lineHeight:1.5 }}>
-        Confirmez-vous que toutes les informations (palanquées, heures, pressions, observations) sont complètes et correctes ?
-      </p>
-      <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
-        <button className="btn" onClick={onClose}>Annuler</button>
-        <button className="btn primary" onClick={onConfirm}>Confirmer et archiver →</button>
-      </div>
-    </>
+      {blockingPalSummary.map(s => (
+        <section key={s.id}>
+          <h3 className="mb-3">{s.nom}</h3>
+          <ul className="issue-list">
+            {s.errs.map((e, i) => (
+              <li key={i} className="issue err">
+                <StatusIcon tone="err" />
+                <span className="issue-text">{e.text}</span>
+                {e.ref && <span className="issue-ref">Code du sport : {e.ref}</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </Dialog>
   );
 }
 
 // kind : "pal_blocking" (infractions bloquantes) ou "confirm" (figer avant archivage).
 export function StepConfirmModal({ kind, blockingPalSummary, onOverride, onClose, onConfirm }) {
+  if (kind === 'pal_blocking') {
+    return <PalBlockingDialog blockingPalSummary={blockingPalSummary} onOverride={onOverride} onClose={onClose} />;
+  }
   return (
-    <CenteredDialog maxWidth={440}>
-      {kind === "pal_blocking"
-        ? <PalBlockingContent blockingPalSummary={blockingPalSummary} onOverride={onOverride} onClose={onClose} />
-        : <ConfirmArchiveContent onClose={onClose} onConfirm={onConfirm} />}
-    </CenteredDialog>
+    <ConfirmDialog title="Figer et archiver la plongée" confirmLabel="Figer et archiver"
+      onCancel={onClose} onConfirm={onConfirm}>
+      <p>Une fois figée, la plongée n'est plus modifiable : palanquées, heures, pressions et observations.</p>
+      <p>Vérifiez que tout est complet et exact avant de continuer.</p>
+    </ConfirmDialog>
   );
 }

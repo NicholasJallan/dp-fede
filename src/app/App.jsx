@@ -9,6 +9,7 @@ import { SyncDrawer } from '../components/components.jsx';
 import { useAutoSave } from '../offline/use-auto-save.jsx';
 import { useOnline } from '../offline/use-online.jsx';
 import { sync } from '../offline/sync.js';
+import { outbox } from '../offline/outbox.js';
 import { STORAGE_KEYS } from '../api/storage-keys.js';
 import { ScreenLogin } from '../screens/screen-login.jsx';
 import { SplashScreen } from '../screens/screen-splash.jsx';
@@ -19,14 +20,19 @@ import { useDiveSession } from './hooks/use-dive-session.js';
 import { useDiveLifecycle } from './hooks/use-dive-lifecycle.js';
 import { useDiveActions } from './hooks/use-dive-actions.js';
 import { useStepNavigation, stepFlags } from './hooks/use-step-navigation.js';
-import { computeProfilNotes, computeBlockingPalSummary, checklistProgress, areAllPalanqueesFinished } from './derive.js';
-import { AuthExpiredBanner } from './components/AuthExpiredBanner.jsx';
+import { useTheme } from './hooks/use-theme.js';
+import { useMediaQuery } from './hooks/use-media-query.js';
+import { useStoragePersist } from './hooks/use-storage-persist.js';
+import {
+  computeProfilNotes, computeBlockingPalSummary, checklistProgress, areAllPalanqueesFinished,
+  exitProgress, GO_DECISION_ID,
+} from './derive.js';
+import { AuthExpiredBanner, ReviewBanner } from './components/AuthExpiredBanner.jsx';
 import { Topbar } from './components/Topbar.jsx';
 import { DiveStepper } from './components/DiveStepper.jsx';
 import { AdminNav } from './components/AdminNav.jsx';
-import { SideSummary } from './components/SideSummary.jsx';
+import { SideSummary, SideSummaryCompact } from './components/SideSummary.jsx';
 import { FootNav } from './components/FootNav.jsx';
-import { SyncFloatingPill, UrgenceButton } from './components/ExecuteOverlays.jsx';
 import { UrgenceModal } from './components/UrgenceModal.jsx';
 import { ConfirmLogoutModal, ConfirmStartModal, StepConfirmModal } from './components/ConfirmModals.jsx';
 import { ScreenRouter } from './components/ScreenRouter.jsx';
@@ -67,6 +73,8 @@ function useAppController() {
   useLegacyDraftCleanup();
   const [showSplash, setShowSplash] = useSplash(user);
   const directory = useDirectory(user);
+  const { theme, toggle: toggleTheme } = useTheme();
+  useStoragePersist(user);
 
   // Auto-save debounced (500 ms) vers le serveur ; flushSave(id) force un
   // envoi immédiat avant unmount / navigation entre plongées.
@@ -102,24 +110,29 @@ function useAppController() {
     urgenceOpen, setUrgenceOpen, confirmLogout, setConfirmLogout,
     showSplash, setShowSplash,
     session, directory, flushSave, actions, derived, blockingPalSummary,
-    flags, allPalanqueesFinished, nav,
-    progress: checklistProgress(session.answers, session.checked),
+    flags, allPalanqueesFinished, nav, theme, toggleTheme,
+    progress: checklistProgress(session.answers, session.checked, diveMode),
+    exit: exitProgress(session.palanquees, session.heuresDebut, session.heuresFin),
   };
 }
 
 function AppHeader({ ctl }) {
   const { user, session, flags, screen, setScreen, outboxItems } = ctl;
   const goHome = () => { if (session.currentDiveId) ctl.flushSave(session.currentDiveId); setScreen("home"); };
+  const reviewCount = outboxItems.filter(it => it.status === 'review').length;
   return (<>
-    {ctl.authExpired && <AuthExpiredBanner onReconnect={() => ctl.logout({ keepLocal: true })} />}
+    <a className="skip-link" href="#main">Aller au contenu</a>
     <Topbar
-      user={user} online={ctl.online} outboxCount={outboxItems.length}
+      user={user} online={ctl.online} outboxItems={outboxItems} screen={screen}
       showHomeLink={flags.isStepScreen || flags.isAdminScreen}
+      theme={ctl.theme} onToggleTheme={ctl.toggleTheme}
       onHome={goHome}
       onOpenDrawer={() => ctl.setDrawerOpen(true)}
       onNavigate={setScreen}
       onLogout={() => (outboxItems.length > 0 ? ctl.setConfirmLogout(true) : ctl.logout())}
     />
+    {ctl.authExpired && <AuthExpiredBanner onReconnect={() => ctl.logout({ keepLocal: true })} />}
+    {reviewCount > 0 && <ReviewBanner count={reviewCount} onOpen={() => ctl.setDrawerOpen(true)} />}
     {flags.isStepScreen && (
       <DiveStepper currentStepIdx={flags.currentStepIdx} diveMode={ctl.diveMode}
         plongeeFigee={session.plongeeFigee} divePlongeesEnCours={flags.divePlongeesEnCours} />
@@ -129,13 +142,8 @@ function AppHeader({ ctl }) {
 }
 
 function AppOverlays({ ctl }) {
-  const { session, actions, outboxItems, online, diveMode } = ctl;
-  const openDrawer = () => ctl.setDrawerOpen(true);
+  const { session, actions, outboxItems, online } = ctl;
   return (<>
-    {diveMode === 'execute' && (!online || outboxItems.length > 0) && (
-      <SyncFloatingPill online={online} count={outboxItems.length} onOpen={openDrawer} />
-    )}
-    {diveMode === 'execute' && <UrgenceButton onOpen={() => ctl.setUrgenceOpen(true)} />}
     {ctl.confirmLogout && (
       <ConfirmLogoutModal count={outboxItems.length}
         onCancel={() => ctl.setConfirmLogout(false)}
@@ -150,6 +158,7 @@ function AppOverlays({ ctl }) {
         online={online}
         onClose={() => ctl.setDrawerOpen(false)}
         onForceSync={() => sync.trigger('user-force')}
+        onRetryReview={() => outbox.retryNow().then(() => sync.trigger('user-retry'))}
       />
     )}
     {ctl.showSplash && <SplashScreen user={ctl.user} onClose={() => ctl.setShowSplash(false)} />}
@@ -170,24 +179,29 @@ function AppOverlays({ ctl }) {
 
 function AppShell({ ctl }) {
   const { screen, session, flags } = ctl;
-  const useSide = flags.isStepScreen && screen !== "fiche";
+  const wide = useMediaQuery('(min-width: 980px)');
+  const useSide = flags.isStepScreen && screen !== "fiche" && screen !== "archive";
+  const summaryProps = { answers: session.answers, palanquees: session.palanquees, sites: ctl.directory.sites };
   return (
-    <div className="app">
+    <div className={`app ${flags.isStepScreen ? 'has-footnav' : ''}`} data-mode={ctl.diveMode}>
       <AppHeader ctl={ctl} />
-      <div className={`main ${useSide ? "with-side" : ""}`}>
+      <main id="main" tabIndex={-1} className={`main ${useSide && wide ? "with-side" : ""}`}>
         <div>
-        <ErrorBoundary resetKey={screen}>
-          <ScreenRouter screen={screen} session={session} directory={ctl.directory}
-            derived={ctl.derived} diveMode={ctl.diveMode} actions={ctl.actions} user={ctl.user} />
-        </ErrorBoundary>
+          {useSide && !wide && <SideSummaryCompact {...summaryProps} />}
+          <ErrorBoundary resetKey={screen}>
+            <ScreenRouter screen={screen} session={session} directory={ctl.directory}
+              derived={ctl.derived} diveMode={ctl.diveMode} actions={ctl.actions} user={ctl.user} />
+          </ErrorBoundary>
         </div>
-        {useSide && <SideSummary answers={session.answers} palanquees={session.palanquees} sites={ctl.directory.sites} />}
-      </div>
+        {useSide && wide && <SideSummary {...summaryProps} />}
+      </main>
       {flags.isStepScreen && (
         <FootNav screen={screen} currentStepIdx={flags.currentStepIdx} diveMode={ctl.diveMode}
           plongeeFigee={session.plongeeFigee} divePlongeesEnCours={flags.divePlongeesEnCours}
           archiveDone={session.archiveDone} allPalanqueesFinished={ctl.allPalanqueesFinished}
-          doneCount={ctl.progress.doneCount} total={ctl.progress.total}
+          goDecision={!!session.checked[GO_DECISION_ID]}
+          progress={ctl.progress} exit={ctl.exit}
+          onUrgence={() => ctl.setUrgenceOpen(true)}
           onPrev={ctl.nav.goPrev} onNext={ctl.nav.goNext} onStartNew={ctl.actions.startPreparation} />
       )}
       <AppOverlays ctl={ctl} />
@@ -198,11 +212,7 @@ function AppShell({ ctl }) {
 function AppInner() {
   const ctl = useAppController();
   if (ctl.authLoading) {
-    return (
-      <div className="app" style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh' }}>
-        <div className="muted">Chargement…</div>
-      </div>
-    );
+    return <div className="app-loading" role="status">Chargement de la session…</div>;
   }
   if (!ctl.user) return <ScreenLogin />;
   return <AppShell ctl={ctl} />;

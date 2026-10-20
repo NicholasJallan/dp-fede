@@ -1,6 +1,6 @@
 // DP Assistant — Liens vers les articles du Code du sport (badge + tooltip Légifrance).
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useId } from 'react';
 import { CDS_ARTICLES, parseCdsRefs } from '../domain/index.js';
 
 // =========================================================================
@@ -17,6 +17,7 @@ function CdsBadge({ articleNumber, compact = false }) {
   const badgeRef   = useRef(null);
   const tooltipRef = useRef(null);
   const [open, setOpen] = useState(false);
+  const tipId = `cds${useId().replace(/:/g, '')}`;
 
   const place = () => {
     const badge = badgeRef.current;
@@ -68,17 +69,18 @@ function CdsBadge({ articleNumber, compact = false }) {
       href={href}
       target="_blank" rel="noopener noreferrer"
       className={`cds-badge ${compact ? 'compact' : ''}`}
+      aria-describedby={tipId}
       onMouseEnter={show}
       onFocus={show}
       onMouseLeave={hide}
       onBlur={hide}
       onClick={e => e.stopPropagation()}>
-      <span className="cds-icon">§</span>
+      <span className="cds-icon" aria-hidden="true">§</span>
       <span className="cds-art">Art. {articleNumber}</span>
-      <span ref={tooltipRef} className={`cds-tooltip ${open ? 'open' : ''}`} role="tooltip">
+      <span ref={tooltipRef} id={tipId} className={`cds-tooltip ${open ? 'open' : ''}`} role="tooltip">
         <b>{info?.title || `Article ${articleNumber}`}</b>
         <small>{info?.summary || 'Voir le texte sur Légifrance.'}</small>
-        <em>Légifrance ↗</em>
+        <em>Ouvrir sur Légifrance</em>
       </span>
     </a>
   );

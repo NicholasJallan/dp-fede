@@ -17,16 +17,18 @@
 // Concurrence : un seul cycle à la fois. Les triggers concurrents sont
 // fusionnés (un seul cycle queue).
 //
-// Handlers d'outbox : par défaut, sync.js sait dispatcher les kinds HTTP
-// purs (dive.create/update/delete, diver.*, site.*). Le kind 'dive.drive'
-// requiert la génération PDF + Google Drive et doit être enregistré par un
-// module foreground via sync.registerHandler('dive.drive', fn). Tant qu'aucun
-// handler n'est enregistré pour un kind, l'item reste en outbox sans erreur.
+// Handlers d'outbox : sync.js dispatche les kinds HTTP purs
+// (dive.create/update/delete, diver.*, site.*). Le dépôt Google Drive n'est
+// PAS un kind d'outbox : il exige un jeton Google interactif et passe par
+// finalizePendingDrive (src/screens/screen-archive.jsx), relancé depuis
+// l'accueil. Un ancien item 'dive.drive' resterait sans handler (aucun code
+// ne l'enqueue plus) ; registerHandler reste disponible pour un kind futur.
 
 import { offlineStore } from './offline-store.js';
 import { outbox as defaultOutbox } from './outbox.js';
 import { netStatus } from './net.js';
 import { getCsrfToken } from '../api/google-drive.js';
+import { notifyIfAuthExpired } from '../api/auth-events.js';
 
 // Fabrique : `store` (offline-store), `outbox` (createOutbox) et
 // `getNetStatus` (() => { online }) sont injectés. fetch, window et document
@@ -61,6 +63,7 @@ export function createSync({ store, outbox, getNetStatus }) {
     });
     const json = await res.json().catch(() => ({ ok: false, error: 'invalid json' }));
     if (!res.ok || !json.ok) {
+      notifyIfAuthExpired(res.status, path);
       const err = new Error(json.error || `HTTP ${res.status}`);
       err.status = res.status;
       err.responseBody = json;

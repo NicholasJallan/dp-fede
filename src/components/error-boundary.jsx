@@ -5,6 +5,7 @@
 // Les données sont déjà persistées par l'auto-save et l'outbox.
 
 import React from 'react';
+import { StatusIcon } from './icons.jsx';
 
 export class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -34,10 +35,10 @@ export class ErrorBoundary extends React.Component {
     if (!this.state.error) return this.props.children;
     return (
       <section className="error-screen" role="alert" aria-labelledby="error-screen-title">
-        <h2 id="error-screen-title">Cet écran a rencontré un problème</h2>
+        <h2 id="error-screen-title"><StatusIcon tone="err" />Cet écran n'a pas pu s'afficher</h2>
         <p>
-          Vos saisies sont enregistrées localement. Vous pouvez réessayer
-          ou recharger l'application.
+          Vos saisies sont enregistrées sur cet appareil. Réessayez l'affichage
+          ou rechargez l'application.
         </p>
         <pre className="error-screen-detail">{String(this.state.error?.message || this.state.error)}</pre>
         <div className="error-screen-actions">

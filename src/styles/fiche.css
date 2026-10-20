@@ -1,0 +1,99 @@
+/* DP Assistant — Fiche de sécurité imprimable (A4 portrait, lisible en noir et blanc).
+ * Toujours sur fond blanc, encre noire, quel que soit le thème. */
+
+.fiche {
+  --f-ink: #000000;
+  --f-ink-2: #333333;
+  --f-line: #8A8A8A;
+  color: var(--f-ink);
+  background: #FFFFFF;
+  max-width: 920px;
+  margin: 0 auto;
+  padding: var(--sp-6);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-1);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.fiche .muted { color: var(--f-ink-2); }
+.fheader {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  padding-bottom: var(--sp-3);
+  margin-bottom: var(--sp-3);
+  border-bottom: 3px solid var(--f-ink);
+}
+.fheader .doc-kind { font-weight: 700; font-size: 12px; }
+.fheader .site { font-size: 22px; font-weight: 700; margin: 2px 0; }
+.fheader .structure { font-size: 12px; color: var(--f-ink-2); }
+.fheader .right { text-align: right; font-size: 12px; }
+.fheader .right .when { font-family: var(--font-num); font-weight: 700; font-size: 14px; }
+.fheader .right .urg { font-weight: 700; }
+
+.fiche-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); margin: var(--sp-3) 0; }
+.fiche-grid.full { grid-template-columns: 1fr; }
+.fiche-grid .cell { border: 1px solid var(--f-line); padding: 6px 8px; min-width: 0; }
+.fiche-grid .k { font-size: 11px; color: var(--f-ink-2); }
+.fiche-grid .v { font-weight: 700; overflow-wrap: anywhere; }
+
+.fiche h3 {
+  margin: var(--sp-4) 0 var(--sp-2);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--f-ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.fiche table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 12px; }
+.fiche th {
+  text-align: left;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 5px 6px;
+  border-bottom: 2px solid var(--f-ink);
+  vertical-align: bottom;
+}
+.fiche td { padding: 5px 6px; border-bottom: 1px solid var(--f-line); vertical-align: top; }
+.fiche td.num, .fiche .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.fiche tbody.pal-group { border-top: 2px solid var(--f-ink); }
+.fiche .pal-id { font-family: var(--font-num); font-weight: 700; }
+.fiche .pal-id small { display: block; font-family: var(--font-text); font-weight: 400; font-size: 10px; }
+.fiche .pv { display: grid; gap: 2px; }
+.fiche .pv span { white-space: nowrap; }
+.fiche .pv .lbl { font-size: 10px; color: var(--f-ink-2); }
+.fiche .comment-row td { font-size: 11px; white-space: pre-wrap; border-bottom-style: dashed; }
+
+.fiche .cols-2 { columns: 2; column-gap: var(--sp-5); font-size: 12px; }
+.fiche .cols-2 > div { break-inside: avoid; }
+.fiche-secours { border: 2px solid var(--f-ink); padding: var(--sp-2) var(--sp-3); font-size: 12px; display: grid; gap: 2px; }
+.fiche-secours .urg { font-weight: 700; font-size: 14px; }
+.fiche .apt-usage { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.fiche .apt-usage span { border: 1px solid var(--f-ink); padding: 1px 6px; font-family: var(--font-num); font-size: 11px; }
+.fiche .obs { min-height: 64px; border: 1px solid var(--f-line); padding: var(--sp-2); white-space: pre-wrap; font-size: 12px; }
+.signatures { margin-top: var(--sp-5); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-4); }
+.signatures .sig { border-top: 1px solid var(--f-ink); padding-top: 4px; font-size: 11px; }
+.signatures .area { height: 56px; }
+.fiche .legal { margin-top: var(--sp-4); padding-top: var(--sp-2); border-top: 1px solid var(--f-line); font-size: 10.5px; color: var(--f-ink-2); }
+
+@media (max-width: 720px) {
+  .fiche { padding: var(--sp-4); }
+  .fiche-grid { grid-template-columns: 1fr 1fr; }
+  .fiche .cols-2 { columns: 1; }
+  .signatures { grid-template-columns: 1fr; }
+}
+
+@media print {
+  @page { size: A4 portrait; margin: 12mm; }
+  html, body { background: #FFFFFF !important; color: #000000 !important; }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  .fiche-screen .page-head, .fiche-screen .alert { display: none !important; }
+  .fiche { border: 0; padding: 0; max-width: none; }
+  .fiche table { min-width: 0; }
+  .table-scroll { overflow: visible; }
+  .fiche h3 { break-after: avoid; }
+  .fiche tbody.pal-group { break-inside: avoid; }
+  .cds-badge { border: 0; padding: 0; color: #000; }
+}

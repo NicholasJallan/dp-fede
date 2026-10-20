@@ -1,7 +1,10 @@
 // DP Assistant — Administration des sites de plongée
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import { Alert, Pill } from '../components/components.jsx';
+import { ConfirmDialog, Dialog } from '../components/dialog.jsx';
+import { Icon, StatusIcon } from '../components/icons.jsx';
+import { DiveListSkeleton } from './home-parts.jsx';
 import { api } from '../api/api.js';
 
 const MILIEUX_LIST = ['En mer','Lac','Carrière','Piscine','Autre'];
@@ -142,32 +145,32 @@ function MapPicker({ coordonnees, onChange }) {
   }, [ready]);
 
   if (!ready) {
-    return (
-      <div className="map-placeholder">
-        <div className="muted" style={{ fontSize: 13 }}>Chargement de la carte…</div>
-      </div>
-    );
+    return <div className="map-placeholder">Chargement de la carte… (connexion requise)</div>;
   }
 
   return (
-    <div className="map-picker-wrap">
-      <input
-        ref={searchRef}
-        className="input"
-        placeholder="Rechercher un lieu, une épave, un site…"
-        style={{ marginBottom: 8 }}
-      />
+    <div className="map-picker">
+      <input ref={searchRef} className="input" aria-label="Rechercher un lieu sur la carte"
+        placeholder="Rechercher un lieu, une épave, un site" />
       <div ref={containerRef} className="map-canvas" />
       {coordonnees?.lat && (
         <div className="map-coords">
-          {coordonnees.lat.toFixed(6)}, {coordonnees.lng.toFixed(6)}
-          <a
-            href={`https://www.google.com/maps?q=${coordonnees.lat},${coordonnees.lng}`}
-            target="_blank" rel="noopener noreferrer"
-            style={{ marginLeft: 8, fontSize: 11 }}
-          >Ouvrir dans Maps ↗</a>
+          {Number(coordonnees.lat).toFixed(6)}, {Number(coordonnees.lng).toFixed(6)}{' '}
+          <a href={`https://www.google.com/maps?q=${coordonnees.lat},${coordonnees.lng}`}
+            target="_blank" rel="noopener noreferrer">Ouvrir dans Google Maps</a>
         </div>
       )}
+    </div>
+  );
+}
+
+function SiteInput({ label, hint, required, children }) {
+  const id = useId();
+  return (
+    <div className="field">
+      <label htmlFor={id}>{label}{required && <span className="req" aria-hidden="true">*</span>}</label>
+      {React.cloneElement(children, { id, 'aria-describedby': hint ? `${id}-h` : undefined, 'aria-required': required || undefined })}
+      {hint && <span className="field-hint" id={`${id}-h`}>{hint}</span>}
     </div>
   );
 }
@@ -180,9 +183,22 @@ function SiteFormModal({ initial, title, onSave, onClose }) {
 
   const setField = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  const onCoords = async (coords) => {
+    setField('coordonnees', coords);
+    if (!form.nom && window.__lastPlaceName) {
+      setField('nom', window.__lastPlaceName);
+      window.__lastPlaceName = null;
+    }
+    const geo = await reverseGeocode(coords.lat, coords.lng);
+    if (geo) {
+      setForm(f => ({ ...f, ville: geo.ville || f.ville, pays: geo.pays || f.pays,
+        pays_code: geo.pays_code || f.pays_code, region: geo.region || f.region }));
+    }
+  };
+
   const handleSave = async () => {
-    if (!form.nom.trim()) { setError('Le nom du site est requis'); return; }
-    if (!form.depart_bord && !form.depart_bateau) { setError('Indiquer au moins un type de départ (bord ou bateau)'); return; }
+    if (!form.nom.trim()) { setError('Le nom du site est obligatoire.'); return; }
+    if (!form.depart_bord && !form.depart_bateau) { setError('Indiquez au moins un type de départ : du bord ou en bateau.'); return; }
     setSaving(true); setError('');
     try {
       const payload = {
@@ -198,122 +214,61 @@ function SiteFormModal({ initial, title, onSave, onClose }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal modal-wide">
-        <div className="modal-head">
-          <h3>{title}</h3>
-          <button className="x" onClick={onClose}>×</button>
-        </div>
-        <div className="modal-body">
-          {error && <Alert tone="warn" style={{ marginBottom: 10 }}>{error}</Alert>}
-
-          <div className="field">
-            <label>Nom du site *</label>
-            <input className="input" value={form.nom} onChange={e => setField('nom', e.target.value)}
-              placeholder="Épave du Rhône, Lac de Salanfe, Sec de…" />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
-            <div className="field">
-              <label>Milieu</label>
-              <select className="input" value={form.milieu} onChange={e => setField('milieu', e.target.value)}>
-                {MILIEUX_LIST.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
-            </div>
-            <div className="field">
-              <label>Profondeur max (m)</label>
-              <input className="input" type="number" min="0" max="300" step="0.5"
-                value={form.profondeur_max} onChange={e => setField('profondeur_max', e.target.value)}
-                placeholder="40" />
-            </div>
-          </div>
-
-          <div className="field" style={{ marginTop: 12 }}>
-            <label>Localisation — cliquer sur la carte ou rechercher un lieu</label>
-            <MapPicker
-              coordonnees={form.coordonnees}
-              onChange={async coords => {
-                setField('coordonnees', coords);
-                if (!form.nom && window.__lastPlaceName) {
-                  setField('nom', window.__lastPlaceName);
-                  window.__lastPlaceName = null;
-                }
-                const geo = await reverseGeocode(coords.lat, coords.lng);
-                if (geo) {
-                  setForm(f => ({
-                    ...f,
-                    ville: geo.ville || f.ville,
-                    pays:  geo.pays  || f.pays,
-                    pays_code: geo.pays_code || f.pays_code,
-                    region: geo.region || f.region,
-                  }));
-                }
-              }}
-            />
-            {form.ville && (
-              <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-                {flagEmoji(form.pays_code)} {form.ville}{form.region ? ` · ${form.region}` : ''}{form.pays ? ` · ${form.pays}` : ''}
-              </div>
-            )}
-          </div>
-
-          <div className="field" style={{ marginTop: 12 }}>
-            <label>Type de départ <span className="req">*</span></label>
-            <div className="qualif-row">
-              {[['depart_bord','Du bord'],['depart_bateau','En bateau']].map(([k, label]) => (
-                <label key={k} className={`qualif-toggle ${form[k] ? 'on' : ''}`}>
-                  <input type="checkbox" checked={!!form[k]}
-                    onChange={() => setField(k, !form[k])} />
-                  {label}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="field" style={{ marginTop: 12 }}>
-            <label>Équipement habituel</label>
-            <div className="qualif-row">
-              <label className={`qualif-toggle ${form.shot_line ? 'on' : ''}`}>
-                <input type="checkbox" checked={!!form.shot_line}
-                  onChange={() => setField('shot_line', !form.shot_line)} />
-                Shot-line usuellement disponible
-              </label>
-            </div>
-            <div className="field-hint">
-              Shot-line habituellement présente sur ce site (ligne lestée pour descente/remontée). Le DP confirmera lors de chaque plongée.
-            </div>
-          </div>
-
-          <div className="field" style={{ marginTop: 10 }}>
-            <label>Notes</label>
-            <textarea className="textarea" rows={2} value={form.notes}
-              onChange={e => setField('notes', e.target.value)}
-              placeholder="Accès, conditions habituelles, points d'attention…" />
-          </div>
-
-          <div className="field" style={{ marginTop: 10 }}>
-            <label>Plan de secours — point d'accès / RDV secours</label>
-            <textarea className="textarea" rows={2} value={form.acces_secours}
-              onChange={e => setField('acces_secours', e.target.value)}
-              placeholder="Parking, point de rendez-vous des secours, voie d'accès véhicule, héliport…" />
-            <div className="field-hint">Réutilisé automatiquement dans le bloc « conduite à tenir » de la fiche de sécurité.</div>
-          </div>
-
-          <div className="field" style={{ marginTop: 10 }}>
-            <label>Caisson / hôpital de référence</label>
-            <input className="input" value={form.caisson}
-              onChange={e => setField('caisson', e.target.value)}
-              placeholder="Caisson hyperbare le plus proche, hôpital, téléphone…" />
-          </div>
-        </div>
-        <div className="modal-foot">
-          <button className="btn" onClick={onClose}>Annuler</button>
-          <button className="btn primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Enregistrement…' : 'Enregistrer'}
-          </button>
-        </div>
+    <Dialog title={title} size="lg" onClose={onClose}
+      footer={<>
+        <button type="button" className="btn" onClick={onClose}>Annuler</button>
+        <button type="button" className="btn primary" onClick={handleSave} disabled={saving}>{saving ? 'Enregistrement…' : 'Enregistrer'}</button>
+      </>}>
+      {error && <Alert tone="err">{error}</Alert>}
+      <SiteInput label="Nom du site" required>
+        <input className="input" value={form.nom} onChange={e => setField('nom', e.target.value)} placeholder="Épave du Rhône, lac de Salanfe…" />
+      </SiteInput>
+      <div className="grid-2">
+        <SiteInput label="Milieu">
+          <select className="input" value={form.milieu} onChange={e => setField('milieu', e.target.value)}>
+            {MILIEUX_LIST.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </SiteInput>
+        <SiteInput label="Profondeur max (m)">
+          <input className="input num" type="number" inputMode="decimal" min="0" max="300" step="0.5"
+            value={form.profondeur_max} onChange={e => setField('profondeur_max', e.target.value)} placeholder="40" />
+        </SiteInput>
       </div>
-    </div>
+      <div className="field plain">
+        <span className="field-label">Localisation : touchez la carte ou recherchez un lieu</span>
+        <MapPicker coordonnees={form.coordonnees} onChange={onCoords} />
+        {form.ville && (
+          <span className="muted small">{flagEmoji(form.pays_code)} {form.ville}{form.region ? `, ${form.region}` : ''}{form.pays ? `, ${form.pays}` : ''}</span>
+        )}
+      </div>
+      <fieldset className="field">
+        <legend className="field-label">Type de départ<span className="req" aria-hidden="true">*</span></legend>
+        <div className="qualif-row">
+          {[['depart_bord', 'Du bord'], ['depart_bateau', 'En bateau']].map(([k, label]) => (
+            <label key={k} className={`qualif-toggle ${form[k] ? 'on' : ''}`}>
+              <input type="checkbox" checked={!!form[k]} onChange={() => setField(k, !form[k])} />{label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <fieldset className="field">
+        <legend className="field-label">Équipement habituel</legend>
+        <label className={`qualif-toggle ${form.shot_line ? 'on' : ''}`}>
+          <input type="checkbox" checked={!!form.shot_line} onChange={() => setField('shot_line', !form.shot_line)} />
+          Shot-line habituellement disponible
+        </label>
+        <span className="field-hint">Ligne lestée de descente et de remontée ; le DP la confirme à chaque plongée.</span>
+      </fieldset>
+      <SiteInput label="Notes">
+        <textarea className="textarea" rows={2} value={form.notes} onChange={e => setField('notes', e.target.value)} placeholder="Accès, conditions habituelles, points d'attention" />
+      </SiteInput>
+      <SiteInput label="Plan de secours : point d'accès, RDV des secours" hint="Repris dans la conduite à tenir de la fiche de sécurité et la fenêtre URGENCE.">
+        <textarea className="textarea" rows={2} value={form.acces_secours} onChange={e => setField('acces_secours', e.target.value)} placeholder="Parking, voie d'accès véhicule, héliport…" />
+      </SiteInput>
+      <SiteInput label="Caisson ou hôpital de référence">
+        <input className="input" value={form.caisson} onChange={e => setField('caisson', e.target.value)} placeholder="Caisson hyperbare le plus proche, téléphone" />
+      </SiteInput>
+    </Dialog>
   );
 }
 
@@ -354,10 +309,10 @@ function ScreenAdminSites({ sites, setSites, sitesLoaded }) {
     try {
       await api.sites.delete(id);
       setSites(prev => prev.filter(s => s.id !== id));
-      setConfirmDelete(null);
     } catch (err) {
       setError(err.message);
     }
+    setConfirmDelete(null);
   };
 
   const filtered = sites.filter(s => {
@@ -368,85 +323,61 @@ function ScreenAdminSites({ sites, setSites, sitesLoaded }) {
   return (
     <div>
       <div className="page-head">
-        <div className="eyebrow">Administration</div>
         <h1>Sites de plongée</h1>
-        <p>{sites.length} site{sites.length !== 1 ? 's' : ''} enregistré{sites.length !== 1 ? 's' : ''}.</p>
+        <p>{sites.length} site{sites.length > 1 ? 's' : ''} enregistré{sites.length > 1 ? 's' : ''}.</p>
       </div>
-
-      {error && <Alert tone="warn">{error}</Alert>}
-
-      <div className="row" style={{ marginBottom: 14, gap: 8 }}>
-        <input className="input" placeholder="Rechercher…" value={filter}
-          onChange={e => setFilter(e.target.value)} style={{ flex: 1 }} />
-        <button className="btn primary" onClick={openNew}>+ Nouveau site</button>
+      {error && <Alert tone="err">{error}</Alert>}
+      <div className="toolbar">
+        <label className="sr-only" htmlFor="sites-search">Rechercher un site</label>
+        <input id="sites-search" className="input" type="search" placeholder="Nom ou milieu" value={filter} onChange={e => setFilter(e.target.value)} />
+        <button type="button" className="btn primary" onClick={openNew}><Icon.Plus />Nouveau site</button>
       </div>
-
-      {loading && <div className="muted">Chargement…</div>}
-
       <div className="diver-admin-list">
+        {loading && <DiveListSkeleton rows={3} />}
         {filtered.map(s => (
           <div className="diver-admin-row" key={s.id}>
             <div className="info">
-              <b>
-                {s.nom}
-                {s._pending && (
-                  <span title="Modification non encore synchronisée avec le serveur"
-                    style={{ display:'inline-block', width:8, height:8, borderRadius:'50%',
-                      background:'var(--coral, #e07856)', marginLeft:8, verticalAlign:'middle' }} />
-                )}
-                {s.ville && (
-                  <span className="muted" style={{ fontWeight: 400, marginLeft: 6, fontSize: 13 }}>
-                    {flagEmoji(s.pays_code)} {s.ville}{s.pays ? `, ${s.pays}` : ''}
-                  </span>
-                )}
+              <b>{s.nom}
+                {s._pending && <span className="pending-dot" title="Pas encore synchronisé"><StatusIcon tone="warn" />en attente d'envoi</span>}
+                {s.ville && <span className="muted small">{flagEmoji(s.pays_code)} {s.ville}{s.pays ? `, ${s.pays}` : ''}</span>}
               </b>
               <div className="meta-row">
                 {s.milieu && <Pill>{s.milieu}</Pill>}
-                {s.depart_bord   && <Pill>Bord</Pill>}
+                {s.depart_bord && <Pill>Bord</Pill>}
                 {s.depart_bateau && <Pill>Bateau</Pill>}
-                {s.shot_line     && <Pill tone="kelp">Shot-line</Pill>}
-                {s.profondeur_max != null && <Pill tone="marine">max {s.profondeur_max} m</Pill>}
+                {s.shot_line && <Pill>Shot-line</Pill>}
+                {s.profondeur_max != null && <Pill>{s.profondeur_max} m max</Pill>}
                 {s.coordonnees?.lat && (
-                  <a
-                    href={`https://www.google.com/maps?q=${s.coordonnees.lat},${s.coordonnees.lng}`}
-                    target="_blank" rel="noopener noreferrer"
-                    className="muted" style={{ fontSize: 11 }}
-                  >
-                    📍 {Number(s.coordonnees.lat).toFixed(4)}, {Number(s.coordonnees.lng).toFixed(4)}
+                  <a className="small num" href={`https://www.google.com/maps?q=${s.coordonnees.lat},${s.coordonnees.lng}`} target="_blank" rel="noopener noreferrer">
+                    {Number(s.coordonnees.lat).toFixed(4)}, {Number(s.coordonnees.lng).toFixed(4)}
                   </a>
                 )}
               </div>
-              {s.notes && <small className="muted">{s.notes}</small>}
+              {s.notes && <span className="muted small">{s.notes}</span>}
             </div>
             <div className="diver-admin-actions">
-              <button className="btn ghost" onClick={() => openEdit(s)}>Modifier</button>
-              <button className="btn ghost err" onClick={() => setConfirmDelete(s)}>Supprimer</button>
+              <button type="button" className="btn" onClick={() => openEdit(s)}><Icon.Edit />Modifier</button>
+              <button type="button" className="btn danger icon" aria-label={`Supprimer ${s.nom}`} onClick={() => setConfirmDelete(s)}><Icon.Trash /></button>
             </div>
           </div>
         ))}
-        {!loading && filtered.length === 0 && <div className="empty">Aucun site trouvé.</div>}
+        {!loading && filtered.length === 0 && (
+          <div className="empty-state">
+            <b>{sites.length === 0 ? 'Aucun site enregistré' : 'Aucun site ne correspond'}</b>
+            <span>{sites.length === 0 ? 'Ajoutez vos sites avec leur plan de secours : il sera repris sur la fiche.' : 'Modifiez la recherche.'}</span>
+          </div>
+        )}
       </div>
 
       {editing !== null && (
-        <SiteFormModal
-          initial={editing === 'new' ? undefined : siteToForm(editing)}
-          title={editing === 'new' ? 'Nouveau site' : `Modifier ${editing.nom}`}
-          onSave={onSave}
-          onClose={closeModal}
-        />
+        <SiteFormModal initial={editing === 'new' ? undefined : siteToForm(editing)}
+          title={editing === 'new' ? 'Nouveau site' : `Modifier ${editing.nom}`} onSave={onSave} onClose={closeModal} />
       )}
-
       {confirmDelete && (
-        <div className="modal-overlay">
-          <div className="modal" style={{ maxWidth: 400 }}>
-            <div className="modal-head"><h3>Supprimer « {confirmDelete.nom} » ?</h3></div>
-            <div className="modal-body"><p>Cette action est irréversible.</p></div>
-            <div className="modal-foot">
-              <button className="btn" onClick={() => setConfirmDelete(null)}>Annuler</button>
-              <button className="btn primary err" onClick={() => onDelete(confirmDelete.id)}>Supprimer</button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog title={`Supprimer « ${confirmDelete.nom} » ?`} danger confirmLabel="Supprimer"
+          onCancel={() => setConfirmDelete(null)} onConfirm={() => onDelete(confirmDelete.id)}>
+          <p>Le site sera retiré de la liste. Les plongées archivées ne sont pas modifiées.</p>
+        </ConfirmDialog>
       )}
     </div>
   );

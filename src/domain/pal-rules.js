@@ -606,6 +606,13 @@ function checkLegacyTrimixRoles(ctx, add) {
   }
 }
 
+const PAL_TYPE_LABELS = {
+  bapteme: 'baptême',
+  formation: 'enseignement',
+  guidee: 'exploration encadrée',
+  exploration: 'exploration en autonomie',
+};
+
 /**
  * Validation complète d'une palanquée.
  *
@@ -673,7 +680,7 @@ export function validatePal(pal, diversById, answers, dp) {
   checkDp(ctx, add);
 
   if (!issues.some((i) => i.tone === 'err')) {
-    add('ok', 'OK', `Composition conforme — ${getPalType(pal.membres, ctx.mode)}.`);
+    add('ok', 'OK', `Composition conforme — ${PAL_TYPE_LABELS[getPalType(pal.membres, ctx.mode)]}.`);
   }
   return issues;
 }

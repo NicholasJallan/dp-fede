@@ -1,38 +1,41 @@
-// DP Assistant — Compte utilisateur
+// DP Assistant — Compte utilisateur : identité, structure, sécurité.
 
 import React, { useState } from 'react';
 import { useAuth } from '../auth/auth-context.jsx';
-import { Alert, Opt } from '../components/components.jsx';
-import { REGLEMENTATION } from '../domain/index.js';
+import { Alert, Field, Opt } from '../components/components.jsx';
+import { REGLEMENTATION, STRUCTURE_LABELS } from '../domain/index.js';
 import { api } from '../api/api.js';
+
+const STRUCTURE_TYPES = Object.entries(STRUCTURE_LABELS).map(([value, label]) => ({ value, label }));
+
+function initialForm(user) {
+  const keys = ['nom', 'prenom', 'club_nom', 'club_numero', 'club_siret', 'structure_type', 'president_prenom', 'president_nom', 'president_tel'];
+  return { ...Object.fromEntries(keys.map(k => [k, user?.[k] || ''])), urgence_defaut: user?.urgence_defaut || '18' };
+}
+
+function TextField({ label, value, onChange, hint, placeholder, type = 'text', inputMode, autoComplete }) {
+  return (
+    <Field label={label} hint={hint}>
+      <input className="input" type={type} inputMode={inputMode} autoComplete={autoComplete}
+        value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
+    </Field>
+  );
+}
 
 function ScreenAccount() {
   const { user, setUser } = useAuth();
-  const [form, setForm] = useState({
-    nom: user?.nom || '',
-    prenom: user?.prenom || '',
-    club_nom: user?.club_nom || '',
-    club_numero: user?.club_numero || '',
-    club_siret: user?.club_siret || '',
-    structure_type: user?.structure_type || '',
-    president_prenom: user?.president_prenom || '',
-    president_nom: user?.president_nom || '',
-    president_tel: user?.president_tel || '',
-    urgence_defaut: user?.urgence_defaut || '18',
-  });
+  const [form, setForm] = useState(() => initialForm(user));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
-
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k) => (v) => setForm(f => ({ ...f, [k]: v }));
 
   const onSave = async () => {
     setSaving(true); setError(''); setSaved(false);
     try {
-      const updated = await api.auth.update(form);
-      setUser(updated);
+      setUser(await api.auth.update(form));
       setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      setTimeout(() => setSaved(false), 4000);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -40,130 +43,76 @@ function ScreenAccount() {
     }
   };
 
-  const STRUCTURE_TYPES = [
-    { value:'club',  label:'Club FFESSM associatif' },
-    { value:'sca',   label:'Structure Commerciale Agréée (SCA)' },
-    { value:'csa',   label:'Convention de Section d\'Activité (CSA)' },
-    { value:'autre', label:'Autre' },
-  ];
-
-  const isClub = form.structure_type === 'club';
-
   return (
     <div>
       <div className="page-head">
-        <div className="eyebrow">Paramètres</div>
         <h1>Mon compte</h1>
-        <p>Informations personnelles et structure.</p>
+        <p>Connecté avec Google : {user?.email}</p>
       </div>
 
-      <div className="card">
-        <div className="card-head">
-          <h2>Identité</h2>
-          <small className="muted">Connecté via Google · {user?.email}</small>
+      <section className="card" aria-labelledby="acc-id">
+        <div className="card-head"><h2 id="acc-id">Identité</h2></div>
+        <div className="card-body dense grid-2">
+          <TextField label="Prénom" value={form.prenom} onChange={set('prenom')} autoComplete="given-name" />
+          <TextField label="Nom" value={form.nom} onChange={set('nom')} autoComplete="family-name" />
         </div>
-        <div className="card-body" style={{ display:'grid', gap:12 }}>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-            <div className="field">
-              <label>Prénom</label>
-              <input className="input" value={form.prenom} onChange={e => set('prenom', e.target.value)} />
-            </div>
-            <div className="field">
-              <label>Nom</label>
-              <input className="input" value={form.nom} onChange={e => set('nom', e.target.value)} />
-            </div>
-          </div>
-        </div>
-      </div>
+      </section>
 
-      <div className="card" style={{ marginTop:16 }}>
-        <div className="card-head"><h2>Structure</h2></div>
-        <div className="card-body" style={{ display:'grid', gap:12 }}>
-          <div className="field">
-            <label>Type de structure</label>
-            <div className="opt-group col-2" style={{ marginTop:4 }}>
-              {STRUCTURE_TYPES.map(t => (
-                <Opt key={t.value} label={t.label} checked={form.structure_type === t.value}
-                  onClick={() => set('structure_type', t.value)} />
-              ))}
-            </div>
-          </div>
-          <div className="field">
-            <label>Nom du club ou de la structure</label>
-            <input className="input" value={form.club_nom} onChange={e => set('club_nom', e.target.value)}
-              placeholder="Club de Plongée XYZ / ACSMJ 29" />
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-            <div className="field">
-              <label>Numéro de club FFESSM</label>
-              <input className="input" value={form.club_numero} onChange={e => set('club_numero', e.target.value)}
-                placeholder="A-29-001" />
-            </div>
-            <div className="field">
-              <label>SIRET / Numéro d'entreprise</label>
-              <input className="input" value={form.club_siret} onChange={e => set('club_siret', e.target.value)}
-                placeholder="123 456 789 00012" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {isClub && (
-        <div className="card" style={{ marginTop:16 }}>
-          <div className="card-head">
-            <h2>Président du club</h2>
-            <small className="muted">Coordonnées pour fiches FFESSM</small>
-          </div>
-          <div className="card-body" style={{ display:'grid', gap:12 }}>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <div className="field">
-                <label>Prénom</label>
-                <input className="input" value={form.president_prenom}
-                  onChange={e => set('president_prenom', e.target.value)} />
+      <section className="card" aria-labelledby="acc-struct">
+        <div className="card-head"><h2 id="acc-struct">Structure</h2></div>
+        <div className="card-body dense">
+          <Field label="Type de structure" labelOnly>
+            {({ labelId }) => (
+              <div className="opt-group col-2" role="radiogroup" aria-labelledby={labelId}>
+                {STRUCTURE_TYPES.map(t => (
+                  <Opt key={t.value} label={t.label} checked={form.structure_type === t.value}
+                    onClick={() => set('structure_type')(t.value)} />
+                ))}
               </div>
-              <div className="field">
-                <label>Nom</label>
-                <input className="input" value={form.president_nom}
-                  onChange={e => set('president_nom', e.target.value)} />
-              </div>
-            </div>
-            <div className="field">
-              <label>Téléphone</label>
-              <input className="input" value={form.president_tel}
-                onChange={e => set('president_tel', e.target.value)}
-                placeholder="+33 6 12 34 56 78" />
-            </div>
+            )}
+          </Field>
+          <TextField label="Nom du club ou de la structure" value={form.club_nom} onChange={set('club_nom')}
+            placeholder="Club de plongée de…" autoComplete="organization" />
+          <div className="grid-2">
+            <TextField label="Numéro de club FFESSM" value={form.club_numero} onChange={set('club_numero')} placeholder="A-29-001" />
+            <TextField label="SIRET ou numéro d'entreprise" value={form.club_siret} onChange={set('club_siret')} inputMode="numeric" />
           </div>
         </div>
+      </section>
+
+      {form.structure_type === 'club' && (
+        <section className="card" aria-labelledby="acc-pres">
+          <div className="card-head"><h2 id="acc-pres">Président du club</h2><span className="hint">Repris sur la fiche de sécurité</span></div>
+          <div className="card-body dense">
+            <div className="grid-2">
+              <TextField label="Prénom" value={form.president_prenom} onChange={set('president_prenom')} />
+              <TextField label="Nom" value={form.president_nom} onChange={set('president_nom')} />
+            </div>
+            <TextField label="Téléphone" type="tel" value={form.president_tel} onChange={set('president_tel')} placeholder="+33 6 12 34 56 78" />
+          </div>
+        </section>
       )}
 
-      <div className="card" style={{ marginTop:16 }}>
-        <div className="card-head"><h2>Sécurité</h2></div>
-        <div className="card-body" style={{ display:'grid', gap:12 }}>
-          <div className="field">
-            <label>Numéro d'urgence par défaut</label>
-            <input className="input" value={form.urgence_defaut}
-              onChange={e => set('urgence_defaut', e.target.value)}
-              placeholder="18 (France) · 144 (Suisse) · 112 (Europe)" />
-            <div className="field-hint">Pré-rempli avec ce numéro sur la fiche de sécurité (peut être modifié au cas par cas selon le pays du site).</div>
-          </div>
+      <section className="card" aria-labelledby="acc-secu">
+        <div className="card-head"><h2 id="acc-secu">Sécurité</h2></div>
+        <div className="card-body dense">
+          <TextField label="Numéro d'urgence par défaut" type="tel" inputMode="tel" value={form.urgence_defaut}
+            onChange={set('urgence_defaut')} placeholder="18, 112, 144…"
+            hint="Pré-rempli sur la fiche de sécurité ; ajusté selon le pays du site (144 en Suisse, 18 en France)." />
         </div>
-      </div>
+      </section>
 
-      {error && <Alert tone="warn" style={{ marginTop:12 }}>{error}</Alert>}
-      {saved  && <Alert tone="ok"   style={{ marginTop:12 }}>Enregistré.</Alert>}
+      {error && <Alert tone="err" title="Enregistrement impossible">{error}</Alert>}
+      {saved && <div role="status"><Alert tone="ok">Compte enregistré.</Alert></div>}
 
-      <div className="row" style={{ marginTop:16, gap:8 }}>
-        <button className="btn primary" onClick={onSave} disabled={saving}>
+      <div className="row mt-4">
+        <button type="button" className="btn primary lg" onClick={onSave} disabled={saving}>
           {saving ? 'Enregistrement…' : 'Enregistrer'}
         </button>
       </div>
 
       {REGLEMENTATION && (
-        <div className="muted" style={{ marginTop:24, fontSize:12, textAlign:'center' }}>
-          {REGLEMENTATION.label}.<br />
-          <span style={{ fontSize:11 }}>{REGLEMENTATION.textes}</span>
-        </div>
+        <p className="disclaimer">{REGLEMENTATION.label}. {REGLEMENTATION.textes}</p>
       )}
     </div>
   );

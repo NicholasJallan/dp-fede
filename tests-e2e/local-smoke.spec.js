@@ -4,106 +4,24 @@
 // Lancement : npm run test:e2e:local (config playwright.local.config.js, qui
 // construit dist/ puis le sert sur http://127.0.0.1:8765).
 //
-// Toutes les routes /api/** sont simulées (context.route) avec un utilisateur
-// connecté, un petit annuaire et une plongée préparée. Les scripts tiers
-// (Google Identity Services, Maps, Google Fonts) sont remplacés par des
-// réponses vides : le test ne dépend d'aucun réseau externe.
-//
-// Vérifie : accueil, création d'une plongée, étapes 1 → 5 sans erreur
-// console, et passage hors-ligne sans écran blanc (avec et sans Service Worker).
+// Toutes les routes /api/** sont simulées par un petit backend en mémoire
+// (tests-e2e/local-fixtures.js). Vérifie :
+//   - parcours complet préparation → exécution → archivage confirmé par le serveur ;
+//   - palanquée bloquée visible (encadré, résumé, plongeurs, référence CdS) ;
+//   - verrou « décision finale du DP » avant la mise à l'eau ;
+//   - refus serveur de l'archivage affiché avec son motif ;
+//   - bascule Soleil / Nuit persistée ;
+//   - contrôle d'accessibilité automatisé (axe-core, WCAG 2.x A/AA) ;
+//   - hors-ligne sans écran blanc (avec et sans Service Worker) ;
+//   - captures 320 / 768 / 1024 / 1440 px en Soleil et Nuit
+//     → test-results/screens/<écran>-<largeur>-<thème>.png
 
+const path = require('path');
 const { test, expect } = require('@playwright/test');
+const { default: AxeBuilder } = require('@axe-core/playwright');
+const { newState, mockBackend } = require('./local-fixtures.js');
 
-const DIVE_UUID = '11111111-1111-4111-8111-111111111111';
-
-const pad = (n) => String(n).padStart(2, '0');
-const localNow = () => {
-  const t = new Date();
-  return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}T${pad(t.getHours())}:${pad(t.getMinutes())}`;
-};
-
-const USER = {
-  id: 'u-1', email: 'dp.test@example.org', prenom: 'Test', nom: 'DP',
-  role: 'admin', club_nom: 'Club Test', urgence_defaut: '112',
-};
-
-const DIVERS = [
-  { id: 'd-dp', nom: 'MARTIN', prenom: 'Paul', niveau_encadrant: 'E3', nitrox: ['PN-C'], trimix: [], aptitudes_sup: [], medical: '2026-09-01' },
-  { id: 'd-gp', nom: 'DURAND', prenom: 'Léa', niveau_encadrant: 'N4', nitrox: [], trimix: [], aptitudes_sup: [], medical: '2026-09-01' },
-  { id: 'd-n2', nom: 'BERNARD', prenom: 'Hugo', niveau_plongeur: 'N2', nitrox: [], trimix: [], aptitudes_sup: [], medical: '2026-09-01' },
-];
-
-const SITES = [
-  {
-    id: 's-1', nom: 'Lac de Test', milieu: 'Lac', profondeur_max: 40,
-    depart_bord: true, depart_bateau: false, pays: 'Suisse', pays_code: 'CH',
-    coordonnees: { lat: 46.2, lng: 7.3 }, acces_secours: 'Parking du lac', caisson: 'HUG Genève',
-  },
-];
-
-function diveSummary(plannedAt) {
-  return {
-    id: 'srv-1', client_uuid: DIVE_UUID, status: 'prepared',
-    site_nom: 'Lac de Test', planned_at: plannedAt, date_plongee: plannedAt,
-    dp_nom: 'Paul MARTIN', dp_qual: 'E3', nb_palanquees: 1, nb_plongeurs: 2, drive_link: '',
-  };
-}
-
-// Plongée complète : palanquée déjà sortie de l'eau (heures début + fin), ce
-// qui débloque le passage fiche → archivage.
-function fullDive(plannedAt) {
-  return {
-    ...diveSummary(plannedAt),
-    answers: {
-      date: plannedAt, site_id: 's-1', site_nom: 'Lac de Test', milieu: 'Lac',
-      site_pays_code: 'CH', dp_id: 'd-dp', dp_nom: 'Paul MARTIN', dp_qual: 'E3',
-      air: true, depart_bord: true, prof_max: '20',
-      // Plan de secours propagé depuis le site par l'écran profil.
-      site_acces_secours: 'Parking du lac', site_caisson: 'HUG Genève',
-      site_coords: { lat: 46.2, lng: 7.3 },
-    },
-    palanquees: [{
-      id: 'p1', nom: 'Palanquée 1', mode: 'exploration',
-      membres: [{ diverId: 'd-gp', aptitude: 'GP' }, { diverId: 'd-n2', aptitude: 'PE40' }],
-      profMax: 20, duree: 40, dtr: 2, melanges: ['Air'],
-    }],
-    render_state: { heuresDebut: { p1: '10:00' }, heuresFin: { p1: '10:40' } },
-  };
-}
-
-const ok = (data, status = 200) => ({
-  status, contentType: 'application/json', body: JSON.stringify({ ok: true, data }),
-});
-
-function apiResponse(method, path, search, state) {
-  if (path === '/api/auth/me') return ok(USER);
-  if (path === '/api/divers') return ok(DIVERS);
-  if (path === '/api/sites') return ok(SITES);
-  if (path === '/api/sync/state') return ok({ divers: {}, sites: {}, dives: {} });
-  if (path === '/api/dives' && method === 'GET') return ok(search ? [] : [diveSummary(state.plannedAt)]);
-  if (path === '/api/dives' && method === 'POST') return ok({ id: `srv-new-${state.calls.length}`, duplicate: false }, 201);
-  if (path.startsWith('/api/dives/') && method === 'GET') return ok(fullDive(state.plannedAt));
-  return ok(null);
-}
-
-// Installe les mocks réseau. `state.offline = true` fait échouer /api/**.
-async function mockBackend(context, state) {
-  await context.route(/^https:\/\/(fonts\.googleapis\.com|fonts\.gstatic\.com|accounts\.google\.com|maps\.googleapis\.com)\//, (route) => {
-    const css = route.request().url().includes('fonts.googleapis.com');
-    return route.fulfill({ status: 200, contentType: css ? 'text/css' : 'application/javascript', body: '' });
-  });
-  // Prédicat (et non un glob **/api/**) : l'URL Maps contient aussi « /api/ ».
-  const isAppApi = (url) => url.hostname === '127.0.0.1' && url.pathname.startsWith('/api/');
-  await context.route(isAppApi, (route) => {
-    if (state.offline) return route.abort('internetdisconnected');
-    const req = route.request();
-    const url = new URL(req.url());
-    const method = req.method();
-    state.calls.push(`${method} ${url.pathname}`);
-    if (method === 'HEAD') return route.fulfill({ status: 200, body: '' });
-    return route.fulfill(apiResponse(method, url.pathname, url.search, state));
-  });
-}
+const SHOTS = path.join(__dirname, '..', 'test-results', 'screens');
 
 // Erreurs console + exceptions non rattrapées de la page.
 function trackErrors(page) {
@@ -117,28 +35,29 @@ const isNetworkNoise = (msg) => /Failed to load resource|ERR_INTERNET_DISCONNECT
 
 async function openHome(page) {
   await page.goto('/');
-  // Splash de bienvenue affiché à chaque connexion.
-  const splash = page.locator('.splash-modal .btn.primary');
+  // Rappel des aptitudes affiché à chaque connexion.
+  const splash = page.getByRole('dialog', { name: /Bonjour/ });
   await expect(splash).toBeVisible();
-  await splash.click();
+  await splash.getByRole('button', { name: 'Commencer' }).click();
   await expect(page.getByRole('button', { name: /Nouvelle plongée/ })).toBeVisible();
 }
 
 const heading = (page) => page.locator('.main h1').first();
-const nextBtn = (page) => page.locator('.footnav .btn.primary');
+const nextBtn = (page) => page.locator('.footnav-next');
+const diveRow = (page, text) => page.locator('.dive-row', { hasText: text });
 
 let state;
 test.beforeEach(async ({ context }) => {
-  state = { offline: false, calls: [], plannedAt: localNow() };
+  state = newState();
   await mockBackend(context, state);
 });
 
 test.describe('build local — parcours en ligne', () => {
-  test('accueil puis création d\'une plongée (étapes 1 → 3, préparation)', async ({ page }) => {
+  test("accueil puis création d'une plongée (étapes 1 → 3, préparation)", async ({ page }) => {
     const errors = trackErrors(page);
     await openHome(page);
-    await expect(page.locator('.dive-card-row', { hasText: 'Lac de Test' })).toBeVisible();
-    await expect(page.locator('.topbar')).toContainText('EN LIGNE');
+    await expect(diveRow(page, 'Lac de Test').first()).toBeVisible();
+    await expect(page.locator('.sync-pill')).toContainText('En ligne');
 
     await page.getByRole('button', { name: /Nouvelle plongée/ }).click();
     await expect(heading(page)).toHaveText('Caractériser la plongée à venir');
@@ -146,65 +65,176 @@ test.describe('build local — parcours en ligne', () => {
 
     await nextBtn(page).click();
     await expect(heading(page)).toHaveText('Constituer les palanquées');
-
     await nextBtn(page).click();
-    await expect(heading(page)).toHaveText('Avant l\'arrivée sur site');
-
-    await expect(nextBtn(page)).toHaveText('Sauvegarder →');
+    await expect(heading(page)).toHaveText("Avant l'arrivée sur site");
+    await expect(nextBtn(page)).toHaveText('Enregistrer la préparation');
     await nextBtn(page).click();
     await expect(page.getByRole('button', { name: /Nouvelle plongée/ })).toBeVisible();
 
     expect(errors).toEqual([]);
   });
 
-  test('exécution d\'une plongée préparée (étapes 3 → 5, fiche incluse)', async ({ page }) => {
+  test('parcours complet : préparation → exécution → archivage confirmé', async ({ page }) => {
     const errors = trackErrors(page);
     await openHome(page);
 
-    await page.locator('.dive-card-row', { hasText: 'Lac de Test' }).getByRole('button', { name: /Démarrer/ }).click();
-    await expect(heading(page)).toHaveText('Sur site — avant la mise à l\'eau');
-
-    // Modale d'urgence accessible en mode exécution.
-    await page.locator('.urgence-fab').click();
-    await expect(page.locator('.modal')).toContainText('Déclenchement des secours');
-    await expect(page.locator('.modal')).toContainText('Parking du lac');
-    await page.locator('.modal-foot').getByRole('button', { name: 'Fermer' }).click();
-
-    // Étape 4 : fiche de sécurité.
+    // ── Préparation : profil
+    await page.getByRole('button', { name: /Nouvelle plongée/ }).click();
+    await page.getByLabel('Directeur de Plongée').selectOption('d-dp');
+    await page.getByLabel('Site de plongée').selectOption('s-2');
+    await expect(page.locator('.info-box', { hasText: 'Carrière du Test' })).toBeVisible();
     await nextBtn(page).click();
-    await expect(page.locator('.main h1').first()).toContainText('Fiche de sécurité');
-    await expect(page.locator('.main')).toContainText('DURAND');
 
-    // Étape 5 : confirmation puis écran d'archivage.
+    // ── Palanquées : un plongeur seul → palanquée bloquée, visible
+    await expect(heading(page)).toHaveText('Constituer les palanquées');
+    await page.getByLabel('Ajouter Léa DURAND à une palanquée').selectOption('__new__');
+    const pal = page.locator('.pal').first();
+    await expect(pal).toHaveClass(/is-blocked/);
+    await expect(pal.locator('.pal-alarm')).toContainText('Palanquée bloquée');
+    await expect(pal.locator('.issue.err').first()).toContainText('Code du sport');
+    await pal.getByLabel('Aptitude de Léa DURAND').selectOption('GP');
+    await page.getByLabel('Ajouter Hugo BERNARD à une palanquée').selectOption({ index: 1 });
+    await pal.getByLabel('Aptitude de Hugo BERNARD').selectOption('PE40');
+    await expect(pal).not.toHaveClass(/is-blocked/);
+    await expect(pal.locator('.issue.ok')).toContainText('Composition conforme');
+    await pal.getByLabel('DTR prévue').fill('3');
+    await nextBtn(page).click();
+
+    // ── Check-list de préparation puis retour accueil
+    await expect(heading(page)).toHaveText("Avant l'arrivée sur site");
+    await nextBtn(page).click();
+    const row = diveRow(page, 'Carrière du Test').filter({ has: page.getByRole('button', { name: /Démarrer/ }) });
+    await expect(row).toBeVisible();
+
+    // ── Exécution : check-list sur site, verrou de décision finale
+    await row.getByRole('button', { name: /Démarrer/ }).click();
+    await expect(heading(page)).toHaveText("Sur site, avant la mise à l'eau");
+    await expect(nextBtn(page)).toBeDisabled();
+    await expect(page.locator('.footnav-hint')).toContainText('décision finale');
+    await page.getByRole('checkbox', { name: /Décision finale du DP/ }).click();
     await expect(nextBtn(page)).toBeEnabled();
     await nextBtn(page).click();
-    await page.getByRole('button', { name: /Confirmer et archiver/ }).click();
-    await expect(heading(page)).toHaveText('Archiver la plongée');
 
+    // ── Fiche : ENTRÉE (confirmation du 1er départ) puis SORTIE
+    await expect(heading(page)).toContainText('Fiche de sécurité');
+    const cadran = page.locator('.cadran').first();
+    await cadran.getByRole('button', { name: 'ENTRÉE' }).click();
+    await page.getByRole('dialog', { name: /Première mise à l'eau/ }).getByRole('button', { name: "Confirmer l'entrée" }).click();
+    await expect(cadran.locator('.cadran-state')).toContainText("À l'eau");
+    await expect(nextBtn(page)).toBeDisabled();
+    await cadran.getByRole('button', { name: 'SORTIE' }).click();
+    const fin = page.getByRole('dialog', { name: /Sortie de l'eau/ });
+    await fin.getByLabel('Durée réelle').fill('1');
+    await fin.getByRole('button', { name: 'Valider la sortie' }).click();
+    await expect(cadran.locator('.cadran-state')).toContainText('Sortie');
+    await cadran.getByLabel('Pression de sortie de Léa DURAND (bar)').fill('80');
+
+    // ── Archivage : Google indisponible en test → archivage sans Drive, confirmé par le serveur
+    await nextBtn(page).click();
+    await page.getByRole('dialog', { name: /Figer et archiver/ }).getByRole('button', { name: 'Figer et archiver' }).click();
+    await expect(heading(page)).toHaveText('Archiver la plongée');
+    await page.getByRole('button', { name: 'Archiver sans Drive' }).click();
+    await expect(page.locator('.notice.ok')).toContainText('confirmée par le serveur', { timeout: 15_000 });
+    expect(state.dives.find(d => d.site_nom === 'Carrière du Test' && d.status === 'archived')).toBeTruthy();
+
+    expect(errors.filter(e => !isNetworkNoise(e))).toEqual([]);
+  });
+
+  test("exécution d'une plongée préparée : URGENCE et fiche", async ({ page }) => {
+    const errors = trackErrors(page);
+    await openHome(page);
+    await diveRow(page, 'Lac de Test').getByRole('button', { name: /Démarrer/ }).click();
+    await expect(heading(page)).toHaveText("Sur site, avant la mise à l'eau");
+
+    // URGENCE intégré à la barre basse en mode exécution.
+    await page.locator('.footnav-urgence').click();
+    const urg = page.getByRole('dialog', { name: 'Déclenchement des secours' });
+    await expect(urg).toContainText('Parking du lac');
+    await expect(urg.getByRole('link', { name: /Appeler le 144/ })).toBeVisible();
+    await urg.getByRole('button', { name: 'Fermer' }).first().click();
+    await expect(urg).toBeHidden();
+
+    await page.getByRole('checkbox', { name: /Décision finale du DP/ }).click();
+    await nextBtn(page).click();
+    await expect(page.locator('.main')).toContainText('DURAND');
+    await expect(nextBtn(page)).toBeEnabled();
     expect(errors).toEqual([]);
+  });
+
+  test("refus serveur de l'archivage : motif affiché et Réessayer", async ({ page }) => {
+    state.rejectArchive = true;
+    await openHome(page);
+    await diveRow(page, 'Lac de Test').getByRole('button', { name: /Démarrer/ }).click();
+    await page.getByRole('checkbox', { name: /Décision finale du DP/ }).click();
+    await nextBtn(page).click();
+    await nextBtn(page).click();
+    await page.getByRole('button', { name: 'Figer et archiver' }).click();
+    await page.getByRole('button', { name: 'Archiver sans Drive' }).click();
+    const notice = page.locator('.notice.err');
+    await expect(notice).toContainText('Archivage refusé par le serveur', { timeout: 15_000 });
+    await expect(notice).toContainText('heure de sortie manquante');
+    await expect(page.locator('.sync-pill')).toHaveClass(/is-review/);
+    await expect(page.locator('.notice.ok')).toHaveCount(0);
+
+    state.rejectArchive = false;
+    await notice.getByRole('button', { name: 'Réessayer' }).click();
+    await expect(page.locator('.notice.ok')).toContainText('confirmée par le serveur', { timeout: 15_000 });
+  });
+
+  test('bascule Soleil / Nuit mémorisée', async ({ page }) => {
+    await openHome(page);
+    const toggle = page.locator('.theme-toggle');
+    const initial = await toggle.getAttribute('aria-pressed');
+    await toggle.click();
+    const expected = initial === 'true' ? 'light' : 'dark';
+    await expect(page.locator('html')).toHaveAttribute('data-theme', expected);
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', expected);
   });
 });
 
+test.describe('build local — accessibilité (axe-core)', () => {
+  for (const scheme of ['light', 'dark']) {
+    test(`accueil, palanquées et fiche sans violation WCAG A/AA (${scheme})`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
+      await openHome(page);
+      const audit = async (label) => {
+        const res = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+        const summary = res.violations.map(v => `${label} — ${v.id}: ${v.nodes.map(n => n.target.join(' ')).slice(0, 3).join(' | ')}`);
+        expect(summary).toEqual([]);
+      };
+      await audit('accueil');
+      await diveRow(page, 'groupe technique').getByRole('button', { name: 'Modifier' }).click();
+      await nextBtn(page).click();
+      await expect(page.locator('.pal.is-blocked')).toBeVisible();
+      await audit('palanquées');
+      await page.locator('.topbar-home').click();
+      await page.locator('.resume-card').getByRole('button', { name: /Reprendre/ }).click();
+      await expect(page.locator('.cadran').first()).toBeVisible();
+      await audit('fiche');
+    });
+  }
+});
+
 test.describe('build local — hors-ligne', () => {
-  test('coupure réseau en cours d\'usage : pas d\'écran blanc', async ({ page, context }) => {
+  test("coupure réseau en cours d'usage : pas d'écran blanc", async ({ page, context }) => {
     const errors = trackErrors(page);
     await openHome(page);
 
     state.offline = true;
     await context.setOffline(true);
-    await expect(page.locator('.topbar')).toContainText('HORS LIGNE');
+    await expect(page.locator('.sync-pill')).toContainText('Hors ligne');
 
-    // Navigation hors-ligne : historique puis création d'une plongée (outbox).
     await page.locator('.topbar').getByRole('button', { name: 'Historique' }).click();
     await expect(page.locator('#root')).not.toBeEmpty();
     await page.locator('.topbar').getByRole('button', { name: /Accueil/ }).click();
     await page.getByRole('button', { name: /Nouvelle plongée/ }).click();
     await expect(heading(page)).toHaveText('Caractériser la plongée à venir');
-    await expect(page.locator('.topbar')).toContainText(/HORS LIGNE\s*\d+/);
+    await expect(page.locator('.sync-pill .count')).toHaveText(/\d+/);
 
     state.offline = false;
     await context.setOffline(false);
-    await expect(page.locator('.topbar')).toContainText('EN LIGNE', { timeout: 15_000 });
+    await expect(page.locator('.sync-pill')).toContainText(/En ligne|Envoi/, { timeout: 15_000 });
 
     expect(errors.filter((e) => !isNetworkNoise(e))).toEqual([]);
   });
@@ -223,11 +253,57 @@ test.describe('build local — hors-ligne', () => {
 
       // Session restaurée depuis le snapshot local (auth offline) : la home s'affiche.
       await expect(page.getByRole('button', { name: /Nouvelle plongée/ })).toBeVisible({ timeout: 15_000 });
-      await expect(page.locator('.topbar')).toContainText('HORS LIGNE');
+      await expect(page.locator('.sync-pill')).toContainText('Hors ligne');
       await expect(page.locator('#load-fallback')).toBeHidden();
 
       await context.setOffline(false);
       expect(errors.filter((e) => !isNetworkNoise(e))).toEqual([]);
     });
   });
+});
+
+// ── Captures d'écran : 4 largeurs × 2 thèmes × 3 écrans ──────────────────
+const WIDTHS = [320, 768, 1024, 1440];
+const THEMES = ['light', 'dark'];
+
+// Pleine page : la barre basse fixe est replacée en fin de page pour ne pas
+// masquer le contenu sur la capture.
+async function shot(page, name) {
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({
+    path: path.join(SHOTS, `${name}.png`), fullPage: true, style: '.footnav { position: static !important; }',
+  });
+}
+
+async function noHorizontalOverflow(page) {
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+}
+
+test.describe('build local — captures', () => {
+  for (const theme of THEMES) {
+    for (const width of WIDTHS) {
+      test(`captures ${width}px ${theme}`, async ({ page }) => {
+        state.realFonts = true;
+        await page.setViewportSize({ width, height: width < 768 ? 720 : 900 });
+        await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
+        await openHome(page);
+        await expect(page.locator('.dive-row').first()).toBeVisible();
+        await noHorizontalOverflow(page);
+        await shot(page, `accueil-${width}-${theme}`);
+
+        await diveRow(page, 'groupe technique').getByRole('button', { name: 'Modifier' }).click();
+        await nextBtn(page).click();
+        await expect(page.locator('.pal.is-blocked')).toBeVisible();
+        await noHorizontalOverflow(page);
+        await shot(page, `palanquees-${width}-${theme}`);
+
+        await page.locator('.topbar-home').click();
+        await page.locator('.resume-card').getByRole('button', { name: /Reprendre/ }).click();
+        await expect(page.locator('.cadran').nth(1)).toBeVisible();
+        await noHorizontalOverflow(page);
+        await shot(page, `fiche-${width}-${theme}`);
+      });
+    }
+  }
 });

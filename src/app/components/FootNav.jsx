@@ -1,55 +1,80 @@
-// Pied de page des étapes : précédent / progression / suivant.
+// Barre basse des étapes : précédent / avancement / URGENCE (exécution) / suivant.
+//
+// Le bouton URGENCE fait partie de la barre en mode exécution : toujours au
+// même endroit, sans chevaucher le contenu.
 
 import React from 'react';
 import { STEPS, FICHE_IDX } from '../constants.js';
+import { Icon, StatusIcon } from '../../components/icons.jsx';
 
-function nextButtonProps({ screen, currentStepIdx, diveMode, archiveDone, allPalanqueesFinished }) {
-  const isLast       = currentStepIdx === STEPS.length - 1;
-  const ficheBlocked = screen === "fiche" && !allPalanqueesFinished;
-  const isPrepareEnd = screen === "checklist" && diveMode === 'prepare';
-  return {
-    isLast,
-    disabled: (isLast && !archiveDone) || ficheBlocked,
-    title: ficheBlocked
-      ? "Terminez toutes les plongées (bouton ■ Fin sur la fiche) avant de continuer."
-      : undefined,
-    label: isPrepareEnd
-      ? "Sauvegarder →"
-      : isLast ? "Terminé" : "Suivant →",
-  };
+// Libellé, verrou et motif du bouton « suivant » selon l'étape.
+function nextButton({ screen, currentStepIdx, diveMode, archiveDone, allPalanqueesFinished, goDecision }) {
+  const isLast = currentStepIdx === STEPS.length - 1;
+  if (screen === 'checklist' && diveMode === 'prepare') return { label: 'Enregistrer la préparation' };
+  if (screen === 'checklist' && diveMode === 'execute' && !goDecision) {
+    return { label: 'Fiche de sécurité', blocked: 'Cochez la décision finale du DP pour autoriser la mise à l\'eau.' };
+  }
+  if (screen === 'fiche') {
+    return allPalanqueesFinished
+      ? { label: 'Archiver' }
+      : { label: 'Archiver', blocked: 'Toutes les palanquées doivent être sorties (bouton SORTIE) avant l\'archivage.' };
+  }
+  if (isLast) return archiveDone ? { label: 'Terminé', isLast } : { label: 'Terminé', isLast, disabled: true };
+  return { label: 'Suivant' };
+}
+
+// Avancement affiché au centre de la barre.
+function statusFor({ screen, progress, exit, currentStepIdx }) {
+  if (screen === 'checklist') return { label: 'Check-list', done: progress.doneCount, total: progress.total };
+  if (screen === 'fiche') return { label: 'Palanquées sorties', done: exit.out, total: exit.total };
+  return { label: `Étape ${currentStepIdx + 1} : ${STEPS[currentStepIdx]?.label || ''}` };
 }
 
 export function FootNav(props) {
   const {
     screen, currentStepIdx, diveMode, plongeeFigee, divePlongeesEnCours,
-    archiveDone, doneCount, total, onPrev, onNext, onStartNew,
+    archiveDone, onPrev, onNext, onStartNew, onUrgence,
   } = props;
-  const next = nextButtonProps(props);
+  const next = nextButton(props);
+  const status = statusFor(props);
+  const isExecute = diveMode === 'execute';
+  const prevDisabled = plongeeFigee
+    || (divePlongeesEnCours && currentStepIdx <= FICHE_IDX)
+    || (isExecute && screen === 'checklist');
+  const pct = status.total > 0 ? Math.round((status.done / status.total) * 100) : 0;
+
   return (
-    <div className="footnav">
-      <button className="btn" onClick={onPrev}
-        disabled={
-          plongeeFigee
-          || (divePlongeesEnCours && currentStepIdx <= FICHE_IDX)
-          || (diveMode === 'execute' && screen === 'checklist')
-        }>
-        ← Précédent
+    <footer className={`footnav ${isExecute ? 'is-execute' : ''}`} aria-label="Navigation entre les étapes">
+      <button type="button" className="btn footnav-prev" onClick={onPrev} disabled={prevDisabled}>
+        <Icon.ChevronLeft /><span className="label">Précédent</span>
       </button>
-      <div className="progress">
+      <div className="footnav-status">
         <div className="lbl">
-          <span>Étape {currentStepIdx + 1} / {STEPS.length} — {STEPS[currentStepIdx]?.label}</span>
-          <span>{doneCount} / {total} actions</span>
+          <span>{status.label}</span>
+          {status.total != null && <span className="num">{status.done}/{status.total}</span>}
         </div>
-        <div className="bar">
-          <div style={{ width:`${total > 0 ? (doneCount / total * 100) : 0}%` }}></div>
-        </div>
+        {status.total != null && (
+          <div className="bar" role="progressbar" aria-label={status.label}
+            aria-valuemin={0} aria-valuemax={status.total} aria-valuenow={status.done}>
+            <div style={{ width: `${pct}%` }} />
+          </div>
+        )}
       </div>
-      <button className="btn primary"
+      {isExecute && (
+        <button type="button" className="btn urgence footnav-urgence" onClick={onUrgence}
+          aria-haspopup="dialog" title="Conduite à tenir et numéros des secours">
+          <Icon.Phone />URGENCE
+        </button>
+      )}
+      <button type="button" className="btn primary footnav-next"
         onClick={next.isLast && archiveDone ? onStartNew : onNext}
-        disabled={next.disabled}
-        title={next.title}>
-        {next.label}
+        disabled={!!next.blocked || !!next.disabled}
+        aria-describedby={next.blocked ? 'footnav-hint' : undefined}>
+        {next.label}{!next.isLast && <Icon.ChevronRight />}
       </button>
-    </div>
+      {next.blocked && (
+        <p className="footnav-hint" id="footnav-hint"><StatusIcon tone="warn" />{next.blocked}</p>
+      )}
+    </footer>
   );
 }

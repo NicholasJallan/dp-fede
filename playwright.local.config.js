@@ -29,9 +29,7 @@ module.exports = defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  projects: [
-    { name: 'chromium-local', use: { ...devices['Desktop Chrome'] } },
-  ],
+  projects: [{ name: 'chromium-local', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: `node build.js && python3 -m http.server ${PORT} --bind 127.0.0.1 --directory dist`,
     url: `${baseURL}/`,

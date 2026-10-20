@@ -10,12 +10,13 @@
 //   dive.create  → POST   /api/dives  (status='prepared' par défaut)
 //   dive.update  → PATCH  /api/dives/:id  (transitions + auto-save)
 //   dive.delete  → DELETE /api/dives/:id  (suppression logique)
-//   dive.drive   → enregistré par ScreenArchive (génération PDF + upload Drive)
+//   Drive        → hors outbox : finalizePendingDrive (src/screens/screen-archive.jsx)
 
 import { offlineStore } from './offline-store.js';
 import { outbox as defaultOutbox } from './outbox.js';
 import { randomUUID } from './uuid.js';
 import { getCsrfToken } from '../api/google-drive.js';
+import { notifyIfAuthExpired } from '../api/auth-events.js';
 
 function emitDataChanged(store) {
   window.dispatchEvent(new CustomEvent('dp:dataChanged', { detail: { store } }));
@@ -195,6 +196,10 @@ function decorateDiveReads(dives, ctx, original) {
     }
   };
 
+  // getRemote(id) — lecture serveur stricte (aucun repli local) : sert à
+  // confirmer qu'une transition (ex. archivage) a réellement été acceptée.
+  dives.getRemote = (id) => original.get(id);
+
   // pendingDrive() — plongées archivées mais sans Drive
   dives.pendingDrive = async () => {
     const all = await store.all('dives');
@@ -260,7 +265,10 @@ function decorateDiveWrites(dives, ctx) {
       body:        JSON.stringify({ drive_link }),
     });
     const json = await res.json().catch(() => ({}));
-    if (!res.ok || !json.ok) throw new Error(json.error || `PATCH HTTP ${res.status}`);
+    if (!res.ok || !json.ok) {
+      notifyIfAuthExpired(res.status, '/dives');
+      throw new Error(json.error || `PATCH HTTP ${res.status}`);
+    }
     await store.put('dives', client_uuid, { ...local, drive_link, drive_synced: true });
     emitDataChanged('dives');
     return json.data;

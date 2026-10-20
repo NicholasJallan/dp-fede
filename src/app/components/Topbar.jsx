@@ -1,73 +1,130 @@
-// Barre supérieure : retour accueil, état réseau / outbox, menu utilisateur.
+// Barre haute : marque / accueil, pastille de synchronisation, bascule
+// Soleil / Nuit, navigation (en ligne ≥ 1024 px, menu repliable en dessous).
 
-import React from 'react';
+import React, { useState, useRef, useEffect, useId } from 'react';
+import { BrandMark, Icon, StatusIcon } from '../../components/icons.jsx';
 
-function syncTitle(online, count) {
-  if (!online) return `Hors ligne — ${count} action(s) en attente`;
-  return count === 0 ? 'Connecté — tout est synchronisé' : `${count} action(s) en cours`;
+// État de synchronisation résumé pour la pastille et son libellé accessible.
+export function syncSummary(online, items) {
+  const count = items.length;
+  const review = items.filter(it => it.status === 'review').length;
+  if (review > 0) return { cls: 'is-review', tone: 'warn', label: 'À revoir', count: review,
+    title: `${review} action${review > 1 ? 's' : ''} refusée${review > 1 ? 's' : ''} par le serveur` };
+  if (!online) return { cls: 'is-offline', tone: 'warn', label: 'Hors ligne', count,
+    title: count ? `Hors ligne, ${count} action${count > 1 ? 's' : ''} en attente` : 'Hors ligne' };
+  if (count > 0) return { cls: 'is-pending', tone: 'info', label: 'Envoi', count,
+    title: `${count} action${count > 1 ? 's' : ''} en cours d'envoi` };
+  return { cls: 'is-ok', tone: 'ok', label: 'En ligne', count: 0, title: 'En ligne, tout est synchronisé' };
 }
 
-function SyncStatusButton({ online, count, onOpen }) {
+function SyncPill({ online, items, onOpen }) {
+  const s = syncSummary(online, items);
   return (
-    <button onClick={onOpen} className="session-link"
-      title={syncTitle(online, count)}
-      style={{ display:'inline-flex', alignItems:'center', gap:6,
-        background:'transparent', border:0, padding:0, cursor:'pointer', color:'inherit', font:'inherit' }}>
-      <span style={{
-        width: 8, height: 8, borderRadius: '50%',
-        background: online ? 'var(--kelp, #2d8653)' : 'var(--coral, #e07856)',
-        boxShadow: online ? 'none' : '0 0 0 3px rgba(224,120,86,0.18)',
-        flexShrink: 0,
-      }} />
-      <b>{online ? 'EN LIGNE' : 'HORS LIGNE'}</b>
-      {count > 0 && (
-        <span style={{
-          background: online ? 'var(--marine, #0a4a6e)' : 'var(--coral, #e07856)',
-          color: 'white', borderRadius: 10, fontSize: 10, fontWeight: 700,
-          padding: '1px 7px', minWidth: 18, textAlign: 'center',
-        }}>{count}</span>
-      )}
+    <button type="button" className={`sync-pill ${s.cls}`} onClick={onOpen}
+      aria-label={`Synchronisation : ${s.title}`} title={s.title}>
+      <StatusIcon tone={s.tone} />
+      <span className="label">{s.label}</span>
+      {s.count > 0 && <span className="count" aria-hidden="true">{s.count}</span>}
     </button>
   );
 }
 
-export function Topbar({ user, online, outboxCount, showHomeLink, onHome, onOpenDrawer, onNavigate, onLogout }) {
-  const displayName = user.prenom || user.nom || user.email?.split('@')[0] || 'Moi';
+function ThemeToggle({ theme, onToggle }) {
+  const isNight = theme === 'dark';
   return (
-    <div className="topbar">
-      <button
-        className="wordmark"
-        onClick={onHome}
-        title="Retour à l'accueil"
-        style={{ background:'transparent', border:0, color:'inherit', cursor:'pointer', padding:0 }}>
-        <span className="dot"></span>
-        DP/ASSISTANT
+    <button type="button" className="topbar-btn theme-toggle" onClick={onToggle}
+      aria-pressed={isNight} aria-label="Mode nuit" title={isNight ? 'Passer en mode Soleil' : 'Passer en mode Nuit'}>
+      {isNight ? <Icon.Moon /> : <Icon.Sun />}
+      <span className="label">{isNight ? 'Nuit' : 'Soleil'}</span>
+    </button>
+  );
+}
+
+function navItems(user) {
+  const name = user.prenom || user.nom || user.email?.split('@')[0] || 'Mon compte';
+  return [
+    { id: 'archives',     label: 'Historique', icon: Icon.History },
+    { id: 'admin-divers', label: 'Annuaire',   icon: Icon.Users },
+    { id: 'account',      label: name,         icon: Icon.User, title: 'Mon compte' },
+  ];
+}
+
+// Menu repliable (petits écrans) : Échap et clic extérieur ferment.
+function MenuPopover({ user, items, screen, onNavigate, onLogout }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const btnRef = useRef(null);
+  const menuId = useId();
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape') { setOpen(false); btnRef.current?.focus(); } };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    wrapRef.current?.querySelector('.menu-item')?.focus();
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const go = (fn) => () => { setOpen(false); fn(); };
+
+  return (
+    <div className="topbar-menu" ref={wrapRef}>
+      <button ref={btnRef} type="button" className="topbar-btn" aria-expanded={open} aria-controls={menuId}
+        onClick={() => setOpen(o => !o)}>
+        <Icon.Menu /><span className="label">Menu</span>
+      </button>
+      {open && (
+        <div className="menu-pop" id={menuId} role="group" aria-label="Menu principal">
+          <div className="menu-head">{user.email}{user.club_nom ? ` — ${user.club_nom}` : ''}</div>
+          {items.map(it => (
+            <button key={it.id} type="button" className="menu-item" aria-current={screen === it.id ? 'page' : undefined}
+              onClick={go(() => onNavigate(it.id))}>
+              <it.icon />{it.title || it.label}
+            </button>
+          ))}
+          <button type="button" className="menu-item danger" onClick={go(onLogout)}>
+            <Icon.Logout />Se déconnecter
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function Topbar({ user, online, outboxItems, screen, showHomeLink, theme, onToggleTheme, onHome, onOpenDrawer, onNavigate, onLogout }) {
+  const items = navItems(user);
+  return (
+    <header className="topbar">
+      <button type="button" className="topbar-brand" onClick={onHome} aria-label="DP Assistant" title="Retour à l'accueil">
+        <BrandMark />
+        <span className="brand-text"><b>DP</b> Assistant</span>
       </button>
       {showHomeLink && (
-        <button className="session-link"
-          onClick={onHome}
-          style={{ marginLeft: 4 }}>
-          ← Accueil
+        <button type="button" className="topbar-btn topbar-home" onClick={onHome}>
+          <Icon.Home /><span className="label">Accueil</span>
         </button>
       )}
-      <span className="muted topbar-sep" style={{ color:"var(--ink-4)" }}>·</span>
-      <span className="topbar-user-label" style={{ fontSize:13 }}>{user.club_nom || user.email}</span>
-      <span className="meta">
-        <SyncStatusButton online={online} count={outboxCount} onOpen={onOpenDrawer} />
-        <span className="topbar-autosave">AUTO-SAVE · <b>ON</b></span>
-        <button className="session-link" onClick={() => onNavigate("account")} title="Mon compte">
-          {displayName}
-        </button>
-        <button className="session-link" onClick={() => onNavigate("archives")}>Historique</button>
-        {user.role === 'admin' && (
-          <button className="session-link topbar-admin-btn" onClick={() => onNavigate("admin-divers")} title="Administration">
-            Admin
+      {user.club_nom && <span className="topbar-club">{user.club_nom}</span>}
+      <div className="topbar-tools">
+        <SyncPill online={online} items={outboxItems} onOpen={onOpenDrawer} />
+        <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+        <nav className="topbar-nav" aria-label="Menu principal">
+          {items.map(it => (
+            <button key={it.id} type="button" className="topbar-btn" title={it.title}
+              aria-current={screen === it.id ? 'page' : undefined} onClick={() => onNavigate(it.id)}>
+              {it.label}
+            </button>
+          ))}
+          <button type="button" className="topbar-btn" onClick={onLogout} aria-label="Se déconnecter" title="Se déconnecter">
+            <Icon.Logout />
           </button>
-        )}
-        <button className="session-link topbar-logout-btn" onClick={onLogout}>
-          Déconnexion
-        </button>
-      </span>
-    </div>
+        </nav>
+        <MenuPopover user={user} items={items} screen={screen} onNavigate={onNavigate} onLogout={onLogout} />
+      </div>
+    </header>
   );
 }

@@ -1,0 +1,185 @@
+/* DP Assistant — Jetons de design.
+ *
+ * Direction : « console de bord / ordinateur de plongée ». Lisible d'un coup
+ * d'œil en plein soleil, chiffres en avant, signalétique de sécurité
+ * (ISO 3864) : chaque état est doublé d'une forme (● conforme, ▲ alerte,
+ * ■ bloquant), jamais la couleur seule.
+ *
+ * Thèmes :
+ *   - Soleil (défaut) : fond blanc, encre quasi noire.
+ *   - Nuit / cabine   : fond abysse, signaux éclaircis.
+ *     Activé par prefers-color-scheme (sauf choix explicite « light ») ou par
+ *     data-theme="dark" posé sur <html> (bascule de la barre haute).
+ */
+
+:root {
+  color-scheme: light;
+
+  /* ── Couleurs — Soleil ─────────────────────────────────────────── */
+  --c-bg: #FFFFFF;
+  --c-surface: #FFFFFF;
+  --c-sunken: #EDF2F6;         /* afficheurs, zones de saisie groupées */
+  --c-raised: #F5F8FA;         /* en-têtes de carte */
+  --c-ink: #05131F;            /* encre — 19:1 sur blanc */
+  --c-ink-2: #2C4053;          /* texte secondaire — 10:1 */
+  --c-ink-3: #4A5D70;          /* aides — 6.6:1 */
+  --c-line: #C3CFDA;
+  --c-line-strong: #05131F;
+  --c-abyss: #0B2E4A;          /* barre haute, entêtes */
+  --c-abyss-2: #123E61;
+  --c-on-abyss: #FFFFFF;
+  --c-on-abyss-2: #BCD4E6;
+  --c-action: #0077B6;         /* lagon — action principale */
+  --c-action-hover: #005E90;
+  --c-on-action: #FFFFFF;
+  --c-action-tint: #E2F0F9;
+  --c-ok: #0A7F3F;             /* balise conforme */
+  --c-ok-tint: #E3F3E9;
+  --c-on-ok: #FFFFFF;
+  --c-warn: #B45309;           /* ambre — alerte */
+  --c-warn-tint: #FCEFDF;
+  --c-on-warn: #FFFFFF;
+  --c-stop: #C1121F;           /* rouge détresse — bloquant / URGENCE */
+  --c-stop-tint: #FBE7E8;
+  --c-on-stop: #FFFFFF;
+  --c-signal: #FFD60A;         /* jaune signal — fond des bandeaux critiques */
+  --c-on-signal: #05131F;
+  --c-urgence: #C1121F;        /* identique dans les deux thèmes */
+  --c-on-urgence: #FFFFFF;
+  --c-focus: #0077B6;
+  --c-scrim: rgba(2, 11, 19, 0.64);
+  --c-skeleton: #E3EAF0;
+
+  /* ── Typographie ───────────────────────────────────────────────── */
+  --font-text: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-num: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --fs-xs: 0.8125rem;   /* 13 */
+  --fs-sm: 0.9375rem;   /* 15 */
+  --fs-base: 1rem;      /* 16 */
+  --fs-md: 1.125rem;    /* 18 */
+  --fs-lg: 1.375rem;    /* 22 */
+  --fs-xl: 1.75rem;     /* 28 */
+  --fs-2xl: 2.25rem;    /* 36 */
+  --fs-gauge: clamp(2rem, 1.55rem + 1.9vw, 3rem);
+  --fs-chrono: clamp(2.5rem, 1.9rem + 2.6vw, 3.75rem);
+
+  --lh-tight: 1.15;
+  --lh-text: 1.5;
+
+  /* ── Espacements, rayons, cibles tactiles ──────────────────────── */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  --r-1: 4px;
+  --r-2: 8px;
+
+  --touch: 48px;
+  --touch-xl: 56px;
+
+  --gutter: 16px;
+  --topbar-h: 56px;
+  --footnav-h: 112px;   /* hauteur réservée sous le contenu (barre basse + motif de verrou) */
+
+  /* ── Ombres : uniquement pour les surfaces flottantes ──────────── */
+  --shadow-float: 0 16px 40px rgba(2, 11, 19, 0.28), 0 2px 6px rgba(2, 11, 19, 0.18);
+  --shadow-bar: 0 -4px 16px rgba(2, 11, 19, 0.12);
+
+  /* ── Mouvement ─────────────────────────────────────────────────── */
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* Hachures de signalisation (bord des bandeaux critiques) */
+  --hazard: repeating-linear-gradient(-45deg, var(--c-on-signal) 0 6px, var(--c-signal) 6px 12px);
+}
+
+/* ── Nuit / cabine ──────────────────────────────────────────────────
+   Déclaré deux fois : préférence système (sauf choix explicite Soleil) et
+   choix explicite Nuit. Les deux blocs doivent rester identiques. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --c-bg: #020B13;
+    --c-surface: #061726;
+    --c-sunken: #0A2134;
+    --c-raised: #081C2E;
+    --c-ink: #E6F1F8;
+    --c-ink-2: #C3D5E3;
+    --c-ink-3: #97B0C4;
+    --c-line: #24425B;
+    --c-line-strong: #E6F1F8;
+    --c-abyss: #01070D;
+    --c-abyss-2: #0B2236;
+    --c-on-abyss: #E6F1F8;
+    --c-on-abyss-2: #97B0C4;
+    --c-action: #56B9F0;
+    --c-action-hover: #86CDF5;
+    --c-on-action: #020B13;
+    --c-action-tint: #0B2B42;
+    --c-ok: #44D38E;
+    --c-ok-tint: #0A2A1C;
+    --c-on-ok: #020B13;
+    --c-warn: #F5A83A;
+    --c-warn-tint: #2E1E08;
+    --c-on-warn: #020B13;
+    --c-stop: #FF6B6B;
+    --c-stop-tint: #360B0F;
+    --c-on-stop: #020B13;
+    --c-signal: #FFD60A;
+    --c-on-signal: #05131F;
+    --c-focus: #86CDF5;
+    --c-scrim: rgba(0, 0, 0, 0.72);
+    --c-skeleton: #10283D;
+    --shadow-float: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px #24425B;
+    --shadow-bar: 0 -4px 16px rgba(0, 0, 0, 0.5);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg: #020B13;
+  --c-surface: #061726;
+  --c-sunken: #0A2134;
+  --c-raised: #081C2E;
+  --c-ink: #E6F1F8;
+  --c-ink-2: #C3D5E3;
+  --c-ink-3: #97B0C4;
+  --c-line: #24425B;
+  --c-line-strong: #E6F1F8;
+  --c-abyss: #01070D;
+  --c-abyss-2: #0B2236;
+  --c-on-abyss: #E6F1F8;
+  --c-on-abyss-2: #97B0C4;
+  --c-action: #56B9F0;
+  --c-action-hover: #86CDF5;
+  --c-on-action: #020B13;
+  --c-action-tint: #0B2B42;
+  --c-ok: #44D38E;
+  --c-ok-tint: #0A2A1C;
+  --c-on-ok: #020B13;
+  --c-warn: #F5A83A;
+  --c-warn-tint: #2E1E08;
+  --c-on-warn: #020B13;
+  --c-stop: #FF6B6B;
+  --c-stop-tint: #360B0F;
+  --c-on-stop: #020B13;
+  --c-signal: #FFD60A;
+  --c-on-signal: #05131F;
+  --c-focus: #86CDF5;
+  --c-scrim: rgba(0, 0, 0, 0.72);
+  --c-skeleton: #10283D;
+  --shadow-float: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px #24425B;
+  --shadow-bar: 0 -4px 16px rgba(0, 0, 0, 0.5);
+}
+
+@media (max-width: 767px) {
+  :root { --footnav-h: 168px; }
+}
+@media (max-width: 600px) {
+  :root { --topbar-h: 52px; }
+}

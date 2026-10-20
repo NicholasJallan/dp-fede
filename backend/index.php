@@ -6,9 +6,9 @@ ini_set('log_errors', '1');
 
 // Fuseau des dates de plongée : PHP 8 vaut UTC par défaut (PHP 7.4 devinait
 // celui du système). Les dates saisies sont locales (France / Suisse).
-if (!ini_get('date.timezone')) {
-    date_default_timezone_set('Europe/Paris');
-}
+// Inconditionnel : en PHP 8, ini_get('date.timezone') vaut « UTC » même sans
+// réglage, un test « non défini » ne s'appliquerait jamais.
+date_default_timezone_set('Europe/Paris');
 
 // Dépendances Composer (mPDF, php-jwt) — installées au déploiement par
 // `composer install --no-dev`. Sans elles, l'API démarre mais la génération

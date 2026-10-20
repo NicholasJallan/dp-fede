@@ -14,8 +14,8 @@ export function useStoragePersist(user) {
       const storage = navigator.storage;
       if (!storage?.persist) return;
       Promise.resolve(storage.persisted ? storage.persisted() : false)
-        .then(already => (already ? true : storage.persist()))
-        .catch(err => console.warn('[DP] stockage persistant indisponible :', err?.message || err));
+        .then((already) => (already ? true : storage.persist()))
+        .catch((err) => console.warn('[DP] stockage persistant indisponible :', err?.message || err));
     } catch (err) {
       console.warn('[DP] stockage persistant indisponible :', err?.message || err);
     }

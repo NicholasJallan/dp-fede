@@ -11,7 +11,7 @@ export function nowHHMM(d = new Date()) {
 export function diffMinutes(startHHMM, endHHMM) {
   const [sh, sm] = startHHMM.split(':').map(Number);
   const [eh, em] = endHHMM.split(':').map(Number);
-  let diff = (eh * 60 + em) - (sh * 60 + sm);
+  let diff = eh * 60 + em - (sh * 60 + sm);
   if (diff < 0) diff += 24 * 60;
   return diff;
 }

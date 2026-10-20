@@ -12,9 +12,14 @@ export function AuthExpiredBanner({ onReconnect }) {
       <StatusIcon tone="warn" />
       <div className="banner-text">
         Session expirée
-        <small>Vos saisies restent sur cet appareil. Reconnectez-vous pour envoyer les actions en attente, ou supprimez-les si l'appareil n'est pas le vôtre.</small>
+        <small>
+          Vos saisies restent sur cet appareil. Reconnectez-vous pour envoyer les actions en attente, ou supprimez-les
+          si l'appareil n'est pas le vôtre.
+        </small>
       </div>
-      <button type="button" className="btn" onClick={onReconnect}>Se reconnecter</button>
+      <button type="button" className="btn" onClick={onReconnect}>
+        Se reconnecter
+      </button>
       <DeviceDataPurgeButton />
     </div>
   );
@@ -28,13 +33,15 @@ export function ReviewBanner({ count, onOpen }) {
         {count} modification{count > 1 ? 's' : ''} refusée{count > 1 ? 's' : ''} par le serveur
         <small>Elles ne sont pas enregistrées côté serveur tant qu'elles n'ont pas été revues.</small>
       </div>
-      <button type="button" className="btn" onClick={onOpen}>Voir le motif</button>
+      <button type="button" className="btn" onClick={onOpen}>
+        Voir le motif
+      </button>
     </div>
   );
 }
 
 export function ClubLostBanner({ lost, onDismiss }) {
-  const club = lost.name ? `du club « ${lost.name} »` : 'd\'un club';
+  const club = lost.name ? `du club « ${lost.name} »` : "d'un club";
   return (
     <div className="banner signal" role="alert">
       <StatusIcon tone="warn" />
@@ -42,11 +49,15 @@ export function ClubLostBanner({ lost, onDismiss }) {
         Vous n'êtes plus membre {club}
         <small>
           Ses données ont été retirées de l'affichage
-          {lost.removed > 0 ? ` et ${lost.removed} action${lost.removed > 1 ? 's' : ''} non envoyée${lost.removed > 1 ? 's' : ''} supprimée${lost.removed > 1 ? 's' : ''}` : ''}.
-          {' '}Sur un appareil partagé, supprimez aussi les autres données locales.
+          {lost.removed > 0
+            ? ` et ${lost.removed} action${lost.removed > 1 ? 's' : ''} non envoyée${lost.removed > 1 ? 's' : ''} supprimée${lost.removed > 1 ? 's' : ''}`
+            : ''}
+          . Sur un appareil partagé, supprimez aussi les autres données locales.
         </small>
       </div>
-      <button type="button" className="btn" onClick={onDismiss}>Fermer</button>
+      <button type="button" className="btn" onClick={onDismiss}>
+        Fermer
+      </button>
       <DeviceDataPurgeButton />
     </div>
   );

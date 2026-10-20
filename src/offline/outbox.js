@@ -36,7 +36,8 @@ import { getCurrentClubId } from '../api/club-header.js';
 const STORE = 'outbox';
 
 // Motif affiché pour un item mis en file sans club courant connu.
-export const NO_CLUB_ERROR = 'Club courant inconnu sur cet appareil : reconnectez-vous en ligne pour envoyer cette action à votre club.';
+export const NO_CLUB_ERROR =
+  'Club courant inconnu sur cet appareil : reconnectez-vous en ligne pour envoyer cette action à votre club.';
 
 // Suite de backoff en secondes, indexée par `attempts` (0 = premier essai).
 // Au-delà du dernier index, on reste au plafond.
@@ -64,7 +65,9 @@ export function createOutbox({ store, uuid = randomUUID, getClubId = () => null 
     // Sans club, l'écriture partirait vers le club courant du SERVEUR, peut-être
     // un autre que celui de la saisie : elle reste sur l'appareil, « à revoir ».
     const item = {
-      id, kind, payload,
+      id,
+      kind,
+      payload,
       club_id: club,
       attempts: 0,
       lastError: club ? null : NO_CLUB_ERROR,
@@ -83,7 +86,7 @@ export function createOutbox({ store, uuid = randomUUID, getClubId = () => null 
   // POST divers/sites = upsert par id client, POST dives = dédoublonné par
   // client_uuid (duplicate: true), PUT/PATCH/DELETE idempotents.
   async function recoverInflight() {
-    const stuck = (await store.all(STORE)).filter(it => it.status === 'inflight');
+    const stuck = (await store.all(STORE)).filter((it) => it.status === 'inflight');
     for (const it of stuck) {
       await store.put(STORE, it.id, { ...it, status: 'pending', nextRetryAt: Date.now() });
     }
@@ -120,8 +123,8 @@ export function createOutbox({ store, uuid = randomUUID, getClubId = () => null 
     // Le délai du PROCHAIN retry est calculé sur le nombre d'échecs déjà
     // subis (avant incrément) : 1er échec → BACKOFF_S[0] = 10s,
     // 2e échec → BACKOFF_S[1] = 30s, etc.
-    const delayMs   = nextRetryDelayMs(cur.attempts || 0);
-    const attempts  = (cur.attempts || 0) + 1;
+    const delayMs = nextRetryDelayMs(cur.attempts || 0);
+    const attempts = (cur.attempts || 0) + 1;
     const nextRetryAt = Date.now() + delayMs;
     await store.put(STORE, id, {
       ...cur,
@@ -155,7 +158,7 @@ export function createOutbox({ store, uuid = randomUUID, getClubId = () => null 
     if (!club) return await enqueue(kind, payload);
     const all = await store.all(STORE);
     const target = all
-      .filter(it => it.kind === kind && it.status !== 'inflight' && (it.club_id || null) === club && match(it))
+      .filter((it) => it.kind === kind && it.status !== 'inflight' && (it.club_id || null) === club && match(it))
       .sort((a, b) => b.createdAt - a.createdAt)[0];
     if (!target) return await enqueue(kind, payload);
     const next = {
@@ -177,13 +180,15 @@ export function createOutbox({ store, uuid = randomUUID, getClubId = () => null 
     const all = await store.all(STORE);
     const now = Date.now();
     const club = currentClub();
-    await Promise.all(all
-      .filter(it => it.status !== 'inflight')
-      .map(it => {
-        const clubId = it.club_id || club;
-        if (!clubId) return store.put(STORE, it.id, { ...it, status: 'review', lastError: NO_CLUB_ERROR });
-        return store.put(STORE, it.id, { ...it, club_id: clubId, status: 'pending', nextRetryAt: now });
-      }));
+    await Promise.all(
+      all
+        .filter((it) => it.status !== 'inflight')
+        .map((it) => {
+          const clubId = it.club_id || club;
+          if (!clubId) return store.put(STORE, it.id, { ...it, status: 'review', lastError: NO_CLUB_ERROR });
+          return store.put(STORE, it.id, { ...it, club_id: clubId, status: 'pending', nextRetryAt: now });
+        }),
+    );
     window.dispatchEvent(new CustomEvent('dp:outboxChanged', { detail: { op: 'retry' } }));
   }
 
@@ -194,10 +199,12 @@ export function createOutbox({ store, uuid = randomUUID, getClubId = () => null 
   async function purgeClub(clubId, { all: everything = false } = {}) {
     if (!clubId) return 0;
     const items = await store.all(STORE);
-    const doomed = items.filter(it => it.club_id === clubId && it.status !== 'inflight'
-      && (everything || it.status === 'review'));
-    await Promise.all(doomed.map(it => store.del(STORE, it.id)));
-    if (doomed.length) window.dispatchEvent(new CustomEvent('dp:outboxChanged', { detail: { op: 'purgeClub', clubId } }));
+    const doomed = items.filter(
+      (it) => it.club_id === clubId && it.status !== 'inflight' && (everything || it.status === 'review'),
+    );
+    await Promise.all(doomed.map((it) => store.del(STORE, it.id)));
+    if (doomed.length)
+      window.dispatchEvent(new CustomEvent('dp:outboxChanged', { detail: { op: 'purgeClub', clubId } }));
     return doomed.length;
   }
 
@@ -207,8 +214,8 @@ export function createOutbox({ store, uuid = randomUUID, getClubId = () => null 
   async function ready(now = Date.now()) {
     const all = await store.all(STORE);
     return all
-      .filter(it => it.status === 'pending' || it.status === undefined)
-      .filter(it => (it.nextRetryAt || 0) <= now)
+      .filter((it) => it.status === 'pending' || it.status === undefined)
+      .filter((it) => (it.nextRetryAt || 0) <= now)
       .sort((a, b) => a.createdAt - b.createdAt);
   }
 
@@ -231,20 +238,29 @@ export function createOutbox({ store, uuid = randomUUID, getClubId = () => null 
   async function nextWakeMs(now = Date.now()) {
     // Ni les items en revue (attendent l'utilisateur) ni ceux en cours d'envoi
     // (ready() les ignore : les compter réveillait la sync à vide chaque seconde).
-    const waiting = (await store.all(STORE)).filter(it => it.status !== 'inflight' && it.status !== 'review');
+    const waiting = (await store.all(STORE)).filter((it) => it.status !== 'inflight' && it.status !== 'review');
     if (waiting.length === 0) return null;
-    const future = waiting
-      .map(it => (it.nextRetryAt || 0) - now)
-      .filter(d => d > 0);
+    const future = waiting.map((it) => (it.nextRetryAt || 0) - now).filter((d) => d > 0);
     if (future.length === 0) return 0; // au moins un item est prêt maintenant
     return Math.min(...future);
   }
 
   return {
-    enqueue, get, update,
-    markInflight, markDone, markFailed, markReview, recoverInflight,
-    coalesce, retryNow, purgeClub,
-    ready, pending, size, clear,
+    enqueue,
+    get,
+    update,
+    markInflight,
+    markDone,
+    markFailed,
+    markReview,
+    recoverInflight,
+    coalesce,
+    retryNow,
+    purgeClub,
+    ready,
+    pending,
+    size,
+    clear,
     nextWakeMs,
     // Exposé pour tests/inspection.
     _backoffMs: nextRetryDelayMs,

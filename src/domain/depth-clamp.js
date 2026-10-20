@@ -36,18 +36,17 @@ export function computePalHardLimit({
   melanges,
   mode,
 }) {
-  const list = (membres || []).filter(m => m.aptitude);
+  const list = (membres || []).filter((m) => m.aptitude);
   const trimix = (melanges || []).includes('Tx');
-  const plongeurs = list.filter(m => m.aptitude !== 'GP' && !/^E[1-4]$/.test(m.aptitude));
-  const aptLimit = !trimix && plongeurs.length > 0
-    ? Math.min(...plongeurs.map(m => aptitudeMaxDepth(m.aptitude)))
-    : Infinity;
+  const plongeurs = list.filter((m) => m.aptitude !== 'GP' && !/^E[1-4]$/.test(m.aptitude));
+  const aptLimit =
+    !trimix && plongeurs.length > 0 ? Math.min(...plongeurs.map((m) => aptitudeMaxDepth(m.aptitude))) : Infinity;
   const encadre = list.length !== plongeurs.length;
   const gasLimit = trimix ? (encadre ? 80 : 120) : 60;
   const palType = getPalType(list, mode);
   const dpLimit = getDpMaxDepth(palType, dp) || Infinity;
   const session = Number.isFinite(sessionMax) ? sessionMax : Infinity;
-  const site    = Number.isFinite(siteMax)    ? siteMax    : Infinity;
+  const site = Number.isFinite(siteMax) ? siteMax : Infinity;
   return Math.min(aptLimit, gasLimit, session, dpLimit, site);
 }
 

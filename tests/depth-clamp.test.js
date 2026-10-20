@@ -11,8 +11,10 @@ const deps = { aptitudeMaxDepth, getPalType, getDpMaxDepth };
 describe('computePalHardLimit', () => {
   test('Palanquée vide + DP E3 exploration → DP limite (60)', () => {
     const limit = computePalHardLimit({
-      membres: [], dp: { niveau_encadrant: 'E3', trimix: [] },
-      sessionMax: Infinity, ...deps,
+      membres: [],
+      dp: { niveau_encadrant: 'E3', trimix: [] },
+      sessionMax: Infinity,
+      ...deps,
     });
     assert.equal(limit, 60);
   });
@@ -21,7 +23,8 @@ describe('computePalHardLimit', () => {
     const limit = computePalHardLimit({
       membres: [{ aptitude: 'PE20' }, { aptitude: 'GP' }],
       dp: { niveau_encadrant: 'E3', trimix: [] },
-      sessionMax: 60, ...deps,
+      sessionMax: 60,
+      ...deps,
     });
     assert.equal(limit, 20);
   });
@@ -30,16 +33,18 @@ describe('computePalHardLimit', () => {
     const limit = computePalHardLimit({
       membres: [{ aptitude: 'PA40' }, { aptitude: 'PA40' }],
       dp: { niveau_encadrant: 'E3', trimix: [] },
-      sessionMax: 30, ...deps,
+      sessionMax: 30,
+      ...deps,
     });
     assert.equal(limit, 30);
   });
 
-  test('Palanquée formation E3 + PE40 → bornée à 40 par l\'aptitude de l\'élève', () => {
+  test("Palanquée formation E3 + PE40 → bornée à 40 par l'aptitude de l'élève", () => {
     const limit = computePalHardLimit({
       membres: [{ aptitude: 'E3' }, { aptitude: 'PE40' }],
       dp: { niveau_encadrant: 'E3', trimix: [] },
-      sessionMax: 60, ...deps,
+      sessionMax: 60,
+      ...deps,
     });
     assert.equal(limit, 40);
   });
@@ -48,7 +53,9 @@ describe('computePalHardLimit', () => {
     const limit = computePalHardLimit({
       membres: [{ aptitude: 'PTH120' }, { aptitude: 'PTH120' }],
       dp: { niveau_encadrant: 'E4', trimix: ['PTH-120'] },
-      sessionMax: Infinity, melanges: ['Air'], ...deps,
+      sessionMax: Infinity,
+      melanges: ['Air'],
+      ...deps,
     });
     assert.equal(limit, 60);
   });
@@ -57,7 +64,9 @@ describe('computePalHardLimit', () => {
     const limit = computePalHardLimit({
       membres: [{ aptitude: 'PA60' }, { aptitude: 'PA60' }],
       dp: { niveau_encadrant: 'E4', trimix: ['PTH-120'] },
-      sessionMax: Infinity, melanges: ['Tx'], ...deps,
+      sessionMax: Infinity,
+      melanges: ['Tx'],
+      ...deps,
     });
     assert.equal(limit, 120);
   });
@@ -66,7 +75,10 @@ describe('computePalHardLimit', () => {
     const limit = computePalHardLimit({
       membres: [{ aptitude: 'E4' }, { aptitude: 'PE60' }],
       dp: { niveau_encadrant: 'E4', trimix: ['PTH-120'] },
-      sessionMax: Infinity, melanges: ['Tx'], mode: 'exploration', ...deps,
+      sessionMax: Infinity,
+      melanges: ['Tx'],
+      mode: 'exploration',
+      ...deps,
     });
     assert.equal(limit, 80);
   });
@@ -75,7 +87,8 @@ describe('computePalHardLimit', () => {
     const limit = computePalHardLimit({
       membres: [{ aptitude: '' }, { aptitude: 'PA40' }],
       dp: { niveau_encadrant: 'E3', trimix: [] },
-      sessionMax: Infinity, ...deps,
+      sessionMax: Infinity,
+      ...deps,
     });
     assert.equal(limit, 40);
   });

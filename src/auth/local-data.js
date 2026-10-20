@@ -22,9 +22,11 @@ export async function hasLocalData(store = offlineStore) {
     for (const name of DATA_STORES) {
       if ((await store.allKeys(name)).length > 0) return true;
     }
-  } catch { /* stockage indisponible : rien de lisible */ }
+  } catch {
+    /* stockage indisponible : rien de lisible */
+  }
   try {
-    return [...LOCAL_KEYS, STORAGE_KEYS.LAST_USER].some(k => localStorage.getItem(k) !== null);
+    return [...LOCAL_KEYS, STORAGE_KEYS.LAST_USER].some((k) => localStorage.getItem(k) !== null);
   } catch {
     return false;
   }
@@ -38,15 +40,19 @@ export async function purgeLocalData({ store = offlineStore } = {}) {
     console.error('[auth] purge IndexedDB :', err?.message || err);
   }
   try {
-    LOCAL_KEYS.forEach(k => localStorage.removeItem(k));
-  } catch { /* stockage indisponible : rien à purger */ }
+    LOCAL_KEYS.forEach((k) => localStorage.removeItem(k));
+  } catch {
+    /* stockage indisponible : rien à purger */
+  }
   setCurrentClubId(null);
   try {
     if (typeof caches !== 'undefined') {
       const names = await caches.keys();
-      await Promise.all(names.filter(n => n.endsWith('-api')).map(n => caches.delete(n)));
+      await Promise.all(names.filter((n) => n.endsWith('-api')).map((n) => caches.delete(n)));
     }
-  } catch { /* Cache API indisponible */ }
+  } catch {
+    /* Cache API indisponible */
+  }
 }
 
 /**
@@ -57,5 +63,9 @@ export async function purgeLocalData({ store = offlineStore } = {}) {
  */
 export async function wipeDeviceData({ store = offlineStore } = {}) {
   await purgeLocalData({ store });
-  try { localStorage.removeItem(STORAGE_KEYS.LAST_USER); } catch { /* stockage indisponible */ }
+  try {
+    localStorage.removeItem(STORAGE_KEYS.LAST_USER);
+  } catch {
+    /* stockage indisponible */
+  }
 }

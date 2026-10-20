@@ -12,7 +12,7 @@ export function getMilieuType(milieu) {
   const m = milieu.toLowerCase();
   if (m.includes('lac') || m.includes('carrière') || m.includes('carriere')) return 'lac';
   if (m.includes('piscine')) return 'piscine';
-  if (m.includes('fosse'))   return 'fosse';
+  if (m.includes('fosse')) return 'fosse';
   return 'mer';
 }
 

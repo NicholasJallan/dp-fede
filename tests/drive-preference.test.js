@@ -6,7 +6,10 @@ import { createWindow, installGlobals } from './helpers/offline-harness.js';
 import { isDriveExportEnabled, setDriveExportEnabled, DRIVE_PREF_EVENT } from '../src/api/drive-preference.js';
 
 let win;
-beforeEach(() => { win = createWindow(); installGlobals(win); });
+beforeEach(() => {
+  win = createWindow();
+  installGlobals(win);
+});
 
 describe('drive-preference', () => {
   test('activée par défaut (comportement historique)', () => {
@@ -25,7 +28,14 @@ describe('drive-preference', () => {
   });
 
   test('stockage indisponible : activée, sans exception', () => {
-    globalThis.localStorage = { getItem() { throw new Error('bloqué'); }, setItem() { throw new Error('bloqué'); } };
+    globalThis.localStorage = {
+      getItem() {
+        throw new Error('bloqué');
+      },
+      setItem() {
+        throw new Error('bloqué');
+      },
+    };
     assert.equal(isDriveExportEnabled(), true);
     assert.doesNotThrow(() => setDriveExportEnabled(false));
   });

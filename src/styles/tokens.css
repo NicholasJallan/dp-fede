@@ -16,51 +16,51 @@
   color-scheme: light;
 
   /* ── Couleurs — Soleil ─────────────────────────────────────────── */
-  --c-bg: #FFFFFF;
-  --c-surface: #FFFFFF;
-  --c-sunken: #EDF2F6;         /* afficheurs, zones de saisie groupées */
-  --c-raised: #F5F8FA;         /* en-têtes de carte */
-  --c-ink: #05131F;            /* encre — 19:1 sur blanc */
-  --c-ink-2: #2C4053;          /* texte secondaire — 10:1 */
-  --c-ink-3: #4A5D70;          /* aides — 6.6:1 */
-  --c-line: #C3CFDA;
-  --c-line-strong: #05131F;
-  --c-abyss: #0B2E4A;          /* barre haute, entêtes */
-  --c-abyss-2: #123E61;
-  --c-on-abyss: #FFFFFF;
-  --c-on-abyss-2: #BCD4E6;
-  --c-action: #0077B6;         /* lagon — action principale */
-  --c-action-hover: #005E90;
-  --c-on-action: #FFFFFF;
-  --c-action-tint: #E2F0F9;
-  --c-ok: #0A7F3F;             /* balise conforme */
-  --c-ok-tint: #E3F3E9;
-  --c-on-ok: #FFFFFF;
-  --c-warn: #B45309;           /* ambre — alerte */
-  --c-warn-tint: #FCEFDF;
-  --c-on-warn: #FFFFFF;
-  --c-stop: #C1121F;           /* rouge détresse — bloquant / URGENCE */
-  --c-stop-tint: #FBE7E8;
-  --c-on-stop: #FFFFFF;
-  --c-signal: #FFD60A;         /* jaune signal — fond des bandeaux critiques */
-  --c-on-signal: #05131F;
-  --c-urgence: #C1121F;        /* identique dans les deux thèmes */
-  --c-on-urgence: #FFFFFF;
-  --c-focus: #0077B6;
+  --c-bg: #ffffff;
+  --c-surface: #ffffff;
+  --c-sunken: #edf2f6; /* afficheurs, zones de saisie groupées */
+  --c-raised: #f5f8fa; /* en-têtes de carte */
+  --c-ink: #05131f; /* encre — 19:1 sur blanc */
+  --c-ink-2: #2c4053; /* texte secondaire — 10:1 */
+  --c-ink-3: #4a5d70; /* aides — 6.6:1 */
+  --c-line: #c3cfda;
+  --c-line-strong: #05131f;
+  --c-abyss: #0b2e4a; /* barre haute, entêtes */
+  --c-abyss-2: #123e61;
+  --c-on-abyss: #ffffff;
+  --c-on-abyss-2: #bcd4e6;
+  --c-action: #0077b6; /* lagon — action principale */
+  --c-action-hover: #005e90;
+  --c-on-action: #ffffff;
+  --c-action-tint: #e2f0f9;
+  --c-ok: #0a7f3f; /* balise conforme */
+  --c-ok-tint: #e3f3e9;
+  --c-on-ok: #ffffff;
+  --c-warn: #b45309; /* ambre — alerte */
+  --c-warn-tint: #fcefdf;
+  --c-on-warn: #ffffff;
+  --c-stop: #c1121f; /* rouge détresse — bloquant / URGENCE */
+  --c-stop-tint: #fbe7e8;
+  --c-on-stop: #ffffff;
+  --c-signal: #ffd60a; /* jaune signal — fond des bandeaux critiques */
+  --c-on-signal: #05131f;
+  --c-urgence: #c1121f; /* identique dans les deux thèmes */
+  --c-on-urgence: #ffffff;
+  --c-focus: #0077b6;
   --c-scrim: rgba(2, 11, 19, 0.64);
-  --c-skeleton: #E3EAF0;
+  --c-skeleton: #e3eaf0;
 
   /* ── Typographie ───────────────────────────────────────────────── */
-  --font-text: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-num: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-text: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-num: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
-  --fs-xs: 0.8125rem;   /* 13 */
-  --fs-sm: 0.9375rem;   /* 15 */
-  --fs-base: 1rem;      /* 16 */
-  --fs-md: 1.125rem;    /* 18 */
-  --fs-lg: 1.375rem;    /* 22 */
-  --fs-xl: 1.75rem;     /* 28 */
-  --fs-2xl: 2.25rem;    /* 36 */
+  --fs-xs: 0.8125rem; /* 13 */
+  --fs-sm: 0.9375rem; /* 15 */
+  --fs-base: 1rem; /* 16 */
+  --fs-md: 1.125rem; /* 18 */
+  --fs-lg: 1.375rem; /* 22 */
+  --fs-xl: 1.75rem; /* 28 */
+  --fs-2xl: 2.25rem; /* 36 */
   --fs-gauge: clamp(2rem, 1.55rem + 1.9vw, 3rem);
   --fs-chrono: clamp(2.5rem, 1.9rem + 2.6vw, 3.75rem);
 
@@ -84,7 +84,7 @@
 
   --gutter: 16px;
   --topbar-h: 56px;
-  --footnav-h: 112px;   /* hauteur réservée sous le contenu (barre basse + motif de verrou) */
+  --footnav-h: 112px; /* hauteur réservée sous le contenu (barre basse + motif de verrou) */
 
   /* ── Ombres : uniquement pour les surfaces flottantes ──────────── */
   --shadow-float: 0 16px 40px rgba(2, 11, 19, 0.28), 0 2px 6px rgba(2, 11, 19, 0.18);
@@ -103,83 +103,87 @@
    Déclaré deux fois : préférence système (sauf choix explicite Soleil) et
    choix explicite Nuit. Les deux blocs doivent rester identiques. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-theme='light']) {
     color-scheme: dark;
-    --c-bg: #020B13;
+    --c-bg: #020b13;
     --c-surface: #061726;
-    --c-sunken: #0A2134;
-    --c-raised: #081C2E;
-    --c-ink: #E6F1F8;
-    --c-ink-2: #C3D5E3;
-    --c-ink-3: #97B0C4;
-    --c-line: #24425B;
-    --c-line-strong: #E6F1F8;
-    --c-abyss: #01070D;
-    --c-abyss-2: #0B2236;
-    --c-on-abyss: #E6F1F8;
-    --c-on-abyss-2: #97B0C4;
-    --c-action: #56B9F0;
-    --c-action-hover: #86CDF5;
-    --c-on-action: #020B13;
-    --c-action-tint: #0B2B42;
-    --c-ok: #44D38E;
-    --c-ok-tint: #0A2A1C;
-    --c-on-ok: #020B13;
-    --c-warn: #F5A83A;
-    --c-warn-tint: #2E1E08;
-    --c-on-warn: #020B13;
-    --c-stop: #FF6B6B;
-    --c-stop-tint: #360B0F;
-    --c-on-stop: #020B13;
-    --c-signal: #FFD60A;
-    --c-on-signal: #05131F;
-    --c-focus: #86CDF5;
+    --c-sunken: #0a2134;
+    --c-raised: #081c2e;
+    --c-ink: #e6f1f8;
+    --c-ink-2: #c3d5e3;
+    --c-ink-3: #97b0c4;
+    --c-line: #24425b;
+    --c-line-strong: #e6f1f8;
+    --c-abyss: #01070d;
+    --c-abyss-2: #0b2236;
+    --c-on-abyss: #e6f1f8;
+    --c-on-abyss-2: #97b0c4;
+    --c-action: #56b9f0;
+    --c-action-hover: #86cdf5;
+    --c-on-action: #020b13;
+    --c-action-tint: #0b2b42;
+    --c-ok: #44d38e;
+    --c-ok-tint: #0a2a1c;
+    --c-on-ok: #020b13;
+    --c-warn: #f5a83a;
+    --c-warn-tint: #2e1e08;
+    --c-on-warn: #020b13;
+    --c-stop: #ff6b6b;
+    --c-stop-tint: #360b0f;
+    --c-on-stop: #020b13;
+    --c-signal: #ffd60a;
+    --c-on-signal: #05131f;
+    --c-focus: #86cdf5;
     --c-scrim: rgba(0, 0, 0, 0.72);
-    --c-skeleton: #10283D;
-    --shadow-float: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px #24425B;
+    --c-skeleton: #10283d;
+    --shadow-float: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px #24425b;
     --shadow-bar: 0 -4px 16px rgba(0, 0, 0, 0.5);
   }
 }
-:root[data-theme="dark"] {
+:root[data-theme='dark'] {
   color-scheme: dark;
-  --c-bg: #020B13;
+  --c-bg: #020b13;
   --c-surface: #061726;
-  --c-sunken: #0A2134;
-  --c-raised: #081C2E;
-  --c-ink: #E6F1F8;
-  --c-ink-2: #C3D5E3;
-  --c-ink-3: #97B0C4;
-  --c-line: #24425B;
-  --c-line-strong: #E6F1F8;
-  --c-abyss: #01070D;
-  --c-abyss-2: #0B2236;
-  --c-on-abyss: #E6F1F8;
-  --c-on-abyss-2: #97B0C4;
-  --c-action: #56B9F0;
-  --c-action-hover: #86CDF5;
-  --c-on-action: #020B13;
-  --c-action-tint: #0B2B42;
-  --c-ok: #44D38E;
-  --c-ok-tint: #0A2A1C;
-  --c-on-ok: #020B13;
-  --c-warn: #F5A83A;
-  --c-warn-tint: #2E1E08;
-  --c-on-warn: #020B13;
-  --c-stop: #FF6B6B;
-  --c-stop-tint: #360B0F;
-  --c-on-stop: #020B13;
-  --c-signal: #FFD60A;
-  --c-on-signal: #05131F;
-  --c-focus: #86CDF5;
+  --c-sunken: #0a2134;
+  --c-raised: #081c2e;
+  --c-ink: #e6f1f8;
+  --c-ink-2: #c3d5e3;
+  --c-ink-3: #97b0c4;
+  --c-line: #24425b;
+  --c-line-strong: #e6f1f8;
+  --c-abyss: #01070d;
+  --c-abyss-2: #0b2236;
+  --c-on-abyss: #e6f1f8;
+  --c-on-abyss-2: #97b0c4;
+  --c-action: #56b9f0;
+  --c-action-hover: #86cdf5;
+  --c-on-action: #020b13;
+  --c-action-tint: #0b2b42;
+  --c-ok: #44d38e;
+  --c-ok-tint: #0a2a1c;
+  --c-on-ok: #020b13;
+  --c-warn: #f5a83a;
+  --c-warn-tint: #2e1e08;
+  --c-on-warn: #020b13;
+  --c-stop: #ff6b6b;
+  --c-stop-tint: #360b0f;
+  --c-on-stop: #020b13;
+  --c-signal: #ffd60a;
+  --c-on-signal: #05131f;
+  --c-focus: #86cdf5;
   --c-scrim: rgba(0, 0, 0, 0.72);
-  --c-skeleton: #10283D;
-  --shadow-float: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px #24425B;
+  --c-skeleton: #10283d;
+  --shadow-float: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px #24425b;
   --shadow-bar: 0 -4px 16px rgba(0, 0, 0, 0.5);
 }
 
 @media (max-width: 767px) {
-  :root { --footnav-h: 168px; }
+  :root {
+    --footnav-h: 168px;
+  }
 }
 @media (max-width: 600px) {
-  :root { --topbar-h: 52px; }
+  :root {
+    --topbar-h: 52px;
+  }
 }

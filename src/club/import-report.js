@@ -6,10 +6,10 @@
 // changes[]}] } — `line` = numéro de ligne du fichier (1 = en-tête).
 
 export const IMPORT_ACTIONS = Object.freeze({
-  create:    { label: 'Création',    tone: 'ok' },
-  update:    { label: 'Mise à jour', tone: 'info' },
-  unchanged: { label: 'Inchangé',    tone: 'muted' },
-  error:     { label: 'Erreur',      tone: 'err' },
+  create: { label: 'Création', tone: 'ok' },
+  update: { label: 'Mise à jour', tone: 'info' },
+  unchanged: { label: 'Inchangé', tone: 'muted' },
+  error: { label: 'Erreur', tone: 'err' },
 });
 
 // Filtres du tableau (ordre d'affichage).
@@ -23,11 +23,23 @@ export const IMPORT_FILTERS = [
 
 // Champs plongeur → libellés (items[].changes).
 const FIELD_LABELS = {
-  nom: 'nom', prenom: 'prénom', licence: 'licence', date_naissance: 'date de naissance',
-  niveau_plongeur: 'niveau', niveau_encadrant: 'niveau encadrant', nitrox: 'nitrox', trimix: 'trimix',
-  medical: 'CACI', licence_fin: 'fin de licence', external_id: 'identifiant externe', source: 'source',
-  representant_legal: 'représentant légal', autorisation_parentale_saison: 'autorisation parentale',
-  deleted_at: 'fiche réactivée', aptitudes_sup: 'aptitudes', qualifs: 'qualifications',
+  nom: 'nom',
+  prenom: 'prénom',
+  licence: 'licence',
+  date_naissance: 'date de naissance',
+  niveau_plongeur: 'niveau',
+  niveau_encadrant: 'niveau encadrant',
+  nitrox: 'nitrox',
+  trimix: 'trimix',
+  medical: 'CACI',
+  licence_fin: 'fin de licence',
+  external_id: 'identifiant externe',
+  source: 'source',
+  representant_legal: 'représentant légal',
+  autorisation_parentale_saison: 'autorisation parentale',
+  deleted_at: 'fiche réactivée',
+  aptitudes_sup: 'aptitudes',
+  qualifs: 'qualifications',
 };
 
 export function fieldLabel(field) {
@@ -51,19 +63,25 @@ export function importRows(report) {
     line: it.line,
     action: IMPORT_ACTIONS[it.action] ? it.action : 'unchanged',
     name: fullName(it) || '—',
-    detail: it.action === 'create'
-      ? 'Nouvelle fiche'
-      : (it.changes || []).length ? `Modifié : ${it.changes.map(fieldLabel).join(', ')}` : 'Aucune modification',
+    detail:
+      it.action === 'create'
+        ? 'Nouvelle fiche'
+        : (it.changes || []).length
+          ? `Modifié : ${it.changes.map(fieldLabel).join(', ')}`
+          : 'Aucune modification',
     warnings: warningsByLine.get(it.line) || [],
   }));
-  const itemLines = new Set((report?.items || []).map(it => it.line));
+  const itemLines = new Set((report?.items || []).map((it) => it.line));
   const errorRows = (report?.errors || []).map((e, i) => ({
-    key: `e${i}-${e.line}`, line: e.line, action: 'error', name: '', detail: e.message,
+    key: `e${i}-${e.line}`,
+    line: e.line,
+    action: 'error',
+    name: '',
+    detail: e.message,
     // Avertissement d'une ligne sans fiche (ligne en erreur) : rattaché à l'erreur.
-    warnings: itemLines.has(e.line) ? [] : (warningsByLine.get(e.line) || []),
+    warnings: itemLines.has(e.line) ? [] : warningsByLine.get(e.line) || [],
   }));
-  return [...rows, ...errorRows]
-    .sort((a, b) => a.line - b.line || (a.action === 'error') - (b.action === 'error'));
+  return [...rows, ...errorRows].sort((a, b) => a.line - b.line || (a.action === 'error') - (b.action === 'error'));
 }
 
 /** Compteurs et possibilité de confirmer. */
@@ -72,10 +90,14 @@ export function summarizeImport(report) {
   const created = report?.created || 0;
   const updated = report?.updated || 0;
   const unchanged = report?.unchanged || 0;
-  const errorLines = new Set((report?.errors || []).map(e => e.line)).size;
+  const errorLines = new Set((report?.errors || []).map((e) => e.line)).size;
   return {
     total: report?.total || 0,
-    created, updated, unchanged, errors, errorLines,
+    created,
+    updated,
+    unchanged,
+    errors,
+    errorLines,
     warnings: (report?.warnings || []).length,
     changes: created + updated,
     // Rien à écrire : inutile de confirmer.
@@ -86,7 +108,7 @@ export function summarizeImport(report) {
 /** Filtre les lignes selon l'onglet choisi. */
 export function filterImportRows(rows, filter) {
   if (!filter || filter === 'all') return rows;
-  return rows.filter(r => r.action === filter);
+  return rows.filter((r) => r.action === filter);
 }
 
 /** Nombre de lignes par filtre (badges des onglets). */

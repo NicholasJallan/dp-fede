@@ -22,49 +22,78 @@ function DiveStepScreen({ screen, session, directory, derived, diveMode, actions
   const s = session;
   const { divers, setDivers, sites, setSites } = directory;
   switch (screen) {
-    case "profil":
+    case 'profil':
       return (
         <ScreenProfil
-          answers={s.answers} setAnswer={s.setAnswer} derived={derived}
-          divers={divers} setDivers={setDivers}
-          sites={sites} setSites={setSites}
+          answers={s.answers}
+          setAnswer={s.setAnswer}
+          derived={derived}
+          divers={divers}
+          setDivers={setDivers}
+          sites={sites}
+          setSites={setSites}
         />
       );
-    case "palanquees":
+    case 'palanquees':
       return (
         <ScreenPalanquees
-          divers={divers} setDivers={setDivers}
-          palanquees={s.palanquees} setPalanquees={s.setPalanquees}
-          answers={s.answers} setAnswer={s.setAnswer}
+          divers={divers}
+          setDivers={setDivers}
+          palanquees={s.palanquees}
+          setPalanquees={s.setPalanquees}
+          answers={s.answers}
+          setAnswer={s.setAnswer}
         />
       );
-    case "checklist":
+    case 'checklist':
       return (
         <ScreenChecklist
-          answers={s.answers} setAnswer={s.setAnswer}
-          checked={s.checked} setChecked={s.updateChecked}
-          comments={s.comments} setComment={s.updateComment}
+          answers={s.answers}
+          setAnswer={s.setAnswer}
+          checked={s.checked}
+          setChecked={s.updateChecked}
+          comments={s.comments}
+          setComment={s.updateComment}
           mode={diveMode}
         />
       );
-    case "fiche":
+    case 'fiche':
       return (
-        <ScreenFiche answers={s.answers} palanquees={s.palanquees} divers={divers} setAnswer={s.setAnswer}
-          pressions={s.pressions} setPressions={s.setPressions}
-          realises={s.realises} setRealises={s.setRealises}
-          heuresDebut={s.heuresDebut} setHeuresDebut={s.setHeuresDebut}
-          heuresFin={s.heuresFin} setHeuresFin={s.setHeuresFin}
-          diveId={s.currentDiveId} renderState={{ checked: s.checked, comments: s.comments }} />
+        <ScreenFiche
+          answers={s.answers}
+          palanquees={s.palanquees}
+          divers={divers}
+          setAnswer={s.setAnswer}
+          pressions={s.pressions}
+          setPressions={s.setPressions}
+          realises={s.realises}
+          setRealises={s.setRealises}
+          heuresDebut={s.heuresDebut}
+          setHeuresDebut={s.setHeuresDebut}
+          heuresFin={s.heuresFin}
+          setHeuresFin={s.setHeuresFin}
+          diveId={s.currentDiveId}
+          renderState={{ checked: s.checked, comments: s.comments }}
+        />
       );
-    case "archive":
+    case 'archive':
       return (
-        <ScreenArchive answers={s.answers} palanquees={s.palanquees} divers={divers} user={user}
-          pressions={s.pressions} realises={s.realises}
-          heuresDebut={s.heuresDebut} heuresFin={s.heuresFin}
-          checked={s.checked} comments={s.comments}
-          plongeeFigee={s.plongeeFigee} onStartNew={actions.startPreparation}
+        <ScreenArchive
+          answers={s.answers}
+          palanquees={s.palanquees}
+          divers={divers}
+          user={user}
+          pressions={s.pressions}
+          realises={s.realises}
+          heuresDebut={s.heuresDebut}
+          heuresFin={s.heuresFin}
+          checked={s.checked}
+          comments={s.comments}
+          plongeeFigee={s.plongeeFigee}
+          onStartNew={actions.startPreparation}
           onArchiveDone={() => s.setArchiveDone(true)}
-          diveId={s.currentDiveId} />
+          diveId={s.currentDiveId}
+        />
       );
     default:
       return null;
@@ -74,21 +103,32 @@ function DiveStepScreen({ screen, session, directory, derived, diveMode, actions
 function AdminScreen({ screen, directory, user, onNavigate }) {
   const { divers, setDivers, diversLoaded, sites, setSites, sitesLoaded, refreshDiversAndSites } = directory;
   switch (screen) {
-    case "archives":      return <ScreenArchives />;
-    case "admin-divers":  return <ScreenAdminDivers divers={divers} setDivers={setDivers} diversLoaded={diversLoaded} onNavigate={onNavigate} />;
-    case "import-divers": return <ScreenImport onNavigate={onNavigate} onImported={refreshDiversAndSites} />;
-    case "admin-sites":   return <ScreenAdminSites sites={sites} setSites={setSites} sitesLoaded={sitesLoaded} />;
-    case "admin-users":   return isSuperAdmin(user) ? <ScreenAdminUsers /> : null;
-    case "club":          return <ScreenClub onNavigate={onNavigate} />;
-    case "stats":         return <ScreenStats onNavigate={onNavigate} />;
-    case "account":       return <ScreenAccount onNavigate={onNavigate} />;
-    default:              return null;
+    case 'archives':
+      return <ScreenArchives />;
+    case 'admin-divers':
+      return (
+        <ScreenAdminDivers divers={divers} setDivers={setDivers} diversLoaded={diversLoaded} onNavigate={onNavigate} />
+      );
+    case 'import-divers':
+      return <ScreenImport onNavigate={onNavigate} onImported={refreshDiversAndSites} />;
+    case 'admin-sites':
+      return <ScreenAdminSites sites={sites} setSites={setSites} sitesLoaded={sitesLoaded} />;
+    case 'admin-users':
+      return isSuperAdmin(user) ? <ScreenAdminUsers /> : null;
+    case 'club':
+      return <ScreenClub onNavigate={onNavigate} />;
+    case 'stats':
+      return <ScreenStats onNavigate={onNavigate} />;
+    case 'account':
+      return <ScreenAccount onNavigate={onNavigate} />;
+    default:
+      return null;
   }
 }
 
 export function ScreenRouter(props) {
   const { screen, actions, onNavigate } = props;
-  if (screen === "home") {
+  if (screen === 'home') {
     return (
       <ScreenHome
         onNavigate={onNavigate}

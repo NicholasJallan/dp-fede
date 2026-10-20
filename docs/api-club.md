@@ -62,17 +62,17 @@ rattachée au club courant quand celui-ci est confirmé par le serveur
 
 ## Rôles et permissions
 
-| Action | responsable | dp | encadrant | lecture |
-|---|:-:|:-:|:-:|:-:|
-| Lire le club, ses membres (`club.read`, `members.read`) | ✔ | ✔ | ✔ | ✔ |
-| Modifier / supprimer le club, gérer membres et invitations (`club.manage`) | ✔ | | | |
-| Lire annuaire, sites, plongées (`divers.read`, `sites.read`, `dives.read`) | ✔ | ✔ | ✔ | ✔ |
-| Écrire annuaire, sites, plongées (`divers.write`, `sites.write`, `dives.write`) | ✔ | ✔ | | |
-| Importer l'annuaire (`divers.import`) | ✔ | ✔ | | |
-| Télécharger / générer à la volée les PDF (`documents.read`) | ✔ | ✔ | ✔ | ✔ |
-| Régénérer les PDF archivés (`documents.generate`) | ✔ | ✔ | | |
-| Alertes CACI / licence / autorisations (`alerts.read`) | ✔ | ✔ | ✔ | |
-| Statistiques (`stats.read`) | ✔ | ✔ | ✔ | ✔ |
+| Action                                                                          | responsable | dp  | encadrant | lecture |
+| ------------------------------------------------------------------------------- | :---------: | :-: | :-------: | :-----: |
+| Lire le club, ses membres (`club.read`, `members.read`)                         |      ✔      |  ✔  |     ✔     |    ✔    |
+| Modifier / supprimer le club, gérer membres et invitations (`club.manage`)      |      ✔      |     |           |         |
+| Lire annuaire, sites, plongées (`divers.read`, `sites.read`, `dives.read`)      |      ✔      |  ✔  |     ✔     |    ✔    |
+| Écrire annuaire, sites, plongées (`divers.write`, `sites.write`, `dives.write`) |      ✔      |  ✔  |           |         |
+| Importer l'annuaire (`divers.import`)                                           |      ✔      |  ✔  |           |         |
+| Télécharger / générer à la volée les PDF (`documents.read`)                     |      ✔      |  ✔  |     ✔     |    ✔    |
+| Régénérer les PDF archivés (`documents.generate`)                               |      ✔      |  ✔  |           |         |
+| Alertes CACI / licence / autorisations (`alerts.read`)                          |      ✔      |  ✔  |     ✔     |         |
+| Statistiques (`stats.read`)                                                     |      ✔      |  ✔  |     ✔     |    ✔    |
 
 Un club garde **toujours au moins un responsable**. Un `dp` peut modifier
 toutes les plongées du club (pas seulement les siennes). Le super-administrateur
@@ -82,29 +82,29 @@ renvoie les permissions calculées pour l'utilisateur.
 
 ## Compatibilité avec le front actuel
 
-| Endpoint | Changement |
-|---|---|
-| `GET /api/auth/me`, `POST /api/auth/google` | Mêmes champs qu'avant. `club_nom`, `club_numero`, `club_siret`, `structure_type`, `president_prenom`, `president_nom`, `president_tel`, `urgence_defaut` reflètent désormais le **club courant**. Ajouts : `club_id`, `club_role`, `club_count`. |
-| `PATCH /api/auth/account` | `nom`, `prenom` : profil de l'utilisateur. Les anciens champs club modifient le **club courant** : réservé au responsable ; pour un autre rôle, des valeurs inchangées sont ignorées, une modification renvoie `403`. |
-| `GET/POST/PUT/DELETE /api/divers`, `/api/sites`, `/api/dives` | Filtrage par club au lieu de l'utilisateur, permissions par rôle. `?since=`, soft-delete (`deleted_at`, `deleted`) inchangés. POST idempotents : voir ci-dessous. |
-| `POST /api/divers`, `POST /api/sites` (`id` UUID client) | UPSERT **atomique limité au club** (`IF(club_id = VALUES(club_id), …)` sur chaque colonne, puis relecture `id` + club) : rejeu dans le même club → `201` (fiche mise à jour, réactivée si supprimée). `id` d'un **autre club** → ligne intacte et **`404`** (« Plongeur introuvable » / « Site introuvable », comme un id inexistant : plus de `409` « Identifiant déjà utilisé »). |
-| `POST /api/dives` (`client_uuid`) | Recherche par **(club, client_uuid)** (index unique, migration 011) : plongée active du club courant → `200 { id, duplicate: true }` ; `client_uuid` porté par une plongée d'un **autre club** ou **supprimée** → `409 CLIENT_UUID_CONFLICT` (jamais confondu avec un rejeu). |
-| `GET /api/sync/state` | Curseurs du club courant + `club_id`, `club_role`. |
-| `POST /api/pdf/fiche` | Plongée cherchée dans le club courant ; en-tête de fiche = informations du club. |
-| `GET /api/account/export` | Format `dp-assistant-export/2` (voir [rgpd.md](rgpd.md)). |
-| `DELETE /api/account` | `409 LAST_RESPONSABLE` si l'utilisateur est le seul responsable d'un club comptant d'autres membres (`409 LAST_ADMIN` : seul administrateur). Les clubs dont il est l'unique membre sont supprimés avec conservation légale (cf. `DELETE /api/club`). Réponse : `{ "deleted": true, "retained": { "fiches": 3, "until": "2027-07-14", "clubs": 1 }, "message": "…" }`. |
+| Endpoint                                                      | Changement                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/auth/me`, `POST /api/auth/google`                   | Mêmes champs qu'avant. `club_nom`, `club_numero`, `club_siret`, `structure_type`, `president_prenom`, `president_nom`, `president_tel`, `urgence_defaut` reflètent désormais le **club courant**. Ajouts : `club_id`, `club_role`, `club_count`.                                                                                                                                    |
+| `PATCH /api/auth/account`                                     | `nom`, `prenom` : profil de l'utilisateur. Les anciens champs club modifient le **club courant** : réservé au responsable ; pour un autre rôle, des valeurs inchangées sont ignorées, une modification renvoie `403`.                                                                                                                                                               |
+| `GET/POST/PUT/DELETE /api/divers`, `/api/sites`, `/api/dives` | Filtrage par club au lieu de l'utilisateur, permissions par rôle. `?since=`, soft-delete (`deleted_at`, `deleted`) inchangés. POST idempotents : voir ci-dessous.                                                                                                                                                                                                                   |
+| `POST /api/divers`, `POST /api/sites` (`id` UUID client)      | UPSERT **atomique limité au club** (`IF(club_id = VALUES(club_id), …)` sur chaque colonne, puis relecture `id` + club) : rejeu dans le même club → `201` (fiche mise à jour, réactivée si supprimée). `id` d'un **autre club** → ligne intacte et **`404`** (« Plongeur introuvable » / « Site introuvable », comme un id inexistant : plus de `409` « Identifiant déjà utilisé »). |
+| `POST /api/dives` (`client_uuid`)                             | Recherche par **(club, client_uuid)** (index unique, migration 011) : plongée active du club courant → `200 { id, duplicate: true }` ; `client_uuid` porté par une plongée d'un **autre club** ou **supprimée** → `409 CLIENT_UUID_CONFLICT` (jamais confondu avec un rejeu).                                                                                                       |
+| `GET /api/sync/state`                                         | Curseurs du club courant + `club_id`, `club_role`.                                                                                                                                                                                                                                                                                                                                  |
+| `POST /api/pdf/fiche`                                         | Plongée cherchée dans le club courant ; en-tête de fiche = informations du club.                                                                                                                                                                                                                                                                                                    |
+| `GET /api/account/export`                                     | Format `dp-assistant-export/2` (voir [rgpd.md](rgpd.md)).                                                                                                                                                                                                                                                                                                                           |
+| `DELETE /api/account`                                         | `409 LAST_RESPONSABLE` si l'utilisateur est le seul responsable d'un club comptant d'autres membres (`409 LAST_ADMIN` : seul administrateur). Les clubs dont il est l'unique membre sont supprimés avec conservation légale (cf. `DELETE /api/club`). Réponse : `{ "deleted": true, "retained": { "fiches": 3, "until": "2027-07-14", "clubs": 1 }, "message": "…" }`.              |
 
 ### Plongeurs : nouveaux champs
 
 Renvoyés par `GET /api/divers` (et `GET /api/divers/:id`) :
 
-| Champ | Type | Écriture |
-|---|---|---|
-| `source` | `"manuel"` \| `"vpdive"` \| `"csv"` \| … | import uniquement |
-| `external_id` | chaîne ≤ 64 ou `null` | import uniquement |
-| `licence_fin` | `AAAA-MM-JJ` ou `null` | POST/PUT (si la clé est présente) |
-| `representant_legal` | texte ≤ 200 ou `null` | POST/PUT (si la clé est présente) |
-| `autorisation_parentale_saison` | `"2026-2027"` ou `null` | POST/PUT (si la clé est présente), format `AAAA-AAAA` sinon `422` |
+| Champ                           | Type                                     | Écriture                                                          |
+| ------------------------------- | ---------------------------------------- | ----------------------------------------------------------------- |
+| `source`                        | `"manuel"` \| `"vpdive"` \| `"csv"` \| … | import uniquement                                                 |
+| `external_id`                   | chaîne ≤ 64 ou `null`                    | import uniquement                                                 |
+| `licence_fin`                   | `AAAA-MM-JJ` ou `null`                   | POST/PUT (si la clé est présente)                                 |
+| `representant_legal`            | texte ≤ 200 ou `null`                    | POST/PUT (si la clé est présente)                                 |
+| `autorisation_parentale_saison` | `"2026-2027"` ou `null`                  | POST/PUT (si la clé est présente), format `AAAA-AAAA` sinon `422` |
 
 Une clé **absente** du corps POST/PUT ne modifie pas la valeur stockée (un
 client ancien n'efface donc pas une donnée importée) ; `null` ou `""` l'efface.
@@ -125,14 +125,14 @@ client ancien n'efface donc pas une donnée importée) ; `null` ou `""` l'efface
 
 ### Plongée archivée : fiche figée (A322-72)
 
-| Requête sur une plongée `archived` | Réponse |
-|---|---|
-| `PATCH { drive_link }` | `200` (seul champ modifiable) |
-| `PATCH { render_state }` **différent** de l'état stocké | `422 ARCHIVED_IMMUTABLE` |
-| `PATCH { status: "archived", render_state }` **identique** (rejeu de l'archivage par l'outbox) | `200`, rien n'est écrit |
-| `PATCH { answers, palanquees, … }` | ignorés (comportement historique) |
-| `PATCH { status: "prepared" \| "in_progress" }` | `422 ARCHIVED_IMMUTABLE` |
-| `DELETE` | `422 ARCHIVED_IMMUTABLE` |
+| Requête sur une plongée `archived`                                                             | Réponse                           |
+| ---------------------------------------------------------------------------------------------- | --------------------------------- |
+| `PATCH { drive_link }`                                                                         | `200` (seul champ modifiable)     |
+| `PATCH { render_state }` **différent** de l'état stocké                                        | `422 ARCHIVED_IMMUTABLE`          |
+| `PATCH { status: "archived", render_state }` **identique** (rejeu de l'archivage par l'outbox) | `200`, rien n'est écrit           |
+| `PATCH { answers, palanquees, … }`                                                             | ignorés (comportement historique) |
+| `PATCH { status: "prepared" \| "in_progress" }`                                                | `422 ARCHIVED_IMMUTABLE`          |
+| `DELETE`                                                                                       | `422 ARCHIVED_IMMUTABLE`          |
 
 L'écriture de `render_state` est conditionnée dans la même instruction SQL
 (`… WHERE status <> 'archived'`) : un auto-save concurrent d'un archivage ne
@@ -150,10 +150,17 @@ Permission `club.read`.
 ```json
 {
   "club": {
-    "id": "0b9d2c8e-…", "nom": "Bulles en Valais", "numero_ffessm": "06123456",
-    "siret": "", "structure_type": "club", "president_prenom": "Anne",
-    "president_nom": "Martin", "president_tel": "0600000000", "urgence_defaut": "112",
-    "created_at": "2026-10-20T09:00:00", "updated_at": "2026-10-20T09:00:00"
+    "id": "0b9d2c8e-…",
+    "nom": "Bulles en Valais",
+    "numero_ffessm": "06123456",
+    "siret": "",
+    "structure_type": "club",
+    "president_prenom": "Anne",
+    "president_nom": "Martin",
+    "president_tel": "0600000000",
+    "urgence_defaut": "112",
+    "created_at": "2026-10-20T09:00:00",
+    "updated_at": "2026-10-20T09:00:00"
   },
   "role": "responsable",
   "permissions": { "club.read": true, "club.manage": true, "divers.write": true, "…": true },
@@ -220,8 +227,15 @@ Authentifié.
 {
   "current_club_id": "0b9d…",
   "clubs": [
-    { "club_id": "0b9d…", "nom": "Bulles en Valais", "numero_ffessm": "06123456",
-      "role": "responsable", "joined_at": "2026-10-20T09:00:00", "members_count": 3, "current": true }
+    {
+      "club_id": "0b9d…",
+      "nom": "Bulles en Valais",
+      "numero_ffessm": "06123456",
+      "role": "responsable",
+      "joined_at": "2026-10-20T09:00:00",
+      "members_count": 3,
+      "current": true
+    }
   ]
 }
 ```
@@ -239,11 +253,19 @@ Permission `members.read`.
 ```json
 {
   "members": [
-    { "user_id": 3, "role": "responsable", "nom": "Martin", "prenom": "Anne",
-      "email": "anne@example.com", "avatar_url": "…", "joined_at": "2026-10-20T09:00:00",
-      "last_seen_at": "2026-10-20T09:00:00", "is_me": true }
+    {
+      "user_id": 3,
+      "role": "responsable",
+      "nom": "Martin",
+      "prenom": "Anne",
+      "email": "anne@example.com",
+      "avatar_url": "…",
+      "joined_at": "2026-10-20T09:00:00",
+      "last_seen_at": "2026-10-20T09:00:00",
+      "is_me": true
+    }
   ],
-  "invitations": [ /* invitations en attente, responsable uniquement, cf. ci-dessous */ ]
+  "invitations": [/* invitations en attente, responsable uniquement, cf. ci-dessous */]
 }
 ```
 
@@ -280,9 +302,16 @@ de l'invitation** (insensible à la casse).
 Objet invitation :
 
 ```json
-{ "id": "uuid", "email": "dp@example.com", "role": "dp", "status": "pending",
-  "expires_at": "2026-10-27T10:00:00", "created_at": "2026-10-20T10:00:00",
-  "accepted_at": null, "invited_by": 3 }
+{
+  "id": "uuid",
+  "email": "dp@example.com",
+  "role": "dp",
+  "status": "pending",
+  "expires_at": "2026-10-27T10:00:00",
+  "created_at": "2026-10-20T10:00:00",
+  "accepted_at": null,
+  "invited_by": 3
+}
 ```
 
 `status` : `pending` · `accepted` · `revoked` · `expired`.
@@ -312,9 +341,16 @@ Permission `club.manage`. Réponse `{ "id": "…", "revoked": true }` ;
 Authentifié (aucun rôle requis). Corps `{ "token": "…" }`. Réponse :
 
 ```json
-{ "club_id": "…", "club_nom": "Bulles en Valais", "role": "dp", "email": "dp@example.com",
-  "status": "pending", "expires_at": "2026-10-27T10:00:00",
-  "email_matches": true, "already_member": false }
+{
+  "club_id": "…",
+  "club_nom": "Bulles en Valais",
+  "role": "dp",
+  "email": "dp@example.com",
+  "status": "pending",
+  "expires_at": "2026-10-27T10:00:00",
+  "email_matches": true,
+  "already_member": false
+}
 ```
 
 `404` si jeton inconnu. Limite : 20 appels (preview + accept) / 15 min / compte.
@@ -344,22 +380,38 @@ Permission `alerts.read`. `days` entre 1 et 120 (défaut 30, sinon `422`).
   "days": 30,
   "counts": { "caci_expire": 2, "licence_expire_bientot": 1, "autorisation_parentale_manquante": 1 },
   "items": [
-    { "diver_id": "…", "nom": "Dupont", "prenom": "Jean", "type": "caci_expire",
-      "severity": "error", "date": "2026-10-01", "days": -19 },
-    { "diver_id": "…", "nom": "Petit", "prenom": "Léa", "type": "autorisation_parentale_manquante",
-      "severity": "error", "date": null, "days": null, "season": "2026-2027", "age": 14 }
+    {
+      "diver_id": "…",
+      "nom": "Dupont",
+      "prenom": "Jean",
+      "type": "caci_expire",
+      "severity": "error",
+      "date": "2026-10-01",
+      "days": -19
+    },
+    {
+      "diver_id": "…",
+      "nom": "Petit",
+      "prenom": "Léa",
+      "type": "autorisation_parentale_manquante",
+      "severity": "error",
+      "date": null,
+      "days": null,
+      "season": "2026-2027",
+      "age": 14
+    }
   ]
 }
 ```
 
-| `type` | `severity` | Règle |
-|---|---|---|
-| `caci_expire` | error | CACI émis il y a un an ou plus (fin de validité ≤ aujourd'hui) |
-| `caci_expire_bientot` | warn | fin de validité dans les `days` jours |
-| `caci_absent` | warn | date de CACI non renseignée |
-| `licence_expiree` | error | `licence_fin` < aujourd'hui |
-| `licence_expire_bientot` | warn | `licence_fin` dans les `days` jours |
-| `autorisation_parentale_manquante` | error | moins de 18 ans et `autorisation_parentale_saison` ≠ saison courante |
+| `type`                             | `severity` | Règle                                                                |
+| ---------------------------------- | ---------- | -------------------------------------------------------------------- |
+| `caci_expire`                      | error      | CACI émis il y a un an ou plus (fin de validité ≤ aujourd'hui)       |
+| `caci_expire_bientot`              | warn       | fin de validité dans les `days` jours                                |
+| `caci_absent`                      | warn       | date de CACI non renseignée                                          |
+| `licence_expiree`                  | error      | `licence_fin` < aujourd'hui                                          |
+| `licence_expire_bientot`           | warn       | `licence_fin` dans les `days` jours                                  |
+| `autorisation_parentale_manquante` | error      | moins de 18 ans et `autorisation_parentale_saison` ≠ saison courante |
 
 `date` = date d'échéance ; `days` = jours restants (négatif si dépassé).
 Tri : erreurs puis avertissements, par échéance.
@@ -379,18 +431,18 @@ seule fois** (`dives.participants_at`, posé même à zéro participant).
 
 ```json
 {
-  "from": "2026-09-15", "to": "2027-09-14",
+  "from": "2026-09-15",
+  "to": "2027-09-14",
   "plongees": 31,
   "palanquees": 88,
   "palanquees_par_type": { "exploration": 40, "guidee": 21, "formation": 22, "bapteme": 5 },
-  "plongees_par_type":   { "exploration": 25, "guidee": 15, "formation": 14, "bapteme": 4 },
+  "plongees_par_type": { "exploration": 25, "guidee": 15, "formation": 14, "bapteme": 4 },
   "plongeurs_distincts": 57,
   "baptemes": 9,
   "participations": 260,
   "heures_cumulees": 198.5,
   "par_plongeur": [
-    { "diver_id": "…", "nom": "Dupont", "prenom": "Jean", "licence": "A-123",
-      "plongees": 12, "dp": 3, "heures": 9.5 }
+    { "diver_id": "…", "nom": "Dupont", "prenom": "Jean", "licence": "A-123", "plongees": 12, "dp": 3, "heures": 9.5 }
   ]
 }
 ```
@@ -431,15 +483,28 @@ Réponse (identique en simulation et en application) :
 
 ```json
 {
-  "profile": "auto", "source": "csv", "format": "csv", "encoding": "UTF-8 (BOM)", "separator": ";",
+  "profile": "auto",
+  "source": "csv",
+  "format": "csv",
+  "encoding": "UTF-8 (BOM)",
+  "separator": ";",
   "columns": { "recognized": { "Nom": "nom", "N° licence": "licence", "CACI": "caci" }, "ignored": ["Email"] },
   "dry_run": true,
-  "total": 120, "created": 15, "updated": 30, "unchanged": 72,
-  "errors":   [ { "line": 14, "message": "Date invalide pour caci : « 31/02/2026 »" } ],
-  "warnings": [ { "line": 22, "message": "Qualification trimix : PN-C ajouté (prérequis)" } ],
+  "total": 120,
+  "created": 15,
+  "updated": 30,
+  "unchanged": 72,
+  "errors": [{ "line": 14, "message": "Date invalide pour caci : « 31/02/2026 »" }],
+  "warnings": [{ "line": 22, "message": "Qualification trimix : PN-C ajouté (prérequis)" }],
   "items": [
-    { "line": 2, "action": "update", "diver_id": "…", "nom": "Dupont", "prenom": "Jean",
-      "changes": ["medical", "external_id", "source"] }
+    {
+      "line": 2,
+      "action": "update",
+      "diver_id": "…",
+      "nom": "Dupont",
+      "prenom": "Jean",
+      "changes": ["medical", "external_id", "source"]
+    }
   ]
 }
 ```
@@ -478,9 +543,15 @@ L'export Google Drive existant est inchangé (complémentaire).
 Permission `documents.read`. `:id` = id ou `client_uuid`.
 
 ```json
-{ "dive_id": "…", "status": "ok", "updated_at": "2026-10-20T10:01:12",
-  "documents": [ { "type": "checklist", "sha256": "…", "bytes": 48211, "created_at": "2026-10-20T10:01:12" },
-                 { "type": "fiche", "sha256": "…", "bytes": 61002, "created_at": "2026-10-20T10:01:11" } ] }
+{
+  "dive_id": "…",
+  "status": "ok",
+  "updated_at": "2026-10-20T10:01:12",
+  "documents": [
+    { "type": "checklist", "sha256": "…", "bytes": 48211, "created_at": "2026-10-20T10:01:12" },
+    { "type": "fiche", "sha256": "…", "bytes": 61002, "created_at": "2026-10-20T10:01:11" }
+  ]
+}
 ```
 
 `status` : `null` (non archivée, ou archivée avant la phase 5 et pas encore
@@ -515,23 +586,23 @@ Erreurs : `409 DIVE_NOT_ARCHIVED` plongée non archivée ·
 Champ `code` de la réponse d'erreur. Le client teste le code, jamais le
 libellé.
 
-| HTTP | `code` | Cas |
-|---|---|---|
-| 403 | `CSRF_INVALID` | jeton CSRF absent ou invalide (transitoire : nouvel essai) |
-| 403 | `ORIGIN_FORBIDDEN` | origine de la requête refusée (transitoire) |
-| 403 | `CLUB_ROLE_FORBIDDEN` | rôle insuffisant dans le club |
-| 403 | `CLUB_NOT_MEMBER` | `X-DP-Club` désigne un club dont l'utilisateur n'est pas (plus) membre → resynchroniser le club courant |
-| 404 | `MEMBER_NOT_FOUND` | membre du club introuvable |
-| 409 | `CLIENT_UUID_CONFLICT` | `client_uuid` d'une plongée d'un autre club ou supprimée |
-| 409 | `EMPTY_OVERWRITE_REFUSED` | PATCH qui viderait une plongée existante (answers et palanquees vides) |
-| 409 | `LAST_RESPONSABLE` | le club doit garder un responsable (rôle, retrait, suppression de compte) |
-| 409 | `LAST_ADMIN` | seul administrateur de l'application |
-| 409 | `ALREADY_MEMBER` | invitation d'une personne déjà membre |
-| 409 | `DIVE_NOT_ARCHIVED` | documents demandés pour une plongée non archivée |
-| 409 | `DOCUMENTS_COMPLETE` | régénération refusée : documents complets et intègres |
-| 409 | `DOCUMENTS_PENDING` | régénération refusée : génération en cours |
-| 422 | `ARCHIVED_IMMUTABLE` | modification d'une plongée archivée (render_state, statut, suppression) |
-| 410 | `WORKSPACES_REPLACED` | ancienne route `/api/workspaces*` (structures de la production, remplacées par les clubs ; rejoindre un club = invitation du responsable) |
+| HTTP | `code`                    | Cas                                                                                                                                       |
+| ---- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| 403  | `CSRF_INVALID`            | jeton CSRF absent ou invalide (transitoire : nouvel essai)                                                                                |
+| 403  | `ORIGIN_FORBIDDEN`        | origine de la requête refusée (transitoire)                                                                                               |
+| 403  | `CLUB_ROLE_FORBIDDEN`     | rôle insuffisant dans le club                                                                                                             |
+| 403  | `CLUB_NOT_MEMBER`         | `X-DP-Club` désigne un club dont l'utilisateur n'est pas (plus) membre → resynchroniser le club courant                                   |
+| 404  | `MEMBER_NOT_FOUND`        | membre du club introuvable                                                                                                                |
+| 409  | `CLIENT_UUID_CONFLICT`    | `client_uuid` d'une plongée d'un autre club ou supprimée                                                                                  |
+| 409  | `EMPTY_OVERWRITE_REFUSED` | PATCH qui viderait une plongée existante (answers et palanquees vides)                                                                    |
+| 409  | `LAST_RESPONSABLE`        | le club doit garder un responsable (rôle, retrait, suppression de compte)                                                                 |
+| 409  | `LAST_ADMIN`              | seul administrateur de l'application                                                                                                      |
+| 409  | `ALREADY_MEMBER`          | invitation d'une personne déjà membre                                                                                                     |
+| 409  | `DIVE_NOT_ARCHIVED`       | documents demandés pour une plongée non archivée                                                                                          |
+| 409  | `DOCUMENTS_COMPLETE`      | régénération refusée : documents complets et intègres                                                                                     |
+| 409  | `DOCUMENTS_PENDING`       | régénération refusée : génération en cours                                                                                                |
+| 422  | `ARCHIVED_IMMUTABLE`      | modification d'une plongée archivée (render_state, statut, suppression)                                                                   |
+| 410  | `WORKSPACES_REPLACED`     | ancienne route `/api/workspaces*` (structures de la production, remplacées par les clubs ; rejoindre un club = invitation du responsable) |
 
 **Outbox hors-ligne** (`src/offline/sync.js`) : un `409` n'est compté comme
 succès (rejeu idempotent) que si la réponse porte `duplicate: true` ou le code

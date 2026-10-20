@@ -15,11 +15,17 @@ function readChoice() {
   try {
     const v = localStorage.getItem(KEY);
     return v === 'light' || v === 'dark' ? v : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 function writeChoice(v) {
-  try { localStorage.setItem(KEY, v); } catch { /* stockage indisponible : choix limité à la session */ }
+  try {
+    localStorage.setItem(KEY, v);
+  } catch {
+    /* stockage indisponible : choix limité à la session */
+  }
 }
 
 export function useTheme() {

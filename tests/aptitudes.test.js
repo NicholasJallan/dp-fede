@@ -76,60 +76,53 @@ describe('getDiverAptitudes — par niveau', () => {
   });
 
   test('Bonus formation : N1 + E3 dans la palanquée → PE40 accessible', () => {
-    const apts = getDiverAptitudes(
-      { niveau_plongeur: 'N1' },
-      false,
-      { maxEnsLevel: 'E3' },
-    );
+    const apts = getDiverAptitudes({ niveau_plongeur: 'N1' }, false, { maxEnsLevel: 'E3' });
     assert.ok(apts.includes('PE40'), 'Bonus formation PE40 manquant');
   });
 
   test('Bonus formation : N2 + E4 → PE60 accessible', () => {
-    const apts = getDiverAptitudes(
-      { niveau_plongeur: 'N2' },
-      false,
-      { maxEnsLevel: 'E4' },
-    );
+    const apts = getDiverAptitudes({ niveau_plongeur: 'N2' }, false, { maxEnsLevel: 'E4' });
     assert.ok(apts.includes('PE60'));
   });
 
   test('Bonus formation : jamais en exploration', () => {
-    const apts = getDiverAptitudes(
-      { niveau_plongeur: 'N1' },
-      false,
-      { maxEnsLevel: 'E3', mode: 'exploration' },
-    );
+    const apts = getDiverAptitudes({ niveau_plongeur: 'N1' }, false, { maxEnsLevel: 'E3', mode: 'exploration' });
     assert.ok(!apts.includes('PE40'));
   });
 
   test('Bonus formation : N1 + PA20 + E3 → PA40 accessible', () => {
-    const apts = getDiverAptitudes(
-      { niveau_plongeur: 'N1', aptitudes_sup: ['PA12', 'PA20'] },
-      false,
-      { maxEnsLevel: 'E3', mode: 'enseignement' },
-    );
+    const apts = getDiverAptitudes({ niveau_plongeur: 'N1', aptitudes_sup: ['PA12', 'PA20'] }, false, {
+      maxEnsLevel: 'E3',
+      mode: 'enseignement',
+    });
     assert.ok(apts.includes('PA40'));
   });
 
   test('Bonus formation : N1 + E2 → pas de PE40 (E2 enseigne max PE20)', () => {
-    const apts = getDiverAptitudes(
-      { niveau_plongeur: 'N1' },
-      false,
-      { maxEnsLevel: 'E2' },
-    );
+    const apts = getDiverAptitudes({ niveau_plongeur: 'N1' }, false, { maxEnsLevel: 'E2' });
     assert.ok(!apts.includes('PE40'));
   });
 });
 
 describe('aptitudeMaxDepth', () => {
   const cases = {
-    'Baptême': 6,
-    'PE12': 12, 'PE20': 20, 'PE40': 40, 'PE60': 60,
-    'PA12': 12, 'PA20': 20, 'PA40': 40, 'PA60': 60,
+    Baptême: 6,
+    PE12: 12,
+    PE20: 20,
+    PE40: 40,
+    PE60: 60,
+    PA12: 12,
+    PA20: 20,
+    PA40: 40,
+    PA60: 60,
     // GP / P4 : exploration encadrée jusqu'à 40 m (0-60 m réservé à l'E4, III-16 b)
-    'GP': 40,
-    'E1': 6, 'E2': 20, 'E3': 40, 'E4': 60,
-    'PTH70': 70, 'PTH120': 120,
+    GP: 40,
+    E1: 6,
+    E2: 20,
+    E3: 40,
+    E4: 60,
+    PTH70: 70,
+    PTH120: 120,
   };
   for (const [apt, depth] of Object.entries(cases)) {
     test(`${apt} → ${depth} m`, () => {
@@ -142,7 +135,7 @@ describe('aptitudeMaxDepth', () => {
 });
 
 describe('getMilieuType — normalisation', () => {
-  test.each = (cases, fn) => cases.forEach(c => test(c.label, () => fn(c)));
+  test.each = (cases, fn) => cases.forEach((c) => test(c.label, () => fn(c)));
   test('"En mer" → mer', () => assert.equal(getMilieuType('En mer'), 'mer'));
   test('"Lac" → lac', () => assert.equal(getMilieuType('Lac'), 'lac'));
   test('"Carrière" → lac', () => assert.equal(getMilieuType('Carrière'), 'lac'));
@@ -179,7 +172,10 @@ describe('sortMembresForFiche — ordre canonique', () => {
       { aptitude: 'E4' },
     ];
     const sorted = sortMembresForFiche(membres);
-    assert.deepEqual(sorted.map(m => m.aptitude), ['E4', 'E3', 'GP', 'PE40', 'PA40', 'Baptême']);
+    assert.deepEqual(
+      sorted.map((m) => m.aptitude),
+      ['E4', 'E3', 'GP', 'PE40', 'PA40', 'Baptême'],
+    );
   });
 
   test('2 GP : le dernier devient serre-file (en queue)', () => {

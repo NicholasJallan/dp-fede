@@ -7,6 +7,6 @@ import { App } from './App.jsx';
 
 bootstrap();
 
-const root = createRoot(document.getElementById("root"));
+const root = createRoot(document.getElementById('root'));
 root.render(<App />);
 window.dispatchEvent(new Event('dp:appReady'));

@@ -33,28 +33,56 @@ export function periodPresets(today = new Date()) {
 
 function PeriodForm({ period, setPeriod, onApply, busy, online }) {
   const presets = periodPresets();
-  const submit = (e) => { e.preventDefault(); onApply(period); };
+  const submit = (e) => {
+    e.preventDefault();
+    onApply(period);
+  };
   return (
     <form className="card" aria-labelledby="stats-period" onSubmit={submit}>
-      <div className="card-head"><h2 id="stats-period">Période</h2><span className="hint">Saison FFESSM : 15/09 → 14/09</span></div>
+      <div className="card-head">
+        <h2 id="stats-period">Période</h2>
+        <span className="hint">Saison FFESSM : 15/09 → 14/09</span>
+      </div>
       <div className="card-body">
         <div className="period-form">
           <div className="field">
             <label htmlFor="stats-from">Du</label>
-            <input id="stats-from" className="input mono" type="date" value={period.from} max={period.to || undefined}
-              onChange={e => setPeriod(p => ({ ...p, from: e.target.value }))} />
+            <input
+              id="stats-from"
+              className="input mono"
+              type="date"
+              value={period.from}
+              max={period.to || undefined}
+              onChange={(e) => setPeriod((p) => ({ ...p, from: e.target.value }))}
+            />
           </div>
           <div className="field">
             <label htmlFor="stats-to">Au</label>
-            <input id="stats-to" className="input mono" type="date" value={period.to} min={period.from || undefined}
-              onChange={e => setPeriod(p => ({ ...p, to: e.target.value }))} />
+            <input
+              id="stats-to"
+              className="input mono"
+              type="date"
+              value={period.to}
+              min={period.from || undefined}
+              onChange={(e) => setPeriod((p) => ({ ...p, to: e.target.value }))}
+            />
           </div>
-          <button type="submit" className="btn primary" disabled={busy || !online}>Afficher</button>
+          <button type="submit" className="btn primary" disabled={busy || !online}>
+            Afficher
+          </button>
         </div>
         <div className="period-presets">
-          {presets.map(p => (
-            <button key={p.id} type="button" className="btn" disabled={busy || !online}
-              onClick={() => { setPeriod({ from: p.from, to: p.to }); onApply({ from: p.from, to: p.to }); }}>
+          {presets.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              className="btn"
+              disabled={busy || !online}
+              onClick={() => {
+                setPeriod({ from: p.from, to: p.to });
+                onApply({ from: p.from, to: p.to });
+              }}
+            >
               {p.label}
             </button>
           ))}
@@ -76,7 +104,10 @@ function Kpis({ s }) {
   return (
     <div className="kpi-grid" role="list" aria-label="Indicateurs de la période">
       {items.map(([k, v]) => (
-        <div key={k} className="kpi" role="listitem"><span className="v">{v ?? 0}</span><span className="k">{k}</span></div>
+        <div key={k} className="kpi" role="listitem">
+          <span className="v">{v ?? 0}</span>
+          <span className="k">{k}</span>
+        </div>
       ))}
     </div>
   );
@@ -85,10 +116,23 @@ function Kpis({ s }) {
 function ByType({ s }) {
   return (
     <section className="card" aria-labelledby="stats-types">
-      <div className="card-head"><h2 id="stats-types">Par type</h2><span className="hint">Une plongée compte pour chaque type de palanquée qu'elle comporte</span></div>
+      <div className="card-head">
+        <h2 id="stats-types">Par type</h2>
+        <span className="hint">Une plongée compte pour chaque type de palanquée qu'elle comporte</span>
+      </div>
       <div className="card-body flush">
         <table className="data-table">
-          <thead><tr><th scope="col">Type</th><th scope="col" className="num">Plongées</th><th scope="col" className="num">Palanquées</th></tr></thead>
+          <thead>
+            <tr>
+              <th scope="col">Type</th>
+              <th scope="col" className="num">
+                Plongées
+              </th>
+              <th scope="col" className="num">
+                Palanquées
+              </th>
+            </tr>
+          </thead>
           <tbody>
             {TYPES.map(([key, label]) => (
               <tr key={key}>
@@ -107,27 +151,56 @@ function ByType({ s }) {
 function ByDiver({ rows }) {
   return (
     <section className="card" aria-labelledby="stats-divers">
-      <div className="card-head"><h2 id="stats-divers">Par plongeur</h2><span className="hint num">{rows.length}</span></div>
-      {rows.length === 0
-        ? <div className="card-body"><p className="muted">Aucune participation sur la période.</p></div>
-        : (
-          <div className="table-wrap">
-            <table className="data-table stack">
-              <thead><tr><th scope="col">Plongeur</th><th scope="col">Licence</th><th scope="col" className="num">Plongées</th><th scope="col" className="num">Dirigées (DP)</th><th scope="col" className="num">Heures</th></tr></thead>
-              <tbody>
-                {rows.map(r => (
-                  <tr key={r.diver_id || `${r.nom}-${r.prenom}`}>
-                    <td data-label="Plongeur"><span>{[r.prenom, (r.nom || '').toUpperCase()].filter(Boolean).join(' ')}</span></td>
-                    <td data-label="Licence" className="mono"><span>{r.licence || '—'}</span></td>
-                    <td data-label="Plongées" className="num"><span>{r.plongees}</span></td>
-                    <td data-label="Dirigées (DP)" className="num"><span>{r.dp}</span></td>
-                    <td data-label="Heures" className="num"><span>{hours(r.heures)}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <div className="card-head">
+        <h2 id="stats-divers">Par plongeur</h2>
+        <span className="hint num">{rows.length}</span>
+      </div>
+      {rows.length === 0 ? (
+        <div className="card-body">
+          <p className="muted">Aucune participation sur la période.</p>
+        </div>
+      ) : (
+        <div className="table-wrap">
+          <table className="data-table stack">
+            <thead>
+              <tr>
+                <th scope="col">Plongeur</th>
+                <th scope="col">Licence</th>
+                <th scope="col" className="num">
+                  Plongées
+                </th>
+                <th scope="col" className="num">
+                  Dirigées (DP)
+                </th>
+                <th scope="col" className="num">
+                  Heures
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.diver_id || `${r.nom}-${r.prenom}`}>
+                  <td data-label="Plongeur">
+                    <span>{[r.prenom, (r.nom || '').toUpperCase()].filter(Boolean).join(' ')}</span>
+                  </td>
+                  <td data-label="Licence" className="mono">
+                    <span>{r.licence || '—'}</span>
+                  </td>
+                  <td data-label="Plongées" className="num">
+                    <span>{r.plongees}</span>
+                  </td>
+                  <td data-label="Dirigées (DP)" className="num">
+                    <span>{r.dp}</span>
+                  </td>
+                  <td data-label="Heures" className="num">
+                    <span>{hours(r.heures)}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }
@@ -138,11 +211,18 @@ function useStats(online) {
   const [busy, setBusy] = useState(false);
   const load = useCallback(async (period) => {
     setBusy(true);
-    try { setStats(await api.club.stats(period)); setError(null); }
-    catch (err) { setError(err); }
-    finally { setBusy(false); }
+    try {
+      setStats(await api.club.stats(period));
+      setError(null);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
   }, []);
-  useEffect(() => { if (online) load({}); }, [online, load]);
+  useEffect(() => {
+    if (online) load({});
+  }, [online, load]);
   return { stats, error, busy, load };
 }
 
@@ -155,7 +235,7 @@ export function ScreenStats({ onNavigate }) {
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
-    if (stats?.from) setPeriod(p => (p.from ? p : { from: stats.from, to: stats.to }));
+    if (stats?.from) setPeriod((p) => (p.from ? p : { from: stats.from, to: stats.to }));
   }, [stats?.from, stats?.to]);
 
   const exportCsv = async () => {
@@ -173,20 +253,37 @@ export function ScreenStats({ onNavigate }) {
   return (
     <div>
       <div className="page-head">
-        <button type="button" className="btn mb-3" onClick={() => onNavigate('club')}><Icon.ChevronLeft />Retour au club</button>
+        <button type="button" className="btn mb-3" onClick={() => onNavigate('club')}>
+          <Icon.ChevronLeft />
+          Retour au club
+        </button>
         <h1>Statistiques du club</h1>
-        <p>Plongées archivées de {club.club?.nom || 'votre club'} : activité, plongeurs, heures cumulées. Utile pour l'assemblée générale.</p>
+        <p>
+          Plongées archivées de {club.club?.nom || 'votre club'} : activité, plongeurs, heures cumulées. Utile pour
+          l'assemblée générale.
+        </p>
       </div>
-      {!online && <Notice tone="warn" title="Hors ligne">Les statistiques sont calculées par le serveur : connexion requise.</Notice>}
+      {!online && (
+        <Notice tone="warn" title="Hors ligne">
+          Les statistiques sont calculées par le serveur : connexion requise.
+        </Notice>
+      )}
       <PeriodForm period={period} setPeriod={setPeriod} onApply={load} busy={busy} online={online} />
-      {error && <Alert tone="err" title="Statistiques indisponibles">{describeApiError(error, 'consulter les statistiques')}</Alert>}
+      {error && (
+        <Alert tone="err" title="Statistiques indisponibles">
+          {describeApiError(error, 'consulter les statistiques')}
+        </Alert>
+      )}
       {busy && !stats && <DiveListSkeleton rows={2} />}
       {stats && (
         <div className="mt-4">
           <div className="row-between">
-            <p className="stats-period">Du {formatDate(stats.from)} au {formatDate(stats.to)}</p>
+            <p className="stats-period">
+              Du {formatDate(stats.from)} au {formatDate(stats.to)}
+            </p>
             <button type="button" className="btn" onClick={exportCsv} disabled={exporting || !online}>
-              <Icon.Download />{exporting ? 'Export…' : 'Exporter en CSV'}
+              <Icon.Download />
+              {exporting ? 'Export…' : 'Exporter en CSV'}
             </button>
           </div>
           <Kpis s={stats} />

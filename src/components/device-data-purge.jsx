@@ -24,16 +24,29 @@ export function DeviceDataPurgeButton({ className = 'btn', label = 'Supprimer le
     }
   };
 
-  return (<>
-    <button type="button" className={className} onClick={() => setOpen(true)}>{label}</button>
-    {open && (
-      <ConfirmDialog title="Supprimer les données de cet appareil ?" icon="warn" tone="warn" danger busy={busy}
-        confirmLabel="Supprimer" cancelLabel="Annuler" onCancel={() => setOpen(false)} onConfirm={confirm}>
-        <p>
-          Plongées, annuaire, sites et actions pas encore envoyées au serveur seront effacés de cet appareil.
-          Les données déjà enregistrées sur le serveur ne sont pas touchées.
-        </p>
-      </ConfirmDialog>
-    )}
-  </>);
+  return (
+    <>
+      <button type="button" className={className} onClick={() => setOpen(true)}>
+        {label}
+      </button>
+      {open && (
+        <ConfirmDialog
+          title="Supprimer les données de cet appareil ?"
+          icon="warn"
+          tone="warn"
+          danger
+          busy={busy}
+          confirmLabel="Supprimer"
+          cancelLabel="Annuler"
+          onCancel={() => setOpen(false)}
+          onConfirm={confirm}
+        >
+          <p>
+            Plongées, annuaire, sites et actions pas encore envoyées au serveur seront effacés de cet appareil. Les
+            données déjà enregistrées sur le serveur ne sont pas touchées.
+          </p>
+        </ConfirmDialog>
+      )}
+    </>
+  );
 }

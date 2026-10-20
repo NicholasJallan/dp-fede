@@ -8,24 +8,51 @@ import { PARENT_SCREEN } from '../constants.js';
 // État de synchronisation résumé pour la pastille et son libellé accessible.
 export function syncSummary(online, items) {
   const count = items.length;
-  const review = items.filter(it => it.status === 'review').length;
-  if (review > 0) return { cls: 'is-review', tone: 'warn', label: 'À revoir', count: review,
-    title: `${review} action${review > 1 ? 's' : ''} refusée${review > 1 ? 's' : ''} par le serveur` };
-  if (!online) return { cls: 'is-offline', tone: 'warn', label: 'Hors ligne', count,
-    title: count ? `Hors ligne, ${count} action${count > 1 ? 's' : ''} en attente` : 'Hors ligne' };
-  if (count > 0) return { cls: 'is-pending', tone: 'info', label: 'Envoi', count,
-    title: `${count} action${count > 1 ? 's' : ''} en cours d'envoi` };
+  const review = items.filter((it) => it.status === 'review').length;
+  if (review > 0)
+    return {
+      cls: 'is-review',
+      tone: 'warn',
+      label: 'À revoir',
+      count: review,
+      title: `${review} action${review > 1 ? 's' : ''} refusée${review > 1 ? 's' : ''} par le serveur`,
+    };
+  if (!online)
+    return {
+      cls: 'is-offline',
+      tone: 'warn',
+      label: 'Hors ligne',
+      count,
+      title: count ? `Hors ligne, ${count} action${count > 1 ? 's' : ''} en attente` : 'Hors ligne',
+    };
+  if (count > 0)
+    return {
+      cls: 'is-pending',
+      tone: 'info',
+      label: 'Envoi',
+      count,
+      title: `${count} action${count > 1 ? 's' : ''} en cours d'envoi`,
+    };
   return { cls: 'is-ok', tone: 'ok', label: 'En ligne', count: 0, title: 'En ligne, tout est synchronisé' };
 }
 
 function SyncPill({ online, items, onOpen }) {
   const s = syncSummary(online, items);
   return (
-    <button type="button" className={`sync-pill ${s.cls}`} onClick={onOpen}
-      aria-label={`Synchronisation : ${s.title}`} title={s.title}>
+    <button
+      type="button"
+      className={`sync-pill ${s.cls}`}
+      onClick={onOpen}
+      aria-label={`Synchronisation : ${s.title}`}
+      title={s.title}
+    >
       <StatusIcon tone={s.tone} />
       <span className="label">{s.label}</span>
-      {s.count > 0 && <span className="count" aria-hidden="true">{s.count}</span>}
+      {s.count > 0 && (
+        <span className="count" aria-hidden="true">
+          {s.count}
+        </span>
+      )}
     </button>
   );
 }
@@ -33,8 +60,14 @@ function SyncPill({ online, items, onOpen }) {
 function ThemeToggle({ theme, onToggle }) {
   const isNight = theme === 'dark';
   return (
-    <button type="button" className="topbar-btn theme-toggle" onClick={onToggle}
-      aria-pressed={isNight} aria-label="Mode nuit" title={isNight ? 'Passer en mode Soleil' : 'Passer en mode Nuit'}>
+    <button
+      type="button"
+      className="topbar-btn theme-toggle"
+      onClick={onToggle}
+      aria-pressed={isNight}
+      aria-label="Mode nuit"
+      title={isNight ? 'Passer en mode Soleil' : 'Passer en mode Nuit'}
+    >
       {isNight ? <Icon.Moon /> : <Icon.Sun />}
       <span className="label">{isNight ? 'Nuit' : 'Soleil'}</span>
     </button>
@@ -44,10 +77,10 @@ function ThemeToggle({ theme, onToggle }) {
 function navItems(user) {
   const name = user.prenom || user.nom || user.email?.split('@')[0] || 'Mon compte';
   return [
-    { id: 'archives',     label: 'Historique', icon: Icon.History },
-    { id: 'admin-divers', label: 'Annuaire',   icon: Icon.Users },
-    { id: 'club',         label: 'Club',       icon: Icon.Flag, title: 'Club, membres et invitations' },
-    { id: 'account',      label: name,         icon: Icon.User, title: 'Mon compte' },
+    { id: 'archives', label: 'Historique', icon: Icon.History },
+    { id: 'admin-divers', label: 'Annuaire', icon: Icon.Users },
+    { id: 'club', label: 'Club', icon: Icon.Flag, title: 'Club, membres et invitations' },
+    { id: 'account', label: name, icon: Icon.User, title: 'Mon compte' },
   ];
 }
 
@@ -60,8 +93,15 @@ function MenuPopover({ user, items, screen, onNavigate, onLogout }) {
 
   useEffect(() => {
     if (!open) return undefined;
-    const onDown = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false); };
-    const onKey = (e) => { if (e.key === 'Escape') { setOpen(false); btnRef.current?.focus(); } };
+    const onDown = (e) => {
+      if (!wrapRef.current?.contains(e.target)) setOpen(false);
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        btnRef.current?.focus();
+      }
+    };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
     wrapRef.current?.querySelector('.menu-item')?.focus();
@@ -71,25 +111,45 @@ function MenuPopover({ user, items, screen, onNavigate, onLogout }) {
     };
   }, [open]);
 
-  const go = (fn) => () => { setOpen(false); fn(); };
+  const go = (fn) => () => {
+    setOpen(false);
+    fn();
+  };
 
   return (
     <div className="topbar-menu" ref={wrapRef}>
-      <button ref={btnRef} type="button" className="topbar-btn" aria-expanded={open} aria-controls={menuId}
-        onClick={() => setOpen(o => !o)}>
-        <Icon.Menu /><span className="label">Menu</span>
+      <button
+        ref={btnRef}
+        type="button"
+        className="topbar-btn"
+        aria-expanded={open}
+        aria-controls={menuId}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <Icon.Menu />
+        <span className="label">Menu</span>
       </button>
       {open && (
         <div className="menu-pop" id={menuId} role="group" aria-label="Menu principal">
-          <div className="menu-head">{user.email}{user.club_nom ? ` — ${user.club_nom}` : ''}</div>
-          {items.map(it => (
-            <button key={it.id} type="button" className="menu-item" aria-current={screen === it.id ? 'page' : undefined}
-              onClick={go(() => onNavigate(it.id))}>
-              <it.icon />{it.title || it.label}
+          <div className="menu-head">
+            {user.email}
+            {user.club_nom ? ` — ${user.club_nom}` : ''}
+          </div>
+          {items.map((it) => (
+            <button
+              key={it.id}
+              type="button"
+              className="menu-item"
+              aria-current={screen === it.id ? 'page' : undefined}
+              onClick={go(() => onNavigate(it.id))}
+            >
+              <it.icon />
+              {it.title || it.label}
             </button>
           ))}
           <button type="button" className="menu-item danger" onClick={go(onLogout)}>
-            <Icon.Logout />Se déconnecter
+            <Icon.Logout />
+            Se déconnecter
           </button>
         </div>
       )}
@@ -97,18 +157,39 @@ function MenuPopover({ user, items, screen, onNavigate, onLogout }) {
   );
 }
 
-export function Topbar({ user, online, outboxItems, screen: rawScreen, showHomeLink, theme, onToggleTheme, onHome, onOpenDrawer, onNavigate, onLogout }) {
+export function Topbar({
+  user,
+  online,
+  outboxItems,
+  screen: rawScreen,
+  showHomeLink,
+  theme,
+  onToggleTheme,
+  onHome,
+  onOpenDrawer,
+  onNavigate,
+  onLogout,
+}) {
   const items = navItems(user);
   const screen = PARENT_SCREEN[rawScreen] || rawScreen;
   return (
     <header className="topbar">
-      <button type="button" className="topbar-brand" onClick={onHome} aria-label="DP Assistant" title="Retour à l'accueil">
+      <button
+        type="button"
+        className="topbar-brand"
+        onClick={onHome}
+        aria-label="DP Assistant"
+        title="Retour à l'accueil"
+      >
         <BrandMark />
-        <span className="brand-text"><b>DP</b> Assistant</span>
+        <span className="brand-text">
+          <b>DP</b> Assistant
+        </span>
       </button>
       {showHomeLink && (
         <button type="button" className="topbar-btn topbar-home" onClick={onHome}>
-          <Icon.Home /><span className="label">Accueil</span>
+          <Icon.Home />
+          <span className="label">Accueil</span>
         </button>
       )}
       {user.club_nom && <span className="topbar-club">{user.club_nom}</span>}
@@ -116,13 +197,25 @@ export function Topbar({ user, online, outboxItems, screen: rawScreen, showHomeL
         <SyncPill online={online} items={outboxItems} onOpen={onOpenDrawer} />
         <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         <nav className="topbar-nav" aria-label="Menu principal">
-          {items.map(it => (
-            <button key={it.id} type="button" className="topbar-btn" title={it.title}
-              aria-current={screen === it.id ? 'page' : undefined} onClick={() => onNavigate(it.id)}>
+          {items.map((it) => (
+            <button
+              key={it.id}
+              type="button"
+              className="topbar-btn"
+              title={it.title}
+              aria-current={screen === it.id ? 'page' : undefined}
+              onClick={() => onNavigate(it.id)}
+            >
               {it.label}
             </button>
           ))}
-          <button type="button" className="topbar-btn" onClick={onLogout} aria-label="Se déconnecter" title="Se déconnecter">
+          <button
+            type="button"
+            className="topbar-btn"
+            onClick={onLogout}
+            aria-label="Se déconnecter"
+            title="Se déconnecter"
+          >
             <Icon.Logout />
           </button>
         </nav>

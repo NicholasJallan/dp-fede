@@ -27,8 +27,12 @@ function useLeftoverData() {
   const [left, setLeft] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    hasLocalData().then(v => { if (!cancelled) setLeft(v); });
-    return () => { cancelled = true; };
+    hasLocalData().then((v) => {
+      if (!cancelled) setLeft(v);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
   return left;
 }
@@ -56,23 +60,35 @@ function ScreenLogin() {
       google.accounts.id.initialize({ client_id: clientId, callback: handleGoogleCredential, auto_select: false });
       if (btnRef.current) {
         google.accounts.id.renderButton(btnRef.current, {
-          theme: 'outline', size: 'large', text: 'signin_with', locale: 'fr', width: 280,
+          theme: 'outline',
+          size: 'large',
+          text: 'signin_with',
+          locale: 'fr',
+          width: 280,
         });
       }
     }
 
     init();
-    return () => { cancelled = true; if (timer) clearTimeout(timer); };
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, [handleGoogleCredential]);
 
   return (
     <main className="login-shell">
       <div className="login-card">
         <img src="logo-ffessm.png" alt="FFESSM" className="login-logo" width="56" height="56" />
-        <div className="login-brand"><BrandMark /><span>DP Assistant</span></div>
+        <div className="login-brand">
+          <BrandMark />
+          <span>DP Assistant</span>
+        </div>
         {loginNotice && <SessionNotice notice={loginNotice} />}
         <h1>Connexion</h1>
-        <p className="login-sub">Aide au directeur de plongée : palanquées, check-list et fiche de sécurité selon le Code du sport.</p>
+        <p className="login-sub">
+          Aide au directeur de plongée : palanquées, check-list et fiche de sécurité selon le Code du sport.
+        </p>
         {invitation && (
           <Notice tone="info" title="Invitation à rejoindre un club">
             Connectez-vous avec le compte Google de l'adresse invitée : l'invitation s'affichera ensuite.
@@ -81,15 +97,14 @@ function ScreenLogin() {
         <div className="login-btn-wrap" ref={btnRef}></div>
         {!online && (
           <Notice tone="warn" title="Hors ligne">
-            La première connexion demande internet. Si vous vous êtes connecté récemment sur cet appareil,
-            rechargez la page une fois en ligne.
+            La première connexion demande internet. Si vous vous êtes connecté récemment sur cet appareil, rechargez la
+            page une fois en ligne.
           </Notice>
         )}
         {leftover && (
-          <Notice tone="info" title="Données présentes sur cet appareil"
-            actions={<DeviceDataPurgeButton />}>
-            Des saisies d'une session précédente sont conservées ici (elles repartiront après connexion avec le même compte).
-            Sur un appareil partagé, supprimez-les.
+          <Notice tone="info" title="Données présentes sur cet appareil" actions={<DeviceDataPurgeButton />}>
+            Des saisies d'une session précédente sont conservées ici (elles repartiront après connexion avec le même
+            compte). Sur un appareil partagé, supprimez-les.
           </Notice>
         )}
         <p className="login-legal">Données hébergées en Europe, jamais transmises à des tiers.</p>

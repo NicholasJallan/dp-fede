@@ -9,7 +9,7 @@ const { test, expect } = require('@playwright/test');
 
 const FIXTURE_SITE = process.env.DP_E2E_FIXTURE_SITE_NAME || 'Site Test E2E';
 
-test.describe('Création d\'une plongée préparée', () => {
+test.describe("Création d'une plongée préparée", () => {
   test('+ Nouvelle plongée → questionnaire → retour home', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: /Nouvelle plongée/i }).click();

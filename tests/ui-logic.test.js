@@ -16,8 +16,14 @@ describe('check-list : compteurs par mode', () => {
   test('le mode préparation ne compte que la phase 1, le mode exécution que la phase 2', () => {
     const prep = visibleChecklist(answers, 'prepare');
     const exec = visibleChecklist(answers, 'execute');
-    assert.deepEqual(prep.map(p => p.phase), [1]);
-    assert.deepEqual(exec.map(p => p.phase), [2]);
+    assert.deepEqual(
+      prep.map((p) => p.phase),
+      [1],
+    );
+    assert.deepEqual(
+      exec.map((p) => p.phase),
+      [2],
+    );
     assert.equal(checklistProgress(answers, {}, 'prepare').total, prep[0].items.length);
     assert.equal(checklistProgress(answers, {}, 'execute').total, exec[0].items.length);
   });
@@ -25,19 +31,20 @@ describe('check-list : compteurs par mode', () => {
   test("un item coché d'une autre phase ou masqué ne gonfle pas le compteur", () => {
     const checked = { p1_blocs: true, p2_appel: true, p2_pavillon: true /* bateau : masqué */ };
     assert.deepEqual(checklistProgress(answers, checked, 'execute'), {
-      total: visibleChecklist(answers, 'execute')[0].items.length, doneCount: 1,
+      total: visibleChecklist(answers, 'execute')[0].items.length,
+      doneCount: 1,
     });
     assert.equal(checklistProgress(answers, checked, 'prepare').doneCount, 1);
   });
 
   test('la décision finale du DP figure toujours en phase 2', () => {
-    const ids = visibleChecklist({}, 'execute')[0].items.map(i => i.id);
+    const ids = visibleChecklist({}, 'execute')[0].items.map((i) => i.id);
     assert.ok(ids.includes(GO_DECISION_ID));
   });
 });
 
 describe('exécution : avancement des palanquées', () => {
-  test('compte les palanquées à l\'eau et sorties', () => {
+  test("compte les palanquées à l'eau et sorties", () => {
     const pals = [{ id: 'p1' }, { id: 'p2' }, { id: 'p3' }];
     assert.deepEqual(exitProgress(pals, { p1: '10:00', p2: '10:05' }, { p1: '10:40' }), { total: 3, out: 1, water: 1 });
   });
@@ -57,7 +64,7 @@ describe('chronomètre', () => {
     assert.equal(addMinutes('23:50', 25), '00:15');
   });
 
-  test('heure d\'entrée absente : zéro', () => {
+  test("heure d'entrée absente : zéro", () => {
     assert.equal(elapsedSeconds('', new Date()), 0);
   });
 });

@@ -3,14 +3,22 @@
 import { useState, useEffect } from 'react';
 
 function matches(query) {
-  try { return window.matchMedia(query).matches; } catch { return false; }
+  try {
+    return window.matchMedia(query).matches;
+  } catch {
+    return false;
+  }
 }
 
 export function useMediaQuery(query) {
   const [value, setValue] = useState(() => matches(query));
   useEffect(() => {
     let mql;
-    try { mql = window.matchMedia(query); } catch { return undefined; }
+    try {
+      mql = window.matchMedia(query);
+    } catch {
+      return undefined;
+    }
     const onChange = () => setValue(mql.matches);
     onChange();
     mql.addEventListener('change', onChange);

@@ -28,14 +28,14 @@ Profilage de la plongée, check-list conditionnelle, composition des palanquées
 
 ### Frontend
 
-| Technologie | Usage | Version |
-|---|---|---|
-| **React** | UI composants, state management | 18 (npm, bundlé) |
-| **esbuild** | Bundle JSX + modules ES → `dist/app.js`, CSS → `dist/styles.css` | 0.28 |
-| **Google Identity Services** | OAuth 2.0 sign-in + Drive token | GIS SDK |
-| **Google Drive API v3** | Upload PDF, gestion dossier `dp-fede` | REST via `fetch` |
-| **Open-Meteo API** | Pré-remplissage météo (vent, température) | REST public |
-| **Google Maps / Places API** | Sélecteur de carte pour les sites | JS Maps SDK |
+| Technologie                  | Usage                                                            | Version          |
+| ---------------------------- | ---------------------------------------------------------------- | ---------------- |
+| **React**                    | UI composants, state management                                  | 18 (npm, bundlé) |
+| **esbuild**                  | Bundle JSX + modules ES → `dist/app.js`, CSS → `dist/styles.css` | 0.28             |
+| **Google Identity Services** | OAuth 2.0 sign-in + Drive token                                  | GIS SDK          |
+| **Google Drive API v3**      | Upload PDF, gestion dossier `dp-fede`                            | REST via `fetch` |
+| **Open-Meteo API**           | Pré-remplissage météo (vent, température)                        | REST public      |
+| **Google Maps / Places API** | Sélecteur de carte pour les sites                                | JS Maps SDK      |
 
 > Tout le code applicatif est en modules ES sous `src/`, bundlé par esbuild
 > (`npm run build`, entrée `src/app/main.jsx`). `index.html` ne charge plus que
@@ -43,21 +43,21 @@ Profilage de la plongée, check-list conditionnelle, composition des palanquées
 
 ### Backend
 
-| Technologie | Usage | Version |
-|---|---|---|
-| **PHP** | API REST | 8.5 (FPM, pool dédié ; ≥ 8.2 supporté) |
-| **MariaDB** | Persistance | 10.x |
-| **wkhtmltopdf** | Génération PDF server-side | installé sur le Pi |
-| **nginx** | Reverse proxy + CSP headers | — |
-| **APCu** | Rate-limiting login (optionnel) | extension PHP |
+| Technologie     | Usage                           | Version                                |
+| --------------- | ------------------------------- | -------------------------------------- |
+| **PHP**         | API REST                        | 8.5 (FPM, pool dédié ; ≥ 8.2 supporté) |
+| **MariaDB**     | Persistance                     | 10.x                                   |
+| **wkhtmltopdf** | Génération PDF server-side      | installé sur le Pi                     |
+| **nginx**       | Reverse proxy + CSP headers     | —                                      |
+| **APCu**        | Rate-limiting login (optionnel) | extension PHP                          |
 
 ### Infrastructure
 
-| Composant | Détail |
-|---|---|
-| **Serveur** | Raspberry Pi — `pi@bullesenvalais.ch` |
-| **Frontend root** | `/var/www/html/dp-fede/` |
-| **Backend root** | `/var/www/dp-fede-api/` |
+| Composant          | Détail                                                         |
+| ------------------ | -------------------------------------------------------------- |
+| **Serveur**        | Raspberry Pi — `pi@bullesenvalais.ch`                          |
+| **Frontend root**  | `/var/www/html/dp-fede/`                                       |
+| **Backend root**   | `/var/www/dp-fede-api/`                                        |
 | **Config secrète** | `/etc/dp-fede/config.php` (hors web root, `640 root:www-data`) |
 
 ---
@@ -211,37 +211,38 @@ graph LR
 
 **Règles de verrouillage de navigation :**
 
-| Condition | Étapes verrouillées |
-|---|---|
-| Une palanquée a commencé (`heuresDebut` non vide) | Étapes 1, 2, 3 |
-| Plongée figée (`plongeeFigee = true`) | Étapes 1, 2, 3, 4 |
+| Condition                                         | Étapes verrouillées |
+| ------------------------------------------------- | ------------------- |
+| Une palanquée a commencé (`heuresDebut` non vide) | Étapes 1, 2, 3      |
+| Plongée figée (`plongeeFigee = true`)             | Étapes 1, 2, 3, 4   |
 
 ### Référentiels métier (`src/domain/`)
 
 Modules ES purs, importés par les écrans (`import { … } from '../domain/index.js'`)
 et par les tests Node.
 
-| Export | Module | Contenu |
-|---|---|---|
-| `LEVELS`, `STRUCTURE_LABELS` | `levels.js` | Libellés des niveaux (flag `canBeDP`) et types de structure |
-| `APTITUDE_MAP` | `aptitudes.js` | Mapping niveau → aptitudes `{mandatory[], optional[]}` |
-| `getDiverAptitudes(diver, isExploration, palContext)` | `aptitudes.js` | Aptitudes selon niveau + contexte |
-| `getDpMaxDepth(palType, dp)` | `aptitudes.js` | Prof. max dirigée par le DP selon le type de palanquée |
-| `getPalType(membres, mode)` | `aptitudes.js` | `'bapteme'|'formation'|'guidee'|'exploration'` |
-| `getAvailableMelanges(dp)` | `aptitudes.js` | Mélanges autorisés selon les qualifications du DP |
-| `QUESTIONS` | `questions.js` | Sections du questionnaire, questions conditionnelles |
-| `CHECKLIST_RULES` | `checklist.js` | 2 phases, items conditionnels (voir ci-dessous) |
-| `matchCondition(when, answers)` | `conditions.js` | Évalue une condition `when` |
-| `getMilieuType(milieu)`, `isMilieuNaturel(milieu)` | `milieu.js` | Normalise → `'mer'|'lac'|'piscine'|'fosse'` |
-| `sortMembresForFiche(membres)` | `fiche.js` | Tri encadrant → PE/PA → baptême, serre-file en fin |
-| `CDS_ARTICLES`, `parseCdsRefs(text)` | `cds-articles.js` | Articles du Code du sport cités |
-| `getEmergencyInfo(paysCode, milieu)` | `emergency.js` | Numéros d'urgence |
-| `validatePal`, `derivePalMode`, `isBassinDerogation`… | `pal-rules.js` | Validation d'une palanquée |
-| `computePalHardLimit`, `clampProfMax` | `depth-clamp.js` | Plafond de profondeur d'une palanquée |
+| Export                                                | Module            | Contenu                                                     |
+| ----------------------------------------------------- | ----------------- | ----------------------------------------------------------- |
+| `LEVELS`, `STRUCTURE_LABELS`                          | `levels.js`       | Libellés des niveaux (flag `canBeDP`) et types de structure |
+| `APTITUDE_MAP`                                        | `aptitudes.js`    | Mapping niveau → aptitudes `{mandatory[], optional[]}`      |
+| `getDiverAptitudes(diver, isExploration, palContext)` | `aptitudes.js`    | Aptitudes selon niveau + contexte                           |
+| `getDpMaxDepth(palType, dp)`                          | `aptitudes.js`    | Prof. max dirigée par le DP selon le type de palanquée      |
+| `getPalType(membres, mode)`                           | `aptitudes.js`    | `'bapteme'                                                  | 'formation' | 'guidee'  | 'exploration'` |
+| `getAvailableMelanges(dp)`                            | `aptitudes.js`    | Mélanges autorisés selon les qualifications du DP           |
+| `QUESTIONS`                                           | `questions.js`    | Sections du questionnaire, questions conditionnelles        |
+| `CHECKLIST_RULES`                                     | `checklist.js`    | 2 phases, items conditionnels (voir ci-dessous)             |
+| `matchCondition(when, answers)`                       | `conditions.js`   | Évalue une condition `when`                                 |
+| `getMilieuType(milieu)`, `isMilieuNaturel(milieu)`    | `milieu.js`       | Normalise → `'mer'                                          | 'lac'       | 'piscine' | 'fosse'`       |
+| `sortMembresForFiche(membres)`                        | `fiche.js`        | Tri encadrant → PE/PA → baptême, serre-file en fin          |
+| `CDS_ARTICLES`, `parseCdsRefs(text)`                  | `cds-articles.js` | Articles du Code du sport cités                             |
+| `getEmergencyInfo(paysCode, milieu)`                  | `emergency.js`    | Numéros d'urgence                                           |
+| `validatePal`, `derivePalMode`, `isBassinDerogation`… | `pal-rules.js`    | Validation d'une palanquée                                  |
+| `computePalHardLimit`, `clampProfMax`                 | `depth-clamp.js`  | Plafond de profondeur d'une palanquée                       |
 
 #### Check-list conditionnelle
 
 La check-list est générée dynamiquement selon `answers`. Chaque item a un champ `when` qui peut être :
+
 - `undefined` → toujours affiché
 - `{key: true}` → affiché si `answers[key]` est truthy
 - `function(answers) => bool` → condition personnalisée
@@ -260,10 +261,10 @@ graph TD
 
 ### Persistance cross-plongée
 
-| Clé localStorage | Contenu | Survit à `startNew()` |
-|---|---|---|
-| `dp-assistant-v1` | Brouillon complet (answers, palanquées, checked…) | Non (effacée) |
-| `dp-rappel-moyen` | Dernier moyen de rappel saisi | **Oui** |
+| Clé localStorage  | Contenu                                           | Survit à `startNew()` |
+| ----------------- | ------------------------------------------------- | --------------------- |
+| `dp-assistant-v1` | Brouillon complet (answers, palanquées, checked…) | Non (effacée)         |
+| `dp-rappel-moyen` | Dernier moyen de rappel saisi                     | **Oui**               |
 
 ---
 
@@ -281,7 +282,9 @@ Tous les fichiers de routes sont inclus séquentiellement. Chaque route utilise 
 ### Routes API
 
 #### `POST /api/auth/google`
+
 Échange un credential Google ID token contre une session PHP.
+
 - Vérifie la signature JWT via `https://oauth2.googleapis.com/tokeninfo`
 - Crée ou met à jour l'utilisateur (`users`)
 - Premier utilisateur = admin automatique
@@ -289,73 +292,92 @@ Tous les fichiers de routes sont inclus séquentiellement. Chaque route utilise 
 - Rate-limited : 10 tentatives / 15 min / IP (APCu)
 
 #### `GET /api/auth/me`
+
 Retourne l'utilisateur connecté (depuis le cookie de session).
 
 #### `POST /api/auth/logout`
+
 Supprime la session en base et expire les cookies.
 
 #### `PATCH /api/auth/account`
+
 Met à jour le profil de l'utilisateur connecté (club, président, urgence).
 
 #### `GET /api/divers`
+
 Liste les plongeurs de l'utilisateur connecté, avec leurs qualifications construites.
 
 #### `POST /api/divers`
+
 Crée un nouveau plongeur. Valide nom, niveau, qualifications.
 
 #### `PUT /api/divers/:id`
+
 Met à jour un plongeur (appartenance vérifiée).
 
 #### `DELETE /api/divers/:id`
+
 Supprime un plongeur (appartenance vérifiée).
 
 #### `GET /api/sites`
+
 Liste les sites de plongée de l'utilisateur connecté.
 
 #### `POST /api/sites`
+
 Crée un site avec coordonnées GPS (JSON), milieu, profondeur max, options départ.
 
 #### `PUT /api/sites/:id` / `DELETE /api/sites/:id`
+
 Mise à jour / suppression (appartenance vérifiée).
 
 #### `GET /api/dives`
+
 Liste les plongées de l'utilisateur (ordre décroissant). Paramètre optionnel `?since=ISO8601` pour le pull incrémental offline.
 
 #### `GET /api/dives/:id`
+
 Retourne une plongée complète (answers + palanquées + render_state JSON parsés).
 
 #### `POST /api/dives`
+
 Crée une plongée (cycle de vie `status` : `prepared` → `in_progress` → `archived`). Idempotent via `client_uuid`.
 
 #### `PATCH /api/dives/:id` / `DELETE /api/dives/:id`
+
 Met à jour (answers, palanquées, render_state, status, drive_link) ou soft-delete une plongée.
 
 #### `POST /api/pdf/fiche`
+
 Reçoit un `html` (rendu React off-screen) + `filename`. Lance `wkhtmltopdf` en subprocess. Retourne le blob PDF.
 
 #### `GET /api/users` (admin)
+
 Liste tous les utilisateurs.
 
 #### `GET /api/users/stats` (admin)
+
 Statistiques agrégées (nombre plongeurs, sites, archives par utilisateur).
 
 #### `PATCH /api/users/:id/role` (admin)
+
 Change le rôle d'un utilisateur (`admin` | `user`).
 
 #### `DELETE /api/users/:id` (admin)
+
 Supprime un utilisateur et toutes ses données (CASCADE).
 
 ### Bibliothèques PHP (`backend/lib/`)
 
-| Fichier | Rôle |
-|---|---|
-| `Config.php` | Lecture de `/etc/dp-fede/config.php` — DB credentials, domain, Google client secret |
-| `Db.php` | Singleton PDO MariaDB — connexion + migration automatique au démarrage |
-| `Auth.php` | Vérification session, `requireAuth()`, `requireAdmin()` |
-| `Csrf.php` | Double-submit cookie — génération + validation du header `X-CSRF-Token` |
-| `Json.php` | `Json::ok($data)`, `Json::abort($code, $msg)` |
-| `Validate.php` | Validation de champs (longueur, format, enum…) |
-| `Smtp.php` | (Réservé — notifications email non activées) |
+| Fichier        | Rôle                                                                                |
+| -------------- | ----------------------------------------------------------------------------------- |
+| `Config.php`   | Lecture de `/etc/dp-fede/config.php` — DB credentials, domain, Google client secret |
+| `Db.php`       | Singleton PDO MariaDB — connexion + migration automatique au démarrage              |
+| `Auth.php`     | Vérification session, `requireAuth()`, `requireAdmin()`                             |
+| `Csrf.php`     | Double-submit cookie — génération + validation du header `X-CSRF-Token`             |
+| `Json.php`     | `Json::ok($data)`, `Json::abort($code, $msg)`                                       |
+| `Validate.php` | Validation de champs (longueur, format, enum…)                                      |
+| `Smtp.php`     | (Réservé — notifications email non activées)                                        |
 
 ---
 
@@ -459,48 +481,48 @@ erDiagram
 
 ### Table `users`
 
-| Colonne | Type | Description |
-|---|---|---|
-| `id` | INT PK AUTO | Identifiant interne |
-| `google_sub` | VARCHAR(255) UNIQUE | Subject Google OAuth — identifiant stable |
-| `email` | VARCHAR(255) UNIQUE | Email Google |
-| `nom` / `prenom` | VARCHAR(100) | Nom affiché |
-| `avatar_url` | VARCHAR(500) | URL avatar Google |
-| `role` | ENUM | `'admin'` ou `'user'` — premier inscrit = admin |
-| `club_nom` | VARCHAR(200) | Nom du club / structure |
-| `club_numero` | VARCHAR(50) | Numéro de club FFESSM |
-| `club_siret` | VARCHAR(50) | SIRET ou N° d'entreprise |
-| `structure_type` | VARCHAR(20) | `club` / `sca` / `csa` / `autre` |
-| `president_prenom/nom/tel` | VARCHAR | Coordonnées président (pour fiche de sécurité) |
-| `urgence_defaut` | VARCHAR(20) | Numéro d'urgence local (ex. `144`, `15`) |
-| `created_at` | DATETIME | Première connexion |
-| `last_login` | DATETIME | Dernière connexion |
+| Colonne                    | Type                | Description                                     |
+| -------------------------- | ------------------- | ----------------------------------------------- |
+| `id`                       | INT PK AUTO         | Identifiant interne                             |
+| `google_sub`               | VARCHAR(255) UNIQUE | Subject Google OAuth — identifiant stable       |
+| `email`                    | VARCHAR(255) UNIQUE | Email Google                                    |
+| `nom` / `prenom`           | VARCHAR(100)        | Nom affiché                                     |
+| `avatar_url`               | VARCHAR(500)        | URL avatar Google                               |
+| `role`                     | ENUM                | `'admin'` ou `'user'` — premier inscrit = admin |
+| `club_nom`                 | VARCHAR(200)        | Nom du club / structure                         |
+| `club_numero`              | VARCHAR(50)         | Numéro de club FFESSM                           |
+| `club_siret`               | VARCHAR(50)         | SIRET ou N° d'entreprise                        |
+| `structure_type`           | VARCHAR(20)         | `club` / `sca` / `csa` / `autre`                |
+| `president_prenom/nom/tel` | VARCHAR             | Coordonnées président (pour fiche de sécurité)  |
+| `urgence_defaut`           | VARCHAR(20)         | Numéro d'urgence local (ex. `144`, `15`)        |
+| `created_at`               | DATETIME            | Première connexion                              |
+| `last_login`               | DATETIME            | Dernière connexion                              |
 
 ### Table `sessions`
 
-| Colonne | Type | Description |
-|---|---|---|
-| `id` | CHAR(64) PK | 32 octets aléatoires encodés en hex (`random_bytes`) |
-| `user_id` | INT FK | Référence `users.id` (CASCADE DELETE) |
-| `ip_addr` | VARCHAR(45) | IP client (IPv4 ou IPv6) |
-| `user_agent` | VARCHAR(500) | User-Agent navigateur |
-| `expires_at` | DATETIME | TTL session (7 jours par défaut) |
+| Colonne      | Type         | Description                                          |
+| ------------ | ------------ | ---------------------------------------------------- |
+| `id`         | CHAR(64) PK  | 32 octets aléatoires encodés en hex (`random_bytes`) |
+| `user_id`    | INT FK       | Référence `users.id` (CASCADE DELETE)                |
+| `ip_addr`    | VARCHAR(45)  | IP client (IPv4 ou IPv6)                             |
+| `user_agent` | VARCHAR(500) | User-Agent navigateur                                |
+| `expires_at` | DATETIME     | TTL session (7 jours par défaut)                     |
 
 ### Table `divers`
 
-| Colonne | Type | Description |
-|---|---|---|
-| `id` | CHAR(36) PK | UUID v4 généré côté PHP |
-| `user_id` | INT FK | Propriétaire (CASCADE DELETE) |
-| `nom` | VARCHAR(100) | Nom de famille |
-| `prenom` | VARCHAR(100) | Prénom |
-| `licence` | VARCHAR(50) | Numéro de licence FFESSM |
-| `niveau_plongeur` | VARCHAR(3) | Niveau plongeur : `N1`, `N2`, `N3` |
-| `niveau_encadrant` | VARCHAR(4) | Niveau encadrant : `E1`→`E4`, `N4`, `N5`, `GP` |
-| `qualifs` | JSON | Tableau de qualifications : `["PN","RIFAP","PADI-OW",…]` |
-| `aptitudes_sup` | JSON | Aptitudes supplémentaires (recycleur, trimix…) |
-| `medical` | DATE | Date d'émission du certificat médical (validité 1 an) |
-| `notes` | TEXT | Notes libres du DP |
+| Colonne            | Type         | Description                                              |
+| ------------------ | ------------ | -------------------------------------------------------- |
+| `id`               | CHAR(36) PK  | UUID v4 généré côté PHP                                  |
+| `user_id`          | INT FK       | Propriétaire (CASCADE DELETE)                            |
+| `nom`              | VARCHAR(100) | Nom de famille                                           |
+| `prenom`           | VARCHAR(100) | Prénom                                                   |
+| `licence`          | VARCHAR(50)  | Numéro de licence FFESSM                                 |
+| `niveau_plongeur`  | VARCHAR(3)   | Niveau plongeur : `N1`, `N2`, `N3`                       |
+| `niveau_encadrant` | VARCHAR(4)   | Niveau encadrant : `E1`→`E4`, `N4`, `N5`, `GP`           |
+| `qualifs`          | JSON         | Tableau de qualifications : `["PN","RIFAP","PADI-OW",…]` |
+| `aptitudes_sup`    | JSON         | Aptitudes supplémentaires (recycleur, trimix…)           |
+| `medical`          | DATE         | Date d'émission du certificat médical (validité 1 an)    |
+| `notes`            | TEXT         | Notes libres du DP                                       |
 
 **Niveaux encadrants reconnus :** `N4` (PA40 guide), `N5` (exploration seule), `E1`→`E4` (moniteurs fédéraux), `GP` (Guide de Palanquée).
 
@@ -508,44 +530,44 @@ erDiagram
 
 ### Table `sites`
 
-| Colonne | Type | Description |
-|---|---|---|
-| `id` | CHAR(36) PK | UUID v4 |
-| `user_id` | INT FK | Propriétaire |
-| `nom` | VARCHAR(200) | Nom du site |
-| `milieu` | ENUM | `En mer`, `Lac`, `Carrière`, `Piscine`, `Autre` |
-| `profondeur_max` | DECIMAL(5,1) | Profondeur maximale du site (mètres) |
-| `coordonnees` | JSON | `{"lat": 46.1, "lng": 7.0}` — sélecteur Google Maps |
-| `notes` | TEXT | Notes libres |
-| `depart_bord` | TINYINT(1) | Départ du bord possible |
-| `depart_bateau` | TINYINT(1) | Départ en bateau possible |
-| `shot_line` | TINYINT(1) | Shot-line présente sur le site |
-| `ville` | VARCHAR(150) | Ville / localité |
-| `pays` | VARCHAR(80) | Pays (nom complet) |
-| `pays_code` | VARCHAR(3) | Code ISO 3166-1 alpha-3 |
-| `region` | VARCHAR(150) | Région / canton |
+| Colonne          | Type         | Description                                         |
+| ---------------- | ------------ | --------------------------------------------------- |
+| `id`             | CHAR(36) PK  | UUID v4                                             |
+| `user_id`        | INT FK       | Propriétaire                                        |
+| `nom`            | VARCHAR(200) | Nom du site                                         |
+| `milieu`         | ENUM         | `En mer`, `Lac`, `Carrière`, `Piscine`, `Autre`     |
+| `profondeur_max` | DECIMAL(5,1) | Profondeur maximale du site (mètres)                |
+| `coordonnees`    | JSON         | `{"lat": 46.1, "lng": 7.0}` — sélecteur Google Maps |
+| `notes`          | TEXT         | Notes libres                                        |
+| `depart_bord`    | TINYINT(1)   | Départ du bord possible                             |
+| `depart_bateau`  | TINYINT(1)   | Départ en bateau possible                           |
+| `shot_line`      | TINYINT(1)   | Shot-line présente sur le site                      |
+| `ville`          | VARCHAR(150) | Ville / localité                                    |
+| `pays`           | VARCHAR(80)  | Pays (nom complet)                                  |
+| `pays_code`      | VARCHAR(3)   | Code ISO 3166-1 alpha-3                             |
+| `region`         | VARCHAR(150) | Région / canton                                     |
 
 ### Table `dives`
 
 Cycle de vie d'une plongée : `prepared` → `in_progress` → `archived`. Soft-delete via `deleted_at`. Idempotence offline via `client_uuid`.
 
-| Colonne | Type | Description |
-|---|---|---|
-| `id` | VARCHAR(36) PK | UUID v4 |
-| `user_id` | INT FK | Propriétaire (sans CASCADE — données conservées) |
-| `client_uuid` | VARCHAR(36) | UUID v4 côté client — idempotence du rejeu outbox |
-| `site_nom` | VARCHAR(255) | Nom du site (dénormalisé pour affichage) |
-| `date_plongee` | DATETIME | Date / heure de la plongée |
-| `dp_nom` | VARCHAR(200) | Nom du DP (dénormalisé) |
-| `dp_qual` | VARCHAR(20) | Qualification DP (ex. `E3`) |
-| `activite` | VARCHAR(50) | `Exploration`, `Enseignement`, `Mixte` |
-| `status` | ENUM | `prepared` / `in_progress` / `archived` |
-| `planned_at` / `started_at` / `closed_at` | DATETIME | Jalons du cycle de vie |
-| `answers` | MEDIUMTEXT | JSON sérialisé du formulaire complet (profil, palanquées…) |
-| `palanquees` | MEDIUMTEXT | JSON sérialisé des palanquées enrichies (noms plongeurs) |
-| `render_state` | MEDIUMTEXT | JSON sérialisé du suivi temps réel (pressions, réalisés, heures…) |
-| `drive_link` | VARCHAR(500) | URL Google Drive du PDF fiche de sécurité |
-| `deleted_at` | DATETIME | Soft-delete (NULL = actif) |
+| Colonne                                   | Type           | Description                                                       |
+| ----------------------------------------- | -------------- | ----------------------------------------------------------------- |
+| `id`                                      | VARCHAR(36) PK | UUID v4                                                           |
+| `user_id`                                 | INT FK         | Propriétaire (sans CASCADE — données conservées)                  |
+| `client_uuid`                             | VARCHAR(36)    | UUID v4 côté client — idempotence du rejeu outbox                 |
+| `site_nom`                                | VARCHAR(255)   | Nom du site (dénormalisé pour affichage)                          |
+| `date_plongee`                            | DATETIME       | Date / heure de la plongée                                        |
+| `dp_nom`                                  | VARCHAR(200)   | Nom du DP (dénormalisé)                                           |
+| `dp_qual`                                 | VARCHAR(20)    | Qualification DP (ex. `E3`)                                       |
+| `activite`                                | VARCHAR(50)    | `Exploration`, `Enseignement`, `Mixte`                            |
+| `status`                                  | ENUM           | `prepared` / `in_progress` / `archived`                           |
+| `planned_at` / `started_at` / `closed_at` | DATETIME       | Jalons du cycle de vie                                            |
+| `answers`                                 | MEDIUMTEXT     | JSON sérialisé du formulaire complet (profil, palanquées…)        |
+| `palanquees`                              | MEDIUMTEXT     | JSON sérialisé des palanquées enrichies (noms plongeurs)          |
+| `render_state`                            | MEDIUMTEXT     | JSON sérialisé du suivi temps réel (pressions, réalisés, heures…) |
+| `drive_link`                              | VARCHAR(500)   | URL Google Drive du PDF fiche de sécurité                         |
+| `deleted_at`                              | DATETIME       | Soft-delete (NULL = actif)                                        |
 
 #### Contenu JSON `answers` (principaux champs)
 
@@ -582,7 +604,7 @@ Cycle de vie d'une plongée : `prepared` → `in_progress` → `archived`. Soft-
   "meteo": "Vent NE 10 km/h, bonne visibilité",
   "fiche_observations": "RAS",
   "heuresDebut": { "palId": "09:15" },
-  "heuresFin":   { "palId": "10:05" }
+  "heuresFin": { "palId": "10:05" }
 }
 ```
 
@@ -664,11 +686,11 @@ stateDiagram-v2
 
 ### États de verrouillage
 
-| État | Déclencheur | Effet |
-|---|---|---|
-| **Plongée en cours** | Première palanquée avec `▶ Début` | Étapes 1, 2, 3 verrouillées (🔒). Auto-sauvé dans localStorage. |
-| **Plongée figée** | Confirmation DP dans la popup d'archivage | Étapes 1→4 verrouillées définitivement. `plongeeFigee = true` persisté. |
-| **Archive terminée** | `doArchive()` réussi | Bouton "Terminé" activé → retour accueil + `startNew()` |
+| État                 | Déclencheur                               | Effet                                                                   |
+| -------------------- | ----------------------------------------- | ----------------------------------------------------------------------- |
+| **Plongée en cours** | Première palanquée avec `▶ Début`         | Étapes 1, 2, 3 verrouillées (🔒). Auto-sauvé dans localStorage.         |
+| **Plongée figée**    | Confirmation DP dans la popup d'archivage | Étapes 1→4 verrouillées définitivement. `plongeeFigee = true` persisté. |
+| **Archive terminée** | `doArchive()` réussi                      | Bouton "Terminé" activé → retour accueil + `startNew()`                 |
 
 ---
 
@@ -710,15 +732,15 @@ ssh pi@bullesenvalais.ch "sudo nginx -t && sudo systemctl reload nginx"
 
 Toute nouvelle API externe appelée via `fetch()` doit être ajoutée à `connect-src` dans `/etc/nginx/sites-available/bullesenvalais` (bloc `dp-fede`).
 
-| Origine | Usage |
-|---|---|
-| `'self'` | API backend |
-| `https://maps.googleapis.com` | Google Maps + Places |
-| `https://maps.gstatic.com` | Assets Maps |
-| `https://api.open-meteo.com` | Météo (bouton précomplétion) |
-| `https://www.googleapis.com` | Google Drive API v3 |
-| `https://oauth2.googleapis.com` | Token endpoint OAuth Drive |
-| `https://accounts.google.com` | Google Identity Services |
+| Origine                         | Usage                        |
+| ------------------------------- | ---------------------------- |
+| `'self'`                        | API backend                  |
+| `https://maps.googleapis.com`   | Google Maps + Places         |
+| `https://maps.gstatic.com`      | Assets Maps                  |
+| `https://api.open-meteo.com`    | Météo (bouton précomplétion) |
+| `https://www.googleapis.com`    | Google Drive API v3          |
+| `https://oauth2.googleapis.com` | Token endpoint OAuth Drive   |
+| `https://accounts.google.com`   | Google Identity Services     |
 
 ### Google OAuth
 

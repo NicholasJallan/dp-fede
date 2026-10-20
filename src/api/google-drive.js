@@ -31,9 +31,7 @@ export const TOKEN_CACHE_MS = 55 * 60 * 1000;
 const DEFAULT_TIMEOUT_MS = 15000;
 
 export function isGisAvailable() {
-  return typeof window !== 'undefined'
-      && !!window.google?.accounts?.oauth2
-      && !!window.GOOGLE_CLIENT_ID;
+  return typeof window !== 'undefined' && !!window.google?.accounts?.oauth2 && !!window.GOOGLE_CLIENT_ID;
 }
 
 export function getCachedToken() {

@@ -7,10 +7,10 @@
 const LOCALE = 'fr-FR';
 
 const FMT = {
-  date:      new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' }),
-  dateLong:  new Intl.DateTimeFormat(LOCALE, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
-  dayMonth:  new Intl.DateTimeFormat(LOCALE, { day: '2-digit', month: '2-digit' }),
-  time:      new Intl.DateTimeFormat(LOCALE, { hour: '2-digit', minute: '2-digit' }),
+  date: new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' }),
+  dateLong: new Intl.DateTimeFormat(LOCALE, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+  dayMonth: new Intl.DateTimeFormat(LOCALE, { day: '2-digit', month: '2-digit' }),
+  time: new Intl.DateTimeFormat(LOCALE, { hour: '2-digit', minute: '2-digit' }),
 };
 
 const LOCAL_RE = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?$/;
@@ -26,9 +26,7 @@ export function parseDateLike(value) {
   if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
   const s = String(value).trim();
   const m = LOCAL_RE.exec(s);
-  const d = m
-    ? new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0))
-    : new Date(s);
+  const d = m ? new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0)) : new Date(s);
   return isNaN(d.getTime()) ? null : d;
 }
 

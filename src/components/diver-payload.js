@@ -9,35 +9,59 @@ export const CLUB_FIELDS = ['licence_fin', 'representant_legal', 'autorisation_p
 const READ_ONLY_FIELDS = ['source', 'external_id'];
 
 export const emptyDiver = () => ({
-  nom: '', prenom: '', licence: '', date_naissance: '',
-  niveau_plongeur: '', niveau_encadrant: '',
-  nitrox: [], trimix: [], recycleurs: [],
-  diplome_pro: '', rifap: false, tiv: false,
-  aptitudes_sup: [], medical: '', notes: '',
-  licence_fin: '', representant_legal: '', autorisation_parentale_saison: '',
+  nom: '',
+  prenom: '',
+  licence: '',
+  date_naissance: '',
+  niveau_plongeur: '',
+  niveau_encadrant: '',
+  nitrox: [],
+  trimix: [],
+  recycleurs: [],
+  diplome_pro: '',
+  rifap: false,
+  tiv: false,
+  aptitudes_sup: [],
+  medical: '',
+  notes: '',
+  licence_fin: '',
+  representant_legal: '',
+  autorisation_parentale_saison: '',
 });
 
 export function diverToForm(d) {
   return {
     ...emptyDiver(),
-    nom: d.nom || '', prenom: d.prenom || '', licence: d.licence || '',
-    niveau_plongeur: d.niveau_plongeur || '', niveau_encadrant: d.niveau_encadrant || '',
-    nitrox: d.nitrox || [], trimix: d.trimix || [], recycleurs: d.recycleurs || [],
-    diplome_pro: d.diplome_pro || '', rifap: !!d.rifap, tiv: !!d.tiv,
-    aptitudes_sup: d.aptitudes_sup || [], medical: d.medical || '', notes: d.notes || '',
+    nom: d.nom || '',
+    prenom: d.prenom || '',
+    licence: d.licence || '',
+    niveau_plongeur: d.niveau_plongeur || '',
+    niveau_encadrant: d.niveau_encadrant || '',
+    nitrox: d.nitrox || [],
+    trimix: d.trimix || [],
+    recycleurs: d.recycleurs || [],
+    diplome_pro: d.diplome_pro || '',
+    rifap: !!d.rifap,
+    tiv: !!d.tiv,
+    aptitudes_sup: d.aptitudes_sup || [],
+    medical: d.medical || '',
+    notes: d.notes || '',
     date_naissance: d.date_naissance || '',
-    licence_fin: d.licence_fin || '', representant_legal: d.representant_legal || '',
+    licence_fin: d.licence_fin || '',
+    representant_legal: d.representant_legal || '',
     autorisation_parentale_saison: d.autorisation_parentale_saison || '',
-    source: d.source || '', external_id: d.external_id || '',
+    source: d.source || '',
+    external_id: d.external_id || '',
     // Champs club absents de la fiche lue (cache local antérieur) : à ne pas effacer.
-    _absent: CLUB_FIELDS.filter(k => !(k in d)),
+    _absent: CLUB_FIELDS.filter((k) => !(k in d)),
   };
 }
 
 export function formToPayload(form) {
   const { _absent: absent = [], ...rest } = form;
-  const payload = Object.fromEntries(Object.entries(rest).filter(([k, v]) =>
-    !READ_ONLY_FIELDS.includes(k) && !(absent.includes(k) && v === '')));
+  const payload = Object.fromEntries(
+    Object.entries(rest).filter(([k, v]) => !READ_ONLY_FIELDS.includes(k) && !(absent.includes(k) && v === '')),
+  );
   return {
     ...payload,
     diplome_pro: form.diplome_pro || null,

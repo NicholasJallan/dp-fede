@@ -14,14 +14,26 @@ const thirdPartyGlobals = {
 };
 
 const sharedRules = {
-  'no-unused-vars': ['error', { varsIgnorePattern: '^React$', argsIgnorePattern: '^_', caughtErrors: 'none', ignoreRestSiblings: true }],
+  'no-unused-vars': [
+    'error',
+    { varsIgnorePattern: '^React$', argsIgnorePattern: '^_', caughtErrors: 'none', ignoreRestSiblings: true },
+  ],
   'no-empty': ['error', { allowEmptyCatch: false }],
   eqeqeq: ['error', 'smart'],
   'no-console': ['warn', { allow: ['warn', 'error'] }],
 };
 
 module.exports = [
-  { ignores: ['dist/**', 'node_modules/**', 'backend/vendor/**', 'test-results/**', 'playwright-report/**', 'tests-e2e-report/**'] },
+  {
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      'backend/vendor/**',
+      'test-results/**',
+      'playwright-report/**',
+      'tests-e2e-report/**',
+    ],
+  },
   js.configs.recommended,
   {
     files: ['src/**/*.{js,jsx}'],

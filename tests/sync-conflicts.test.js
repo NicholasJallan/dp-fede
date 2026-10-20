@@ -35,12 +35,18 @@ beforeEach(() => {
 });
 
 describe('isIdempotentConflict', () => {
-  test('seuls duplicate:true ou un code d\'idempotence dédié valent succès', () => {
+  test("seuls duplicate:true ou un code d'idempotence dédié valent succès", () => {
     assert.equal(isIdempotentConflict({ status: 409, responseBody: { ok: false, duplicate: true } }), true);
     assert.equal(isIdempotentConflict({ status: 409, responseBody: { ok: false, data: { duplicate: true } } }), true);
     assert.equal(isIdempotentConflict({ status: 409, responseBody: { ok: false, code: 'ALREADY_APPLIED' } }), true);
-    assert.equal(isIdempotentConflict({ status: 409, responseBody: { ok: false, code: 'CLIENT_UUID_CONFLICT' } }), false);
-    assert.equal(isIdempotentConflict({ status: 409, responseBody: { ok: false, error: 'Identifiant déjà utilisé' } }), false);
+    assert.equal(
+      isIdempotentConflict({ status: 409, responseBody: { ok: false, code: 'CLIENT_UUID_CONFLICT' } }),
+      false,
+    );
+    assert.equal(
+      isIdempotentConflict({ status: 409, responseBody: { ok: false, error: 'Identifiant déjà utilisé' } }),
+      false,
+    );
     assert.equal(isIdempotentConflict({ status: 409 }), false);
     assert.equal(isIdempotentConflict({ status: 422, responseBody: { duplicate: true } }), false);
   });
@@ -59,7 +65,10 @@ describe('sync — 409', () => {
     await win.outbox.enqueue('dive.create', { client_uuid: CU, answers: {}, palanquees: [] });
     await win.outbox.enqueue('site.create', { id: 's-1', nom: 'Lac' });
     const calls = mockFetch([
-      { status: 409, body: { ok: false, error: 'Identifiant client de plongée déjà utilisé', code: 'CLIENT_UUID_CONFLICT' } },
+      {
+        status: 409,
+        body: { ok: false, error: 'Identifiant client de plongée déjà utilisé', code: 'CLIENT_UUID_CONFLICT' },
+      },
       { status: 201, body: { ok: true, data: { id: 's-1' } } },
     ]);
     await win.sync._drainOutbox();
@@ -90,7 +99,9 @@ describe('sync — club quitté (403 CLUB_NOT_MEMBER)', () => {
     await win.outbox.enqueue('diver.update', { id: 'd-1', nom: 'X' });
     const events = [];
     win.addEventListener('dp:clubNotMember', (e) => events.push(e.detail));
-    mockFetch([{ status: 403, body: { ok: false, error: "Vous n'êtes pas membre de ce club", code: 'CLUB_NOT_MEMBER' } }]);
+    mockFetch([
+      { status: 403, body: { ok: false, error: "Vous n'êtes pas membre de ce club", code: 'CLUB_NOT_MEMBER' } },
+    ]);
     await win.sync._drainOutbox();
     const [item] = await win.outbox.pending();
     assert.equal(item.status, 'review');
@@ -101,7 +112,12 @@ describe('sync — club quitté (403 CLUB_NOT_MEMBER)', () => {
 describe('sync — pull incrémental et club', () => {
   test("/api/sync/state sans en-tête (découverte du club), listes ?since avec l'en-tête du club lié", async () => {
     const calls = mockFetch([
-      { body: { ok: true, data: { club_id: HARNESS_CLUB, divers: { updated_at: '2026-10-01T00:00:00' }, sites: {}, dives: {} } } },
+      {
+        body: {
+          ok: true,
+          data: { club_id: HARNESS_CLUB, divers: { updated_at: '2026-10-01T00:00:00' }, sites: {}, dives: {} },
+        },
+      },
       { body: { ok: true, data: [] } },
     ]);
     await win.sync._pullIncremental();

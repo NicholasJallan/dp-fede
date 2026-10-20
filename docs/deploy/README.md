@@ -4,29 +4,29 @@ Runbook d'exploitation du Raspberry Pi (`pi@bullesenvalais.ch`). Tous les
 fichiers référencés sont versionnés dans `deploy/` et **ne contiennent aucun
 secret** ; les secrets vivent uniquement sur le Pi :
 
-| Secret | Emplacement | Droits |
-|--------|-------------|--------|
-| Config backend (DB, OAuth client id, rétention) | `/etc/dp-fede/config.php` | `root:www-data 640` |
-| Accès sauvegarde (DB, hooks) | `/etc/dp-fede/backup.env` | `root:root 600` |
-| Clé Google Maps | directive `sub_filter` du bloc nginx dp-fede | `root 644` (servie publiquement de toute façon) |
-| Compte SMTP des rapports | `/etc/msmtprc` | `root 600` |
-| Jetons du stockage distant | `/root/.config/rclone/rclone.conf` | `root 600` |
+| Secret                                          | Emplacement                                  | Droits                                          |
+| ----------------------------------------------- | -------------------------------------------- | ----------------------------------------------- |
+| Config backend (DB, OAuth client id, rétention) | `/etc/dp-fede/config.php`                    | `root:www-data 640`                             |
+| Accès sauvegarde (DB, hooks)                    | `/etc/dp-fede/backup.env`                    | `root:root 600`                                 |
+| Clé Google Maps                                 | directive `sub_filter` du bloc nginx dp-fede | `root 644` (servie publiquement de toute façon) |
+| Compte SMTP des rapports                        | `/etc/msmtprc`                               | `root 600`                                      |
+| Jetons du stockage distant                      | `/root/.config/rclone/rclone.conf`           | `root 600`                                      |
 
 ## Contenu de `deploy/`
 
-| Fichier | Rôle | Installé en |
-|---------|------|-------------|
-| `deploy-backend.sh` | Lint + tests, rsync vers un staging, `composer install --no-dev`, sauvegarde, plan de reprise des structures, `bin/migrate.php`, vérification du plan, bascule, reload FPM, test de fumée | lancé depuis le Mac |
-| `recette-migration-clubs.php` | Rejoue la reprise structures → clubs (003 → 011) sur un MariaDB jetable : volumes de production, coupure à chaque instruction, idempotence | lancé depuis le Mac |
-| `deploy-frontend.sh` | `npm run build` + rsync `dist/` | lancé depuis le Mac |
-| `backup.sh` + `backup.env.example` | Sauvegarde MariaDB vérifiée + rétention + hooks | `/usr/local/sbin/dp-fede-backup`, `/etc/dp-fede/backup.env` |
-| `backup-upload-rclone.sh` | Hook : copie distante (pCloud, S3…) | `/usr/local/sbin/dp-fede-backup-upload` |
-| `backup-notify-mail.sh` | Hook : e-mail de statut (remplace `backup_report.php`) | `/usr/local/sbin/dp-fede-backup-notify` |
-| `restore.md` | Procédure de restauration + journal des exercices | — |
-| `cron.example` | Sauvegarde 02:30, purge 03:15 | `/etc/cron.d/dp-fede` |
-| `logrotate-dp-fede` | Rotation de `/var/log/dp-fede*.log` (12 semaines) | `/etc/logrotate.d/dp-fede` |
-| `php-fpm-dp-fede.conf` | Pool PHP 8.5 dédié (php8.5-fpm partagé avec l'application « dive », jamais modifiée) | `/etc/php/8.5/fpm/pool.d/dp-fede.conf` |
-| `nginx-dp-fede.conf`, `nginx-dp-fede-security-headers.conf` | Bloc serveur + en-têtes (CSP…) | `/etc/nginx/sites-available/dp-fede`, `/etc/nginx/snippets/` |
+| Fichier                                                     | Rôle                                                                                                                                                                                      | Installé en                                                  |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `deploy-backend.sh`                                         | Lint + tests, rsync vers un staging, `composer install --no-dev`, sauvegarde, plan de reprise des structures, `bin/migrate.php`, vérification du plan, bascule, reload FPM, test de fumée | lancé depuis le Mac                                          |
+| `recette-migration-clubs.php`                               | Rejoue la reprise structures → clubs (003 → 011) sur un MariaDB jetable : volumes de production, coupure à chaque instruction, idempotence                                                | lancé depuis le Mac                                          |
+| `deploy-frontend.sh`                                        | `npm run build` + rsync `dist/`                                                                                                                                                           | lancé depuis le Mac                                          |
+| `backup.sh` + `backup.env.example`                          | Sauvegarde MariaDB vérifiée + rétention + hooks                                                                                                                                           | `/usr/local/sbin/dp-fede-backup`, `/etc/dp-fede/backup.env`  |
+| `backup-upload-rclone.sh`                                   | Hook : copie distante (pCloud, S3…)                                                                                                                                                       | `/usr/local/sbin/dp-fede-backup-upload`                      |
+| `backup-notify-mail.sh`                                     | Hook : e-mail de statut (remplace `backup_report.php`)                                                                                                                                    | `/usr/local/sbin/dp-fede-backup-notify`                      |
+| `restore.md`                                                | Procédure de restauration + journal des exercices                                                                                                                                         | —                                                            |
+| `cron.example`                                              | Sauvegarde 02:30, purge 03:15                                                                                                                                                             | `/etc/cron.d/dp-fede`                                        |
+| `logrotate-dp-fede`                                         | Rotation de `/var/log/dp-fede*.log` (12 semaines)                                                                                                                                         | `/etc/logrotate.d/dp-fede`                                   |
+| `php-fpm-dp-fede.conf`                                      | Pool PHP 8.5 dédié (php8.5-fpm partagé avec l'application « dive », jamais modifiée)                                                                                                      | `/etc/php/8.5/fpm/pool.d/dp-fede.conf`                       |
+| `nginx-dp-fede.conf`, `nginx-dp-fede-security-headers.conf` | Bloc serveur + en-têtes (CSP…)                                                                                                                                                            | `/etc/nginx/sites-available/dp-fede`, `/etc/nginx/snippets/` |
 
 ## Première mise en production — ordre des opérations
 

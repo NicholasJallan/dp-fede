@@ -31,12 +31,12 @@ describe('canRegenerateDocuments — bouton « Régénérer » uniquement en err
 describe('auto-save — plus de render_state après archivage', () => {
   const base = { user: { id: 1 }, diveId: 'd1', saved: { diveId: 'd1', json: 'A' }, json: 'B' };
 
-  test('plongée figée (archivée ou en cours d\'archivage) : ni envoi différé ni flush', () => {
+  test("plongée figée (archivée ou en cours d'archivage) : ni envoi différé ni flush", () => {
     assert.equal(autoSaveAction({ ...base, plongeeFigee: true }), 'skip');
     assert.equal(flushAction({ ...base, plongeeFigee: true }), 'skip');
   });
 
-  test('plongée modifiable : envoi si l\'état a changé, référence au premier rendu', () => {
+  test("plongée modifiable : envoi si l'état a changé, référence au premier rendu", () => {
     assert.equal(autoSaveAction({ ...base, plongeeFigee: false }), 'send');
     assert.equal(autoSaveAction({ ...base, plongeeFigee: false, json: 'A' }), 'skip');
     assert.equal(autoSaveAction({ ...base, plongeeFigee: false, saved: { diveId: 'autre', json: 'A' } }), 'baseline');
@@ -45,10 +45,16 @@ describe('auto-save — plus de render_state après archivage', () => {
     assert.equal(flushAction({ ...base, plongeeFigee: false, json: 'A' }), 'skip');
   });
 
-  test('le patch porte render_state (d\'où l\'importance de ne plus l\'envoyer une fois figée)', () => {
+  test("le patch porte render_state (d'où l'importance de ne plus l'envoyer une fois figée)", () => {
     const patch = buildAutoSavePatch({
-      answers: { date: '2026-10-20T09:00', site_nom: 'Lac' }, palanquees: [],
-      checked: {}, comments: {}, pressions: {}, realises: {}, heuresDebut: {}, heuresFin: {},
+      answers: { date: '2026-10-20T09:00', site_nom: 'Lac' },
+      palanquees: [],
+      checked: {},
+      comments: {},
+      pressions: {},
+      realises: {},
+      heuresDebut: {},
+      heuresFin: {},
     });
     assert.ok(patch.render_state);
     assert.equal(patch.date_plongee, '2026-10-20T09:00');
@@ -58,9 +64,11 @@ describe('auto-save — plus de render_state après archivage', () => {
 
 describe('club quitté — purge des actions en revue de ce club', () => {
   let win;
-  beforeEach(() => { win = bootOffline(); });
+  beforeEach(() => {
+    win = bootOffline();
+  });
 
-  test('retire les items en revue du club, oublie le club courant s\'il est concerné', async () => {
+  test("retire les items en revue du club, oublie le club courant s'il est concerné", async () => {
     win.clubId = CLUB_A;
     const a = await win.outbox.enqueue('diver.update', { id: 'd-1' });
     await win.outbox.markReview(a.id, new Error('403'));
@@ -85,11 +93,13 @@ describe('club quitté — purge des actions en revue de ce club', () => {
   });
 });
 
-describe('données de l\'appareil', () => {
+describe("données de l'appareil", () => {
   let win;
-  beforeEach(() => { win = bootOffline(); });
+  beforeEach(() => {
+    win = bootOffline();
+  });
 
-  test('hasLocalData : vrai dès qu\'il reste une action, une plongée ou un propriétaire', async () => {
+  test("hasLocalData : vrai dès qu'il reste une action, une plongée ou un propriétaire", async () => {
     assert.equal(await hasLocalData(win.offlineStore), false);
     await win.offlineStore.put('meta', 'owner', 7);
     assert.equal(await hasLocalData(win.offlineStore), true);

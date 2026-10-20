@@ -20,15 +20,15 @@ const AUTH_FILE = path.join(__dirname, '.auth', 'user.json');
 
 setup('authenticate via injected cookies', async ({ page, baseURL }) => {
   const session = process.env.DP_E2E_SESSION_COOKIE;
-  const csrf    = process.env.DP_E2E_CSRF_COOKIE;
+  const csrf = process.env.DP_E2E_CSRF_COOKIE;
   if (!session || !csrf) {
     throw new Error(
-      'DP_E2E_SESSION_COOKIE et DP_E2E_CSRF_COOKIE doivent être définis. '
-      + 'Voir tests-e2e/README.md pour les obtenir.'
+      'DP_E2E_SESSION_COOKIE et DP_E2E_CSRF_COOKIE doivent être définis. ' +
+        'Voir tests-e2e/README.md pour les obtenir.',
     );
   }
 
-  const url    = new URL(baseURL);
+  const url = new URL(baseURL);
   const domain = url.hostname;
 
   await page.context().addCookies([

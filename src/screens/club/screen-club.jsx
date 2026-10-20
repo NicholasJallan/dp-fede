@@ -37,7 +37,8 @@ function useMembers(online, clubId) {
     }
   }, []);
   useEffect(() => {
-    if (online) load(); else setLoading(false);
+    if (online) load();
+    else setLoading(false);
   }, [online, clubId, load]);
   return { members, setMembers, invitations, setInvitations, loading, error };
 }
@@ -53,7 +54,10 @@ function ClubCounts({ counts }) {
   return (
     <div className="kpi-grid" role="list" aria-label="Le club en chiffres">
       {items.map(([k, v]) => (
-        <div key={k} className="kpi" role="listitem"><span className="v">{v ?? 0}</span><span className="k">{k}</span></div>
+        <div key={k} className="kpi" role="listitem">
+          <span className="v">{v ?? 0}</span>
+          <span className="k">{k}</span>
+        </div>
       ))}
     </div>
   );
@@ -62,12 +66,23 @@ function ClubCounts({ counts }) {
 function ClubHead({ name, role, onStats }) {
   return (
     <div className="page-head">
-      <p className="step-tag"><Icon.Flag />Club courant</p>
+      <p className="step-tag">
+        <Icon.Flag />
+        Club courant
+      </p>
       <h1>{name}</h1>
-      <p className="club-role">Votre rôle : <Pill tone="ink" className="lg">{roleLabel(role)}</Pill></p>
+      <p className="club-role">
+        Votre rôle :{' '}
+        <Pill tone="ink" className="lg">
+          {roleLabel(role)}
+        </Pill>
+      </p>
       {role && <p className="small">{ROLE_HINTS[role]}</p>}
       <div className="page-head-actions">
-        <button type="button" className="btn" onClick={onStats}><Icon.Chart />Statistiques du club</button>
+        <button type="button" className="btn" onClick={onStats}>
+          <Icon.Chart />
+          Statistiques du club
+        </button>
       </div>
     </div>
   );
@@ -83,7 +98,7 @@ export function ScreenClub({ onNavigate }) {
   const m = useMembers(online, clubId);
   const clubs = useMemberships(online, clubId);
   const name = club.club?.nom || user?.club_nom || 'Club sans nom';
-  const me = m.members.find(x => x.is_me);
+  const me = m.members.find((x) => x.is_me);
 
   const onSaved = async (payload) => {
     club.setInfo(payload);
@@ -92,14 +107,22 @@ export function ScreenClub({ onNavigate }) {
 
   const onSwitch = async (target) => {
     await club.switchClub(target.club_id);
-    showToast({ tone: 'ok', title: 'Club changé', body: `Vous travaillez maintenant pour ${target.nom || 'ce club'}.` });
+    showToast({
+      tone: 'ok',
+      title: 'Club changé',
+      body: `Vous travaillez maintenant pour ${target.nom || 'ce club'}.`,
+    });
     onNavigate('home');
   };
 
   const onLeft = async () => {
     try {
       const res = await club.reloadCurrentClub();
-      showToast({ tone: 'ok', title: 'Club quitté', body: `Club courant : ${res?.club?.nom || 'votre club personnel'}.` });
+      showToast({
+        tone: 'ok',
+        title: 'Club quitté',
+        body: `Club courant : ${res?.club?.nom || 'votre club personnel'}.`,
+      });
     } catch (err) {
       showToast({ tone: 'warn', title: 'Club à recharger', body: err.message });
     }
@@ -110,10 +133,14 @@ export function ScreenClub({ onNavigate }) {
     <div>
       <ClubHead name={name} role={club.role} onStats={() => onNavigate('stats')} />
       {!online && (
-        <Notice tone="info" title="Hors ligne">Dernières informations connues. Modifications, membres et invitations demandent le réseau.</Notice>
+        <Notice tone="info" title="Hors ligne">
+          Dernières informations connues. Modifications, membres et invitations demandent le réseau.
+        </Notice>
       )}
       {club.error && online && !club.info && (
-        <Alert tone="warn" title="Club indisponible">{describeApiError(club.error, 'consulter le club')}</Alert>
+        <Alert tone="warn" title="Club indisponible">
+          {describeApiError(club.error, 'consulter le club')}
+        </Alert>
       )}
       <ClubCounts counts={club.info?.counts} />
       {clubs && clubs.length > 1 && (
@@ -123,13 +150,29 @@ export function ScreenClub({ onNavigate }) {
         <ClubInfoCard key={club.club.id} club={club.club} canManage={canManage} online={online} onSaved={onSaved} />
       )}
       {m.error && <Alert tone="warn">{describeApiError(m.error, 'voir les membres')}</Alert>}
-      <ClubMembersCard members={m.members} loading={m.loading} canManage={canManage} online={online}
-        setMembers={m.setMembers} onChanged={club.refresh} />
-      {canManage && <ClubInvitationsCard invitations={m.invitations} setInvitations={m.setInvitations} online={online} />}
-      {!canManage && (
-        <p className="disclaimer"><StatusIcon tone="info" /> Pour inviter quelqu'un ou changer un rôle, adressez-vous au responsable du club.</p>
+      <ClubMembersCard
+        members={m.members}
+        loading={m.loading}
+        canManage={canManage}
+        online={online}
+        setMembers={m.setMembers}
+        onChanged={club.refresh}
+      />
+      {canManage && (
+        <ClubInvitationsCard invitations={m.invitations} setInvitations={m.setInvitations} online={online} />
       )}
-      <ClubDangerZone clubName={name} myUserId={me?.user_id ?? null} canManage={canManage} online={online} onLeft={onLeft} />
+      {!canManage && (
+        <p className="disclaimer">
+          <StatusIcon tone="info" /> Pour inviter quelqu'un ou changer un rôle, adressez-vous au responsable du club.
+        </p>
+      )}
+      <ClubDangerZone
+        clubName={name}
+        myUserId={me?.user_id ?? null}
+        canManage={canManage}
+        online={online}
+        onLeft={onLeft}
+      />
     </div>
   );
 }

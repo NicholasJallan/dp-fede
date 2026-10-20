@@ -44,7 +44,12 @@ function Notice({ tone = 'info', title, children, actions, live = false, classNa
   const shape = tone === 'signal' ? 'warn' : tone;
   return (
     <section className={`notice ${tone} ${className}`.trim()} role={live ? 'status' : undefined}>
-      {title && <div className="notice-title"><StatusIcon tone={shape} />{title}</div>}
+      {title && (
+        <div className="notice-title">
+          <StatusIcon tone={shape} />
+          {title}
+        </div>
+      )}
       {children && <div>{children}</div>}
       {actions && <div className="notice-actions">{actions}</div>}
     </section>
@@ -89,7 +94,9 @@ function Toggle({ checked, onChange, label, labelledBy, id }) {
       onClick={() => onChange(!checked)}
     >
       <span className="track" aria-hidden="true"></span>
-      <span className="state" aria-hidden="true">{checked ? 'Oui' : 'Non'}</span>
+      <span className="state" aria-hidden="true">
+        {checked ? 'Oui' : 'Non'}
+      </span>
     </button>
   );
 }
@@ -102,7 +109,18 @@ function Toggle({ checked, onChange, label, labelledBy, id }) {
 // =========================================================================
 const NATIVE_CONTROLS = ['input', 'select', 'textarea'];
 
-function Field({ label, hint, regRef, required, children, controls, group = false, labelOnly = false, id: idProp, className = '' }) {
+function Field({
+  label,
+  hint,
+  regRef,
+  required,
+  children,
+  controls,
+  group = false,
+  labelOnly = false,
+  id: idProp,
+  className = '',
+}) {
   const auto = useId();
   const id = idProp || `f${auto.replace(/:/g, '')}`;
   const labelId = `${id}-label`;
@@ -125,16 +143,31 @@ function Field({ label, hint, regRef, required, children, controls, group = fals
       <div className="field-row">
         <LabelTag className="field-label" id={labelId} htmlFor={LabelTag === 'label' ? id : undefined}>
           {label}
-          {required && <span className="req" aria-hidden="true">*</span>}
+          {required && (
+            <span className="req" aria-hidden="true">
+              *
+            </span>
+          )}
           {required && <span className="sr-only"> (obligatoire)</span>}
         </LabelTag>
         {regRef && <CdsLink refText={regRef} compact />}
-        {controls && <span className="field-controls">{typeof controls === 'function' ? controls(ids) : controls}</span>}
+        {controls && (
+          <span className="field-controls">{typeof controls === 'function' ? controls(ids) : controls}</span>
+        )}
       </div>
-      {hint && <div className="field-hint" id={hintId}>{hint}</div>}
-      {content != null && (group
-        ? <div role="group" aria-labelledby={labelId} aria-describedby={hintId}>{content}</div>
-        : content)}
+      {hint && (
+        <div className="field-hint" id={hintId}>
+          {hint}
+        </div>
+      )}
+      {content != null &&
+        (group ? (
+          <div role="group" aria-labelledby={labelId} aria-describedby={hintId}>
+            {content}
+          </div>
+        ) : (
+          content
+        ))}
     </div>
   );
 }
@@ -148,7 +181,9 @@ function ChoiceQuestion({ q, value, set }) {
     <Field label={q.label} hint={q.hint} regRef={q.ref} required={q.required} labelOnly>
       {({ labelId, hintId }) => (
         <div className={`opt-group col-${cols}`} role="radiogroup" aria-labelledby={labelId} aria-describedby={hintId}>
-          {q.options.map(o => <Opt key={o} label={o} checked={value === o} onClick={() => set(o)} />)}
+          {q.options.map((o) => (
+            <Opt key={o} label={o} checked={value === o} onClick={() => set(o)} />
+          ))}
         </div>
       )}
     </Field>
@@ -161,9 +196,17 @@ function MultiQuestion({ q, value, set }) {
   return (
     <Field label={q.label} hint={q.hint} regRef={q.ref} required={q.required} group>
       <div className={`opt-group col-${cols}`}>
-        {q.options.map(o => {
+        {q.options.map((o) => {
           const on = vals.includes(o);
-          return <Opt key={o} multi label={o} checked={on} onClick={() => set(on ? vals.filter(x => x !== o) : [...vals, o])} />;
+          return (
+            <Opt
+              key={o}
+              multi
+              label={o}
+              checked={on}
+              onClick={() => set(on ? vals.filter((x) => x !== o) : [...vals, o])}
+            />
+          );
         })}
       </div>
     </Field>
@@ -177,8 +220,10 @@ function Question({ q, value, onChange }) {
   switch (q.type) {
     case 'bool':
       return (
-        <Field {...common}
-          controls={({ id, labelId }) => <Toggle id={id} checked={!!value} onChange={set} labelledBy={labelId} />} />
+        <Field
+          {...common}
+          controls={({ id, labelId }) => <Toggle id={id} checked={!!value} onChange={set} labelledBy={labelId} />}
+        />
       );
     case 'choice':
       return <ChoiceQuestion q={q} value={value} set={set} />;
@@ -187,15 +232,24 @@ function Question({ q, value, onChange }) {
     case 'text':
       return (
         <Field {...common}>
-          <input className="input" type="text" placeholder={q.placeholder || ''}
-            value={value || ''} onChange={(e) => set(e.target.value)} />
+          <input
+            className="input"
+            type="text"
+            placeholder={q.placeholder || ''}
+            value={value || ''}
+            onChange={(e) => set(e.target.value)}
+          />
         </Field>
       );
     case 'textarea':
       return (
         <Field {...common}>
-          <textarea className="textarea" placeholder={q.placeholder || ''}
-            value={value || ''} onChange={(e) => set(e.target.value)} />
+          <textarea
+            className="textarea"
+            placeholder={q.placeholder || ''}
+            value={value || ''}
+            onChange={(e) => set(e.target.value)}
+          />
         </Field>
       );
     case 'number':
@@ -203,8 +257,14 @@ function Question({ q, value, onChange }) {
         <Field {...common}>
           {({ id, hintId }) => (
             <div className="unit-input narrow">
-              <input id={id} aria-describedby={hintId} type="text" inputMode="decimal"
-                value={value ?? ''} onChange={(e) => set(parseFloat(e.target.value.replace(',', '.')) || 0)} />
+              <input
+                id={id}
+                aria-describedby={hintId}
+                type="text"
+                inputMode="decimal"
+                value={value ?? ''}
+                onChange={(e) => set(parseFloat(e.target.value.replace(',', '.')) || 0)}
+              />
               {q.suffix && <span className="unit">{q.suffix}</span>}
             </div>
           )}
@@ -213,8 +273,12 @@ function Question({ q, value, onChange }) {
     case 'datetime':
       return (
         <Field {...common}>
-          <input className="input mono narrow" type="datetime-local"
-            value={value || ''} onChange={(e) => set(e.target.value)} />
+          <input
+            className="input mono narrow"
+            type="datetime-local"
+            value={value || ''}
+            onChange={(e) => set(e.target.value)}
+          />
         </Field>
       );
     default:

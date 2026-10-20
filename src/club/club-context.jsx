@@ -34,11 +34,17 @@ function readSnapshot() {
     const raw = localStorage.getItem(STORAGE_KEYS.CLUB_SNAPSHOT);
     const data = raw ? JSON.parse(raw) : null;
     return data?.club?.id ? data : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 function writeSnapshot(data) {
-  try { localStorage.setItem(STORAGE_KEYS.CLUB_SNAPSHOT, JSON.stringify(data)); } catch { /* quota : mémoire seule */ }
+  try {
+    localStorage.setItem(STORAGE_KEYS.CLUB_SNAPSHOT, JSON.stringify(data));
+  } catch {
+    /* quota : mémoire seule */
+  }
 }
 
 // Invitation en attente : lue au démarrage puis à chaque changement de fragment.
@@ -49,7 +55,10 @@ function usePendingInvitation() {
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
-  const dismiss = useCallback(() => { clearPendingInvitation(); setToken(null); }, []);
+  const dismiss = useCallback(() => {
+    clearPendingInvitation();
+    setToken(null);
+  }, []);
   return [token, dismiss];
 }
 
@@ -110,21 +119,30 @@ export function ClubProvider({ children }) {
 
   // Nouveau club courant (payload au format GET /api/club) : purge des
   // données de l'ancien club, compte relu, resynchronisation.
-  const applyClubChange = useCallback(async (payload) => {
-    if (payload?.club?.id) await bindLocalDataToClub(offlineStore, payload.club.id);
-    if (payload) { setInfo(payload); writeSnapshot(payload); }
-    await refreshUser();
-    sync.trigger('club-changed');
-    return payload;
-  }, [refreshUser, setInfo]);
+  const applyClubChange = useCallback(
+    async (payload) => {
+      if (payload?.club?.id) await bindLocalDataToClub(offlineStore, payload.club.id);
+      if (payload) {
+        setInfo(payload);
+        writeSnapshot(payload);
+      }
+      await refreshUser();
+      sync.trigger('club-changed');
+      return payload;
+    },
+    [refreshUser, setInfo],
+  );
 
   const switchClub = useCallback(async (clubId) => applyClubChange(await api.club.switch(clubId)), [applyClubChange]);
 
-  const acceptInvitation = useCallback(async (token) => {
-    const res = await api.club.invitations.accept(token);
-    dismissInvitation();
-    return applyClubChange(res);
-  }, [applyClubChange, dismissInvitation]);
+  const acceptInvitation = useCallback(
+    async (token) => {
+      const res = await api.club.invitations.accept(token);
+      dismissInvitation();
+      return applyClubChange(res);
+    },
+    [applyClubChange, dismissInvitation],
+  );
 
   // Après « quitter le club » ou sa suppression : le serveur choisit le club
   // suivant. Le club quitté est d'abord oublié (sinon X-DP-Club le viserait
@@ -153,27 +171,61 @@ export function ClubProvider({ children }) {
     const role = current?.role || user?.club_role || null;
     const permissions = current?.permissions || null;
     return {
-      info: current, club: current?.club || null, role, permissions, error,
+      info: current,
+      club: current?.club || null,
+      role,
+      permissions,
+      error,
       clubsCount: current?.clubs_count ?? user?.club_count ?? 1,
       can: (permission) => canRole(role, permission, permissions),
-      refresh, switchClub, acceptInvitation, reloadCurrentClub, setInfo,
-      invitationToken, dismissInvitation,
-      lostClub: lost.lostClub, dismissLostClub: lost.dismiss,
+      refresh,
+      switchClub,
+      acceptInvitation,
+      reloadCurrentClub,
+      setInfo,
+      invitationToken,
+      dismissInvitation,
+      lostClub: lost.lostClub,
+      dismissLostClub: lost.dismiss,
     };
-  }, [info, user?.club_id, user?.club_role, user?.club_count, error, refresh, switchClub,
-    acceptInvitation, reloadCurrentClub, setInfo, invitationToken, dismissInvitation, lost.lostClub, lost.dismiss]);
+  }, [
+    info,
+    user?.club_id,
+    user?.club_role,
+    user?.club_count,
+    error,
+    refresh,
+    switchClub,
+    acceptInvitation,
+    reloadCurrentClub,
+    setInfo,
+    invitationToken,
+    dismissInvitation,
+    lost.lostClub,
+    lost.dismiss,
+  ]);
 
   return <ClubContext.Provider value={value}>{children}</ClubContext.Provider>;
 }
 
 // Hors fournisseur (tests de composants isolés) : aucun droit masqué.
 const NO_CLUB = {
-  info: null, club: null, role: null, permissions: null, error: null, clubsCount: 1,
+  info: null,
+  club: null,
+  role: null,
+  permissions: null,
+  error: null,
+  clubsCount: 1,
   can: () => true,
-  refresh: async () => null, switchClub: async () => null, acceptInvitation: async () => null,
-  reloadCurrentClub: async () => null, setInfo: () => {},
-  invitationToken: null, dismissInvitation: () => {},
-  lostClub: null, dismissLostClub: () => {},
+  refresh: async () => null,
+  switchClub: async () => null,
+  acceptInvitation: async () => null,
+  reloadCurrentClub: async () => null,
+  setInfo: () => {},
+  invitationToken: null,
+  dismissInvitation: () => {},
+  lostClub: null,
+  dismissLostClub: () => {},
 };
 
 export function useClub() {

@@ -60,22 +60,22 @@ Documentation et procédures sécurité du projet.
 
 ## Surfaces d'attaque & mitigations
 
-| Surface | Risque | Mitigation |
-|---|---|---|
-| Login OAuth | Token forgé | Vérif JWT locale RS256 via JWKS Google + revalidation aud/iss/exp |
-| Session vol | Cookie capture | HttpOnly + Secure + SameSite=Lax + TTL 7j sliding |
-| CSRF | State-changing CSRF | Double-submit cookie (`dp_csrf` SameSite=Strict, HttpOnly=false → JS lit) |
-| Brute-force login | Rate-limit IP | 10 essais / 15 min / IP (table `rate_limits`, repli APCu) |
-| Brute-force écriture | Spam metadata | 120 mutations / min / IP |
-| Flood CSP / proxy | Remplissage disque, relais sortant | 30 / min / IP ; corps CSP ≤ 8 Ko (413) |
-| Compte Google non vérifié | Usurpation d'e-mail | `email_verified` exigé (`Auth::isEmailVerified`) |
-| Logout sans cookie CSRF | Session laissée vivante | Jeton OU Origin/Referer de l'app (`Csrf::verifyForLogout`) |
-| Injection SQL | Param malicieux | PDO prepared statements partout |
-| XSS | innerHTML | React = jamais innerHTML. Le seul dangerouslySetInnerHTML : aucun. |
-| Drive escalation | Scope abusif | scope=`drive.file` UNIQUEMENT (accès aux fichiers créés par l'app) |
-| Map API abuse | Quota drain | Restriction par référent HTTP côté GCP |
-| Super-admin spoof | Promotion DB | `Auth::requireSuperAdmin` check email constant `nicholas.jallan@gmail.com` |
-| Secret leak | Push public | `config.php` gitignored, vit dans `/etc/dp-fede/` |
+| Surface                   | Risque                             | Mitigation                                                                 |
+| ------------------------- | ---------------------------------- | -------------------------------------------------------------------------- |
+| Login OAuth               | Token forgé                        | Vérif JWT locale RS256 via JWKS Google + revalidation aud/iss/exp          |
+| Session vol               | Cookie capture                     | HttpOnly + Secure + SameSite=Lax + TTL 7j sliding                          |
+| CSRF                      | State-changing CSRF                | Double-submit cookie (`dp_csrf` SameSite=Strict, HttpOnly=false → JS lit)  |
+| Brute-force login         | Rate-limit IP                      | 10 essais / 15 min / IP (table `rate_limits`, repli APCu)                  |
+| Brute-force écriture      | Spam metadata                      | 120 mutations / min / IP                                                   |
+| Flood CSP / proxy         | Remplissage disque, relais sortant | 30 / min / IP ; corps CSP ≤ 8 Ko (413)                                     |
+| Compte Google non vérifié | Usurpation d'e-mail                | `email_verified` exigé (`Auth::isEmailVerified`)                           |
+| Logout sans cookie CSRF   | Session laissée vivante            | Jeton OU Origin/Referer de l'app (`Csrf::verifyForLogout`)                 |
+| Injection SQL             | Param malicieux                    | PDO prepared statements partout                                            |
+| XSS                       | innerHTML                          | React = jamais innerHTML. Le seul dangerouslySetInnerHTML : aucun.         |
+| Drive escalation          | Scope abusif                       | scope=`drive.file` UNIQUEMENT (accès aux fichiers créés par l'app)         |
+| Map API abuse             | Quota drain                        | Restriction par référent HTTP côté GCP                                     |
+| Super-admin spoof         | Promotion DB                       | `Auth::requireSuperAdmin` check email constant `nicholas.jallan@gmail.com` |
+| Secret leak               | Push public                        | `config.php` gitignored, vit dans `/etc/dp-fede/`                          |
 
 ## Outils
 
@@ -96,9 +96,11 @@ ssh pi@bullesenvalais.ch "ls -la /etc/dp-fede/"
 ### Audit automatique (en CI)
 
 En place (`.github/workflows/ci.yml`) :
+
 - `composer audit` + PHPUnit (PHP 8.2 / 8.5)
 
 À venir :
+
 - `npm audit` (déjà à 0 deps prod, mais Playwright en dev)
 - Snyk ou Dependabot pour les CDN versions
 

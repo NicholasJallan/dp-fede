@@ -14,6 +14,6 @@ export const DOCUMENT_TYPES = ['fiche', 'checklist'];
 export function canRegenerateDocuments({ status, documents } = {}) {
   if (status === 'error') return true;
   if (status === 'pending') return false;
-  const present = new Set((documents || []).map(d => d?.type));
-  return DOCUMENT_TYPES.some(t => !present.has(t));
+  const present = new Set((documents || []).map((d) => d?.type));
+  return DOCUMENT_TYPES.some((t) => !present.has(t));
 }

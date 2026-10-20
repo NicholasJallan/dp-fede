@@ -25,9 +25,10 @@ const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`;
 export function describeDeletion(res, fallback) {
   const r = res?.retained;
   const fiches = Number(r?.fiches) || 0;
-  const retained = fiches > 0
-    ? { fiches, until: r.until || null, untilLabel: r.until ? formatDate(r.until) : '—', clubs: Number(r.clubs) || 0 }
-    : null;
+  const retained =
+    fiches > 0
+      ? { fiches, until: r.until || null, untilLabel: r.until ? formatDate(r.until) : '—', clubs: Number(r.clubs) || 0 }
+      : null;
   let message = typeof res?.message === 'string' && res.message.trim() ? res.message.trim() : '';
   if (!message) {
     message = retained
@@ -47,7 +48,7 @@ export function describeAccountDeletionError(err) {
   if (err?.status === 409) {
     const clubAction = /club/i.test(body);
     return {
-      title: 'Suppression impossible pour l\'instant',
+      title: "Suppression impossible pour l'instant",
       body: clubAction
         ? `${body}. Dans l'écran Club, nommez un autre membre « Responsable », ou supprimez le club, puis recommencez.`
         : body,
@@ -55,6 +56,7 @@ export function describeAccountDeletionError(err) {
     };
   }
   if (err?.status === 422) return { title: 'Confirmation refusée', body, clubAction: false };
-  if (!err?.status) return { title: 'Hors ligne', body: 'La suppression du compte demande une connexion réseau.', clubAction: false };
+  if (!err?.status)
+    return { title: 'Hors ligne', body: 'La suppression du compte demande une connexion réseau.', clubAction: false };
   return { title: 'Suppression impossible', body, clubAction: false };
 }

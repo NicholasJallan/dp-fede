@@ -51,7 +51,19 @@ function useHoldRepeat(onStep) {
  * @param {boolean} [props.autoFocus]
  * @param {boolean} [props.compact]  libellé à gauche, sur une ligne (paliers)
  */
-export function StepperField({ label, unit, value, onChange, min = 0, max, step = 1, hint, placeholder, autoFocus = false, compact = false }) {
+export function StepperField({
+  label,
+  unit,
+  value,
+  onChange,
+  min = 0,
+  max,
+  step = 1,
+  hint,
+  placeholder,
+  autoFocus = false,
+  compact = false,
+}) {
   const id = useId();
   const labelId = `${id}-label`;
   const hintId = hint ? `${id}-hint` : undefined;
@@ -73,35 +85,65 @@ export function StepperField({ label, unit, value, onChange, min = 0, max, step 
   const atMax = max != null && Number.isFinite(n) && n >= max;
 
   const button = (dir, text, sign) => (
-    <button type="button" className="num-stepper-btn" aria-label={text}
-      aria-controls={id} disabled={dir < 0 ? atMin : atMax}
-      onPointerDown={(e) => { if (e.button === 0) hold.start(dir); }}
-      onPointerUp={hold.stop} onPointerLeave={hold.stop} onPointerCancel={hold.stop}
+    <button
+      type="button"
+      className="num-stepper-btn"
+      aria-label={text}
+      aria-controls={id}
+      disabled={dir < 0 ? atMin : atMax}
+      onPointerDown={(e) => {
+        if (e.button === 0) hold.start(dir);
+      }}
+      onPointerUp={hold.stop}
+      onPointerLeave={hold.stop}
+      onPointerCancel={hold.stop}
       // Clavier (Entrée / Espace) : click sans pointerdown préalable.
-      onClick={(e) => { if (e.detail === 0) bump(dir); }}
-      onContextMenu={(e) => e.preventDefault()}>
+      onClick={(e) => {
+        if (e.detail === 0) bump(dir);
+      }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       {sign}
     </button>
   );
 
   return (
     <div className={`field plain stepper-field ${compact ? 'is-compact' : ''}`}>
-      <label htmlFor={id} id={labelId}>{label}</label>
+      <label htmlFor={id} id={labelId}>
+        {label}
+      </label>
       {/* Groupe nommé par le libellé : « Durée réelle, groupe — Diminuer ». */}
       <div className="num-stepper" role="group" aria-labelledby={labelId}>
         {button(-1, 'Diminuer', '−')}
         <div className="unit-input">
-          <input id={id} type="text" inputMode="numeric" pattern="[0-9]*" value={value} placeholder={placeholder}
-            aria-describedby={hintId} data-autofocus={autoFocus ? '' : undefined}
+          <input
+            id={id}
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={value}
+            placeholder={placeholder}
+            aria-describedby={hintId}
+            data-autofocus={autoFocus ? '' : undefined}
             onKeyDown={(e) => {
-              if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); bump(e.key === 'ArrowUp' ? 1 : -1); }
+              if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                bump(e.key === 'ArrowUp' ? 1 : -1);
+              }
             }}
-            onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, ''))} />
-          <span className="unit" aria-hidden="true">{unit}</span>
+            onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, ''))}
+          />
+          <span className="unit" aria-hidden="true">
+            {unit}
+          </span>
         </div>
         {button(1, 'Augmenter', '+')}
       </div>
-      {hint && <span className="field-hint" id={hintId}>{hint}</span>}
+      {hint && (
+        <span className="field-hint" id={hintId}>
+          {hint}
+        </span>
+      )}
     </div>
   );
 }

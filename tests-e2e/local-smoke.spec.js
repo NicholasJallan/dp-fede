@@ -28,7 +28,14 @@
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { default: AxeBuilder } = require('@axe-core/playwright');
-const { newState, mockBackend, CLUB_ID, OTHER_CLUB_ID, INVITATION_TOKEN, MISMATCH_TOKEN } = require('./local-fixtures.js');
+const {
+  newState,
+  mockBackend,
+  CLUB_ID,
+  OTHER_CLUB_ID,
+  INVITATION_TOKEN,
+  MISMATCH_TOKEN,
+} = require('./local-fixtures.js');
 
 const SHOTS = path.join(__dirname, '..', 'test-results', 'screens');
 
@@ -147,7 +154,13 @@ test.describe('build local — parcours en ligne', () => {
     await expect(fin.getByRole('textbox', { name: 'Palier à 3 m' })).toHaveValue('3');
     await fin.getByRole('checkbox', { name: /Palier de confort/ }).check();
     await fin.getByRole('textbox', { name: 'Palier de confort, Durée' }).fill('2');
-    expect(await new AxeBuilder({ page }).include('.dialog').withTags(['wcag2a', 'wcag2aa']).analyze().then(r => r.violations)).toEqual([]);
+    expect(
+      await new AxeBuilder({ page })
+        .include('.dialog')
+        .withTags(['wcag2a', 'wcag2aa'])
+        .analyze()
+        .then((r) => r.violations),
+    ).toEqual([]);
     await fin.getByRole('button', { name: 'Valider la sortie' }).click();
     await expect(cadran.locator('.cadran-state')).toContainText('Sortie');
     await expect(cadran.locator('.cadran-paliers')).toHaveText('Paliers : 3 m 3 min · confort 3 m 2 min');
@@ -163,7 +176,9 @@ test.describe('build local — parcours en ligne', () => {
     await expect(heading(page)).toHaveText('Archiver la plongée');
     await expect(page.locator('.notice.ok')).toContainText('confirmée par le serveur', { timeout: 15_000 });
     await expect(page.getByRole('heading', { name: 'Documents archivés' })).toBeVisible();
-    await expect(page.locator('.notice', { hasText: 'Copie Google Drive non effectuée' })).toContainText('Connexion Google indisponible');
+    await expect(page.locator('.notice', { hasText: 'Copie Google Drive non effectuée' })).toContainText(
+      'Connexion Google indisponible',
+    );
     const archived = state.dives.find((d) => d.site_nom === 'Carrière du Test' && d.status === 'archived');
     expect(archived).toBeTruthy();
     // Paliers réalisés transmis au serveur (render_state → fiche PDF).
@@ -218,10 +233,15 @@ test.describe('build local — parcours en ligne', () => {
     await expect(page.locator('.notice.ok')).toContainText('confirmée par le serveur', { timeout: 15_000 });
   });
 
-  test('archivage sans Google Drive : aucune demande Google, PDF archivés par le serveur', async ({ page, context }) => {
+  test('archivage sans Google Drive : aucune demande Google, PDF archivés par le serveur', async ({
+    page,
+    context,
+  }) => {
     await context.addInitScript(() => localStorage.setItem('dp-drive-export', 'off'));
     const google = [];
-    page.on('request', (r) => { if (/google(apis)?\.com/.test(r.url())) google.push(r.url()); });
+    page.on('request', (r) => {
+      if (/google(apis)?\.com/.test(r.url())) google.push(r.url());
+    });
     await openHome(page);
     await page.getByRole('button', { name: /Nouvelle plongée/ }).click();
     await expect(heading(page)).toHaveText('Caractériser la plongée à venir');
@@ -249,7 +269,7 @@ test.describe('build local — parcours en ligne', () => {
     expect(google.filter((u) => /oauth2|googleapis\.com\/(upload\/)?drive/.test(u))).toEqual([]);
   });
 
-  test('copie Drive en attente : bandeau d\'information, « Ne plus proposer » le retire', async ({ page }) => {
+  test("copie Drive en attente : bandeau d'information, « Ne plus proposer » le retire", async ({ page }) => {
     await openHome(page);
     await diveRow(page, 'Lac de Test')
       .getByRole('button', { name: /Démarrer/ })
@@ -458,7 +478,9 @@ async function openImport(page) {
 
 async function simulateImport(page) {
   await page.locator('input[type="file"]').setInputFiles({
-    name: 'export-vpdive.csv', mimeType: 'text/csv', buffer: Buffer.from(IMPORT_CSV, 'utf-8'),
+    name: 'export-vpdive.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(IMPORT_CSV, 'utf-8'),
   });
   await expect(page.locator('.dropzone')).toContainText('export-vpdive.csv');
   await page.getByRole('button', { name: "Simuler l'import" }).click();
@@ -467,7 +489,13 @@ async function simulateImport(page) {
 
 async function axeViolations(page, label) {
   const res = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-  return res.violations.map((v) => `${label} — ${v.id}: ${v.nodes.map((n) => n.target.join(' ')).slice(0, 3).join(' | ')}`);
+  return res.violations.map(
+    (v) =>
+      `${label} — ${v.id}: ${v.nodes
+        .map((n) => n.target.join(' '))
+        .slice(0, 3)
+        .join(' | ')}`,
+  );
 }
 
 test.describe('build local — socle club', () => {
@@ -494,17 +522,23 @@ test.describe('build local — socle club', () => {
 
     // Annulation d'une invitation en attente.
     await page.getByRole('button', { name: "Annuler l'invitation de invite.attente@example.org" }).click();
-    await page.getByRole('dialog', { name: "Annuler l'invitation ?" }).getByRole('button', { name: "Annuler l'invitation" }).click();
+    await page
+      .getByRole('dialog', { name: "Annuler l'invitation ?" })
+      .getByRole('button', { name: "Annuler l'invitation" })
+      .click();
     await expect(page.locator('.diver-admin-row', { hasText: 'invite.attente@example.org' })).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 
-  test('changement de club : données locales de l\'ancien club purgées', async ({ page }) => {
+  test("changement de club : données locales de l'ancien club purgées", async ({ page }) => {
     await openHome(page);
     await openTopbar(page, 'Club');
     const row = page.locator('.club-switch-row', { hasText: 'Bulles du Lac' });
     await row.getByRole('button', { name: 'Passer sur ce club' }).click();
-    await page.getByRole('dialog', { name: /Passer sur Bulles du Lac/ }).getByRole('button', { name: 'Changer de club' }).click();
+    await page
+      .getByRole('dialog', { name: /Passer sur Bulles du Lac/ })
+      .getByRole('button', { name: 'Changer de club' })
+      .click();
     await expect(page.getByRole('button', { name: /Nouvelle plongée/ })).toBeVisible();
     await expect(page.locator('.topbar-club')).toHaveText('Bulles du Lac');
     expect(state.currentClub).toBe(OTHER_CLUB_ID);
@@ -514,7 +548,10 @@ test.describe('build local — socle club', () => {
 
   test("acceptation d'une invitation après connexion", async ({ page }) => {
     await page.goto(`/#invitation=${INVITATION_TOKEN}`);
-    await page.getByRole('dialog', { name: /Bonjour/ }).getByRole('button', { name: 'Commencer' }).click();
+    await page
+      .getByRole('dialog', { name: /Bonjour/ })
+      .getByRole('button', { name: 'Commencer' })
+      .click();
     const dlg = page.getByRole('dialog', { name: 'Rejoindre Bulles du Lac ?' });
     await expect(dlg).toContainText('dp.test@example.org');
     await expect(page).toHaveURL(/\/$/); // jeton retiré de la barre d'adresse
@@ -526,7 +563,10 @@ test.describe('build local — socle club', () => {
 
   test('invitation destinée à un autre e-mail : acceptation impossible', async ({ page }) => {
     await page.goto(`/#invitation=${MISMATCH_TOKEN}`);
-    await page.getByRole('dialog', { name: /Bonjour/ }).getByRole('button', { name: 'Commencer' }).click();
+    await page
+      .getByRole('dialog', { name: /Bonjour/ })
+      .getByRole('button', { name: 'Commencer' })
+      .click();
     const dlg = page.getByRole('dialog', { name: 'Rejoindre Bulles du Lac ?' });
     await expect(dlg.locator('.alert.err')).toContainText('autre.personne@example.org');
     await expect(dlg.getByRole('button', { name: /Rejoindre en tant que/ })).toHaveCount(0);
@@ -583,7 +623,10 @@ test.describe('build local — socle club', () => {
     await row.click();
     await expect(page.locator('.doc-status')).toContainText('PDF archivés par le club');
     const download = page.waitForEvent('download');
-    await page.locator('.doc-row', { hasText: 'Fiche de sécurité' }).getByRole('button', { name: 'Télécharger' }).click();
+    await page
+      .locator('.doc-row', { hasText: 'Fiche de sécurité' })
+      .getByRole('button', { name: 'Télécharger' })
+      .click();
     expect((await download).suggestedFilename()).toBe('2026-10-19-fiche-carriere.pdf');
     expect(state.downloads).toEqual(['srv-4/fiche']);
     // Documents complets : une fiche archivée ne se régénère pas.
@@ -648,10 +691,11 @@ test.describe('build local — socle club', () => {
         r.onsuccess = () => res(r.result);
         r.onerror = () => rej(r.error);
       });
-      const count = (name) => new Promise((res) => {
-        const q = db.transaction(name, 'readonly').objectStore(name).count();
-        q.onsuccess = () => res(q.result);
-      });
+      const count = (name) =>
+        new Promise((res) => {
+          const q = db.transaction(name, 'readonly').objectStore(name).count();
+          q.onsuccess = () => res(q.result);
+        });
       return {
         lastUser: localStorage.getItem('dp-last-user'),
         clubId: localStorage.getItem('dp-club-id'),
@@ -669,14 +713,16 @@ test.describe('build local — socle club', () => {
     expect(state.clubHeaders).toContainEqual({ call: 'POST /api/dives', club: CLUB_ID });
   });
 
-  test('lectures API aussi envoyées avec l\'en-tête X-DP-Club du club courant', async ({ page }) => {
+  test("lectures API aussi envoyées avec l'en-tête X-DP-Club du club courant", async ({ page }) => {
     await openHome(page);
     await expect.poll(() => state.clubHeaders.some((h) => h.call === 'GET /api/club')).toBe(true);
     expect(state.clubHeaders).toContainEqual({ call: 'GET /api/club', club: CLUB_ID });
     expect(state.clubHeaders.some((h) => h.call.startsWith('GET /api/auth/'))).toBe(false);
   });
 
-  test('club retiré (403 CLUB_NOT_MEMBER) : resynchronisation et suppression des données proposée', async ({ page }) => {
+  test('club retiré (403 CLUB_NOT_MEMBER) : resynchronisation et suppression des données proposée', async ({
+    page,
+  }) => {
     await openHome(page);
     // Retiré du club par son responsable : le serveur choisit un autre club courant.
     state.revokedClubs = [CLUB_ID];
@@ -695,7 +741,7 @@ test.describe('build local — socle club', () => {
     await expect(page.getByRole('dialog', { name: /Bonjour/ })).toBeVisible();
   });
 
-  test('session expirée : reconnexion ou suppression des données de l\'appareil', async ({ page }) => {
+  test("session expirée : reconnexion ou suppression des données de l'appareil", async ({ page }) => {
     await openHome(page);
     state.unauthorized = true;
     await openTopbar(page, 'Club');
@@ -705,10 +751,13 @@ test.describe('build local — socle club', () => {
     await expect(banner.getByRole('button', { name: 'Supprimer les données de cet appareil' })).toBeVisible();
   });
 
-  test('rôle « lecture » : actions d\'écriture masquées, pas d\'alertes', async ({ page }) => {
+  test("rôle « lecture » : actions d'écriture masquées, pas d'alertes", async ({ page }) => {
     state.role = 'lecture';
     await page.goto('/');
-    await page.getByRole('dialog', { name: /Bonjour/ }).getByRole('button', { name: 'Commencer' }).click();
+    await page
+      .getByRole('dialog', { name: /Bonjour/ })
+      .getByRole('button', { name: 'Commencer' })
+      .click();
     await expect(page.locator('.home-console')).toContainText('Rôle Lecture : consultation des plongées');
     await expect(page.locator('.dive-row').first()).toBeVisible();
     await expect(page.getByRole('button', { name: /Nouvelle plongée/ })).toHaveCount(0);

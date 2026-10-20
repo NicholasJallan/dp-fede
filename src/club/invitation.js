@@ -22,11 +22,17 @@ export function readPendingInvitation() {
   try {
     const t = sessionStorage.getItem(STORAGE_KEYS.INVITATION);
     return TOKEN_RE.test(t || '') ? t : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 export function clearPendingInvitation() {
-  try { sessionStorage.removeItem(STORAGE_KEYS.INVITATION); } catch { /* stockage indisponible */ }
+  try {
+    sessionStorage.removeItem(STORAGE_KEYS.INVITATION);
+  } catch {
+    /* stockage indisponible */
+  }
 }
 
 /**
@@ -36,8 +42,16 @@ export function clearPendingInvitation() {
 export function captureInvitationFromUrl() {
   const token = parseInvitationHash(window.location.hash);
   if (token) {
-    try { sessionStorage.setItem(STORAGE_KEYS.INVITATION, token); } catch { /* gardé en mémoire par l'appelant */ }
-    try { window.history.replaceState(null, '', window.location.pathname + window.location.search); } catch { /* historique indisponible */ }
+    try {
+      sessionStorage.setItem(STORAGE_KEYS.INVITATION, token);
+    } catch {
+      /* gardé en mémoire par l'appelant */
+    }
+    try {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    } catch {
+      /* historique indisponible */
+    }
     return token;
   }
   return readPendingInvitation();

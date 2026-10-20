@@ -312,7 +312,13 @@ function documentsRoute(method, key, type, state) {
     dive.documents_status = 'ok';
     return ok({ dive_id: dive.id, status: 'ok', documents: DOCUMENTS });
   }
-  if (!type) return ok({ dive_id: dive.id, status: dive.documents_status ?? null, updated_at: null, documents: dive.documents_status === 'ok' ? DOCUMENTS : [] });
+  if (!type)
+    return ok({
+      dive_id: dive.id,
+      status: dive.documents_status ?? null,
+      updated_at: null,
+      documents: dive.documents_status === 'ok' ? DOCUMENTS : [],
+    });
   state.downloads.push(`${dive.id}/${type}`);
   return {
     status: 200,
@@ -323,7 +329,22 @@ function documentsRoute(method, key, type, state) {
 }
 
 const PERMS = {
-  responsable: ['club.read', 'club.manage', 'members.read', 'divers.read', 'divers.write', 'divers.import', 'sites.read', 'sites.write', 'dives.read', 'dives.write', 'documents.read', 'documents.generate', 'alerts.read', 'stats.read'],
+  responsable: [
+    'club.read',
+    'club.manage',
+    'members.read',
+    'divers.read',
+    'divers.write',
+    'divers.import',
+    'sites.read',
+    'sites.write',
+    'dives.read',
+    'dives.write',
+    'documents.read',
+    'documents.generate',
+    'alerts.read',
+    'stats.read',
+  ],
   lecture: ['club.read', 'members.read', 'divers.read', 'sites.read', 'dives.read', 'documents.read', 'stats.read'],
 };
 
@@ -342,22 +363,65 @@ function clubPayload(state) {
 function seedClub() {
   return {
     [CLUB_ID]: {
-      id: CLUB_ID, nom: 'Club Test', numero_ffessm: '06123456', siret: '', structure_type: 'club',
-      president_prenom: 'Anne', president_nom: 'Martin', president_tel: '0600000000', urgence_defaut: '112',
-      created_at: '2026-01-10T09:00:00', updated_at: '2026-10-20T09:00:00',
+      id: CLUB_ID,
+      nom: 'Club Test',
+      numero_ffessm: '06123456',
+      siret: '',
+      structure_type: 'club',
+      president_prenom: 'Anne',
+      president_nom: 'Martin',
+      president_tel: '0600000000',
+      urgence_defaut: '112',
+      created_at: '2026-01-10T09:00:00',
+      updated_at: '2026-10-20T09:00:00',
     },
     [OTHER_CLUB_ID]: {
-      id: OTHER_CLUB_ID, nom: 'Bulles du Lac', numero_ffessm: '06999999', siret: '', structure_type: 'club',
-      president_prenom: '', president_nom: '', president_tel: '', urgence_defaut: '144',
-      created_at: '2026-03-01T09:00:00', updated_at: '2026-03-01T09:00:00',
+      id: OTHER_CLUB_ID,
+      nom: 'Bulles du Lac',
+      numero_ffessm: '06999999',
+      siret: '',
+      structure_type: 'club',
+      president_prenom: '',
+      president_nom: '',
+      president_tel: '',
+      urgence_defaut: '144',
+      created_at: '2026-03-01T09:00:00',
+      updated_at: '2026-03-01T09:00:00',
     },
   };
 }
 
 const MEMBERS = [
-  { user_id: 1, role: 'responsable', nom: 'DP', prenom: 'Test', email: 'dp.test@example.org', joined_at: '2026-01-10T09:00:00', last_seen_at: '2026-10-20T08:00:00', is_me: true },
-  { user_id: 2, role: 'dp', nom: 'Martin', prenom: 'Paul', email: 'paul.martin@example.org', joined_at: '2026-02-01T09:00:00', last_seen_at: '2026-10-18T19:00:00', is_me: false },
-  { user_id: 3, role: 'encadrant', nom: 'Roux', prenom: 'Marc', email: 'marc.roux@example.org', joined_at: '2026-04-12T09:00:00', last_seen_at: null, is_me: false },
+  {
+    user_id: 1,
+    role: 'responsable',
+    nom: 'DP',
+    prenom: 'Test',
+    email: 'dp.test@example.org',
+    joined_at: '2026-01-10T09:00:00',
+    last_seen_at: '2026-10-20T08:00:00',
+    is_me: true,
+  },
+  {
+    user_id: 2,
+    role: 'dp',
+    nom: 'Martin',
+    prenom: 'Paul',
+    email: 'paul.martin@example.org',
+    joined_at: '2026-02-01T09:00:00',
+    last_seen_at: '2026-10-18T19:00:00',
+    is_me: false,
+  },
+  {
+    user_id: 3,
+    role: 'encadrant',
+    nom: 'Roux',
+    prenom: 'Marc',
+    email: 'marc.roux@example.org',
+    joined_at: '2026-04-12T09:00:00',
+    last_seen_at: null,
+    is_me: false,
+  },
 ];
 
 const ALERTS = {
@@ -365,18 +429,58 @@ const ALERTS = {
   days: 30,
   counts: { caci_expire: 2, licence_expire_bientot: 1, autorisation_parentale_manquante: 1 },
   items: [
-    { diver_id: 'd-n2', nom: 'BERNARD', prenom: 'Hugo', type: 'caci_expire', severity: 'error', date: '2026-10-01', days: -19 },
-    { diver_id: 'd-n1', nom: 'PETIT', prenom: 'Zoé', type: 'autorisation_parentale_manquante', severity: 'error', date: null, days: null, season: '2026-2027', age: 14 },
-    { diver_id: 'd-n3', nom: 'LEROY', prenom: 'Inès', type: 'caci_expire', severity: 'error', date: '2026-09-02', days: -48 },
-    { diver_id: 'd-n2', nom: 'BERNARD', prenom: 'Hugo', type: 'licence_expire_bientot', severity: 'warn', date: '2026-11-01', days: 12 },
+    {
+      diver_id: 'd-n2',
+      nom: 'BERNARD',
+      prenom: 'Hugo',
+      type: 'caci_expire',
+      severity: 'error',
+      date: '2026-10-01',
+      days: -19,
+    },
+    {
+      diver_id: 'd-n1',
+      nom: 'PETIT',
+      prenom: 'Zoé',
+      type: 'autorisation_parentale_manquante',
+      severity: 'error',
+      date: null,
+      days: null,
+      season: '2026-2027',
+      age: 14,
+    },
+    {
+      diver_id: 'd-n3',
+      nom: 'LEROY',
+      prenom: 'Inès',
+      type: 'caci_expire',
+      severity: 'error',
+      date: '2026-09-02',
+      days: -48,
+    },
+    {
+      diver_id: 'd-n2',
+      nom: 'BERNARD',
+      prenom: 'Hugo',
+      type: 'licence_expire_bientot',
+      severity: 'warn',
+      date: '2026-11-01',
+      days: 12,
+    },
   ],
 };
 
 const STATS = {
-  from: '2026-09-15', to: '2027-09-14', plongees: 31, palanquees: 88,
+  from: '2026-09-15',
+  to: '2027-09-14',
+  plongees: 31,
+  palanquees: 88,
   palanquees_par_type: { exploration: 40, guidee: 21, formation: 22, bapteme: 5 },
   plongees_par_type: { exploration: 25, guidee: 15, formation: 14, bapteme: 4 },
-  plongeurs_distincts: 57, baptemes: 9, participations: 260, heures_cumulees: 198.5,
+  plongeurs_distincts: 57,
+  baptemes: 9,
+  participations: 260,
+  heures_cumulees: 198.5,
   par_plongeur: [
     { diver_id: 'd-gp', nom: 'DURAND', prenom: 'Léa', licence: 'A-29-d-gp', plongees: 12, dp: 3, heures: 9.5 },
     { diver_id: 'd-n2', nom: 'BERNARD', prenom: 'Hugo', licence: 'A-29-d-n2', plongees: 8, dp: 0, heures: 6.25 },
@@ -385,14 +489,39 @@ const STATS = {
 
 function importReport(dryRun) {
   return {
-    profile: 'auto', source: 'csv', format: 'csv', encoding: 'UTF-8 (BOM)', separator: ';',
-    columns: { recognized: { Nom: 'nom', Prénom: 'prenom', 'N° licence': 'licence', CACI: 'medical' }, ignored: ['Email'] },
-    dry_run: dryRun, total: 4, created: 1, updated: 1, unchanged: 1,
+    profile: 'auto',
+    source: 'csv',
+    format: 'csv',
+    encoding: 'UTF-8 (BOM)',
+    separator: ';',
+    columns: {
+      recognized: { Nom: 'nom', Prénom: 'prenom', 'N° licence': 'licence', CACI: 'medical' },
+      ignored: ['Email'],
+    },
+    dry_run: dryRun,
+    total: 4,
+    created: 1,
+    updated: 1,
+    unchanged: 1,
     errors: [{ line: 4, message: 'Date invalide pour caci : « 31/02/2026 »' }],
     warnings: [{ line: 3, message: 'Qualification trimix : PN-C ajouté (prérequis)' }],
     items: [
-      { line: 2, action: 'create', diver_id: 'd-new', nom: 'Dupont', prenom: 'Jean', changes: ['nom', 'prenom', 'licence', 'medical'] },
-      { line: 3, action: 'update', diver_id: 'd-n3', nom: 'LEROY', prenom: 'Inès', changes: ['medical', 'external_id', 'source'] },
+      {
+        line: 2,
+        action: 'create',
+        diver_id: 'd-new',
+        nom: 'Dupont',
+        prenom: 'Jean',
+        changes: ['nom', 'prenom', 'licence', 'medical'],
+      },
+      {
+        line: 3,
+        action: 'update',
+        diver_id: 'd-n3',
+        nom: 'LEROY',
+        prenom: 'Inès',
+        changes: ['medical', 'external_id', 'source'],
+      },
       { line: 5, action: 'unchanged', diver_id: 'd-n1', nom: 'PETIT', prenom: 'Zoé', changes: [] },
     ],
   };
@@ -402,8 +531,14 @@ function invitationRoute(method, path, body, state) {
   if (path === '/api/club/invitations' && method === 'GET') return ok(state.invitations);
   if (path === '/api/club/invitations' && method === 'POST') {
     const inv = {
-      id: `inv-${state.invitations.length + 1}`, email: body.email, role: body.role || 'dp', status: 'pending',
-      expires_at: '2026-10-27T10:00:00', created_at: '2026-10-20T10:00:00', accepted_at: null, invited_by: 1,
+      id: `inv-${state.invitations.length + 1}`,
+      email: body.email,
+      role: body.role || 'dp',
+      status: 'pending',
+      expires_at: '2026-10-27T10:00:00',
+      created_at: '2026-10-20T10:00:00',
+      accepted_at: null,
+      invited_by: 1,
     };
     state.invitations = [inv, ...state.invitations.filter((i) => i.email !== inv.email)];
     const token = 'c'.repeat(64);
@@ -414,12 +549,17 @@ function invitationRoute(method, path, body, state) {
     const matches = body.token === INVITATION_TOKEN;
     if (path.endsWith('/preview')) {
       return ok({
-        club_id: OTHER_CLUB_ID, club_nom: 'Bulles du Lac', role: 'dp',
-        email: matches ? USER.email : 'autre.personne@example.org', status: 'pending',
-        expires_at: '2026-10-27T10:00:00', email_matches: matches, already_member: false,
+        club_id: OTHER_CLUB_ID,
+        club_nom: 'Bulles du Lac',
+        role: 'dp',
+        email: matches ? USER.email : 'autre.personne@example.org',
+        status: 'pending',
+        expires_at: '2026-10-27T10:00:00',
+        email_matches: matches,
+        already_member: false,
       });
     }
-    if (!matches) return fail(403, "Cette invitation est destinée à une autre adresse e-mail");
+    if (!matches) return fail(403, 'Cette invitation est destinée à une autre adresse e-mail');
     state.currentClub = OTHER_CLUB_ID;
     state.accepted = true;
     return ok({ ...clubPayload(state), removed_empty_clubs: [] });
@@ -453,8 +593,13 @@ function clubRoute(method, path, search, body, state) {
     return ok({
       current_club_id: state.currentClub,
       clubs: Object.values(state.clubs).map((c) => ({
-        club_id: c.id, nom: c.nom, numero_ffessm: c.numero_ffessm, role: c.id === CLUB_ID ? state.role : 'dp',
-        joined_at: c.created_at, members_count: c.id === CLUB_ID ? state.members.length : 5, current: c.id === state.currentClub,
+        club_id: c.id,
+        nom: c.nom,
+        numero_ffessm: c.numero_ffessm,
+        role: c.id === CLUB_ID ? state.role : 'dp',
+        joined_at: c.created_at,
+        members_count: c.id === CLUB_ID ? state.members.length : 5,
+        current: c.id === state.currentClub,
       })),
     });
   }
@@ -480,22 +625,32 @@ function clubRoute(method, path, search, body, state) {
 }
 
 function accountRoute(method, state) {
-  if (method === 'GET') return ok({ format: 'dp-assistant-export/2', user: { email: USER.email }, clubs: [], divers: [] });
+  if (method === 'GET')
+    return ok({ format: 'dp-assistant-export/2', user: { email: USER.email }, clubs: [], divers: [] });
   if (state.deleteConflict) {
-    return fail(409, "Vous êtes le seul responsable du club « Club Test », qui compte d'autres membres : confiez le rôle de responsable à un autre membre ou supprimez le club avant de supprimer votre compte");
+    return fail(
+      409,
+      "Vous êtes le seul responsable du club « Club Test », qui compte d'autres membres : confiez le rôle de responsable à un autre membre ou supprimez le club avant de supprimer votre compte",
+    );
   }
   state.deleted = true;
   return ok({
     deleted: true,
     retained: { fiches: 3, until: '2027-07-14', clubs: 1 },
-    message: "3 fiches de sécurité archivées conservées jusqu'au 14/07/2027 (obligation légale de conservation d'un an, art. A322-72 du Code du sport), puis supprimées automatiquement. Les autres données ont été supprimées.",
+    message:
+      "3 fiches de sécurité archivées conservées jusqu'au 14/07/2027 (obligation légale de conservation d'un an, art. A322-72 du Code du sport), puis supprimées automatiquement. Les autres données ont été supprimées.",
   });
 }
 
 function currentUser(state) {
   if (state.deleted) return null;
   const club = state.clubs[state.currentClub];
-  return { ...USER, club_id: club.id, club_nom: club.nom, club_role: state.currentClub === CLUB_ID ? state.role : 'dp' };
+  return {
+    ...USER,
+    club_id: club.id,
+    club_nom: club.nom,
+    club_role: state.currentClub === CLUB_ID ? state.role : 'dp',
+  };
 }
 
 function apiResponse(method, path, search, body, state) {
@@ -507,7 +662,8 @@ function apiResponse(method, path, search, body, state) {
   }
   if (path === '/api/divers') return ok(DIVERS);
   if (path === '/api/sites') return ok(SITES);
-  if (path === '/api/sync/state') return ok({ club_id: state.currentClub, club_role: state.role, divers: {}, sites: {}, dives: {} });
+  if (path === '/api/sync/state')
+    return ok({ club_id: state.currentClub, club_role: state.role, divers: {}, sites: {}, dives: {} });
   if (path.startsWith('/api/dives')) return diveRoute(method, path, search, body, state);
   if (path.startsWith('/api/club')) return clubRoute(method, path, search, body, state);
   if (path === '/api/account' || path === '/api/account/export') return accountRoute(method, state);
@@ -527,7 +683,16 @@ function newState() {
     role: 'responsable',
     members: MEMBERS.map((mb) => ({ ...mb })),
     invitations: [
-      { id: 'inv-0', email: 'invite.attente@example.org', role: 'encadrant', status: 'pending', expires_at: '2026-10-25T10:00:00', created_at: '2026-10-18T10:00:00', accepted_at: null, invited_by: 1 },
+      {
+        id: 'inv-0',
+        email: 'invite.attente@example.org',
+        role: 'encadrant',
+        status: 'pending',
+        expires_at: '2026-10-25T10:00:00',
+        created_at: '2026-10-18T10:00:00',
+        accepted_at: null,
+        invited_by: 1,
+      },
     ],
     imports: [],
     downloads: [],
@@ -564,7 +729,8 @@ async function mockBackend(context, state) {
     const club = req.headers()['x-dp-club'];
     if (club) state.clubHeaders.push({ call: `${method} ${url.pathname}`, club });
     if (method === 'HEAD') return route.fulfill({ status: 200, body: '' });
-    const json = (status, payload) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(payload) });
+    const json = (status, payload) =>
+      route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(payload) });
     if (club && state.revokedClubs.includes(club)) {
       return json(403, { ok: false, error: "Vous n'êtes pas membre de ce club", code: 'CLUB_NOT_MEMBER' });
     }
@@ -582,5 +748,13 @@ async function mockBackend(context, state) {
 }
 
 module.exports = {
-  USER, DIVERS, SITES, CLUB_ID, OTHER_CLUB_ID, INVITATION_TOKEN, MISMATCH_TOKEN, newState, mockBackend,
+  USER,
+  DIVERS,
+  SITES,
+  CLUB_ID,
+  OTHER_CLUB_ID,
+  INVITATION_TOKEN,
+  MISMATCH_TOKEN,
+  newState,
+  mockBackend,
 };

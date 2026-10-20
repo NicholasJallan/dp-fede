@@ -7,10 +7,10 @@ le Pi par `deploy/deploy-backend.sh` (`composer install --no-dev
 --optimize-autoloader`, exécuté en `www-data` sous PHP 8.5). `composer.lock`
 est versionné : la prod installe exactement les versions testées en CI.
 
-| Paquet (direct) | Rôle | Surface |
-|-----------------|------|---------|
-| `firebase/php-jwt` ^7 | Vérification locale (RS256, JWKS Google) des ID tokens au login (`Auth::verifyJwtLocal`) | Parsing de JWT non fiables : à mettre à jour en priorité en cas d'avis de sécurité |
-| `mpdf/mpdf` ^8.3 | Génération des PDF fiche / check-list (`PdfRender`) | Rendu HTML → PDF. Le HTML est produit à 100 % par les templates serveur (l'ancien mode « HTML fourni par le client » a été supprimé : risque SSRF/LFI) |
+| Paquet (direct)       | Rôle                                                                                     | Surface                                                                                                                                                |
+| --------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `firebase/php-jwt` ^7 | Vérification locale (RS256, JWKS Google) des ID tokens au login (`Auth::verifyJwtLocal`) | Parsing de JWT non fiables : à mettre à jour en priorité en cas d'avis de sécurité                                                                     |
+| `mpdf/mpdf` ^8.3      | Génération des PDF fiche / check-list (`PdfRender`)                                      | Rendu HTML → PDF. Le HTML est produit à 100 % par les templates serveur (l'ancien mode « HTML fourni par le client » a été supprimé : risque SSRF/LFI) |
 
 Dépendances transitives (via mPDF) : `setasign/fpdi`, `myclabs/deep-copy`,
 `psr/log`, `psr/http-message`, `mpdf/psr-http-message-shim`,
@@ -45,7 +45,7 @@ l'endpoint `tokeninfo` de Google et la génération PDF échoue (500).
   ```
 
 - **Trimestriel** (avec [gcp-checklist.md](gcp-checklist.md)) : `composer
-  outdated --direct`, lecture des changelogs de php-jwt et mPDF, mise à jour
+outdated --direct`, lecture des changelogs de php-jwt et mPDF, mise à jour
   si nécessaire, puis `composer test` et déploiement.
 
 ## Règles d'ajout d'une dépendance

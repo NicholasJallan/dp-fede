@@ -2,16 +2,52 @@
   "_comment": "Résumé des paliers réalisés (render_state.realises[palId]) — même sortie attendue côté front (src/domain/paliers.js formatPaliers) et PDF serveur (PdfRender::formatPaliers). Lu par tests/paliers.test.js et backend/tests-php/PdfRenderTest.php.",
   "cases": [
     { "name": "aucune saisie", "real": null, "expected": null },
-    { "name": "champs vides", "real": { "dtr": "4", "paliers": { "9": "", "6": "", "3": "" }, "confort": { "on": false, "profondeur": "3", "duree": "" } }, "expected": null },
-    { "name": "ancienne saisie sans paliers", "real": { "duree": "45", "profMax": "20", "dtr": "3" }, "expected": null },
+    {
+      "name": "champs vides",
+      "real": {
+        "dtr": "4",
+        "paliers": { "9": "", "6": "", "3": "" },
+        "confort": { "on": false, "profondeur": "3", "duree": "" }
+      },
+      "expected": null
+    },
+    {
+      "name": "ancienne saisie sans paliers",
+      "real": { "duree": "45", "profMax": "20", "dtr": "3" },
+      "expected": null
+    },
     { "name": "un palier", "real": { "paliers": { "3": "5" } }, "expected": "3 m 5 min" },
-    { "name": "ordre de remontée", "real": { "paliers": { "3": "5", "9": "1", "6": "2" } }, "expected": "9 m 1 min · 6 m 2 min · 3 m 5 min" },
+    {
+      "name": "ordre de remontée",
+      "real": { "paliers": { "3": "5", "9": "1", "6": "2" } },
+      "expected": "9 m 1 min · 6 m 2 min · 3 m 5 min"
+    },
     { "name": "zéro ignoré", "real": { "paliers": { "9": "0", "6": "2" } }, "expected": "6 m 2 min" },
-    { "name": "nombres (JSON numérique)", "real": { "paliers": { "6": 2, "3": 4 } }, "expected": "6 m 2 min · 3 m 4 min" },
-    { "name": "confort seul", "real": { "paliers": {}, "confort": { "on": true, "profondeur": "5", "duree": "3" } }, "expected": "confort 5 m 3 min" },
-    { "name": "confort coché sans durée", "real": { "confort": { "on": true, "profondeur": "5", "duree": "" } }, "expected": null },
-    { "name": "confort décoché", "real": { "paliers": { "3": "3" }, "confort": { "on": false, "profondeur": "5", "duree": "3" } }, "expected": "3 m 3 min" },
-    { "name": "paliers et confort", "real": { "paliers": { "6": "1", "3": "3" }, "confort": { "on": true, "profondeur": "5", "duree": "2" } }, "expected": "6 m 1 min · 3 m 3 min · confort 5 m 2 min" },
+    {
+      "name": "nombres (JSON numérique)",
+      "real": { "paliers": { "6": 2, "3": 4 } },
+      "expected": "6 m 2 min · 3 m 4 min"
+    },
+    {
+      "name": "confort seul",
+      "real": { "paliers": {}, "confort": { "on": true, "profondeur": "5", "duree": "3" } },
+      "expected": "confort 5 m 3 min"
+    },
+    {
+      "name": "confort coché sans durée",
+      "real": { "confort": { "on": true, "profondeur": "5", "duree": "" } },
+      "expected": null
+    },
+    {
+      "name": "confort décoché",
+      "real": { "paliers": { "3": "3" }, "confort": { "on": false, "profondeur": "5", "duree": "3" } },
+      "expected": "3 m 3 min"
+    },
+    {
+      "name": "paliers et confort",
+      "real": { "paliers": { "6": "1", "3": "3" }, "confort": { "on": true, "profondeur": "5", "duree": "2" } },
+      "expected": "6 m 1 min · 3 m 3 min · confort 5 m 2 min"
+    },
     { "name": "valeur non numérique ignorée", "real": { "paliers": { "3": "abc", "6": "<b>" } }, "expected": null }
   ]
 }

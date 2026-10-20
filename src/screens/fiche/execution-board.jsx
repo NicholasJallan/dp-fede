@@ -23,10 +23,24 @@ function Gauge({ label, value, unit, real, missing }) {
   return (
     <div className="gauge">
       <span className="gauge-label">{label}</span>
-      {missing
-        ? <span className="gauge-value is-missing"><StatusIcon tone="warn" />à saisir</span>
-        : <span className="gauge-value">{value}<small>{unit}</small></span>}
-      {real != null && <span className="gauge-real">réalisé <b>{real} {unit}</b></span>}
+      {missing ? (
+        <span className="gauge-value is-missing">
+          <StatusIcon tone="warn" />à saisir
+        </span>
+      ) : (
+        <span className="gauge-value">
+          {value}
+          <small>{unit}</small>
+        </span>
+      )}
+      {real != null && (
+        <span className="gauge-real">
+          réalisé{' '}
+          <b>
+            {real} {unit}
+          </b>
+        </span>
+      )}
     </div>
   );
 }
@@ -48,17 +62,24 @@ function Chrono({ debut, fin, duree, real }) {
   const ratio = planned > 0 ? Math.min(1, seconds / planned) : 0;
   const over = inWater && planned > 0 && seconds > planned;
   return (
-    <div className="chrono" role="timer" aria-label={fin ? 'Durée de plongée' : 'Temps écoulé depuis l\'entrée'}>
+    <div className="chrono" role="timer" aria-label={fin ? 'Durée de plongée' : "Temps écoulé depuis l'entrée"}>
       <span className="chrono-label">{fin ? 'Durée de plongée' : 'Temps écoulé'}</span>
       <span className="chrono-value">{formatChrono(seconds)}</span>
       <span className="chrono-times">
-        <span>Entrée <b>{debut}</b></span>
-        <span>Sortie <b>{fin || '—'}</b></span>
+        <span>
+          Entrée <b>{debut}</b>
+        </span>
+        <span>
+          Sortie <b>{fin || '—'}</b>
+        </span>
       </span>
-      <div className="chrono-bar" aria-hidden="true"><span style={{ width: `${ratio * 100}%` }} /></div>
+      <div className="chrono-bar" aria-hidden="true">
+        <span style={{ width: `${ratio * 100}%` }} />
+      </div>
       {over && (
         <span className="chrono-alert" role="status">
-          <StatusIcon tone="warn" />Durée prévue dépassée de {Math.floor((seconds - planned) / 60)} min
+          <StatusIcon tone="warn" />
+          Durée prévue dépassée de {Math.floor((seconds - planned) / 60)} min
         </span>
       )}
     </div>
@@ -71,13 +92,26 @@ function PressureRow({ pal, m, diversById, value, onChange }) {
   const id = `pr-${pressureKey(pal, m)}`;
   return (
     <div className={`pressure-row ${airOut ? 'is-air-out' : ''}`}>
-      <label className="who" htmlFor={id}>{name}{sub && <small>{sub}</small>}</label>
+      <label className="who" htmlFor={id}>
+        {name}
+        {sub && <small>{sub}</small>}
+      </label>
       <div className="unit-input">
-        <input id={id} type="text" inputMode="numeric" pattern="[0-9]*" maxLength={3}
-          value={airOut ? '' : (value || '')} disabled={airOut} placeholder="—"
+        <input
+          id={id}
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={3}
+          value={airOut ? '' : value || ''}
+          disabled={airOut}
+          placeholder="—"
           aria-label={`Pression de sortie de ${name} (bar)`}
-          onChange={e => onChange(e.target.value.replace(/[^0-9]/g, '').slice(0, 3))} />
-        <span className="unit" aria-hidden="true">bar</span>
+          onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, '').slice(0, 3))}
+        />
+        <span className="unit" aria-hidden="true">
+          bar
+        </span>
       </div>
       <button type="button" className="btn" aria-pressed={airOut} onClick={() => onChange(airOut ? '' : AIR_OUT)}>
         Panne d'air
@@ -88,7 +122,7 @@ function PressureRow({ pal, m, diversById, value, onChange }) {
 
 function stateOf(debut, fin, over) {
   if (fin) return { cls: 'is-out', tone: 'ok', label: 'Sortie' };
-  if (debut) return { cls: `is-water${over ? ' is-overtime' : ''}`, tone: 'info', label: 'À l\'eau' };
+  if (debut) return { cls: `is-water${over ? ' is-overtime' : ''}`, tone: 'info', label: "À l'eau" };
   return { cls: 'is-surface', tone: 'muted', label: 'En surface' };
 }
 
@@ -103,12 +137,20 @@ export function Cadran({ pal, index, diversById, debut, fin, real, pressions, on
       <header className="cadran-head">
         <span className="cadran-id">P{index + 1}</span>
         <h2 id={titleId}>{pal.nom || `Palanquée ${index + 1}`}</h2>
-        <span className="cadran-state"><StatusIcon tone={st.tone} />{st.label}</span>
+        <span className="cadran-state">
+          <StatusIcon tone={st.tone} />
+          {st.label}
+        </span>
       </header>
       <ul className="cadran-members" aria-label="Membres et aptitudes">
         {membres.map((m, i) => {
           const { name } = memberLabel(m, diversById);
-          return <li key={m.diverId || m.id || i}><span className="apt">{m.aptitude || '—'}</span><span className="name">{name}</span></li>;
+          return (
+            <li key={m.diverId || m.id || i}>
+              <span className="apt">{m.aptitude || '—'}</span>
+              <span className="name">{name}</span>
+            </li>
+          );
         })}
       </ul>
       <div className="gauges">
@@ -119,20 +161,41 @@ export function Cadran({ pal, index, diversById, debut, fin, real, pressions, on
       <Chrono debut={debut} fin={fin} duree={pal.duree} real={real} />
       {!fin && (
         <div className="cadran-actions">
-          {!debut
-            ? <button type="button" className="btn go block" onClick={onStart}><Icon.Play />ENTRÉE</button>
-            : <button type="button" className="btn exit block" onClick={onEnd}><Icon.Stop />SORTIE</button>}
+          {!debut ? (
+            <button type="button" className="btn go block" onClick={onStart}>
+              <Icon.Play />
+              ENTRÉE
+            </button>
+          ) : (
+            <button type="button" className="btn exit block" onClick={onEnd}>
+              <Icon.Stop />
+              SORTIE
+            </button>
+          )}
         </div>
       )}
       {fin && (
         <div className="cadran-done">
-          <div className="cadran-done-head"><StatusIcon tone="ok" />Pressions de sortie</div>
-          {formatPaliers(real) && <p className="cadran-paliers">Paliers : <b>{formatPaliers(real)}</b></p>}
+          <div className="cadran-done-head">
+            <StatusIcon tone="ok" />
+            Pressions de sortie
+          </div>
+          {formatPaliers(real) && (
+            <p className="cadran-paliers">
+              Paliers : <b>{formatPaliers(real)}</b>
+            </p>
+          )}
           {real?.commentaire && <p className="cadran-comment">{real.commentaire}</p>}
           <div className="pressure-list">
             {membres.map((m, i) => (
-              <PressureRow key={m.diverId || m.id || i} pal={pal} m={m} diversById={diversById}
-                value={pressions[pressureKey(pal, m)]} onChange={v => onPressure(pressureKey(pal, m), v)} />
+              <PressureRow
+                key={m.diverId || m.id || i}
+                pal={pal}
+                m={m}
+                diversById={diversById}
+                value={pressions[pressureKey(pal, m)]}
+                onChange={(v) => onPressure(pressureKey(pal, m), v)}
+              />
             ))}
           </div>
         </div>
@@ -144,9 +207,20 @@ export function Cadran({ pal, index, diversById, debut, fin, real, pressions, on
 export function ExecSummary({ exit }) {
   return (
     <div className="exec-summary" role="status">
-      <span className="item"><span className="num">{exit.water}</span><span className="k">à l'eau</span></span>
-      <span className="item"><span className="num">{exit.out}/{exit.total}</span><span className="k">sorties</span></span>
-      <span className="item"><span className="num">{exit.total - exit.out - exit.water}</span><span className="k">en surface</span></span>
+      <span className="item">
+        <span className="num">{exit.water}</span>
+        <span className="k">à l'eau</span>
+      </span>
+      <span className="item">
+        <span className="num">
+          {exit.out}/{exit.total}
+        </span>
+        <span className="k">sorties</span>
+      </span>
+      <span className="item">
+        <span className="num">{exit.total - exit.out - exit.water}</span>
+        <span className="k">en surface</span>
+      </span>
     </div>
   );
 }

@@ -13,13 +13,19 @@ export const DRIVE_PREF_EVENT = 'dp:drivePrefChanged';
 
 /** Copie Drive activée sur cet appareil ? (vrai si le stockage est indisponible) */
 export function isDriveExportEnabled() {
-  try { return localStorage.getItem(STORAGE_KEYS.DRIVE_EXPORT) !== 'off'; }
-  catch { return true; }
+  try {
+    return localStorage.getItem(STORAGE_KEYS.DRIVE_EXPORT) !== 'off';
+  } catch {
+    return true;
+  }
 }
 
 export function setDriveExportEnabled(on) {
-  try { localStorage.setItem(STORAGE_KEYS.DRIVE_EXPORT, on ? 'on' : 'off'); }
-  catch { /* stockage indisponible : préférence non mémorisée */ }
+  try {
+    localStorage.setItem(STORAGE_KEYS.DRIVE_EXPORT, on ? 'on' : 'off');
+  } catch {
+    /* stockage indisponible : préférence non mémorisée */
+  }
   window.dispatchEvent(new CustomEvent(DRIVE_PREF_EVENT, { detail: { on: !!on } }));
 }
 

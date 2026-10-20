@@ -28,9 +28,7 @@ export function initialPaliers(previous) {
 /** Paliers réellement effectués, dans l'ordre de la remontée : [[profondeur, minutes]]. */
 export function paliersDone(real) {
   if (!real) return [];
-  const out = PALIER_DEPTHS
-    .filter(d => positive(real.paliers?.[d]) > 0)
-    .map(d => [d, positive(real.paliers[d])]);
+  const out = PALIER_DEPTHS.filter((d) => positive(real.paliers?.[d]) > 0).map((d) => [d, positive(real.paliers[d])]);
   return out;
 }
 

@@ -36,7 +36,7 @@ describe('outbox — items interrompus en plein envoi', () => {
   test('recoverInflight repasse les inflight en pending (la saisie repart)', async () => {
     const it = await win.outbox.enqueue('diver.create', { id: 'd-1', nom: 'Valbuena' });
     await win.outbox.markInflight(it.id);
-    assert.equal((await win.outbox.ready()).length, 0, 'invisible tant qu\'inflight');
+    assert.equal((await win.outbox.ready()).length, 0, "invisible tant qu'inflight");
 
     assert.equal(await win.outbox.recoverInflight(), 1);
     const ready = await win.outbox.ready();
@@ -68,8 +68,12 @@ describe('sync — dive.update et saisie concurrente', () => {
     const first = await win.outbox.enqueue('dive.update', { client_uuid: u, patch: { answers: { a: 1 } } });
     await win.outbox.markInflight(first.id);
     // Saisie poursuivie pendant l'envoi : nouvel item (l'inflight n'absorbe rien).
-    await win.outbox.coalesce('dive.update', { client_uuid: u, patch: { answers: { a: 2 } } },
-      (i) => i.payload.client_uuid === u, (p, n) => ({ client_uuid: u, patch: { ...p.patch, ...n.patch } }));
+    await win.outbox.coalesce(
+      'dive.update',
+      { client_uuid: u, patch: { answers: { a: 2 } } },
+      (i) => i.payload.client_uuid === u,
+      (p, n) => ({ client_uuid: u, patch: { ...p.patch, ...n.patch } }),
+    );
     assert.equal(await win.outbox.size(), 2);
 
     mockFetch([async () => ({ data: { id: 42 } })]);
@@ -77,7 +81,7 @@ describe('sync — dive.update et saisie concurrente', () => {
     assert.equal((await win.offlineStore.get('dives', u))._pending, true);
   });
 
-  test('la fiche repasse à _pending=false quand plus rien n\'attend', async () => {
+  test("la fiche repasse à _pending=false quand plus rien n'attend", async () => {
     const u = 'uuid-1';
     await win.offlineStore.put('dives', u, { client_uuid: u, server_id: 42, _pending: true });
     const only = await win.outbox.enqueue('dive.update', { client_uuid: u, patch: { answers: { a: 1 } } });
@@ -96,12 +100,14 @@ describe('sync — curseurs de pull', () => {
 
   test('rien de neuf depuis le dernier passage : aucun pull', async () => {
     await win.offlineStore.put('meta', 'sync', { divers: '2026-09-04T19:00:00' });
-    const calls = mockFetch([async () => ({ data: { divers: { updated_at: '2026-09-04T19:00:00' }, sites: {}, dives: {} } })]);
+    const calls = mockFetch([
+      async () => ({ data: { divers: { updated_at: '2026-09-04T19:00:00' }, sites: {}, dives: {} } }),
+    ]);
     await win.sync._pullIncremental();
     assert.equal(calls.length, 1);
   });
 
-  test('une création d\'un autre membre est tirée et fait avancer le curseur', async () => {
+  test("une création d'un autre membre est tirée et fait avancer le curseur", async () => {
     await win.offlineStore.put('meta', 'sync', { divers: '2026-09-04T19:00:00' });
     const calls = mockFetch([
       async () => ({ data: { divers: { updated_at: '2026-09-04T19:11:22' }, sites: {}, dives: {} } }),
@@ -113,10 +119,15 @@ describe('sync — curseurs de pull', () => {
     assert.equal((await win.offlineStore.get('meta', 'sync')).divers, '2026-09-04T19:11:22');
   });
 
-  test('le pull d\'une fiche modifiée ailleurs préserve son contenu local', async () => {
+  test("le pull d'une fiche modifiée ailleurs préserve son contenu local", async () => {
     const u = 'uuid-1';
     await win.offlineStore.put('dives', u, {
-      client_uuid: u, server_id: 42, site_nom: 'Hendaye', answers: { dp_nom: 'X' }, palanquees: [{ membres: [] }], synced: true,
+      client_uuid: u,
+      server_id: 42,
+      site_nom: 'Hendaye',
+      answers: { dp_nom: 'X' },
+      palanquees: [{ membres: [] }],
+      synced: true,
     });
     mockFetch([
       async () => ({ data: { divers: {}, sites: {}, dives: { updated_at: '2026-09-04T19:00:00' } } }),
@@ -125,27 +136,36 @@ describe('sync — curseurs de pull', () => {
     await win.sync._pullIncremental();
     const got = await win.offlineStore.get('dives', u);
     assert.equal(got.site_nom, 'Hendaye, bouée 3');
-    assert.deepEqual(got.answers, { dp_nom: 'X' }, 'la fiche n\'est pas vidée par le résumé');
+    assert.deepEqual(got.answers, { dp_nom: 'X' }, "la fiche n'est pas vidée par le résumé");
   });
 });
 
 describe('offline-api — listes annuaire réconciliées', () => {
   let serveur, reseauKo;
-  const noms = (list) => list.map(d => d.nom);
+  const noms = (list) => list.map((d) => d.nom);
 
   beforeEach(() => {
     serveur = [{ id: 'srv-1', nom: 'Martin', prenom: 'Paul' }];
     reseauKo = false;
-    const net = async () => { if (reseauKo) throw new Error('offline'); return serveur.map(d => ({ ...d })); };
+    const net = async () => {
+      if (reseauKo) throw new Error('offline');
+      return serveur.map((d) => ({ ...d }));
+    };
     win.api = {
       divers: { list: net, create: async () => {}, update: async () => {}, delete: async () => {} },
       sites: { list: async () => [], create: async () => {}, update: async () => {}, delete: async () => {} },
-      dives: { list: async () => [], get: async () => {}, create: async () => {}, update: async () => {}, delete: async () => {} },
+      dives: {
+        list: async () => [],
+        get: async () => {},
+        create: async () => {},
+        update: async () => {},
+        delete: async () => {},
+      },
     };
     loadOfflineApi(win);
   });
 
-  test('un plongeur créé reste visible tant qu\'il n\'est pas poussé', async () => {
+  test("un plongeur créé reste visible tant qu'il n'est pas poussé", async () => {
     await win.api.divers.create({ nom: 'Valbuena', prenom: 'Alain' });
     assert.deepEqual(noms(await win.api.divers.list()), ['Martin', 'Valbuena']);
   });
@@ -159,7 +179,10 @@ describe('offline-api — listes annuaire réconciliées', () => {
   });
 
   test('tri du serveur (nom, prénom) conservé', async () => {
-    serveur = [{ id: 's1', nom: 'Aubert' }, { id: 's2', nom: 'Zola' }];
+    serveur = [
+      { id: 's1', nom: 'Aubert' },
+      { id: 's2', nom: 'Zola' },
+    ];
     await win.api.divers.create({ nom: 'Martin', prenom: 'Paul' });
     assert.deepEqual(noms(await win.api.divers.list()), ['Aubert', 'Martin', 'Zola']);
   });
@@ -192,8 +215,8 @@ describe('offline-api — listes annuaire réconciliées', () => {
   });
 });
 
-describe('club-scope — premier rattachement d\'un appareil ancien', () => {
-  test('lignes synchronisées retirées (espace d\'origine inconnu), lignes en attente gardées', async () => {
+describe("club-scope — premier rattachement d'un appareil ancien", () => {
+  test("lignes synchronisées retirées (espace d'origine inconnu), lignes en attente gardées", async () => {
     await win.offlineStore.put('divers', 'synced', { id: 'synced', nom: 'A' });
     await win.offlineStore.put('divers', 'pending', { id: 'pending', nom: 'B', _pending: true });
     await win.offlineStore.put('dives', 'x', { client_uuid: 'x', synced: true });

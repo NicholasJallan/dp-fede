@@ -2,7 +2,16 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../auth/auth-context.jsx';
-import { Alert, Field, Opt, Question, Pill, CdsLink, diverFullName, formatDateTime } from '../components/components.jsx';
+import {
+  Alert,
+  Field,
+  Opt,
+  Question,
+  Pill,
+  CdsLink,
+  diverFullName,
+  formatDateTime,
+} from '../components/components.jsx';
 import { Icon, StatusIcon } from '../components/icons.jsx';
 import { DiverQuickAdd } from '../components/diver-form.jsx';
 import { SiteFormModal } from './screen-admin-sites.jsx';
@@ -13,14 +22,18 @@ import { api } from '../api/api.js';
 function DPPicker({ id, value, divers, onChange, setDivers }) {
   const [showAdd, setShowAdd] = useState(false);
 
-  const candidates = useMemo(() => divers.filter(d => {
-    const ne = d.niveau_encadrant;
-    return ne && ['E1','E2','E3','E4','N5'].includes(ne);
-  }), [divers]);
+  const candidates = useMemo(
+    () =>
+      divers.filter((d) => {
+        const ne = d.niveau_encadrant;
+        return ne && ['E1', 'E2', 'E3', 'E4', 'N5'].includes(ne);
+      }),
+    [divers],
+  );
 
   const onCreated = (newDiver) => {
-    setDivers(prev => [...prev, newDiver].sort((a, b) => a.nom.localeCompare(b.nom)));
-    if (newDiver.niveau_encadrant && ['E1','E2','E3','E4','N5'].includes(newDiver.niveau_encadrant)) {
+    setDivers((prev) => [...prev, newDiver].sort((a, b) => a.nom.localeCompare(b.nom)));
+    if (newDiver.niveau_encadrant && ['E1', 'E2', 'E3', 'E4', 'N5'].includes(newDiver.niveau_encadrant)) {
       onChange(newDiver.id);
     }
     setShowAdd(false);
@@ -29,17 +42,24 @@ function DPPicker({ id, value, divers, onChange, setDivers }) {
   return (
     <div>
       <div className="picker-row">
-        <select id={id} className="input" value={value || ''} onChange={e => onChange(e.target.value)}>
+        <select id={id} className="input" value={value || ''} onChange={(e) => onChange(e.target.value)}>
           <option value="">Choisir le directeur de plongée</option>
-          {candidates.map(d => (
+          {candidates.map((d) => (
             <option key={d.id} value={d.id}>
-              {diverFullName(d)} ({d.niveau_encadrant})
-              {d.diplome_pro ? ` — ${d.diplome_pro}` : ''}
+              {diverFullName(d)} ({d.niveau_encadrant}){d.diplome_pro ? ` — ${d.diplome_pro}` : ''}
             </option>
           ))}
         </select>
         {setDivers && (
-          <button type="button" className="btn icon" onClick={() => setShowAdd(true)} aria-label="Créer un plongeur" title="Créer un plongeur"><Icon.Plus /></button>
+          <button
+            type="button"
+            className="btn icon"
+            onClick={() => setShowAdd(true)}
+            aria-label="Créer un plongeur"
+            title="Créer un plongeur"
+          >
+            <Icon.Plus />
+          </button>
         )}
       </div>
       {candidates.length === 0 && (
@@ -60,7 +80,7 @@ function SitePicker({ id, value, sites, setSites, onChange, answers }) {
   // Filtrage selon qualité DP : E1 → piscine ≤6m, E2 → piscine/fosse ≤20m
   const dpQual = answers?.dp_qual || null;
   const filteredSites = useMemo(() => {
-    return sites.filter(s => {
+    return sites.filter((s) => {
       const milieu = getMilieuType(s.milieu);
       const profMax = s.profondeur_max || 999;
       if (dpQual === 'E1') return milieu === 'piscine' && profMax <= 6;
@@ -69,21 +89,31 @@ function SitePicker({ id, value, sites, setSites, onChange, answers }) {
     });
   }, [sites, dpQual]);
 
-  const selected = sites.find(s => s.id === value);
+  const selected = sites.find((s) => s.id === value);
 
   return (
     <div>
       <div className="picker-row">
-        <select id={id} className="input" value={value || ''} onChange={e => onChange(e.target.value)}>
+        <select id={id} className="input" value={value || ''} onChange={(e) => onChange(e.target.value)}>
           <option value="">Choisir un site</option>
-          {filteredSites.map(s => (
+          {filteredSites.map((s) => (
             <option key={s.id} value={s.id}>
-              {s.nom}{s.ville ? `, ${s.ville}` : ''}{s.pays_code ? ` (${s.pays_code})` : ''}, {s.milieu}
+              {s.nom}
+              {s.ville ? `, ${s.ville}` : ''}
+              {s.pays_code ? ` (${s.pays_code})` : ''}, {s.milieu}
               {s.profondeur_max ? `, ${s.profondeur_max} m` : ''}
             </option>
           ))}
         </select>
-        <button type="button" className="btn icon" onClick={() => setShowAdd(true)} aria-label="Créer un site" title="Créer un site"><Icon.Plus /></button>
+        <button
+          type="button"
+          className="btn icon"
+          onClick={() => setShowAdd(true)}
+          aria-label="Créer un site"
+          title="Créer un site"
+        >
+          <Icon.Plus />
+        </button>
       </div>
       {dpQual === 'E1' && filteredSites.length < sites.length && (
         <p className="field-hint warn">
@@ -92,20 +122,32 @@ function SitePicker({ id, value, sites, setSites, onChange, answers }) {
       )}
       {dpQual === 'E2' && filteredSites.length < sites.length && (
         <p className="field-hint warn">
-          Un E2 ne dirige qu'en piscine ou fosse (20 m au plus) : {sites.length - filteredSites.length} site(s) masqué(s).
+          Un E2 ne dirige qu'en piscine ou fosse (20 m au plus) : {sites.length - filteredSites.length} site(s)
+          masqué(s).
         </p>
       )}
 
       {selected && (
         <div className="info-box">
-          <div><b>{selected.nom}</b>, {selected.milieu}{selected.profondeur_max ? <>, <span className="num">{selected.profondeur_max} m</span> au plus</> : ''}</div>
+          <div>
+            <b>{selected.nom}</b>, {selected.milieu}
+            {selected.profondeur_max ? (
+              <>
+                , <span className="num">{selected.profondeur_max} m</span> au plus
+              </>
+            ) : (
+              ''
+            )}
+          </div>
           <div className="row tight">
-            {selected.depart_bord   && <Pill>Départ du bord</Pill>}
+            {selected.depart_bord && <Pill>Départ du bord</Pill>}
             {selected.depart_bateau && <Pill>Départ en bateau</Pill>}
           </div>
           {selected.notes && <div className="muted">{selected.notes}</div>}
           {selected.coordonnees?.lat && (
-            <div className="coords">{Number(selected.coordonnees.lat).toFixed(5)}, {Number(selected.coordonnees.lng).toFixed(5)}</div>
+            <div className="coords">
+              {Number(selected.coordonnees.lat).toFixed(5)}, {Number(selected.coordonnees.lng).toFixed(5)}
+            </div>
           )}
         </div>
       )}
@@ -115,7 +157,7 @@ function SitePicker({ id, value, sites, setSites, onChange, answers }) {
           title="Nouveau site"
           onSave={async (payload) => {
             const s = await api.sites.create(payload);
-            setSites(prev => [...prev, s].sort((a,b) => a.nom.localeCompare(b.nom)));
+            setSites((prev) => [...prev, s].sort((a, b) => a.nom.localeCompare(b.nom)));
             onChange(s.id);
           }}
           onClose={() => setShowAdd(false)}
@@ -130,8 +172,9 @@ function SitePicker({ id, value, sites, setSites, onChange, answers }) {
 // l'heure planifiée. En cas d'échec : message dans l'interface, le champ
 // n'est jamais modifié.
 async function fetchMeteoText(lat, lng, date) {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}`
-    + '&hourly=temperature_2m,windspeed_10m,windgusts_10m,weathercode,visibility&forecast_days=16&timezone=auto';
+  const url =
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
+    '&hourly=temperature_2m,windspeed_10m,windgusts_10m,weathercode,visibility&forecast_days=16&timezone=auto';
   const res = await fetch(url);
   if (!res.ok) throw new Error(`le service météo a répondu ${res.status}`);
   const data = await res.json().catch(() => null);
@@ -141,18 +184,24 @@ async function fetchMeteoText(lat, lng, date) {
 
   let target = date ? new Date(date) : new Date();
   if (isNaN(target.getTime())) target = new Date();
-  let best = 0, bestDiff = Infinity;
+  let best = 0,
+    bestDiff = Infinity;
   times.forEach((t, k) => {
     const diff = Math.abs(new Date(t).getTime() - target.getTime());
-    if (diff < bestDiff) { bestDiff = diff; best = k; }
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = k;
+    }
   });
   const h = data.hourly;
   const fmt = (v, digits = 0) => (v != null ? v.toFixed(digits) : '?');
   const offsetH = Math.round(bestDiff / 3_600_000);
   const offset = offsetH > 24 ? `, prévision décalée de ${offsetH} h` : '';
-  return `Météo (open-meteo, ${formatDateTime(h.time[best])}${offset}) : ${meteoCode(h.weathercode?.[best])}, `
-    + `vent ${fmt(h.windspeed_10m?.[best])} km/h (rafales ${fmt(h.windgusts_10m?.[best])} km/h), `
-    + `${fmt(h.temperature_2m?.[best], 1)} °C, visibilité ${h.visibility?.[best] != null ? (h.visibility[best] / 1000).toFixed(1) : '?'} km`;
+  return (
+    `Météo (open-meteo, ${formatDateTime(h.time[best])}${offset}) : ${meteoCode(h.weathercode?.[best])}, ` +
+    `vent ${fmt(h.windspeed_10m?.[best])} km/h (rafales ${fmt(h.windgusts_10m?.[best])} km/h), ` +
+    `${fmt(h.temperature_2m?.[best], 1)} °C, visibilité ${h.visibility?.[best] != null ? (h.visibility[best] / 1000).toFixed(1) : '?'} km`
+  );
 }
 
 function MeteoField({ id, value, onChange, site, date }) {
@@ -163,13 +212,14 @@ function MeteoField({ id, value, onChange, site, date }) {
   const hasCoords = isFinite(lat) && isFinite(lng);
 
   const fetchMeteo = async () => {
-    setFetching(true); setErr('');
+    setFetching(true);
+    setErr('');
     try {
       const text = await fetchMeteoText(lat, lng, date);
       onChange((value ? `${value}\n` : '') + text);
     } catch (e) {
       console.warn('[DP] météo indisponible :', e?.message || e);
-      setErr(navigator.onLine === false ? 'pas de réseau' : (e?.message || 'erreur inconnue'));
+      setErr(navigator.onLine === false ? 'pas de réseau' : e?.message || 'erreur inconnue');
     } finally {
       setFetching(false);
     }
@@ -178,16 +228,28 @@ function MeteoField({ id, value, onChange, site, date }) {
   return (
     <div>
       <div className="fetch-row">
-        {hasCoords
-          ? <button type="button" className="btn" onClick={fetchMeteo} disabled={fetching}>
-              {fetching ? 'Récupération de la météo…' : 'Préremplir avec la météo'}
-            </button>
-          : <span className="muted small">Ajoutez les coordonnées GPS du site pour préremplir la météo.</span>}
-        {err && <span className="field-error" role="alert"><StatusIcon tone="warn" />Météo indisponible : {err}. Saisissez les conditions à la main.</span>}
+        {hasCoords ? (
+          <button type="button" className="btn" onClick={fetchMeteo} disabled={fetching}>
+            {fetching ? 'Récupération de la météo…' : 'Préremplir avec la météo'}
+          </button>
+        ) : (
+          <span className="muted small">Ajoutez les coordonnées GPS du site pour préremplir la météo.</span>
+        )}
+        {err && (
+          <span className="field-error" role="alert">
+            <StatusIcon tone="warn" />
+            Météo indisponible : {err}. Saisissez les conditions à la main.
+          </span>
+        )}
       </div>
-      <textarea id={id} className="textarea" rows={3}
+      <textarea
+        id={id}
+        className="textarea"
+        rows={3}
         placeholder="Vent, état de la mer, courant, visibilité estimée"
-        value={value || ''} onChange={e => onChange(e.target.value)} />
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+      />
     </div>
   );
 }
@@ -196,7 +258,7 @@ function MeteoField({ id, value, onChange, site, date }) {
 function meteoCode(code) {
   if (code == null) return 'Météo inconnue';
   if (code === 0) return 'Ciel dégagé';
-  if (code <= 3)  return 'Partiellement nuageux';
+  if (code <= 3) return 'Partiellement nuageux';
   if (code <= 48) return 'Brumeux / brouillard';
   if (code <= 67) return 'Pluie';
   if (code <= 77) return 'Neige';
@@ -209,7 +271,7 @@ function meteoCode(code) {
 // Proxy PHP → maree.shom.fr : port le plus proche + coefficients et heures du jour.
 function MareeField({ id, value, onChange, site, date }) {
   const [fetching, setFetching] = useState(false);
-  const [err, setErr]           = useState('');
+  const [err, setErr] = useState('');
 
   const fetchMaree = async () => {
     const coords = site?.coordonnees;
@@ -237,20 +299,28 @@ function MareeField({ id, value, onChange, site, date }) {
   return (
     <div>
       <div className="fetch-row">
-        {site?.coordonnees?.lat
-          ? (
-            <button type="button" className="btn" onClick={fetchMaree} disabled={fetching}>
-              {fetching ? 'Récupération des marées…' : 'Préremplir avec le SHOM'}
-            </button>
-          ) : (
-            <span className="muted small">Ajoutez les coordonnées GPS du site pour préremplir les marées.</span>
-          )
-        }
-        {err && <span className="field-error" role="alert"><StatusIcon tone="warn" />Marées indisponibles : {err}</span>}
+        {site?.coordonnees?.lat ? (
+          <button type="button" className="btn" onClick={fetchMaree} disabled={fetching}>
+            {fetching ? 'Récupération des marées…' : 'Préremplir avec le SHOM'}
+          </button>
+        ) : (
+          <span className="muted small">Ajoutez les coordonnées GPS du site pour préremplir les marées.</span>
+        )}
+        {err && (
+          <span className="field-error" role="alert">
+            <StatusIcon tone="warn" />
+            Marées indisponibles : {err}
+          </span>
+        )}
       </div>
-      <input id={id} className="input" type="text"
+      <input
+        id={id}
+        className="input"
+        type="text"
         placeholder="PM 14h12, coefficient 87"
-        value={value || ''} onChange={e => onChange(e.target.value)} />
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+      />
     </div>
   );
 }
@@ -261,15 +331,15 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
   const sections = QUESTIONS;
   const [activeId, setActiveId] = useState(sections[0].id);
 
-  const visibleSections = sections.filter(s => !s.when || s.when(answers));
+  const visibleSections = sections.filter((s) => !s.when || s.when(answers));
 
   // DP sélectionné
-  const selectedDP = useMemo(() => divers.find(d => d.id === answers.dp_id), [divers, answers.dp_id]);
-  const dpQual     = selectedDP?.niveau_encadrant || null;
-  const dpN5       = dpQual === 'N5';
+  const selectedDP = useMemo(() => divers.find((d) => d.id === answers.dp_id), [divers, answers.dp_id]);
+  const dpQual = selectedDP?.niveau_encadrant || null;
+  const dpN5 = dpQual === 'N5';
 
   // Site sélectionné
-  const selectedSite = useMemo(() => sites.find(s => s.id === answers.site_id), [sites, answers.site_id]);
+  const selectedSite = useMemo(() => sites.find((s) => s.id === answers.site_id), [sites, answers.site_id]);
 
   // Quand DP change → propager dp_qual
   useEffect(() => {
@@ -280,18 +350,18 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
   // Quand site change → propager milieu + depart_bord/bateau + shot_line par défaut + détection Atlantique
   useEffect(() => {
     if (selectedSite) {
-      setAnswer('milieu',        selectedSite.milieu);
-      setAnswer('depart_bord',   selectedSite.depart_bord);
+      setAnswer('milieu', selectedSite.milieu);
+      setAnswer('depart_bord', selectedSite.depart_bord);
       setAnswer('depart_bateau', selectedSite.depart_bateau);
-      setAnswer('site_nom',      selectedSite.nom);
-      setAnswer('site_ville',    selectedSite.ville || '');
-      setAnswer('site_pays',     selectedSite.pays || '');
-      setAnswer('site_pays_code',selectedSite.pays_code || '');
+      setAnswer('site_nom', selectedSite.nom);
+      setAnswer('site_ville', selectedSite.ville || '');
+      setAnswer('site_pays', selectedSite.pays || '');
+      setAnswer('site_pays_code', selectedSite.pays_code || '');
       setAnswer('site_prof_max', selectedSite.profondeur_max || null);
       // Plan de secours : champs site réutilisés dans le bloc « conduite à tenir » de la fiche
       setAnswer('site_acces_secours', selectedSite.acces_secours || '');
-      setAnswer('site_caisson',       selectedSite.caisson || '');
-      setAnswer('site_coords',        selectedSite.coordonnees || null);
+      setAnswer('site_caisson', selectedSite.caisson || '');
+      setAnswer('site_coords', selectedSite.coordonnees || null);
       // Pré-cocher shot_line si dispo sur le site (toujours modifiable)
       if (selectedSite.shot_line && answers.shot_line === undefined) {
         setAnswer('shot_line', true);
@@ -311,7 +381,7 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
       d.setHours(d.getHours() + 1);
       // Format ISO local pour input datetime-local : YYYY-MM-DDTHH:MM
       const pad = (n) => String(n).padStart(2, '0');
-      const iso = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
       setAnswer('date', iso);
     }
   }, []);
@@ -337,7 +407,7 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
       }
       setActiveId(current);
     };
-    window.addEventListener('scroll', onScroll, { passive:true });
+    window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, [visibleSections.length]);
 
@@ -345,7 +415,10 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
     const el = document.getElementById('sect-' + id);
     if (!el) return;
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 120, behavior: reduce ? 'auto' : 'smooth' });
+    window.scrollTo({
+      top: el.getBoundingClientRect().top + window.scrollY - 120,
+      behavior: reduce ? 'auto' : 'smooth',
+    });
   };
 
   // Forcer paliers obligatoires si prof ≥ 60m
@@ -355,9 +428,7 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
   }, [answers.prof_max]);
 
   // Structure type display
-  const structureLabel = user?.structure_type
-    ? (STRUCTURE_LABELS[user.structure_type] || user.structure_type)
-    : null;
+  const structureLabel = user?.structure_type ? STRUCTURE_LABELS[user.structure_type] || user.structure_type : null;
 
   const renderQuestion = (q) => {
     if (!matchCondition(q.when, answers)) return null;
@@ -368,16 +439,21 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
     if (q.id === 'dp_id') {
       return (
         <Field key={q.id} label={q.label} hint={q.hint} regRef={q.ref} required={q.required}>
-          {({ id }) => (<>
-            <DPPicker id={id} value={val} divers={divers} setDivers={setDivers} onChange={set} />
-            {selectedDP && (
-              <div className="info-box">
-                <div className="row tight"><b>{diverFullName(selectedDP)}</b><Pill tone="ink">{dpQual}</Pill>
-                  {selectedDP.diplome_pro && <Pill>{selectedDP.diplome_pro}</Pill>}</div>
-                {dpN5 && <span>N5 : exploration uniquement, pas d'aptitude E1 à E4 en palanquée.</span>}
-              </div>
-            )}
-          </>)}
+          {({ id }) => (
+            <>
+              <DPPicker id={id} value={val} divers={divers} setDivers={setDivers} onChange={set} />
+              {selectedDP && (
+                <div className="info-box">
+                  <div className="row tight">
+                    <b>{diverFullName(selectedDP)}</b>
+                    <Pill tone="ink">{dpQual}</Pill>
+                    {selectedDP.diplome_pro && <Pill>{selectedDP.diplome_pro}</Pill>}
+                  </div>
+                  {dpN5 && <span>N5 : exploration uniquement, pas d'aptitude E1 à E4 en palanquée.</span>}
+                </div>
+              )}
+            </>
+          )}
         </Field>
       );
     }
@@ -387,7 +463,11 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
         <Field key={q.id} label={q.label} hint={q.hint} group>
           <p className={structureLabel ? '' : 'muted'}>
             {structureLabel || 'Non renseignée : à compléter dans Mon compte.'}
-            {user?.club_nom ? <>, <b>{user.club_nom}</b></> : null}
+            {user?.club_nom ? (
+              <>
+                , <b>{user.club_nom}</b>
+              </>
+            ) : null}
           </p>
         </Field>
       );
@@ -396,7 +476,9 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
     if (q.id === 'site_id') {
       return (
         <Field key={q.id} label={q.label} hint={q.hint} required={q.required}>
-          {({ id }) => <SitePicker id={id} value={val} sites={sites} setSites={setSites} onChange={set} answers={answers} />}
+          {({ id }) => (
+            <SitePicker id={id} value={val} sites={sites} setSites={setSites} onChange={set} answers={answers} />
+          )}
         </Field>
       );
     }
@@ -418,21 +500,31 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
     }
 
     if (q.id === 'trimix_secu_note') {
-      return <Alert key={q.id} tone="info">Trimix : la sécurité surface continue est obligatoire pendant toute la durée de la plongée <CdsLink art="A322-91" />.</Alert>;
+      return (
+        <Alert key={q.id} tone="info">
+          Trimix : la sécurité surface continue est obligatoire pendant toute la durée de la plongée{' '}
+          <CdsLink art="A322-91" />.
+        </Alert>
+      );
     }
 
     if (q.type === 'divers-multi') {
       const current = Array.isArray(val) ? val : [];
       const toggle = (id) => {
-        const next = current.includes(id) ? current.filter(x => x !== id) : [...current, id];
+        const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
         set(next);
       };
       return (
         <Field key={q.id} label={q.label} hint={q.hint} regRef={q.ref} group>
           <div className="opt-group col-3">
-            {divers.map(d => (
-              <Opt key={d.id} label={diverFullName(d)} multi
-                checked={current.includes(d.id)} onClick={() => toggle(d.id)} />
+            {divers.map((d) => (
+              <Opt
+                key={d.id}
+                label={diverFullName(d)}
+                multi
+                checked={current.includes(d.id)}
+                onClick={() => toggle(d.id)}
+              />
             ))}
             {divers.length === 0 && <span className="muted">Aucun plongeur dans l'annuaire.</span>}
           </div>
@@ -446,35 +538,47 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
   return (
     <div>
       <div className="page-head">
-        <p className="step-tag"><span className="num">1</span>Profil de la plongée</p>
+        <p className="step-tag">
+          <span className="num">1</span>Profil de la plongée
+        </p>
         <h1>Caractériser la plongée à venir</h1>
         <p>Les réponses pilotent les questions suivantes, la check-list et les règles appliquées aux palanquées.</p>
       </div>
 
       <nav className="subnav" aria-label="Sections du profil">
-        {visibleSections.map(s => (
-          <a key={s.id} href={`#sect-${s.id}`} aria-current={activeId === s.id ? 'true' : undefined}
-            onClick={e => { e.preventDefault(); scrollTo(s.id); }}>
-            <span className="num">{s.id}</span>{s.title}
+        {visibleSections.map((s) => (
+          <a
+            key={s.id}
+            href={`#sect-${s.id}`}
+            aria-current={activeId === s.id ? 'true' : undefined}
+            onClick={(e) => {
+              e.preventDefault();
+              scrollTo(s.id);
+            }}
+          >
+            <span className="num">{s.id}</span>
+            {s.title}
           </a>
         ))}
       </nav>
 
-      {visibleSections.map(s => (
+      {visibleSections.map((s) => (
         <section className="card profil-section" key={s.id} id={`sect-${s.id}`} aria-labelledby={`sect-${s.id}-t`}>
           <div className="card-head">
             <span className="ix">{s.id}</span>
             <h2 id={`sect-${s.id}-t`}>{s.title}</h2>
           </div>
-          <div className="card-body dense">
-            {s.questions.map(q => renderQuestion(q))}
-          </div>
+          <div className="card-body dense">{s.questions.map((q) => renderQuestion(q))}</div>
         </section>
       ))}
 
       {derived.notes.length > 0 && (
         <div className="mt-4">
-          {derived.notes.map((n, i) => <Alert key={i} tone={n.tone}>{n.text}</Alert>)}
+          {derived.notes.map((n, i) => (
+            <Alert key={i} tone={n.tone}>
+              {n.text}
+            </Alert>
+          ))}
         </div>
       )}
 

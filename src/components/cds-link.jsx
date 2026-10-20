@@ -11,17 +11,18 @@ import { CDS_ARTICLES, parseCdsRefs } from '../domain/index.js';
 // =========================================================================
 function CdsBadge({ articleNumber, compact = false }) {
   const info = CDS_ARTICLES[articleNumber];
-  const href = info?.url
-    || `https://www.legifrance.gouv.fr/search/code?searchField=ARTICLE&query=${encodeURIComponent(articleNumber)}&tab_selection=code`;
+  const href =
+    info?.url ||
+    `https://www.legifrance.gouv.fr/search/code?searchField=ARTICLE&query=${encodeURIComponent(articleNumber)}&tab_selection=code`;
 
-  const badgeRef   = useRef(null);
+  const badgeRef = useRef(null);
   const tooltipRef = useRef(null);
   const [open, setOpen] = useState(false);
   const tipId = `cds${useId().replace(/:/g, '')}`;
 
   const place = () => {
     const badge = badgeRef.current;
-    const tip   = tooltipRef.current;
+    const tip = tooltipRef.current;
     if (!badge || !tip) return;
 
     const margin = 8;
@@ -31,7 +32,7 @@ function CdsBadge({ articleNumber, compact = false }) {
 
     // Render au préalable pour mesurer
     tip.style.left = '0px';
-    tip.style.top  = '0px';
+    tip.style.top = '0px';
     tip.style.visibility = 'hidden';
     tip.style.opacity = '0';
     tip.style.display = 'block';
@@ -46,36 +47,47 @@ function CdsBadge({ articleNumber, compact = false }) {
     let arrowAbove = true;
     if (top + tipRect.height + margin > vh) {
       const aboveTop = badgeRect.top - tipRect.height - margin;
-      if (aboveTop > margin) { top = aboveTop; arrowAbove = false; }
+      if (aboveTop > margin) {
+        top = aboveTop;
+        arrowAbove = false;
+      }
     }
 
     tip.style.left = left + 'px';
-    tip.style.top  = top  + 'px';
+    tip.style.top = top + 'px';
     tip.dataset.arrow = arrowAbove ? 'above' : 'below';
 
     // Position horizontale de la flèche pour qu'elle pointe vers le badge
-    const arrowX = (badgeRect.left + badgeRect.width / 2) - left;
+    const arrowX = badgeRect.left + badgeRect.width / 2 - left;
     tip.style.setProperty('--arrow-x', `${arrowX}px`);
 
     tip.style.visibility = '';
     tip.style.opacity = '';
   };
 
-  const show = () => { setOpen(true); requestAnimationFrame(place); };
+  const show = () => {
+    setOpen(true);
+    requestAnimationFrame(place);
+  };
   const hide = () => setOpen(false);
 
   return (
-    <a ref={badgeRef}
+    <a
+      ref={badgeRef}
       href={href}
-      target="_blank" rel="noopener noreferrer"
+      target="_blank"
+      rel="noopener noreferrer"
       className={`cds-badge ${compact ? 'compact' : ''}`}
       aria-describedby={tipId}
       onMouseEnter={show}
       onFocus={show}
       onMouseLeave={hide}
       onBlur={hide}
-      onClick={e => e.stopPropagation()}>
-      <span className="cds-icon" aria-hidden="true">§</span>
+      onClick={(e) => e.stopPropagation()}
+    >
+      <span className="cds-icon" aria-hidden="true">
+        §
+      </span>
       <span className="cds-art">Art. {articleNumber}</span>
       <span ref={tooltipRef} id={tipId} className={`cds-tooltip ${open ? 'open' : ''}`} role="tooltip">
         <b>{info?.title || `Article ${articleNumber}`}</b>
@@ -100,7 +112,9 @@ function CdsLink({ art, label, refText, compact = false }) {
   return (
     <span className={`cds-refs ${compact ? 'compact' : ''}`}>
       {label && <span className="cds-label">{label}</span>}
-      {arts.map(a => <CdsBadge key={a} articleNumber={a} compact={compact} />)}
+      {arts.map((a) => (
+        <CdsBadge key={a} articleNumber={a} compact={compact} />
+      ))}
     </span>
   );
 }
@@ -114,8 +128,7 @@ function withCdsLinks(text) {
   // (plus simple que de découper en regex pour préserver la structure)
   return (
     <React.Fragment>
-      {text.replace(/\s*\(?(Art\.|CdS)\s*A322-\d+(?:-\d+)?(?:\s*[,/]\s*A322-\d+(?:-\d+)?)*\)?/g, '').trim()}
-      {' '}
+      {text.replace(/\s*\(?(Art\.|CdS)\s*A322-\d+(?:-\d+)?(?:\s*[,/]\s*A322-\d+(?:-\d+)?)*\)?/g, '').trim()}{' '}
       <CdsLink refText={text} compact />
     </React.Fragment>
   );

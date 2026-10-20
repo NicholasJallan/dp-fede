@@ -6,27 +6,27 @@ import assert from 'node:assert/strict';
 // Reproduit la logique de split/tri de screen-home.jsx (pure function)
 function splitAndSort(dives) {
   const inProgress = dives
-    .filter(d => d.status === 'in_progress')
+    .filter((d) => d.status === 'in_progress')
     .sort((a, b) => (b.started_at || '').localeCompare(a.started_at || ''));
   const prepared = dives
-    .filter(d => d.status === 'prepared')
+    .filter((d) => d.status === 'prepared')
     .sort((a, b) => {
       const cmp = (a.planned_at || a.date_plongee || '').localeCompare(b.planned_at || b.date_plongee || '');
       return cmp !== 0 ? cmp : (a.dp_nom || '').localeCompare(b.dp_nom || '');
     });
   const archived = dives
-    .filter(d => !d.status || d.status === 'archived')
+    .filter((d) => !d.status || d.status === 'archived')
     .sort((a, b) => (b.date_plongee || '').localeCompare(a.date_plongee || ''));
   return { inProgress, prepared, archived };
 }
 
 describe('home buckets — split par statut', () => {
   const dives = [
-    { id: 'a1', status: 'archived',   date_plongee: '2026-06-01T09:00' },
-    { id: 'a2', status: 'archived',   date_plongee: '2026-06-03T14:00' },
-    { id: 'p1', status: 'prepared',   planned_at: '2026-06-08T09:00', dp_nom: 'Dupont' },
-    { id: 'p2', status: 'prepared',   planned_at: '2026-06-08T14:00', dp_nom: 'Martin' },
-    { id: 'p3', status: 'prepared',   planned_at: '2026-06-09T10:00', dp_nom: 'Durand' },
+    { id: 'a1', status: 'archived', date_plongee: '2026-06-01T09:00' },
+    { id: 'a2', status: 'archived', date_plongee: '2026-06-03T14:00' },
+    { id: 'p1', status: 'prepared', planned_at: '2026-06-08T09:00', dp_nom: 'Dupont' },
+    { id: 'p2', status: 'prepared', planned_at: '2026-06-08T14:00', dp_nom: 'Martin' },
+    { id: 'p3', status: 'prepared', planned_at: '2026-06-09T10:00', dp_nom: 'Durand' },
     { id: 'i1', status: 'in_progress', started_at: '2026-06-08T09:12', planned_at: '2026-06-08T09:00' },
     { id: 'i2', status: 'in_progress', started_at: '2026-06-08T14:05', planned_at: '2026-06-08T14:00' },
   ];
@@ -84,9 +84,7 @@ describe('home buckets — cas limites', () => {
   });
 
   test('que des plongées préparées → archived et inProgress sont vides', () => {
-    const only = [
-      { id: 'p1', status: 'prepared', planned_at: '2026-06-10T08:00' },
-    ];
+    const only = [{ id: 'p1', status: 'prepared', planned_at: '2026-06-10T08:00' }];
     const { inProgress, prepared, archived } = splitAndSort(only);
     assert.equal(inProgress.length, 0);
     assert.equal(prepared.length, 1);

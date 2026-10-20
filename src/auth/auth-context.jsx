@@ -28,7 +28,9 @@ const AuthContext = createContext(null);
 
 // Clés localStorage centralisées dans src/api/storage-keys.js.
 const SKEYS = STORAGE_KEYS || {
-  LAST_USER: 'dp-last-user', CACHE_DIVERS: 'dp-cache-divers', CACHE_SITES: 'dp-cache-sites',
+  LAST_USER: 'dp-last-user',
+  CACHE_DIVERS: 'dp-cache-divers',
+  CACHE_SITES: 'dp-cache-sites',
 };
 const LAST_USER_MAX_AGE_MS = (TTL && TTL.LAST_USER_MAX_AGE) || 7 * 24 * 3600 * 1000;
 
@@ -54,7 +56,11 @@ function writeLastUser(user) {
 }
 
 function clearLastUser() {
-  try { localStorage.removeItem(SKEYS.LAST_USER); } catch { /* stockage indisponible */ }
+  try {
+    localStorage.removeItem(SKEYS.LAST_USER);
+  } catch {
+    /* stockage indisponible */
+  }
 }
 
 // Pré-cache des listes au login pour bootstrap offline. Best-effort, non bloquant.
@@ -66,7 +72,7 @@ async function prefetchUserData() {
       api.sites.list().catch(() => null),
     ]);
     if (divers) localStorage.setItem(SKEYS.CACHE_DIVERS, JSON.stringify({ list: divers, at: Date.now() }));
-    if (sites)  localStorage.setItem(SKEYS.CACHE_SITES,  JSON.stringify({ list: sites,  at: Date.now() }));
+    if (sites) localStorage.setItem(SKEYS.CACHE_SITES, JSON.stringify({ list: sites, at: Date.now() }));
   } catch {
     // Pas grave — le SW a peut-être déjà cache via SWR.
   }
@@ -94,7 +100,7 @@ async function bindLocalDataToUser(u) {
 
 function AuthProvider({ children }) {
   // undefined = chargement, null = non connecté, objet = connecté
-  const [user, setUser]     = useState(undefined);
+  const [user, setUser] = useState(undefined);
   const [loading, setLoading] = useState(true);
   // 'online' = session confirmée par le serveur ; 'offline' = fallback snapshot
   const [authMode, setAuthMode] = useState('online');
@@ -137,15 +143,18 @@ function AuthProvider({ children }) {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Si le réseau revient et qu'on était en mode offline, on re-vérifie.
   useEffect(() => {
     function onNet(e) {
       if (e.detail.online && authMode === 'offline' && user) {
-        api.auth.me()
-          .then(u => {
+        api.auth
+          .me()
+          .then((u) => {
             if (u) {
               writeLastUser(u);
               bindLocalDataToUser(u);
@@ -157,7 +166,9 @@ function AuthProvider({ children }) {
               window.dispatchEvent(new CustomEvent('dp:authExpired'));
             }
           })
-          .catch(() => { /* ping foireux, on réessaiera */ });
+          .catch(() => {
+            /* ping foireux, on réessaiera */
+          });
       }
     }
     window.addEventListener('dp:netchange', onNet);
@@ -171,7 +182,7 @@ function AuthProvider({ children }) {
   // proposent keepLocal proposent aussi « Supprimer les données de cet
   // appareil » (wipeDevice) : appareil partagé, compte ou club quitté.
   const logout = useCallback(async ({ keepLocal = false } = {}) => {
-    await api.auth.logout().catch(err => console.warn('[auth] logout serveur :', err?.message));
+    await api.auth.logout().catch((err) => console.warn('[auth] logout serveur :', err?.message));
     clearLastUser();
     if (!keepLocal) await purgeLocalData();
     setUser(null);
@@ -228,10 +239,20 @@ function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{
-      user, loading, logout, handleGoogleCredential, setUser, authMode,
-      refreshUser, endSession, loginNotice, wipeDevice,
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        logout,
+        handleGoogleCredential,
+        setUser,
+        authMode,
+        refreshUser,
+        endSession,
+        loginNotice,
+        wipeDevice,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

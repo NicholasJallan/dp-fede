@@ -9,8 +9,8 @@
 //   - ScreenArchive.proceedWithToken (premier archivage)
 //   - finalizePendingDrive (reprise après reconnexion)
 
-const DRIVE_API   = 'https://www.googleapis.com/drive/v3/files';
-const UPLOAD_API  = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink';
+const DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
+const UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink';
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 
 // Récupère l'ID du dossier `name` (créé par cette app, scope drive.file)
@@ -41,8 +41,10 @@ export async function driveGetOrCreateFolder(token, name) {
 // Retourne { id, webViewLink } pour pouvoir afficher un lien clickable.
 export async function driveUploadFile(token, blob, filename, folderId) {
   const form = new FormData();
-  form.append('metadata',
-    new Blob([JSON.stringify({ name: filename, parents: [folderId] })], { type: 'application/json' }));
+  form.append(
+    'metadata',
+    new Blob([JSON.stringify({ name: filename, parents: [folderId] })], { type: 'application/json' }),
+  );
   form.append('file', blob, filename);
   const res = await fetch(UPLOAD_API, {
     method: 'POST',

@@ -13,13 +13,13 @@
  *   club.css        club (membres, invitations), import, alertes, statistiques
  */
 
-@import "./tokens.css";
-@import "./base.css";
-@import "./controls.css";
-@import "./shell.css";
-@import "./dialog.css";
-@import "./screens.css";
-@import "./palanquees.css";
-@import "./execute.css";
-@import "./fiche.css";
-@import "./club.css";
+@import './tokens.css';
+@import './base.css';
+@import './controls.css';
+@import './shell.css';
+@import './dialog.css';
+@import './screens.css';
+@import './palanquees.css';
+@import './execute.css';
+@import './fiche.css';
+@import './club.css';

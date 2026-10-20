@@ -18,7 +18,8 @@ function mockFetch(responses) {
     const { status = 200, body = { ok: true, data: null } } = responses.shift() || {};
     const ok = status >= 200 && status < 300;
     return {
-      ok, status,
+      ok,
+      status,
       json: async () => body,
       text: async () => JSON.stringify(body),
       blob: async () => new Blob(['%PDF']),
@@ -40,7 +41,10 @@ describe('api — en-tête X-DP-Club', () => {
     await api.divers.list();
     await api.dives.update('d1', { drive_link: 'x' });
     await api.club.stats({ from: '2026-09-15', to: '2027-09-14' });
-    assert.ok(calls.every(c => c.headers['X-DP-Club'] === CLUB_A), JSON.stringify(calls));
+    assert.ok(
+      calls.every((c) => c.headers['X-DP-Club'] === CLUB_A),
+      JSON.stringify(calls),
+    );
   });
 
   test('téléchargements (PDF archivé, PDF à la volée) aussi', async () => {
@@ -55,7 +59,7 @@ describe('api — en-tête X-DP-Club', () => {
     const calls = mockFetch([{}, {}]);
     await api.auth.me();
     await api.auth.logout();
-    assert.ok(calls.every(c => !('X-DP-Club' in c.headers)));
+    assert.ok(calls.every((c) => !('X-DP-Club' in c.headers)));
   });
 
   test("club courant inconnu : pas d'en-tête", async () => {
@@ -67,10 +71,12 @@ describe('api — en-tête X-DP-Club', () => {
 });
 
 describe('api — 403 CLUB_NOT_MEMBER', () => {
-  test("erreur avec code stable et événement dp:clubNotMember (club envoyé)", async () => {
+  test('erreur avec code stable et événement dp:clubNotMember (club envoyé)', async () => {
     const events = [];
     win.addEventListener('dp:clubNotMember', (e) => events.push(e.detail));
-    mockFetch([{ status: 403, body: { ok: false, error: "Vous n'êtes pas membre de ce club", code: 'CLUB_NOT_MEMBER' } }]);
+    mockFetch([
+      { status: 403, body: { ok: false, error: "Vous n'êtes pas membre de ce club", code: 'CLUB_NOT_MEMBER' } },
+    ]);
     await assert.rejects(api.divers.list(), (err) => err.status === 403 && err.code === 'CLUB_NOT_MEMBER');
     assert.deepEqual(events, [{ clubId: CLUB_A }]);
   });

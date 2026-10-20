@@ -6,6 +6,7 @@ Dates en ISO 8601.
 ## [Unreleased]
 
 ### Intégration de la branche de production (juin → 5 septembre 2026)
+
 - Fusion de `origin/main` ; inventaire commit par commit : `docs/integration-upstream.md`.
 - Structures partagées (`002_workspaces`, appliquée en production) reprises en **clubs** par la migration 007 (un club par structure, membres, club courant, auteurs) ; nos migrations renumérotées 003 → 011 ; plan / vérification automatiques au déploiement (`bin/workspaces-plan.php`) ; `/api/workspaces*` → 410.
 - Synchro terrain : items interrompus remis en file, pull périodique, listes annuaire réconciliées, premier rattachement des appareils anciens.
@@ -15,27 +16,33 @@ Dates en ISO 8601.
 - PHP 8.5 en production (pool dédié à côté du pool « dive », CI 8.2 / 8.5), cache JWKS signé dans l'APCu partagé ; `PdfAutoload` / `psr-log-shim` supprimés.
 
 ### Conformité Code du sport (texte consolidé du 08/10/2026)
+
 - Moteur de règles réécrit à partir des annexes III-15 a à III-18 c (`src/domain/cds-tables.js`, `pal-rules.js`) et porté à l'identique en PHP ; 95 cas réglementaires partagés JS/PHP (`tests/fixtures/pal-rules.json`), revus de façon indépendante.
 - Situations auparavant autorisées à tort désormais bloquées : E1 avec 2 baptêmes, air > 60 m, trimix autonome à 6, âge minimal en autonomie, DP E1/E2 en fosse > 6 m, nitrox en formation, GP à 0-60 m, PpO₂ > 1,6 bar…
 - Blocages injustifiés levés : E1/E2 en milieu naturel, panachage d'aptitudes, PA en formation, exploration encadrée par un E sous DP N5, plongeur supplémentaire GP/P4.
 - DTR saisie par le DP (plus jamais calculée d'office) ; check-list complétée (A322-78/80/93/97) ; date de naissance et PTH-40.
 
 ### Stabilité et données
+
 - Crash de l'étape 4 corrigé ; ErrorBoundary. Plus de perte de données hors-ligne (fusion des données synchronisées, garde-fou serveur 409, outbox fusionnée par entité, état « à revoir »). Service Worker sans cache API ; données locales liées à l'utilisateur et au club.
 - PDF générés depuis la base (état d'exécution inclus) ; mode « HTML client » supprimé (SSRF).
 
 ### Interface
+
 - Direction « console de bord » : thèmes Soleil / Nuit, carte « cadran » en exécution, palanquées bloquées explicites avec article du Code du sport, Dialog accessible, responsive 320 → 1440, axe-core sans violation.
 
 ### Club (léger, compatible import VPDive)
+
 - Clubs, rôles, invitations ; import CSV idempotent ; alertes CACI / licences / mineurs ; archivage serveur des fiches (conservation 1 an, A322-72) ; statistiques ; export et suppression de compte (RGPD).
 
 ### Technique et exploitation
+
 - Code front en modules ES dans `src/` ; ESLint ; CI GitHub Actions ; backend PHP 8.2 (php-jwt 7) ; migrations en CLI ; déploiement, sauvegardes et restauration versionnés dans `deploy/` ; `docs/rgpd.md`, `docs/deploy/`.
 
 ### Historique antérieur (sprints 1 à 4)
 
 ### Added — Structures partagées (branche de production, 04/09/2026 — remplacées par les clubs, cf. `docs/integration-upstream.md`)
+
 - Espaces de travail partagés : plusieurs moniteurs mettent en commun annuaire
   de plongeurs, sites et fiches de sécurité. On rejoint une structure avec un
   code d'invitation, à la connexion ou depuis la topbar.
@@ -56,6 +63,7 @@ Dates en ISO 8601.
   ne doit scoper sur `$user['id']`).
 
 ### Fixed — Structures partagées
+
 - **`React is not defined` au démarrage** : `lib/net.js` (hors bundle) référence
   un `React` global que `build.js` avait cessé de fournir en supprimant les
   balises unpkg. Aucun composant ne montait, la page restait sur le fallback
@@ -67,6 +75,7 @@ Dates en ISO 8601.
 - Les comptes-structure sont masqués de `GET /api/users` et `/api/users/stats`.
 
 ### Added — Sprint 4 (sécurité durcie)
+
 - `docs/security/README.md` : vue d'ensemble architecture sécurité + table de surfaces d'attaque.
 - `docs/security/gcp-checklist.md` : audit trimestriel GCP (OAuth Consent Screen, OAuth Client, API Keys, Quotas).
 - `docs/security/composer-audit.md` : état des dépendances PHP + procédure audit.
@@ -74,24 +83,28 @@ Dates en ISO 8601.
 - `nginx-offline-snippet.conf` : headers HSTS 1 an + preload, Permissions-Policy, COOP, et CSP avec `report-uri`.
 
 ### Added — Sprint 3 (refactor + sécurité backend)
+
 - `lib/drive-upload.js` : helpers `driveGetOrCreateFolder` + `driveUploadFile`, partagés entre `ScreenArchive` et `finalizePendingDrive`.
 - `lib/use-auto-save.jsx` : hook React isolé pour l'auto-save debouncé (extrait d'`app.jsx`).
 - `Auth::verifyGoogleToken` : vérification JWT RS256 locale via JWKS Google (cache APCu 6h), fallback `tokeninfo` si OpenSSL absent.
 - Rate-limit générique sur `/api/dives`, `/api/divers`, `/api/sites` (POST/PATCH/PUT/DELETE) : 120/min/IP.
 
 ### Added — Sprint 2 (tests)
+
 - `backend/composer.json` + `backend/phpunit.xml` : scaffold PHPUnit pour le backend.
 - 4 suites PHP : `AuthTest`, `CsrfTest`, `DiveDateHelpersTest`, `SyncHelpersTest`.
 - `playwright.config.js` + 3 scénarios E2E : `01-home-loads`, `02-dive-create-flow`, `03-offline-resilience`.
 - `tests-e2e/README.md` : setup cookies + CI.
 
 ### Added — Sprint 1 (quick wins)
+
 - `lib/google-drive.js` : `getDriveToken({ explicit, timeoutMs })` (cache-first, scope `drive.file`) + `getCsrfToken()`.
 - `lib/storage-keys.js` : `STORAGE_KEYS`, `COOKIE_KEYS`, `TTL` centralisés.
 - SRI sur jsPDF 2.5.1 + html2canvas 1.4.1 dans `DP Assistant.html`.
 - 9 nouveaux tests `tests/google-drive.test.js`.
 
 ### Changed
+
 - `screen-home.jsx` : suppression de la **pré-autorisation Drive silencieuse au load**. Le token Drive n'est demandé qu'au clic « + Nouvelle plongée ». Économise une requête GIS pour 100 % des sessions admin / consultation.
 - `screen-archive.jsx` : `doArchive` + `finalizePendingDrive` utilisent désormais le helper centralisé `window.getDriveToken`. Suppression de ~70 lignes de duplication.
 - `api.js`, `lib/sync.js`, `lib/offline-api.js` : utilisent `window.getCsrfToken` au lieu de regex inline.
@@ -99,6 +112,7 @@ Dates en ISO 8601.
 - `TESTING.md` : compteur 120 → 185+ tests, nouvelles suites listées.
 
 ### Fixed
+
 - État `driveAuth` fragile (`setTimeout 4000` à l'idle) supprimé : remplacé par une logique synchrone à l'action utilisateur.
 
 ---

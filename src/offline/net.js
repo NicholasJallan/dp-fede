@@ -26,14 +26,16 @@ let _pingInFlight = null;
 
 const PING_PATH = '/api/auth/me';
 const PING_INTERVAL_MS = 30000;
-const PING_TIMEOUT_MS  = 4000;
+const PING_TIMEOUT_MS = 4000;
 
 function setOnline(next, reason) {
   if (next === _online) return;
   _online = next;
-  window.dispatchEvent(new CustomEvent('dp:netchange', {
-    detail: { online: next, reason },
-  }));
+  window.dispatchEvent(
+    new CustomEvent('dp:netchange', {
+      detail: { online: next, reason },
+    }),
+  );
 }
 
 async function pingOnce() {

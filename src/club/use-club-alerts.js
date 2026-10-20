@@ -16,14 +16,20 @@ export function useClubAlerts() {
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
-    try { setData(await api.club.alerts()); setError(null); }
-    catch (err) { setError(err); }
+    try {
+      setData(await api.club.alerts());
+      setError(null);
+    } catch (err) {
+      setError(err);
+    }
   }, []);
 
   useEffect(() => {
     if (!allowed || !online) return undefined;
     load();
-    const onChange = (e) => { if (!e.detail?.store || e.detail.store === 'divers') load(); };
+    const onChange = (e) => {
+      if (!e.detail?.store || e.detail.store === 'divers') load();
+    };
     window.addEventListener('dp:clubChanged', load);
     window.addEventListener('dp:dataChanged', onChange);
     return () => {

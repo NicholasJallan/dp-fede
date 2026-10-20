@@ -28,9 +28,17 @@ function serialize(s) {
 
 export function useAutoSave(state) {
   const {
-    diveId, user, plongeeFigee,
-    answers, palanquees, checked, comments,
-    pressions, realises, heuresDebut, heuresFin,
+    diveId,
+    user,
+    plongeeFigee,
+    answers,
+    palanquees,
+    checked,
+    comments,
+    pressions,
+    realises,
+    heuresDebut,
+    heuresFin,
   } = state;
 
   // Snapshot ref — mise à jour inline (PAS dans un useEffect) pour que
@@ -48,8 +56,9 @@ export function useAutoSave(state) {
 
   const send = useCallback((id, s, json) => {
     savedRef.current = { diveId: id, json };
-    return api.dives.update(id, buildAutoSavePatch(s))
-      .catch(err => console.error('[DP] auto-save :', err?.message || err));
+    return api.dives
+      .update(id, buildAutoSavePatch(s))
+      .catch((err) => console.error('[DP] auto-save :', err?.message || err));
   }, []);
 
   // Debounce 500 ms vers le serveur.
@@ -64,21 +73,42 @@ export function useAutoSave(state) {
     if (action !== 'send') return;
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => send(diveId, stateRef.current, json), 500);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [answers, palanquees, checked, comments, pressions, realises, heuresDebut, heuresFin, diveId, user, plongeeFigee, send]);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [
+    answers,
+    palanquees,
+    checked,
+    comments,
+    pressions,
+    realises,
+    heuresDebut,
+    heuresFin,
+    diveId,
+    user,
+    plongeeFigee,
+    send,
+  ]);
 
   // Flush immédiat — appelé avant unmount / navigation entre plongées.
   // N'envoie rien si l'état n'a pas changé depuis le chargement, ni pour une
   // plongée figée.
-  const flushSave = useCallback((forcedDiveId) => {
-    const id = forcedDiveId || diveId;
-    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
-    const json = serialize(stateRef.current);
-    if (flushAction({ diveId: id, plongeeFigee: figeeRef.current, saved: savedRef.current, json }) !== 'send') {
-      return Promise.resolve();
-    }
-    return send(id, stateRef.current, json);
-  }, [diveId, send]);
+  const flushSave = useCallback(
+    (forcedDiveId) => {
+      const id = forcedDiveId || diveId;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      const json = serialize(stateRef.current);
+      if (flushAction({ diveId: id, plongeeFigee: figeeRef.current, saved: savedRef.current, json }) !== 'send') {
+        return Promise.resolve();
+      }
+      return send(id, stateRef.current, json);
+    },
+    [diveId, send],
+  );
 
   return flushSave;
 }

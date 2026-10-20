@@ -23,7 +23,12 @@ function DeletionRefusal({ refusal, onOpenClub }) {
     <Alert tone="err" title={refusal.title}>
       <p>{refusal.body}</p>
       {refusal.clubAction && (
-        <p className="mt-3"><button type="button" className="btn" onClick={onOpenClub}><Icon.Flag />Ouvrir l'écran Club</button></p>
+        <p className="mt-3">
+          <button type="button" className="btn" onClick={onOpenClub}>
+            <Icon.Flag />
+            Ouvrir l'écran Club
+          </button>
+        </p>
       )}
     </Alert>
   );
@@ -48,10 +53,13 @@ function ExportRow({ online }) {
     <div className="row-between">
       <div>
         <b>Télécharger mes données</b>
-        <p className="small muted">Compte, clubs et rôles, invitations envoyées, plongeurs, sites et plongées dont vous êtes l'auteur (JSON).</p>
+        <p className="small muted">
+          Compte, clubs et rôles, invitations envoyées, plongeurs, sites et plongées dont vous êtes l'auteur (JSON).
+        </p>
       </div>
       <button type="button" className="btn" onClick={download} disabled={busy || !online}>
-        <Icon.Download />{busy ? 'Préparation…' : 'Télécharger mes données'}
+        <Icon.Download />
+        {busy ? 'Préparation…' : 'Télécharger mes données'}
       </button>
     </div>
   );
@@ -65,7 +73,8 @@ export function AccountPrivacy({ onNavigate }) {
   const [refusal, setRefusal] = useState(null);
 
   const remove = async () => {
-    setBusy(true); setRefusal(null);
+    setBusy(true);
+    setRefusal(null);
     try {
       const res = await api.account.delete();
       const { message, retained } = describeDeletion(res, 'Votre compte a été supprimé.');
@@ -76,11 +85,17 @@ export function AccountPrivacy({ onNavigate }) {
     }
   };
 
-  const openClub = () => { setOpen(false); onNavigate('club'); };
+  const openClub = () => {
+    setOpen(false);
+    onNavigate('club');
+  };
 
   return (
     <section className="card" aria-labelledby="acc-rgpd">
-      <div className="card-head"><h2 id="acc-rgpd">Mes données</h2><span className="hint">RGPD : accès, portabilité, effacement</span></div>
+      <div className="card-head">
+        <h2 id="acc-rgpd">Mes données</h2>
+        <span className="hint">RGPD : accès, portabilité, effacement</span>
+      </div>
       <div className="card-body stack">
         <ExportRow online={online} />
         <div className="row-between">
@@ -88,18 +103,35 @@ export function AccountPrivacy({ onNavigate }) {
             <b>Supprimer mon compte</b>
             <p className="small muted">Définitif. Vos saisies dans un club partagé y restent, sans auteur.</p>
           </div>
-          <button type="button" className="btn danger" disabled={!online} onClick={() => { setRefusal(null); setOpen(true); }}>
-            <Icon.Trash />Supprimer mon compte
+          <button
+            type="button"
+            className="btn danger"
+            disabled={!online}
+            onClick={() => {
+              setRefusal(null);
+              setOpen(true);
+            }}
+          >
+            <Icon.Trash />
+            Supprimer mon compte
           </button>
         </div>
         {!online && <p className="small muted">Ces actions demandent une connexion réseau.</p>}
       </div>
       {open && (
-        <TypedConfirmDialog title="Supprimer votre compte ?" confirmLabel="Supprimer mon compte" busy={busy}
+        <TypedConfirmDialog
+          title="Supprimer votre compte ?"
+          confirmLabel="Supprimer mon compte"
+          busy={busy}
           error={refusal ? <DeletionRefusal refusal={refusal} onOpenClub={openClub} /> : null}
-          onCancel={() => setOpen(false)} onConfirm={remove}>
-          <p>Votre compte, vos adhésions et vos sessions sont supprimés. Un club dont vous êtes le seul membre est supprimé
-            avec ses données ; ses fiches de sécurité archivées de moins d'un an sont conservées (art. A322-72) puis effacées.</p>
+          onCancel={() => setOpen(false)}
+          onConfirm={remove}
+        >
+          <p>
+            Votre compte, vos adhésions et vos sessions sont supprimés. Un club dont vous êtes le seul membre est
+            supprimé avec ses données ; ses fiches de sécurité archivées de moins d'un an sont conservées (art. A322-72)
+            puis effacées.
+          </p>
           <p>Les données de cet appareil seront effacées. Pensez à télécharger vos données avant.</p>
         </TypedConfirmDialog>
       )}

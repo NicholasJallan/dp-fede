@@ -8,21 +8,27 @@
 // sans parser le JSON) : recopiés au moment du save.
 function summarize(answers) {
   const summary = {};
-  if (answers.site_nom) summary.site_nom    = answers.site_nom;
-  if (answers.dp_nom)   summary.dp_nom      = answers.dp_nom;
-  if (answers.dp_qual)  summary.dp_qual     = answers.dp_qual;
-  if (answers.date)   { summary.date_plongee = answers.date; summary.planned_at = answers.date; }
+  if (answers.site_nom) summary.site_nom = answers.site_nom;
+  if (answers.dp_nom) summary.dp_nom = answers.dp_nom;
+  if (answers.dp_qual) summary.dp_qual = answers.dp_qual;
+  if (answers.date) {
+    summary.date_plongee = answers.date;
+    summary.planned_at = answers.date;
+  }
   return summary;
 }
 
 export function buildAutoSavePatch(s) {
   return {
-    answers:      s.answers,
-    palanquees:   s.palanquees,
+    answers: s.answers,
+    palanquees: s.palanquees,
     render_state: {
-      checked: s.checked, comments: s.comments,
-      pressions: s.pressions, realises: s.realises,
-      heuresDebut: s.heuresDebut, heuresFin: s.heuresFin,
+      checked: s.checked,
+      comments: s.comments,
+      pressions: s.pressions,
+      realises: s.realises,
+      heuresDebut: s.heuresDebut,
+      heuresFin: s.heuresFin,
     },
     ...summarize(s.answers),
   };

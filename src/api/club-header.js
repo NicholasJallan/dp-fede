@@ -28,7 +28,11 @@ let current = null;
 let loaded = false;
 
 function readPersisted() {
-  try { return localStorage.getItem(STORAGE_KEYS.CLUB_ID); } catch { return null; }
+  try {
+    return localStorage.getItem(STORAGE_KEYS.CLUB_ID);
+  } catch {
+    return null;
+  }
 }
 
 /** Club courant connu de l'appareil, ou null. */
@@ -47,7 +51,9 @@ export function setCurrentClubId(clubId) {
   try {
     if (current) localStorage.setItem(STORAGE_KEYS.CLUB_ID, current);
     else localStorage.removeItem(STORAGE_KEYS.CLUB_ID);
-  } catch { /* stockage indisponible : valeur gardée en mémoire */ }
+  } catch {
+    /* stockage indisponible : valeur gardée en mémoire */
+  }
 }
 
 /** En-têtes HTTP à ajouter pour cibler un club donné ({} si inconnu). */

@@ -30,8 +30,10 @@ export async function purgeClubData(store) {
   for (const name of CLUB_DATA_STORES) await store.clear(name);
   await store.del('meta', META_SYNC);
   try {
-    [STORAGE_KEYS.CACHE_DIVERS, STORAGE_KEYS.CACHE_SITES].forEach(k => localStorage.removeItem(k));
-  } catch { /* stockage indisponible : rien à purger */ }
+    [STORAGE_KEYS.CACHE_DIVERS, STORAGE_KEYS.CACHE_SITES].forEach((k) => localStorage.removeItem(k));
+  } catch {
+    /* stockage indisponible : rien à purger */
+  }
   for (const name of ['divers', 'sites', 'dives']) {
     window.dispatchEvent(new CustomEvent('dp:dataChanged', { detail: { store: name } }));
   }
@@ -55,8 +57,10 @@ export async function purgeSyncedClubData(store) {
   }
   await store.del('meta', META_SYNC);
   try {
-    [STORAGE_KEYS.CACHE_DIVERS, STORAGE_KEYS.CACHE_SITES].forEach(k => localStorage.removeItem(k));
-  } catch { /* stockage indisponible : rien à purger */ }
+    [STORAGE_KEYS.CACHE_DIVERS, STORAGE_KEYS.CACHE_SITES].forEach((k) => localStorage.removeItem(k));
+  } catch {
+    /* stockage indisponible : rien à purger */
+  }
   for (const name of ['divers', 'sites', 'dives']) {
     window.dispatchEvent(new CustomEvent('dp:dataChanged', { detail: { store: name } }));
   }
@@ -76,7 +80,10 @@ const queues = new WeakMap();
 
 export function bindLocalDataToClub(store, clubId) {
   const run = (queues.get(store) || Promise.resolve()).then(() => bindNow(store, clubId));
-  queues.set(store, run.catch(() => {}));
+  queues.set(
+    store,
+    run.catch(() => {}),
+  );
   return run;
 }
 

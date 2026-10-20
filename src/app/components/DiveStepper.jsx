@@ -6,8 +6,7 @@ import { Icon } from '../../components/icons.jsx';
 
 function isStepLocked(i, step, { plongeeFigee, divePlongeesEnCours, diveMode }) {
   if (plongeeFigee) return i < ARCHIVE_IDX;
-  return (divePlongeesEnCours && i < FICHE_IDX)
-    || (diveMode === 'execute' && PREPARE_ONLY_STEPS.includes(step.id));
+  return (divePlongeesEnCours && i < FICHE_IDX) || (diveMode === 'execute' && PREPARE_ONLY_STEPS.includes(step.id));
 }
 
 function stepState(i, currentStepIdx, locked) {
@@ -18,12 +17,13 @@ function stepState(i, currentStepIdx, locked) {
 }
 
 export function DiveStepper({ currentStepIdx, diveMode, plongeeFigee, divePlongeesEnCours }) {
-  const visible = STEPS
-    .map((s, i) => ({ s, i }))
-    .filter(({ s }) => !(diveMode === 'prepare' && EXECUTE_ONLY_STEPS.includes(s.id))
-      && !(diveMode === 'execute' && PREPARE_ONLY_STEPS.includes(s.id)));
+  const visible = STEPS.map((s, i) => ({ s, i })).filter(
+    ({ s }) =>
+      !(diveMode === 'prepare' && EXECUTE_ONLY_STEPS.includes(s.id)) &&
+      !(diveMode === 'execute' && PREPARE_ONLY_STEPS.includes(s.id)),
+  );
   return (
-    <nav className="stepper" aria-label={diveMode === 'execute' ? 'Étapes de l\'exécution' : 'Étapes de la préparation'}>
+    <nav className="stepper" aria-label={diveMode === 'execute' ? "Étapes de l'exécution" : 'Étapes de la préparation'}>
       <ol className="stepper-list">
         {visible.map(({ s, i }) => {
           const locked = isStepLocked(i, s, { plongeeFigee, divePlongeesEnCours, diveMode });

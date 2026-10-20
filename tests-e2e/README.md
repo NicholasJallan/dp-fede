@@ -57,11 +57,11 @@ Rapport HTML : `tests-e2e-report/index.html` après une exécution.
 
 ## Scénarios couverts
 
-| Fichier | Couvre |
-|---|---|
-| `01-home-loads.spec.js` | Hero, sections cycle de vie, badge Drive |
-| `02-dive-create-flow.spec.js` | + Nouvelle plongée → profil → retour home |
-| `03-offline-resilience.spec.js` | Coupure réseau, navigation, reconnexion |
+| Fichier                         | Couvre                                    |
+| ------------------------------- | ----------------------------------------- |
+| `01-home-loads.spec.js`         | Hero, sections cycle de vie, badge Drive  |
+| `02-dive-create-flow.spec.js`   | + Nouvelle plongée → profil → retour home |
+| `03-offline-resilience.spec.js` | Coupure réseau, navigation, reconnexion   |
 
 ## CI
 

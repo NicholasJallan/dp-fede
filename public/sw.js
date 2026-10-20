@@ -13,7 +13,7 @@
 // tout changement de fichier publié déclenche l'installation d'un nouveau SW.
 const VERSION = '__SW_VERSION__';
 
-const SHELL_CACHE  = `${VERSION}-shell`;
+const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 
 // Précache : app shell local. Toute requête à la racine du domaine doit
@@ -45,32 +45,36 @@ const CDN_ORIGINS = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil((async () => {
-    const cache = await caches.open(SHELL_CACHE);
-    // addAll est atomique : si une URL échoue, tout l'install échoue. On
-    // tolère les échecs individuels pour ne pas bloquer l'install si une
-    // ressource optionnelle (favicon manquant) plante.
-    await Promise.all(PRECACHE_URLS.map(async (url) => {
-      try {
-        await cache.add(new Request(url, { cache: 'reload' }));
-      } catch (err) {
-        console.warn('[SW] precache miss', url, err.message);
-      }
-    }));
-    await self.skipWaiting();
-  })());
+  event.waitUntil(
+    (async () => {
+      const cache = await caches.open(SHELL_CACHE);
+      // addAll est atomique : si une URL échoue, tout l'install échoue. On
+      // tolère les échecs individuels pour ne pas bloquer l'install si une
+      // ressource optionnelle (favicon manquant) plante.
+      await Promise.all(
+        PRECACHE_URLS.map(async (url) => {
+          try {
+            await cache.add(new Request(url, { cache: 'reload' }));
+          } catch (err) {
+            console.warn('[SW] precache miss', url, err.message);
+          }
+        }),
+      );
+      await self.skipWaiting();
+    })(),
+  );
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil((async () => {
-    // Purge sèche des anciens caches (dont les anciens caches « -api ») :
-    // tout cache qui ne matche pas VERSION saute.
-    const names = await caches.keys();
-    await Promise.all(names
-      .filter(n => !n.startsWith(VERSION))
-      .map(n => caches.delete(n)));
-    await self.clients.claim();
-  })());
+  event.waitUntil(
+    (async () => {
+      // Purge sèche des anciens caches (dont les anciens caches « -api ») :
+      // tout cache qui ne matche pas VERSION saute.
+      const names = await caches.keys();
+      await Promise.all(names.filter((n) => !n.startsWith(VERSION)).map((n) => caches.delete(n)));
+      await self.clients.claim();
+    })(),
+  );
 });
 
 self.addEventListener('fetch', (event) => {
@@ -83,8 +87,11 @@ self.addEventListener('fetch', (event) => {
   if (!req.url.startsWith('http')) return;
 
   let url;
-  try { url = new URL(req.url); }
-  catch { return; }
+  try {
+    url = new URL(req.url);
+  } catch {
+    return;
+  }
 
   // Same-origin
   if (url.origin === self.location.origin) {
@@ -127,7 +134,7 @@ self.addEventListener('sync', (event) => {
 // ── Stratégies ───────────────────────────────────────────────────────────
 
 async function cacheFirst(req, cacheName) {
-  const cache  = await caches.open(cacheName);
+  const cache = await caches.open(cacheName);
   const cached = await cache.match(req);
   if (cached) return cached;
   try {
@@ -137,7 +144,7 @@ async function cacheFirst(req, cacheName) {
   } catch (err) {
     // Fallback offline : si on cherchait du HTML, renvoyer la page d'accueil.
     if (req.destination === 'document') {
-      const fallback = await cache.match('/index.html') || await cache.match('/');
+      const fallback = (await cache.match('/index.html')) || (await cache.match('/'));
       if (fallback) return fallback;
     }
     throw err;
@@ -146,5 +153,5 @@ async function cacheFirst(req, cacheName) {
 
 async function notifyClients(payload) {
   const clients = await self.clients.matchAll({ includeUncontrolled: true });
-  clients.forEach(c => c.postMessage(payload));
+  clients.forEach((c) => c.postMessage(payload));
 }

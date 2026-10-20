@@ -8,12 +8,15 @@
 import { formatDate } from '../components/format.js';
 
 export const ALERT_TYPES = Object.freeze({
-  caci_expire:                      { label: 'CACI expiré',                     plural: 'CACI expirés' },
-  caci_expire_bientot:              { label: 'CACI expirant bientôt',           plural: 'CACI expirant bientôt' },
-  caci_absent:                      { label: 'CACI non renseigné',              plural: 'CACI non renseignés' },
-  licence_expiree:                  { label: 'Licence expirée',                 plural: 'Licences expirées' },
-  licence_expire_bientot:           { label: 'Licence expirant bientôt',        plural: 'Licences expirant bientôt' },
-  autorisation_parentale_manquante: { label: 'Autorisation parentale manquante', plural: 'Autorisations parentales manquantes' },
+  caci_expire: { label: 'CACI expiré', plural: 'CACI expirés' },
+  caci_expire_bientot: { label: 'CACI expirant bientôt', plural: 'CACI expirant bientôt' },
+  caci_absent: { label: 'CACI non renseigné', plural: 'CACI non renseignés' },
+  licence_expiree: { label: 'Licence expirée', plural: 'Licences expirées' },
+  licence_expire_bientot: { label: 'Licence expirant bientôt', plural: 'Licences expirant bientôt' },
+  autorisation_parentale_manquante: {
+    label: 'Autorisation parentale manquante',
+    plural: 'Autorisations parentales manquantes',
+  },
 });
 
 // Ordre d'affichage des compteurs : bloquants d'abord.
@@ -52,17 +55,24 @@ export function describeAlert(item) {
 export function summarizeAlerts(data) {
   const items = Array.isArray(data?.items) ? data.items : [];
   const counts = { ...(data?.counts || {}) };
-  if (!data?.counts) items.forEach(it => { counts[it.type] = (counts[it.type] || 0) + 1; });
+  if (!data?.counts)
+    items.forEach((it) => {
+      counts[it.type] = (counts[it.type] || 0) + 1;
+    });
   const byType = Object.entries(counts)
     .filter(([, n]) => n > 0)
     .sort(([a], [b]) => indexOf(a) - indexOf(b))
-    .map(([type, count]) => ({ type, count, label: count > 1 ? (ALERT_TYPES[type]?.plural || type) : alertLabel(type) }));
+    .map(([type, count]) => ({ type, count, label: count > 1 ? ALERT_TYPES[type]?.plural || type : alertLabel(type) }));
   const total = byType.reduce((n, t) => n + t.count, 0);
-  const errors = items.filter(it => it.severity === 'error').length;
-  const divers = new Set(items.map(it => it.diver_id)).size;
+  const errors = items.filter((it) => it.severity === 'error').length;
+  const divers = new Set(items.map((it) => it.diver_id)).size;
   return {
-    total, errors, warnings: Math.max(0, total - errors), divers, byType,
-    tone: total === 0 ? null : (errors > 0 ? 'err' : 'warn'),
+    total,
+    errors,
+    warnings: Math.max(0, total - errors),
+    divers,
+    byType,
+    tone: total === 0 ? null : errors > 0 ? 'err' : 'warn',
   };
 }
 
@@ -89,7 +99,7 @@ export function groupAlertsByDiver(items = []) {
 
 /** Phrase courte du bandeau : « 2 CACI expirés, 1 licence expirant bientôt ». */
 export function alertsSentence(summary) {
-  return summary.byType.map(t => `${t.count} ${lowerFirst(t.label)}`).join(', ');
+  return summary.byType.map((t) => `${t.count} ${lowerFirst(t.label)}`).join(', ');
 }
 
 // « Licences expirées » → « licences expirées » ; les sigles (CACI) restent.

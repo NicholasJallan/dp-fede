@@ -8,10 +8,10 @@ il ne remplace pas une revue juridique.
 
 ## Rôles
 
-| Données | Responsable de traitement | Rôle de l'exploitant de DP Assistant |
-|---------|---------------------------|--------------------------------------|
-| Comptes utilisateurs (DP) | Exploitant de DP Assistant | Responsable |
-| Club (informations de la structure), annuaire des plongeurs, sites, plongées, fiches archivées | La structure (club, SCA…) pour laquelle les DP organisent les plongées | Sous-traitant (hébergement, outil) |
+| Données                                                                                        | Responsable de traitement                                              | Rôle de l'exploitant de DP Assistant |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------ |
+| Comptes utilisateurs (DP)                                                                      | Exploitant de DP Assistant                                             | Responsable                          |
+| Club (informations de la structure), annuaire des plongeurs, sites, plongées, fiches archivées | La structure (club, SCA…) pour laquelle les DP organisent les plongées | Sous-traitant (hébergement, outil)   |
 
 Depuis la phase 5, les données appartiennent à un **club** : chaque requête
 est limitée au club courant de l'utilisateur (`club_id` contrôlé sur toutes
@@ -132,13 +132,13 @@ de l'établissement** : exception au droit à l'effacement (RGPD art. 17.3.b).
 À la suppression d'un club (directe, ou par la suppression du compte de son
 unique membre) :
 
-| Données | Sort |
-|---|---|
-| Plongées archivées de moins de 365 jours (référence serveur : la plus tardive de `closed_at` / `created_at`), leurs PDF, participants et état d'exécution | **Conservées** jusqu'à `clubs.retention_until` (fin de conservation la plus tardive) |
-| Plongeurs référencés par ces plongées (palanquées, DP, sécurité surface) | **Conservés, minimisés** : nom, prénom, licence, niveaux, aptitudes et qualifications (ce qu'affiche la fiche) ; date de naissance, date du CACI, fin de licence, représentant légal, autorisation parentale, notes et identifiant externe **effacés** (art. 5.1.c) |
-| Sites référencés par ces plongées | **Conservés**, notes libres effacées |
-| Informations du club (nom, président : en-tête des fiches) | **Conservées** avec elles |
-| Tout le reste (autres plongées, plongeurs, sites, invitations, adhésions, PDF non conservés) | Supprimé immédiatement |
+| Données                                                                                                                                                   | Sort                                                                                                                                                                                                                                                                |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Plongées archivées de moins de 365 jours (référence serveur : la plus tardive de `closed_at` / `created_at`), leurs PDF, participants et état d'exécution | **Conservées** jusqu'à `clubs.retention_until` (fin de conservation la plus tardive)                                                                                                                                                                                |
+| Plongeurs référencés par ces plongées (palanquées, DP, sécurité surface)                                                                                  | **Conservés, minimisés** : nom, prénom, licence, niveaux, aptitudes et qualifications (ce qu'affiche la fiche) ; date de naissance, date du CACI, fin de licence, représentant légal, autorisation parentale, notes et identifiant externe **effacés** (art. 5.1.c) |
+| Sites référencés par ces plongées                                                                                                                         | **Conservés**, notes libres effacées                                                                                                                                                                                                                                |
+| Informations du club (nom, président : en-tête des fiches)                                                                                                | **Conservées** avec elles                                                                                                                                                                                                                                           |
+| Tout le reste (autres plongées, plongeurs, sites, invitations, adhésions, PDF non conservés)                                                              | Supprimé immédiatement                                                                                                                                                                                                                                              |
 
 Le club est marqué supprimé (`clubs.deleted_at`) et n'a plus aucun membre :
 les données conservées ne sont accessibles par aucun écran ni aucun appel
@@ -156,13 +156,13 @@ suppression que l'annuaire (soft-delete puis purge à 180 jours).
 
 ### 5. Sécurité et exploitation
 
-| Données | Finalité | Durée |
-|---------|----------|-------|
-| Sessions (`sessions` : IP, user-agent, expiration) | Authentification | 7 jours glissants ; purge quotidienne des sessions expirées |
-| Compteurs anti-abus (`rate_limits` : IP ou id) | Limitation de débit | ≤ 2 heures |
-| Journal d'actions `/var/log/dp-fede.log` (id utilisateur, IP, chemin, identifiants d'objets — jamais le contenu des plongées) | Sécurité, traçabilité | 12 semaines (logrotate) |
-| Rapports CSP, erreurs PHP | Sécurité | 12 semaines |
-| Sauvegardes MariaDB | Continuité | `RETENTION_DAYS` (14 jours par défaut) en local ; durée du stockage distant à aligner |
+| Données                                                                                                                       | Finalité              | Durée                                                                                 |
+| ----------------------------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------- |
+| Sessions (`sessions` : IP, user-agent, expiration)                                                                            | Authentification      | 7 jours glissants ; purge quotidienne des sessions expirées                           |
+| Compteurs anti-abus (`rate_limits` : IP ou id)                                                                                | Limitation de débit   | ≤ 2 heures                                                                            |
+| Journal d'actions `/var/log/dp-fede.log` (id utilisateur, IP, chemin, identifiants d'objets — jamais le contenu des plongées) | Sécurité, traçabilité | 12 semaines (logrotate)                                                               |
+| Rapports CSP, erreurs PHP                                                                                                     | Sécurité              | 12 semaines                                                                           |
+| Sauvegardes MariaDB                                                                                                           | Continuité            | `RETENTION_DAYS` (14 jours par défaut) en local ; durée du stockage distant à aligner |
 
 **Base légale** : intérêt légitime (sécurité du service, 6.1.f).
 
@@ -173,25 +173,25 @@ d'effacement reçues depuis la date de la sauvegarde.
 
 ## Destinataires et services tiers
 
-| Service | Données transmises | Remarque |
-|---------|--------------------|----------|
-| Google Identity Services | Connexion (jeton d'identité) | Transfert hors UE/Suisse (Data Privacy Framework) |
-| Google Drive (`drive.file`) | PDF des fiches, à l'initiative de l'utilisateur | Compte Google de l'utilisateur |
-| Google Maps / Places | Recherche de sites, carte | Pas de donnée de plongeur |
-| SHOM (proxy serveur) | Coordonnées du site + date | Pas de donnée personnelle |
-| Open-Meteo | Coordonnées du site | Appel direct du navigateur |
+| Service                     | Données transmises                              | Remarque                                          |
+| --------------------------- | ----------------------------------------------- | ------------------------------------------------- |
+| Google Identity Services    | Connexion (jeton d'identité)                    | Transfert hors UE/Suisse (Data Privacy Framework) |
+| Google Drive (`drive.file`) | PDF des fiches, à l'initiative de l'utilisateur | Compte Google de l'utilisateur                    |
+| Google Maps / Places        | Recherche de sites, carte                       | Pas de donnée de plongeur                         |
+| SHOM (proxy serveur)        | Coordonnées du site + date                      | Pas de donnée personnelle                         |
+| Open-Meteo                  | Coordonnées du site                             | Appel direct du navigateur                        |
 
 Aucune donnée n'est vendue ni utilisée à des fins publicitaires ; pas de
 traceur tiers d'audience.
 
 ## Exercice des droits
 
-| Droit | Mise en œuvre |
-|-------|---------------|
-| Accès, portabilité | `GET /api/account/export` (format `dp-assistant-export/2`) : compte, clubs (adhésion, rôle, informations du club), invitations envoyées (sans empreinte du jeton), plongeurs / sites / plongées **dont l'utilisateur est l'auteur** (+ état d'exécution et métadonnées des PDF archivés), sessions sans leur identifiant. `?download=1` pour un fichier. Limité à 10 exports / heure. Les données du club saisies par d'autres membres relèvent du club. |
-| Rectification | Écrans Compte, Plongeurs, Sites. |
-| Effacement | `DELETE /api/account` avec le corps `{ "confirm": "SUPPRIMER" }`, en une transaction : suppression **immédiate** du compte (`users` : e-mail, nom, identifiant Google…), de ses adhésions, sessions et invitations en attente ; les **clubs dont il est l'unique membre** sont supprimés avec conservation légale (§ 3 bis : seules les fiches de moins d'un an et les données qu'elles référencent restent, sans lien avec le compte supprimé). La réponse indique le nombre de fiches conservées et la date de fin de conservation. Ses contributions aux clubs **partagés** y restent, sans auteur (`user_id` remis à NULL). Refusée pour le dernier administrateur, et pour le **seul responsable d'un club partagé** (confier le rôle à un autre membre ou supprimer le club d'abord). |
-| Plongeurs (personnes saisies dans l'annuaire d'un club) | Demande adressée à la structure, qui supprime la fiche du plongeur ; effacement définitif sous 180 jours (purge) ou via la suppression du club (immédiat, sauf s'il figure sur une fiche en conservation légale : § 3 bis). Les fiches de sécurité archivées où il figure suivent la durée de conservation des plongées (A322-72). Si le plongeur est de nouveau importé depuis VPDive, sa fiche est réactivée : le supprimer aussi dans VPDive. |
+| Droit                                                   | Mise en œuvre                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accès, portabilité                                      | `GET /api/account/export` (format `dp-assistant-export/2`) : compte, clubs (adhésion, rôle, informations du club), invitations envoyées (sans empreinte du jeton), plongeurs / sites / plongées **dont l'utilisateur est l'auteur** (+ état d'exécution et métadonnées des PDF archivés), sessions sans leur identifiant. `?download=1` pour un fichier. Limité à 10 exports / heure. Les données du club saisies par d'autres membres relèvent du club.                                                                                                                                                                                                                                                                                                                                    |
+| Rectification                                           | Écrans Compte, Plongeurs, Sites.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Effacement                                              | `DELETE /api/account` avec le corps `{ "confirm": "SUPPRIMER" }`, en une transaction : suppression **immédiate** du compte (`users` : e-mail, nom, identifiant Google…), de ses adhésions, sessions et invitations en attente ; les **clubs dont il est l'unique membre** sont supprimés avec conservation légale (§ 3 bis : seules les fiches de moins d'un an et les données qu'elles référencent restent, sans lien avec le compte supprimé). La réponse indique le nombre de fiches conservées et la date de fin de conservation. Ses contributions aux clubs **partagés** y restent, sans auteur (`user_id` remis à NULL). Refusée pour le dernier administrateur, et pour le **seul responsable d'un club partagé** (confier le rôle à un autre membre ou supprimer le club d'abord). |
+| Plongeurs (personnes saisies dans l'annuaire d'un club) | Demande adressée à la structure, qui supprime la fiche du plongeur ; effacement définitif sous 180 jours (purge) ou via la suppression du club (immédiat, sauf s'il figure sur une fiche en conservation légale : § 3 bis). Les fiches de sécurité archivées où il figure suivent la durée de conservation des plongées (A322-72). Si le plongeur est de nouveau importé depuis VPDive, sa fiche est réactivée : le supprimer aussi dans VPDive.                                                                                                                                                                                                                                                                                                                                            |
 
 Les données hors-ligne de l'application (IndexedDB / localStorage de
 l'appareil) sont effacées par le client lors de la déconnexion et de la
@@ -206,14 +206,14 @@ actions « à revoir » destinées à un club quitté sont retirées automatique
 
 ## Purges automatiques (`backend/bin/purge.php`, cron quotidien)
 
-| Purge | Par défaut | Paramètre (config `retention` / option CLI) |
-|-------|-----------|----------------------------------------------|
-| Sessions expirées, compteurs anti-abus | Toujours | — |
-| Clubs supprimés dont la conservation légale est échue (fiches, PDF, plongeurs et sites conservés) | Toujours | — |
-| Invitations utilisées, annulées ou expirées depuis plus de 30 jours | Toujours | — |
-| Plongeurs, sites, plongées supprimés (soft-delete) | 180 jours | `soft_deleted_days` / `--soft-deleted-days=N` (0 = jamais) |
-| Plongées archivées anciennes (+ participants, PDF archivés) — âge calculé sur les dates serveur (`closed_at`, `created_at`) | **Désactivée** | `archived_dives_years` / `--archived-dives-years=N` (N ≥ 1) |
-| Comptes inactifs (hors seul responsable d'un club partagé) | **Désactivée** | `inactive_accounts_years` / `--inactive-accounts-years=N` (N ≥ 2) |
+| Purge                                                                                                                       | Par défaut     | Paramètre (config `retention` / option CLI)                       |
+| --------------------------------------------------------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------------- |
+| Sessions expirées, compteurs anti-abus                                                                                      | Toujours       | —                                                                 |
+| Clubs supprimés dont la conservation légale est échue (fiches, PDF, plongeurs et sites conservés)                           | Toujours       | —                                                                 |
+| Invitations utilisées, annulées ou expirées depuis plus de 30 jours                                                         | Toujours       | —                                                                 |
+| Plongeurs, sites, plongées supprimés (soft-delete)                                                                          | 180 jours      | `soft_deleted_days` / `--soft-deleted-days=N` (0 = jamais)        |
+| Plongées archivées anciennes (+ participants, PDF archivés) — âge calculé sur les dates serveur (`closed_at`, `created_at`) | **Désactivée** | `archived_dives_years` / `--archived-dives-years=N` (N ≥ 1)       |
+| Comptes inactifs (hors seul responsable d'un club partagé)                                                                  | **Désactivée** | `inactive_accounts_years` / `--inactive-accounts-years=N` (N ≥ 2) |
 
 Toujours tester un changement avec `--dry-run` :
 

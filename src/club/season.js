@@ -42,8 +42,8 @@ export function ageOn(birthDate, today = new Date()) {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(birthDate || ''));
   if (!m) return null;
   let age = today.getFullYear() - Number(m[1]);
-  const beforeBirthday = today.getMonth() + 1 < Number(m[2])
-    || (today.getMonth() + 1 === Number(m[2]) && today.getDate() < Number(m[3]));
+  const beforeBirthday =
+    today.getMonth() + 1 < Number(m[2]) || (today.getMonth() + 1 === Number(m[2]) && today.getDate() < Number(m[3]));
   if (beforeBirthday) age -= 1;
   return age;
 }
@@ -56,7 +56,7 @@ export function isMinor(birthDate, today = new Date()) {
 
 /** Choix proposés pour l'autorisation parentale : saisons précédente, courante, suivante. */
 export function seasonChoices(today = new Date(), current = '') {
-  const list = [-1, 0, 1].map(o => seasonLabel(today, o));
+  const list = [-1, 0, 1].map((o) => seasonLabel(today, o));
   if (isSeason(current) && !list.includes(current)) list.unshift(current);
   return list;
 }

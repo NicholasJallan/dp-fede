@@ -46,7 +46,10 @@ describe('paliers — saisie', () => {
 
   test('total des paliers (pour comparer à la DTR réalisée)', () => {
     const real = { paliers: { 6: '1', 3: '3' }, confort: { on: true, profondeur: '5', duree: '2' } };
-    assert.deepEqual(paliersDone(real), [[6, 1], [3, 3]]);
+    assert.deepEqual(paliersDone(real), [
+      [6, 1],
+      [3, 3],
+    ]);
     assert.equal(paliersTotal(real), 6);
     assert.equal(paliersTotal({ ...real, confort: { ...real.confort, on: false } }), 4);
   });

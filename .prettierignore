@@ -3,3 +3,9 @@ node_modules/
 backend/vendor/
 package-lock.json
 backend/composer.lock
+.claude/
+.junie/
+pi-scripts/
+test-results/
+playwright-report/
+tests-e2e-report/

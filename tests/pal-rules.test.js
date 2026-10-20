@@ -33,28 +33,31 @@ function buildCase(c) {
   return { pal, diversById, answers, dp };
 }
 
-const codes = (issues, tone) => [...new Set(issues.filter(i => i.tone === tone).map(i => i.code))].sort();
+const codes = (issues, tone) => [...new Set(issues.filter((i) => i.tone === tone).map((i) => i.code))].sort();
 
 describe('validatePal — cas réglementaires partagés', () => {
   for (const c of fixtures.cases) {
     test(`${c.name}${c.ref ? ` (${c.ref})` : ''}`, () => {
       const { pal, diversById, answers, dp } = buildCase(c);
       const issues = validatePal(pal, diversById, answers, dp);
-      assert.deepEqual(codes(issues, 'err'), [...c.errors].sort(),
-        issues.map(i => `${i.tone} ${i.code} ${i.text}`).join('\n'));
+      assert.deepEqual(
+        codes(issues, 'err'),
+        [...c.errors].sort(),
+        issues.map((i) => `${i.tone} ${i.code} ${i.text}`).join('\n'),
+      );
       for (const w of c.warnings || []) {
         assert.ok(codes(issues, 'warn').includes(w), `avertissement ${w} attendu`);
       }
-      if (c.errors.length === 0) assert.ok(issues.some(i => i.code === 'OK'));
+      if (c.errors.length === 0) assert.ok(issues.some((i) => i.code === 'OK'));
     });
   }
 });
 
 describe('validatePal — forme des issues', () => {
   test('chaque issue porte code, ref et ids', () => {
-    const c = fixtures.cases.find(x => x.errors.includes('EFFECTIF_ENCADRES'));
+    const c = fixtures.cases.find((x) => x.errors.includes('EFFECTIF_ENCADRES'));
     const { pal, diversById, answers, dp } = buildCase(c);
-    const err = validatePal(pal, diversById, answers, dp).find(i => i.code === 'EFFECTIF_ENCADRES');
+    const err = validatePal(pal, diversById, answers, dp).find((i) => i.code === 'EFFECTIF_ENCADRES');
     assert.equal(typeof err.text, 'string');
     assert.equal(err.ref, 'III-16 b');
     assert.ok(err.ids.length >= 5);
@@ -62,7 +65,10 @@ describe('validatePal — forme des issues', () => {
 
   test('palanquée vide → avertissement seul', () => {
     const issues = validatePal({ membres: [] }, {}, fixtures.defaults, fixtures.dps.e3);
-    assert.deepEqual(issues.map(i => i.code), ['PAL_EMPTY']);
+    assert.deepEqual(
+      issues.map((i) => i.code),
+      ['PAL_EMPTY'],
+    );
   });
 });
 

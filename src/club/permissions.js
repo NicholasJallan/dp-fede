@@ -16,7 +16,7 @@ export const ROLE_LABELS = Object.freeze({
 
 export const ROLE_HINTS = Object.freeze({
   responsable: 'Gère le club, les membres et les invitations ; toutes les actions.',
-  dp: 'Prépare et dirige les plongées, tient l\'annuaire et les sites, importe.',
+  dp: "Prépare et dirige les plongées, tient l'annuaire et les sites, importe.",
   encadrant: 'Consulte plongées, annuaire et alertes ; ne modifie rien.',
   lecture: 'Consultation seule, sans les alertes médicales.',
 });
@@ -73,7 +73,7 @@ const FORBIDDEN_RE = /non autoris|réservé|restreint|membre de ce club/i;
 export function describeApiError(err, action = 'effectuer cette action') {
   const message = err?.message || 'Erreur inconnue';
   if (err?.status === 403 && err?.code === 'CLUB_NOT_MEMBER') {
-    return 'Vous n\'êtes plus membre de ce club : l\'application revient à votre club courant.';
+    return "Vous n'êtes plus membre de ce club : l'application revient à votre club courant.";
   }
   if (err?.status === 403) {
     const detail = FORBIDDEN_RE.test(message) ? message : 'Action refusée par le serveur';

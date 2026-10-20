@@ -57,12 +57,22 @@ describe('outbox — club de la mise en file', () => {
 
   test('coalesce ne fusionne jamais deux clubs', async () => {
     win.clubId = CLUB_A;
-    await win.outbox.coalesce('diver.update', { id: 'd-1', nom: 'A' }, (it) => it.payload.id === 'd-1', (a, b) => ({ ...a, ...b }));
+    await win.outbox.coalesce(
+      'diver.update',
+      { id: 'd-1', nom: 'A' },
+      (it) => it.payload.id === 'd-1',
+      (a, b) => ({ ...a, ...b }),
+    );
     win.clubId = CLUB_B;
-    await win.outbox.coalesce('diver.update', { id: 'd-1', nom: 'B' }, (it) => it.payload.id === 'd-1', (a, b) => ({ ...a, ...b }));
+    await win.outbox.coalesce(
+      'diver.update',
+      { id: 'd-1', nom: 'B' },
+      (it) => it.payload.id === 'd-1',
+      (a, b) => ({ ...a, ...b }),
+    );
     const items = await win.outbox.pending();
     assert.equal(items.length, 2);
-    assert.deepEqual(items.map(i => i.club_id).sort(), [CLUB_A, CLUB_B]);
+    assert.deepEqual(items.map((i) => i.club_id).sort(), [CLUB_A, CLUB_B]);
   });
 
   test('coalesce fusionne dans un item du même club', async () => {
@@ -90,7 +100,7 @@ describe('sync — en-tête X-DP-Club', () => {
     assert.equal(await win.outbox.size(), 0);
   });
 
-  test("item sans club (ancien format) : jamais envoyé sans en-tête, mis en revue", async () => {
+  test('item sans club (ancien format) : jamais envoyé sans en-tête, mis en revue', async () => {
     win.clubId = null;
     const item = await win.outbox.enqueue('site.create', { id: 's-1', nom: 'Lac' });
     // Ancien item resté « pending » sans club (antérieur au socle club).
@@ -110,8 +120,11 @@ describe('sync — en-tête X-DP-Club', () => {
     await win.outbox.enqueue('dive.update', { client_uuid: cu, patch: { status: 'in_progress' } });
     const calls = mockFetch([{ status: 201, data: { id: 'srv-1' } }, { data: { id: 'srv-1' } }]);
     await win.sync._drainOutbox();
-    assert.deepEqual(calls.map(c => `${c.method} ${c.url}`), ['POST /api/dives', 'PATCH /api/dives/srv-1']);
-    assert.ok(calls.every(c => c.headers['X-DP-Club'] === CLUB_A));
+    assert.deepEqual(
+      calls.map((c) => `${c.method} ${c.url}`),
+      ['POST /api/dives', 'PATCH /api/dives/srv-1'],
+    );
+    assert.ok(calls.every((c) => c.headers['X-DP-Club'] === CLUB_A));
   });
 });
 
@@ -233,14 +246,14 @@ describe('sync — refus définitifs (revue) ou transitoires', () => {
     assert.equal(left[0].status, 'review');
   });
 
-  test('403 CSRF → nouvel essai plus tard, le drain s\'arrête', async () => {
+  test("403 CSRF → nouvel essai plus tard, le drain s'arrête", async () => {
     await win.outbox.enqueue('diver.create', { id: 'd-1' });
     await win.outbox.enqueue('site.create', { id: 's-1' });
     const calls = mockFetch([{ status: 403, error: 'Jeton CSRF invalide' }]);
     await win.sync._drainOutbox();
     assert.equal(calls.length, 1);
     const left = await win.outbox.pending();
-    assert.equal(left.find(i => i.payload.id === 'd-1').status, 'pending');
+    assert.equal(left.find((i) => i.payload.id === 'd-1').status, 'pending');
   });
 
   test('isPermanentRefusal', () => {
@@ -253,7 +266,10 @@ describe('sync — refus définitifs (revue) ou transitoires', () => {
   });
 
   test('isPermanentRefusal privilégie le code stable du serveur', () => {
-    assert.equal(isPermanentRefusal({ status: 403, message: 'x', responseBody: { code: 'CLUB_ROLE_FORBIDDEN' } }), true);
+    assert.equal(
+      isPermanentRefusal({ status: 403, message: 'x', responseBody: { code: 'CLUB_ROLE_FORBIDDEN' } }),
+      true,
+    );
     assert.equal(isPermanentRefusal({ status: 403, message: 'x', responseBody: { code: 'CSRF_INVALID' } }), false);
   });
 });

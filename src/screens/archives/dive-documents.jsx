@@ -37,15 +37,25 @@ function useDocuments(diveId, online) {
   const [docs, setDocs] = useState(null);
   const [error, setError] = useState(null);
   const load = useCallback(async () => {
-    try { setDocs(await api.dives.documents(diveId)); setError(null); }
-    catch (err) { setError(err); }
+    try {
+      setDocs(await api.dives.documents(diveId));
+      setError(null);
+    } catch (err) {
+      setError(err);
+    }
   }, [diveId]);
-  useEffect(() => { if (online && diveId) load(); }, [online, diveId, load]);
+  useEffect(() => {
+    if (online && diveId) load();
+  }, [online, diveId, load]);
   // Génération en arrière-plan : relecture périodique tant que « pending ».
   useEffect(() => {
     if (docs?.status !== 'pending' || !online) return undefined;
     let n = 0;
-    const id = setInterval(() => { n += 1; if (n > POLL_MAX) clearInterval(id); else load(); }, POLL_MS);
+    const id = setInterval(() => {
+      n += 1;
+      if (n > POLL_MAX) clearInterval(id);
+      else load();
+    }, POLL_MS);
     return () => clearInterval(id);
   }, [docs?.status, online, load]);
   return { docs, setDocs, error, load };
@@ -56,11 +66,16 @@ function DocRow({ doc, busy, online, onDownload }) {
     <div className="doc-row">
       <div>
         <b>{DOC_LABELS[doc.type] || doc.type}</b>
-        <p className="meta">PDF, {kb(doc.bytes)}, généré le {formatDateTime(doc.created_at)}</p>
-        <p className="meta" title="Empreinte SHA-256 vérifiée à chaque téléchargement">SHA-256 {String(doc.sha256 || '').slice(0, 16)}…</p>
+        <p className="meta">
+          PDF, {kb(doc.bytes)}, généré le {formatDateTime(doc.created_at)}
+        </p>
+        <p className="meta" title="Empreinte SHA-256 vérifiée à chaque téléchargement">
+          SHA-256 {String(doc.sha256 || '').slice(0, 16)}…
+        </p>
       </div>
       <button type="button" className="btn" disabled={busy || !online} onClick={onDownload}>
-        <Icon.Download />Télécharger
+        <Icon.Download />
+        Télécharger
       </button>
     </div>
   );
@@ -83,7 +98,11 @@ export function DiveDocuments({ dive }) {
       const { blob, filename } = await api.dives.downloadDocument(diveId, type);
       saveBlob(blob, filename);
     } catch (err) {
-      showToast({ tone: 'err', title: 'Téléchargement impossible', body: describeApiError(err, 'télécharger ce document') });
+      showToast({
+        tone: 'err',
+        title: 'Téléchargement impossible',
+        body: describeApiError(err, 'télécharger ce document'),
+      });
     } finally {
       setBusy(false);
     }
@@ -93,7 +112,7 @@ export function DiveDocuments({ dive }) {
     setBusy(true);
     try {
       const res = await api.dives.regenerateDocuments(diveId);
-      setDocs(d => ({ ...(d || {}), ...res }));
+      setDocs((d) => ({ ...(d || {}), ...res }));
       showToast({ tone: 'ok', title: 'PDF régénérés', body: 'Fiche de sécurité et check-list archivées.' });
     } catch (err) {
       showToast({ tone: 'err', title: 'Régénération impossible', body: describeApiError(err, 'régénérer les PDF') });
@@ -105,27 +124,34 @@ export function DiveDocuments({ dive }) {
 
   const documents = docs?.documents || dive.documents || [];
   // docs pas encore lus (hors ligne) : on ne propose rien sur la seule foi du résumé local.
-  const showRegenerate = canGenerate && (docs !== null || status === 'error')
-    && canRegenerateDocuments({ status, documents });
+  const showRegenerate =
+    canGenerate && (docs !== null || status === 'error') && canRegenerateDocuments({ status, documents });
 
   return (
     <section className="card" aria-labelledby="arch-docs">
-      <div className="card-head"><h2 id="arch-docs">Documents archivés</h2><span className="hint">Conservation par le club, art. A322-72</span></div>
+      <div className="card-head">
+        <h2 id="arch-docs">Documents archivés</h2>
+        <span className="hint">Conservation par le club, art. A322-72</span>
+      </div>
       <div className="card-body">
         <p className="doc-status" role="status">
-          <StatusIcon tone={meta.tone} />{busy && showRegenerate ? 'Régénération en cours (quelques secondes)…' : meta.label}
+          <StatusIcon tone={meta.tone} />
+          {busy && showRegenerate ? 'Régénération en cours (quelques secondes)…' : meta.label}
         </p>
         {!online && <p className="small muted">Téléchargement disponible en ligne.</p>}
         {error && online && <Alert tone="warn">{describeApiError(error, 'consulter les documents')}</Alert>}
         {documents.length > 0 && (
           <div className="doc-list">
-            {documents.map(d => <DocRow key={d.type} doc={d} busy={busy} online={online} onDownload={() => download(d.type)} />)}
+            {documents.map((d) => (
+              <DocRow key={d.type} doc={d} busy={busy} online={online} onDownload={() => download(d.type)} />
+            ))}
           </div>
         )}
         {showRegenerate && (
           <div className="row mt-3">
             <button type="button" className="btn primary" disabled={busy || !online} onClick={regenerate}>
-              <Icon.Refresh />Régénérer les PDF
+              <Icon.Refresh />
+              Régénérer les PDF
             </button>
             <span className="small muted">Fiche et check-list recalculées depuis la plongée archivée.</span>
           </div>

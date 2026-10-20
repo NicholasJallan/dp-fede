@@ -5,6 +5,7 @@
 > Claude Sonnet sur n'importe quel item sans relire le reste.
 >
 > **Format de chaque tâche** :
+>
 > - **Pourquoi** : motivation et risque actuel
 > - **Fichiers** : où intervenir
 > - **Quoi faire** : actions concrètes
@@ -12,6 +13,7 @@
 > - **Tests** : commandes à lancer
 >
 > Prompt-type pour Sonnet :
+>
 > > « Ouvre `docs/CODE_REVIEW_PLAN.md` et exécute la tâche **<ID>**. Lis-la en
 > > entier, propose un plan, attends mon OK, puis implémente + tests. »
 
@@ -19,14 +21,14 @@
 
 ## Vue d'ensemble — ordre d'attaque
 
-| Phase | Tâches | Durée estimée |
-|-------|--------|---------------|
-| Phase 0 — Hotfix sécu | C1.1 | 1 h |
-| Phase 1 — Quick wins | M3, M4, M6, L1–L4 | 1 jour |
-| Phase 2 — Backend durci | H5, H6, M7, M11 | 2–3 jours |
-| Phase 3 — Refondre le front | H1, H2 | 1 semaine |
-| Phase 4 — Sécurité légale | C1.2, M2 | 1 semaine |
-| Phase 5 — Long terme | C2, H3, H4, H7 | 2 semaines |
+| Phase                       | Tâches            | Durée estimée |
+| --------------------------- | ----------------- | ------------- |
+| Phase 0 — Hotfix sécu       | C1.1              | 1 h           |
+| Phase 1 — Quick wins        | M3, M4, M6, L1–L4 | 1 jour        |
+| Phase 2 — Backend durci     | H5, H6, M7, M11   | 2–3 jours     |
+| Phase 3 — Refondre le front | H1, H2            | 1 semaine     |
+| Phase 4 — Sécurité légale   | C1.2, M2          | 1 semaine     |
+| Phase 5 — Long terme        | C2, H3, H4, H7    | 2 semaines    |
 
 ---
 
@@ -37,24 +39,31 @@
 **Pourquoi** : tout compte authentifié (rôle `user`) peut POSTer du HTML
 arbitraire à `/api/pdf/fiche`. Le serveur passe ce HTML à
 `wkhtmltopdf --enable-local-file-access`. Conséquences :
+
 - exfiltration de `/etc/dp-fede/config.php` (mot de passe DB, SMTP) via
   `<iframe src="file:///etc/dp-fede/config.php">`,
 - SSRF interne au réseau du Pi via `<img src="http://192.168.x.x/admin">`,
 - exécution potentielle de JS embarqué dans wkhtmltopdf (Qt WebKit 538).
 
 **PoC** (à reproduire pour vérifier le fix) :
+
 ```js
 fetch('/api/pdf/fiche', {
-  method: 'POST', credentials: 'include',
-  headers: { 'Content-Type':'application/json', 'X-CSRF-Token': window.getCsrfToken() },
-  body: JSON.stringify({ html: '<iframe src="file:///etc/passwd" width=900 height=1200></iframe>' })
-}).then(r => r.blob()).then(b => window.open(URL.createObjectURL(b)));
+  method: 'POST',
+  credentials: 'include',
+  headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.getCsrfToken() },
+  body: JSON.stringify({ html: '<iframe src="file:///etc/passwd" width=900 height=1200></iframe>' }),
+})
+  .then((r) => r.blob())
+  .then((b) => window.open(URL.createObjectURL(b)));
 ```
 
 **Fichiers** :
+
 - `backend/routes/pdf.php`
 
 **Quoi faire** :
+
 1. Supprimer `--enable-local-file-access`.
 2. Ajouter `--disable-local-file-access` explicite (defense in depth).
 3. Ajouter `--disable-javascript` (Qt WebKit 538 est non patché).
@@ -73,6 +82,7 @@ fetch('/api/pdf/fiche', {
    (idem pour `$tmpPdf`).
 
 **Critères d'acceptation** :
+
 - Le PoC ci-dessus produit un PDF **vide** ou avec une iframe vide (pas le
   contenu du fichier).
 - `<script>alert(1)</script>` dans le HTML produit un PDF sans alerte ni
@@ -84,6 +94,7 @@ fetch('/api/pdf/fiche', {
   s'affiche toujours correctement.
 
 **Tests** :
+
 ```bash
 cd backend && composer test       # tests PHP existants
 npm test                           # tests Node existants
@@ -104,10 +115,12 @@ dois bumper à la main avant chaque déploiement frontend. Oublier = les
 utilisateurs restent collés à l'ancien cache.
 
 **Fichiers** :
+
 - `sw.js`
 - `pi-scripts/` (où vivent tes scripts de déploiement) ou nouveau script `deploy.sh`
 
 **Quoi faire** :
+
 1. Créer `pi-scripts/deploy-frontend.sh` qui :
    - calcule `SHA=$(git rev-parse --short HEAD)`, `DATE=$(date +%Y%m%d)`
    - patche `sw.js` localement (copie temp) : `sed "s/^const VERSION = .*/const VERSION = 'dp-${DATE}-${SHA}';/"`
@@ -119,11 +132,13 @@ utilisateurs restent collés à l'ancien cache.
    modifier `VERSION` à la main ».
 
 **Critères d'acceptation** :
+
 - Modifier un fichier précaché + lancer `deploy-frontend.sh` met à jour
   `VERSION` dans le `sw.js` déployé.
 - L'ancienne version reste dans git (le script ne commit pas le bump).
 
 **Tests** :
+
 ```bash
 # Dry-run du script de déploiement
 bash pi-scripts/deploy-frontend.sh --dry-run
@@ -141,12 +156,14 @@ grep VERSION sw.js   # avant : version 'manuelle'
 faiblesse de la CSP — un XSS reflété quelque part te coûterait le DOM entier.
 
 **Fichiers** :
+
 - `DP Assistant.html`
 - nouveau fichier : `inline-boot.js`
 - `sw.js` (ajouter `inline-boot.js` au precache)
 - `nginx-offline-snippet.conf`
 
 **Quoi faire** :
+
 1. Identifier les 3 inline scripts dans `DP Assistant.html` :
    - le timer fallback de chargement (12 s),
    - la déclaration `window.GOOGLE_CLIENT_ID`,
@@ -159,6 +176,7 @@ faiblesse de la CSP — un XSS reflété quelque part te coûterait le DOM entie
 5. Ajouter `inline-boot.js` dans `PRECACHE_URLS` de `sw.js`.
 
 **Critères d'acceptation** :
+
 - Aucun `<script>` inline dans `DP Assistant.html` (que des `<script src=...>`
   et `<script type="text/babel" src=...>`).
 - La nouvelle CSP `script-src 'self' https://accounts.google.com https://maps.googleapis.com https://maps.gstatic.com https://unpkg.com https://cdnjs.cloudflare.com` ne bloque rien.
@@ -166,6 +184,7 @@ faiblesse de la CSP — un XSS reflété quelque part te coûterait le DOM entie
   bloquer un script dans devtools → message s'affiche).
 
 **Tests** :
+
 ```bash
 # Vérifier la nouvelle CSP en dev (console navigateur — 0 violation)
 # Vérifier le SW : DevTools → Application → Service Workers
@@ -180,25 +199,29 @@ faiblesse de la CSP — un XSS reflété quelque part te coûterait le DOM entie
 `9999-99-99`. Le check date est insuffisant.
 
 **Fichiers** :
+
 - `backend/lib/Validate.php`
 - `backend/tests-php/` (nouveau test)
 
 **Quoi faire** :
+
 1. Remplacer la regex par `DateTimeImmutable::createFromFormat('Y-m-d', $v)`
-   + check `$dt && $dt->format('Y-m-d') === $v` (anti-overflow type
-   `2026-02-31` qui devient `2026-03-03`).
+   - check `$dt && $dt->format('Y-m-d') === $v` (anti-overflow type
+     `2026-02-31` qui devient `2026-03-03`).
 2. Garder la signature de la méthode (chaînable).
 3. Ajouter `backend/tests-php/ValidateTest.php` couvrant : date valide,
    date format invalide, date avec mois 13, date avec jour 32, date vide
    (ne doit pas échouer car c'est `required()` qui s'en occupe).
 
 **Critères d'acceptation** :
+
 - `9999-99-99` est rejeté.
 - `2026-02-31` est rejeté (overflow détecté).
 - `2026-02-28` passe.
 - Test PHPUnit vert.
 
 **Tests** :
+
 ```bash
 cd backend && composer test
 ```
@@ -220,6 +243,7 @@ par `requestAnimationFrame(() => requestAnimationFrame(resolve))` ou
 `flushSync` (React 18). Plus déterministe pour laisser React peindre.
 
 **L3** — Ajouter `.editorconfig` à la racine :
+
 ```ini
 root = true
 [*]
@@ -242,6 +266,7 @@ created_at » OU réinitialiser `created_at=NOW()` si c'est un cas vraiment
 nouveau. Demander à l'utilisateur lequel des deux est la sémantique attendue.
 
 **Critères d'acceptation** :
+
 - L1 : un test avec ligne SMTP courte ne crashe pas (cas dur à tester unitairement, OK pour relecture seulement).
 - L2 : la génération PDF reste fonctionnelle, pas de race condition observable.
 - L3 : `.editorconfig` présent, VS Code/IntelliJ respectent indent 2/4.
@@ -259,11 +284,13 @@ logrotate qui touche PHP-FPM. Si tu scales un jour (plusieurs workers),
 chaque worker a son propre compteur.
 
 **Fichiers** :
+
 - `backend/index.php` (la fonction `rateLimitOrAbort`)
 - `backend/lib/RateLimit.php` (nouveau)
 - `backend/lib/Db.php` (ajouter une table `rate_limits` dans `migrate()`)
 
 **Quoi faire** :
+
 1. Nouvelle table dans `Db::migrate()` :
    ```sql
    CREATE TABLE IF NOT EXISTS rate_limits (
@@ -297,11 +324,13 @@ chaque worker a son propre compteur.
 6. Ajouter `backend/tests-php/RateLimitTest.php`.
 
 **Critères d'acceptation** :
+
 - Reload `php-fpm` ne réinitialise plus le compteur.
 - 11 essais de login depuis la même IP en 15 min → le 11ᵉ est bloqué.
 - `EXPLAIN` sur la requête SELECT utilise bien la PK (vérifié sur MariaDB Pi).
 
 **Tests** :
+
 ```bash
 cd backend && composer test
 # Test fonctionnel : ab -n 200 -c 1 https://dp-fede.bullesenvalais.ch/api/dives
@@ -317,10 +346,12 @@ appel `Smtp::send()` dans les routes (à vérifier). Soit c'est du code mort,
 soit c'est utilisé via un chemin non grep-friendly.
 
 **Fichiers** :
+
 - `backend/lib/Smtp.php`
 - `backend/routes/*.php` (à grep)
 
 **Quoi faire** :
+
 1. `grep -rn "Smtp::\|new Smtp\|smtp(" backend/` → identifier tous les
    call-sites.
 2. Si **0 call-site** : supprimer `Smtp.php` + sa référence dans
@@ -332,12 +363,14 @@ soit c'est utilisé via un chemin non grep-friendly.
 4. Mettre à jour `docs/security/composer-audit.md` selon le choix.
 
 **Critères d'acceptation** :
+
 - Soit `Smtp.php` n'existe plus, soit l'envoi de mail passe par une lib
   testée.
 - Aucune régression sur les flows qui utilisent l'email (vérifier le sujet
   avec l'utilisateur si pas grep-able).
 
 **Tests** :
+
 ```bash
 grep -rn "Smtp" backend/ --include="*.php"
 cd backend && composer test
@@ -352,6 +385,7 @@ des fiches de sécurité (dimension légale), savoir qui a archivé quoi et
 quand est important en cas d'audit / contestation.
 
 **Fichiers** :
+
 - nouveau : `backend/lib/Log.php`
 - `backend/routes/dives.php` (call-sites)
 - `backend/routes/divers.php`
@@ -360,6 +394,7 @@ quand est important en cas d'audit / contestation.
 - `backend/routes/users.php`
 
 **Quoi faire** :
+
 1. `backend/lib/Log.php` :
    ```php
    class Log {
@@ -396,12 +431,14 @@ quand est important en cas d'audit / contestation.
    ```
 
 **Critères d'acceptation** :
+
 - Une archive génère une ligne JSON dans `/var/log/dp-fede.log`.
 - `logrotate -d /etc/logrotate.d/dp-fede` ne renvoie pas d'erreur.
 - Aucune fuite de PII inutile (ne pas logger les `answers`/`palanquees`
   entiers, juste `dive_id`, `site_nom`, `nb_palanquees`).
 
 **Tests** :
+
 ```bash
 ssh pi@bullesenvalais.ch "tail -f /var/log/dp-fede.log"
 # Reproduire des actions, vérifier les lignes
@@ -417,11 +454,13 @@ montant l'ASN.1 à la main. C'est de la crypto. Il manque des tests négatifs
 nul.
 
 **Fichiers** :
+
 - `backend/composer.json`
 - `backend/lib/Auth.php`
 - Pi : `/var/www/dp-fede-api/vendor/`
 
 **Quoi faire** :
+
 1. Ajouter `firebase/php-jwt` en dependency PROD (déplacer de
    `require-dev` → `require`).
 2. `composer require firebase/php-jwt` localement.
@@ -441,11 +480,13 @@ nul.
 8. Mettre à jour `docs/security/composer-audit.md` (Composer arrive en prod).
 
 **Critères d'acceptation** :
+
 - Login Google fonctionne toujours.
 - Les tests `AuthTest` passent (adapter si besoin).
 - `composer audit` ne renvoie pas de vulnérabilité critique.
 
 **Tests** :
+
 ```bash
 cd backend && composer install --no-dev && composer audit
 cd backend && composer test
@@ -459,6 +500,7 @@ cd backend && composer test
 ## H1 — Sortir Babel CDN + React dev, passer à esbuild
 
 **Pourquoi** :
+
 - `@babel/standalone` ~3 MB gzippé bloque le first paint 1–3 s sur mobile.
 - `react.development.js` ≠ `react.production.min.js` (≈ 5× la taille).
 - Le SW pré-cache 20+ fichiers JSX que le navigateur ne peut consommer
@@ -466,6 +508,7 @@ cd backend && composer test
 - Gain mesuré attendu : LCP ÷ 3 sur mobile, bundle ÷ 10.
 
 **Fichiers** :
+
 - `package.json` (ajout esbuild)
 - nouveau : `build.sh` ou `package.json` script
 - `DP Assistant.html`
@@ -473,6 +516,7 @@ cd backend && composer test
 - `pi-scripts/deploy-frontend.sh`
 
 **Quoi faire** :
+
 1. `npm install --save-dev esbuild` (zéro config, ≈ 50 ms par build).
 2. Créer `build.sh` :
    ```bash
@@ -509,6 +553,7 @@ cd backend && composer test
 6. Mettre à jour `README.md` et `CLAUDE.md` (section déploiement).
 
 **Critères d'acceptation** :
+
 - Bundle `dist/app.js` < 250 KB gzippé.
 - Lighthouse mobile : LCP < 2.5 s sur 3G simulé (cible Web Vitals).
 - L'app boot, tous les écrans fonctionnent.
@@ -516,6 +561,7 @@ cd backend && composer test
 - `npm test` passe.
 
 **Tests** :
+
 ```bash
 bash build.sh
 ls -la dist/  # vérifier les sorties
@@ -547,11 +593,13 @@ esbuild compile direct. Réservé après H1.
 ### H2.A — JSDoc minimal
 
 **Fichiers** :
+
 - `data.js`
 - `lib/pal-rules.js`
 - `lib/sync.js`
 
 **Quoi faire** :
+
 1. Ajouter en haut de chaque fichier :
    ```js
    // @ts-check
@@ -576,6 +624,7 @@ esbuild compile direct. Réservé après H1.
    les erreurs.
 
 **Critères d'acceptation** :
+
 - `tsc --noEmit` est vert.
 - Les types capturent au moins : `Diver`, `Site`, `Palanquee`, `Dive`,
   `Answers`, `RenderState`.
@@ -594,18 +643,21 @@ esbuild compile direct. Réservé après H1.
 **Pourquoi** : phase 0 (C1.1) bloque le LFI mais le serveur accepte toujours
 du HTML arbitraire. Solution propre : le client envoie le `dive_id`, le
 serveur fait le rendu à partir de la DB. Bénéfices :
+
 - LFI impossible par construction (HTML 100 % maîtrisé),
 - on peut virer html2canvas et jsPDF du frontend (gain bundle),
 - on peut virer la duplication de templates React/HTML,
 - la fiche archivée est régénérable identiquement à n'importe quel moment.
 
 **Fichiers** :
+
 - nouveau : `backend/lib/PdfRender.php`
 - nouveau : `backend/templates/fiche.php`, `backend/templates/checklist.php`
 - `backend/routes/pdf.php`
 - `screen-archive.jsx`, `screen-fiche.jsx` (côté client)
 
 **Quoi faire** :
+
 1. Définir le contrat serveur :
    ```
    POST /api/pdf/fiche
@@ -624,6 +676,7 @@ serveur fait le rendu à partir de la DB. Bénéfices :
    1 release, logger les accès pour s'assurer que rien ne l'utilise plus.
 
 **Critères d'acceptation** :
+
 - Le PDF généré côté serveur est visuellement identique à l'ancien (pixel
   diff acceptable pour les fontes).
 - L'endpoint refuse les `dive_id` qui n'appartiennent pas à l'utilisateur
@@ -632,6 +685,7 @@ serveur fait le rendu à partir de la DB. Bénéfices :
 - L'archive Drive contient toujours le bon PDF.
 
 **Tests** :
+
 ```bash
 cd backend && composer test
 npm test
@@ -648,12 +702,14 @@ conforme au Code du Sport. En cas de litige, la défense « le navigateur a
 validé » n'est pas opposable.
 
 **Fichiers** :
+
 - nouveau : `backend/lib/Rules.php`
 - nouveau : `backend/tests-php/RulesTest.php`
 - `backend/routes/dives.php` (PATCH / POST)
 - `lib/pal-rules.js`, `data.js` (source à porter)
 
 **Quoi faire** :
+
 1. Porter en PHP :
    - `getDpMaxDepth(palType, dp)`
    - `computePalHardLimit(...)`
@@ -672,6 +728,7 @@ validé » n'est pas opposable.
    La 1ʳᵉ est plus simple.
 
 **Critères d'acceptation** :
+
 - POST d'une palanquée illégale → 422 avec message clair.
 - POST d'une palanquée légale → 200, persistée.
 - Suite de fixtures JSON identiques utilisée par les tests Node et PHP.
@@ -679,6 +736,7 @@ validé » n'est pas opposable.
   feedback temps réel).
 
 **Tests** :
+
 ```bash
 cd backend && composer test
 npm test
@@ -696,12 +754,14 @@ CVE remonte (ça finira par arriver), tu n'auras aucun upstream pour la fix.
 **Options** :
 
 **Option 1 — Chromium headless** :
+
 - Pros : rendu moderne, CSS récent, Web Fonts.
 - Cons : ~200 MB d'installation sur le Pi (RAM tight), surface d'attaque
   plus large.
 - Lib PHP : `spatie/browsershot` (depend de Puppeteer ou Chrome direct).
 
 **Option 2 — mPDF ou Dompdf (PHP pur)** :
+
 - Pros : pas de process externe, pas de sandbox à gérer.
 - Cons : rendu plus limité (CSS 2.1 + un peu de CSS3), pas de flexbox/grid
   moderne. Mais ta fiche actuelle utilise déjà `<table>` à cause de
@@ -711,11 +771,13 @@ CVE remonte (ça finira par arriver), tu n'auras aucun upstream pour la fix.
 sous-CSS2 → migration douce.
 
 **Fichiers** :
+
 - `backend/composer.json` (ajout mpdf/mpdf)
 - `backend/routes/pdf.php`
 - `backend/lib/PdfRender.php` (si fait en C1.2)
 
 **Quoi faire** :
+
 1. `composer require mpdf/mpdf` (poids : ~5 MB vendor).
 2. Remplacer le shell-out wkhtmltopdf par :
    ```php
@@ -727,6 +789,7 @@ sous-CSS2 → migration douce.
 4. Désinstaller wkhtmltopdf du Pi : `sudo apt purge wkhtmltopdf`.
 
 **Critères d'acceptation** :
+
 - Le PDF est visuellement proche (légères différences typo acceptables).
 - Plus aucun shell-out / process externe.
 - `composer audit` clean.
@@ -740,12 +803,14 @@ Pas de rollback. Pas de seed reproductible pour test/staging. Quand une 2ᵉ
 instance arrive, on ne sait pas la migrer (renames, enum changes, backfills).
 
 **Fichiers** :
+
 - nouveau : `backend/migrations/000_initial.sql`, `001_dives_lifecycle.sql`, ...
 - `backend/lib/Db.php`
 - nouveau : `backend/lib/Migrator.php`
 - `backend/composer.json` (scripts)
 
 **Quoi faire** :
+
 1. Créer `migrations/NNN_description.sql` avec UP only (pas de rollback —
    c'est ok pour ta volumétrie).
 2. Table `schema_migrations(version VARCHAR(10) PK, applied_at DATETIME)`.
@@ -757,6 +822,7 @@ instance arrive, on ne sait pas la migrer (renames, enum changes, backfills).
 6. Script CLI `php backend/migrate.php` pour appliquer hors HTTP.
 
 **Critères d'acceptation** :
+
 - Nouvelle instance : appliquer migrations 000 → N donne le schéma
   attendu.
 - Instance existante : 000 est marquée appliquée d'office (heuristique :
@@ -773,11 +839,13 @@ ce qui touche `dives.updated_at` (ton cursor de sync), invalide
 `idx_dives_user_status` et fait du page-split InnoDB.
 
 **Fichiers** :
+
 - `backend/lib/Db.php` (migration ou ajout)
 - `backend/routes/dives.php`
 - `lib/use-auto-save.jsx` ou `lib/sync.js` (debounce élargi sur ce champ)
 
 **Quoi faire** :
+
 1. Nouvelle table :
    ```sql
    CREATE TABLE dive_runtime_state (
@@ -797,6 +865,7 @@ ce qui touche `dives.updated_at` (ton cursor de sync), invalide
    au pire 5 s en cas de crash navigateur).
 
 **Critères d'acceptation** :
+
 - Autosave toujours fonctionnel.
 - `dives.updated_at` ne bouge plus quand seul `render_state` change → le
   cursor de sync ne pull pas les `dives` à chaque pression de touche.
@@ -811,12 +880,14 @@ compromission de ces CDN = compromission de ta page. Tu peux les rapatrier
 pour 0 risque et meilleure perf (cache HTTP maîtrisé).
 
 **Fichiers** :
+
 - nouveau : `vendor/jspdf.umd.min.js`, `vendor/html2canvas.min.js`, etc.
 - `DP Assistant.html`
 - `nginx-offline-snippet.conf` (CSP)
 - `sw.js` (precache)
 
 **Quoi faire** :
+
 1. Télécharger les versions pinned :
    ```bash
    mkdir -p vendor
@@ -832,6 +903,7 @@ pour 0 risque et meilleure perf (cache HTTP maîtrisé).
 6. Note : si C1.2 a viré jsPDF/html2canvas, sauter cette tâche en partie.
 
 **Critères d'acceptation** :
+
 - CSP ne contient plus `unpkg.com` ni `cdnjs.cloudflare.com`.
 - L'app fonctionne hors-ligne immédiatement après install (pas besoin de
   premier chargement online).

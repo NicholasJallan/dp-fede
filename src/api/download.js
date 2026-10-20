@@ -12,7 +12,11 @@ export function filenameFromDisposition(header, fallback = 'document') {
   if (!header) return fallback;
   const star = /filename\*\s*=\s*([^']*)''([^;]+)/i.exec(header);
   if (star) {
-    try { return decodeURIComponent(star[2].trim().replace(/^"|"$/g, '')); } catch { /* encodage invalide */ }
+    try {
+      return decodeURIComponent(star[2].trim().replace(/^"|"$/g, ''));
+    } catch {
+      /* encodage invalide */
+    }
   }
   const plain = /filename\s*=\s*("([^"]*)"|[^;]+)/i.exec(header);
   const name = plain ? (plain[2] ?? plain[1]).trim() : '';

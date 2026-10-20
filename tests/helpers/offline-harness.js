@@ -15,50 +15,73 @@ import { decorateApiForOffline } from '../../src/offline/offline-api.js';
 export function makeLocalStorage() {
   const map = new Map();
   return {
-    get length() { return map.size; },
-    key(i) { return Array.from(map.keys())[i] ?? null; },
-    getItem(k) { return map.has(k) ? map.get(k) : null; },
-    setItem(k, v) { map.set(String(k), String(v)); },
-    removeItem(k) { map.delete(k); },
-    clear() { map.clear(); },
+    get length() {
+      return map.size;
+    },
+    key(i) {
+      return Array.from(map.keys())[i] ?? null;
+    },
+    getItem(k) {
+      return map.has(k) ? map.get(k) : null;
+    },
+    setItem(k, v) {
+      map.set(String(k), String(v));
+    },
+    removeItem(k) {
+      map.delete(k);
+    },
+    clear() {
+      map.clear();
+    },
   };
 }
 
 // Shim CustomEvent + EventTarget pour window/document.
 class EventBus {
-  constructor() { this._listeners = {}; }
-  addEventListener(type, fn) { (this._listeners[type] ||= []).push(fn); }
+  constructor() {
+    this._listeners = {};
+  }
+  addEventListener(type, fn) {
+    (this._listeners[type] ||= []).push(fn);
+  }
   removeEventListener(type, fn) {
     const arr = this._listeners[type];
-    if (arr) this._listeners[type] = arr.filter(f => f !== fn);
+    if (arr) this._listeners[type] = arr.filter((f) => f !== fn);
   }
-  dispatchEvent(ev) { (this._listeners[ev.type] || []).forEach(fn => fn(ev)); }
+  dispatchEvent(ev) {
+    (this._listeners[ev.type] || []).forEach((fn) => fn(ev));
+  }
 }
 
 export function createWindow() {
   const win = new EventBus();
   win.localStorage = makeLocalStorage();
   win.CustomEvent = class CustomEvent {
-    constructor(type, init = {}) { this.type = type; this.detail = init.detail; }
+    constructor(type, init = {}) {
+      this.type = type;
+      this.detail = init.detail;
+    }
   };
-  win.indexedDB = null;   // force fallback localStorage dans offline-store
+  win.indexedDB = null; // force fallback localStorage dans offline-store
   win.document = Object.assign(new EventBus(), {
     cookie: '',
     visibilityState: 'visible',
   });
   win.navigator = { onLine: true, serviceWorker: undefined };
-  win.fetch = async () => { throw new Error('fetch mock not set'); };
+  win.fetch = async () => {
+    throw new Error('fetch mock not set');
+  };
   return win;
 }
 
 // Installe le faux window comme globaux (ce que lisent les modules à l'appel).
 export function installGlobals(win) {
-  globalThis.window       = win;
+  globalThis.window = win;
   globalThis.localStorage = win.localStorage;
-  globalThis.indexedDB    = win.indexedDB;
-  globalThis.document     = win.document;
-  globalThis.CustomEvent  = win.CustomEvent;
-  globalThis.fetch        = win.fetch;
+  globalThis.indexedDB = win.indexedDB;
+  globalThis.document = win.document;
+  globalThis.CustomEvent = win.CustomEvent;
+  globalThis.fetch = win.fetch;
   // navigator est un getter en lecture seule depuis Node 21 : on le redéfinit.
   Object.defineProperty(globalThis, 'navigator', { value: win.navigator, configurable: true, writable: true });
 }

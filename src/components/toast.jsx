@@ -22,7 +22,14 @@ function ToastItem({ t, onDismiss }) {
         {t.title && <div className="toast-title">{t.title}</div>}
         {t.body && <div className="toast-body">{t.body}</div>}
       </div>
-      <button type="button" className="x toast-close" aria-label="Fermer la notification" onClick={() => onDismiss(t.id)}>×</button>
+      <button
+        type="button"
+        className="x toast-close"
+        aria-label="Fermer la notification"
+        onClick={() => onDismiss(t.id)}
+      >
+        ×
+      </button>
     </div>
   );
 }
@@ -32,23 +39,34 @@ function ToastProvider({ children }) {
   const idRef = useRef(0);
 
   const dismiss = useCallback((id) => {
-    setStack(prev => prev.filter(t => t.id !== id));
+    setStack((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const showToast = useCallback(({ tone = 'info', title, body, ttl = 6000 }) => {
-    const id = ++idRef.current;
-    setStack(prev => [...prev, { id, tone, title, body }]);
-    if (ttl > 0) window.setTimeout(() => dismiss(id), ttl);
-    return id;
-  }, [dismiss]);
+  const showToast = useCallback(
+    ({ tone = 'info', title, body, ttl = 6000 }) => {
+      const id = ++idRef.current;
+      setStack((prev) => [...prev, { id, tone, title, body }]);
+      if (ttl > 0) window.setTimeout(() => dismiss(id), ttl);
+      return id;
+    },
+    [dismiss],
+  );
 
   const value = useMemo(() => ({ showToast, dismiss }), [showToast, dismiss]);
 
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="toast-region" role="region" aria-label="Notifications" aria-live="polite" aria-relevant="additions">
-        {stack.map(t => <ToastItem key={t.id} t={t} onDismiss={dismiss} />)}
+      <div
+        className="toast-region"
+        role="region"
+        aria-label="Notifications"
+        aria-live="polite"
+        aria-relevant="additions"
+      >
+        {stack.map((t) => (
+          <ToastItem key={t.id} t={t} onDismiss={dismiss} />
+        ))}
       </div>
     </ToastContext.Provider>
   );

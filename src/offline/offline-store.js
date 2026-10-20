@@ -13,9 +13,9 @@
 // est explicitement KO (Safari mode privé sur iOS < 16 ouvre IDB mais
 // refuse l'écriture — on detect cela à la première erreur d'écriture).
 
-const DB_NAME    = 'dp-offline';
+const DB_NAME = 'dp-offline';
 const DB_VERSION = 2;
-const STORES     = ['outbox', 'divers', 'sites', 'archives', 'dives', 'meta'];
+const STORES = ['outbox', 'divers', 'sites', 'archives', 'dives', 'meta'];
 
 // Fabrique : une instance par appel (état de connexion IDB / fallback isolé).
 // L'application utilise le singleton `offlineStore` ; les tests créent une
@@ -23,7 +23,7 @@ const STORES     = ['outbox', 'divers', 'sites', 'archives', 'dives', 'meta'];
 // lus à l'appel, jamais au chargement du module.
 export function createOfflineStore() {
   let _dbPromise = null;
-  let _fallback  = null;  // sera initialisé en lazy si IDB plante
+  let _fallback = null; // sera initialisé en lazy si IDB plante
 
   function openDb() {
     if (_dbPromise) return _dbPromise;
@@ -35,7 +35,7 @@ export function createOfflineStore() {
       const req = indexedDB.open(DB_NAME, DB_VERSION);
       req.onupgradeneeded = (e) => {
         const db = e.target.result;
-        STORES.forEach(name => {
+        STORES.forEach((name) => {
           if (!db.objectStoreNames.contains(name)) {
             db.createObjectStore(name);
           }
@@ -47,9 +47,9 @@ export function createOfflineStore() {
         migrateArchivesToDivesRaw(db);
         resolve(db);
       };
-      req.onerror   = () => reject(req.error || new Error('IDB open failed'));
+      req.onerror = () => reject(req.error || new Error('IDB open failed'));
       req.onblocked = () => reject(new Error('IDB open blocked'));
-    }).catch(err => {
+    }).catch((err) => {
       console.warn('[offline-store] IDB indispo → fallback localStorage :', err.message);
       _fallback = createLocalStorageFallback();
       return null;
@@ -60,11 +60,14 @@ export function createOfflineStore() {
   function tx(db, storeName, mode) {
     const t = db.transaction(storeName, mode);
     const store = t.objectStore(storeName);
-    return { store, done: new Promise((res, rej) => {
-      t.oncomplete = res;
-      t.onabort    = () => rej(t.error || new Error('tx aborted'));
-      t.onerror    = () => rej(t.error || new Error('tx error'));
-    })};
+    return {
+      store,
+      done: new Promise((res, rej) => {
+        t.oncomplete = res;
+        t.onabort = () => rej(t.error || new Error('tx aborted'));
+        t.onerror = () => rej(t.error || new Error('tx error'));
+      }),
+    };
   }
 
   async function get(storeName, key) {
@@ -75,7 +78,7 @@ export function createOfflineStore() {
     return await new Promise((res, rej) => {
       const r = store.get(key);
       r.onsuccess = () => res(r.result ?? null);
-      r.onerror   = () => rej(r.error);
+      r.onerror = () => rej(r.error);
     });
   }
 
@@ -112,7 +115,7 @@ export function createOfflineStore() {
     return await new Promise((res, rej) => {
       const r = store.getAll();
       r.onsuccess = () => res(r.result || []);
-      r.onerror   = () => rej(r.error);
+      r.onerror = () => rej(r.error);
     });
   }
 
@@ -124,7 +127,7 @@ export function createOfflineStore() {
     return await new Promise((res, rej) => {
       const r = store.getAllKeys();
       r.onsuccess = () => res(r.result || []);
-      r.onerror   = () => rej(r.error);
+      r.onerror = () => rej(r.error);
     });
   }
 
@@ -150,13 +153,17 @@ export function createOfflineStore() {
   // par `dp-fb:{store}:{key}` pour éviter les collisions.
   function createLocalStorageFallback() {
     const PREFIX = 'dp-fb:';
-    function k(store, key) { return `${PREFIX}${store}:${key}`; }
+    function k(store, key) {
+      return `${PREFIX}${store}:${key}`;
+    }
     return {
       get(store, key) {
         try {
           const raw = localStorage.getItem(k(store, key));
           return raw ? JSON.parse(raw) : null;
-        } catch { return null; }
+        } catch {
+          return null;
+        }
       },
       put(store, key, value) {
         try {
@@ -169,14 +176,22 @@ export function createOfflineStore() {
         }
       },
       del(store, key) {
-        try { localStorage.removeItem(k(store, key)); } catch { /* stockage indisponible */ }
+        try {
+          localStorage.removeItem(k(store, key));
+        } catch {
+          /* stockage indisponible */
+        }
       },
       all(store) {
         const out = [];
         for (let i = 0; i < localStorage.length; i++) {
           const fullKey = localStorage.key(i);
           if (fullKey && fullKey.startsWith(`${PREFIX}${store}:`)) {
-            try { out.push(JSON.parse(localStorage.getItem(fullKey))); } catch { /* entrée corrompue ignorée */ }
+            try {
+              out.push(JSON.parse(localStorage.getItem(fullKey)));
+            } catch {
+              /* entrée corrompue ignorée */
+            }
           }
         }
         return out;
@@ -197,7 +212,7 @@ export function createOfflineStore() {
           const fullKey = localStorage.key(i);
           if (fullKey && fullKey.startsWith(pfx)) toDel.push(fullKey);
         }
-        toDel.forEach(k => localStorage.removeItem(k));
+        toDel.forEach((k) => localStorage.removeItem(k));
       },
     };
   }
@@ -212,7 +227,7 @@ export function createOfflineStore() {
       checkReq.onsuccess = () => {
         if (checkReq.result) return; // déjà fait
         try {
-          const readTx  = db.transaction('archives', 'readonly');
+          const readTx = db.transaction('archives', 'readonly');
           const keysReq = readTx.objectStore('archives').getAllKeys();
           keysReq.onsuccess = () => {
             const keys = keysReq.result || [];
@@ -220,12 +235,14 @@ export function createOfflineStore() {
               try {
                 const markTx2 = db.transaction('meta', 'readwrite');
                 markTx2.objectStore('meta').put(true, 'archivesMigrated');
-              } catch (err) { console.warn('[offline-store] migration archives → dives :', err.message); }
+              } catch (err) {
+                console.warn('[offline-store] migration archives → dives :', err.message);
+              }
               return;
             }
             try {
               const readTx2 = db.transaction('archives', 'readonly');
-              const allReq  = readTx2.objectStore('archives').getAll();
+              const allReq = readTx2.objectStore('archives').getAll();
               allReq.onsuccess = () => {
                 const items = allReq.result || [];
                 try {
@@ -235,21 +252,38 @@ export function createOfflineStore() {
                   });
                   writeTx.objectStore('archives').clear();
                   writeTx.objectStore('meta').put(true, 'archivesMigrated');
-                } catch (err) { console.warn('[offline-store] migration archives → dives :', err.message); }
+                } catch (err) {
+                  console.warn('[offline-store] migration archives → dives :', err.message);
+                }
               };
-            } catch (err) { console.warn('[offline-store] migration archives → dives :', err.message); }
+            } catch (err) {
+              console.warn('[offline-store] migration archives → dives :', err.message);
+            }
           };
-        } catch (err) { console.warn('[offline-store] migration archives → dives :', err.message); }
+        } catch (err) {
+          console.warn('[offline-store] migration archives → dives :', err.message);
+        }
       };
-    } catch (err) { console.warn('[offline-store] migration archives → dives :', err.message); }
+    } catch (err) {
+      console.warn('[offline-store] migration archives → dives :', err.message);
+    }
   }
 
   // ── API publique ───────────────────────────────────────────────────────
 
   return {
-    get, put, del, all, allKeys, clear, clearAll,
+    get,
+    put,
+    del,
+    all,
+    allKeys,
+    clear,
+    clearAll,
     // Exposé pour les tests : permet de forcer le fallback en CI.
-    _useFallback: () => { _fallback = createLocalStorageFallback(); _dbPromise = Promise.resolve(null); },
+    _useFallback: () => {
+      _fallback = createLocalStorageFallback();
+      _dbPromise = Promise.resolve(null);
+    },
   };
 }
 

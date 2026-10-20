@@ -23,8 +23,11 @@ function mockFetch(responses) {
 
 const UUID = '33333333-3333-4333-8333-333333333333';
 const FULL = {
-  client_uuid: UUID, server_id: 'srv-1', synced: true,
-  answers: { site_nom: 'Lac' }, palanquees: [{ id: 'p1', membres: [] }],
+  client_uuid: UUID,
+  server_id: 'srv-1',
+  synced: true,
+  answers: { site_nom: 'Lac' },
+  palanquees: [{ id: 'p1', membres: [] }],
   render_state: { checked: { a: true } },
 };
 
@@ -38,7 +41,11 @@ describe('pull incrémental des plongées', () => {
     await win.offlineStore.put('dives', UUID, FULL);
     mockFetch([
       async () => ({ data: { dives: { updated_at: '2026-10-20T10:00:00' }, divers: {}, sites: {} } }),
-      async () => ({ data: [{ id: 'srv-1', client_uuid: UUID, status: 'prepared', site_nom: 'Lac', updated_at: '2026-10-20T10:00:00' }] }),
+      async () => ({
+        data: [
+          { id: 'srv-1', client_uuid: UUID, status: 'prepared', site_nom: 'Lac', updated_at: '2026-10-20T10:00:00' },
+        ],
+      }),
     ]);
     await win.sync._pullIncremental();
     const local = await win.offlineStore.get('dives', UUID);
@@ -48,8 +55,8 @@ describe('pull incrémental des plongées', () => {
   });
 });
 
-describe('outbox — fusion des mises à jour d\'une même entité', () => {
-  test('coalesce fusionne les patchs dans l\'item en attente', async () => {
+describe("outbox — fusion des mises à jour d'une même entité", () => {
+  test("coalesce fusionne les patchs dans l'item en attente", async () => {
     const merge = (cur, next) => ({ ...cur, patch: { ...cur.patch, ...next.patch } });
     const match = (it) => it.payload.client_uuid === UUID;
     await win.outbox.coalesce('dive.update', { client_uuid: UUID, patch: { a: 1 } }, match, merge);
@@ -104,7 +111,7 @@ describe('drain — ordre et erreurs', () => {
     assert.equal((await win.outbox.ready()).length, 0);
   });
 
-  test('5xx ou 429 → le drain s\'arrête', async () => {
+  test("5xx ou 429 → le drain s'arrête", async () => {
     await win.outbox.enqueue('diver.update', { id: 'd-1' });
     await win.outbox.enqueue('diver.update', { id: 'd-2' });
     const calls = mockFetch([async () => ({ status: 503, ok: false, error: 'down' })]);
@@ -121,25 +128,31 @@ describe('drain — ordre et erreurs', () => {
   });
 });
 
-describe('offline-api — lecture d\'une plongée', () => {
+describe("offline-api — lecture d'une plongée", () => {
   function bootWithApi(remote) {
     win.api = {
       divers: { list: async () => [] },
-      sites:  { list: async () => [] },
-      dives:  { list: async () => [], get: async () => remote },
+      sites: { list: async () => [] },
+      dives: { list: async () => [], get: async () => remote },
     };
     loadOfflineApi(win);
   }
 
   test('dives.get en ligne persiste le contenu complet pour un usage hors-ligne', async () => {
-    bootWithApi({ id: 'srv-1', client_uuid: UUID, answers: { site_nom: 'Lac' }, palanquees: [{ id: 'p1' }], render_state: {} });
+    bootWithApi({
+      id: 'srv-1',
+      client_uuid: UUID,
+      answers: { site_nom: 'Lac' },
+      palanquees: [{ id: 'p1' }],
+      render_state: {},
+    });
     await win.api.dives.get(UUID);
     const local = await win.offlineStore.get('dives', UUID);
     assert.deepEqual(local.answers, { site_nom: 'Lac' });
     assert.equal(local.server_id, 'srv-1');
   });
 
-  test('dives.update successifs ne créent qu\'un item d\'outbox', async () => {
+  test("dives.update successifs ne créent qu'un item d'outbox", async () => {
     bootWithApi(null);
     await win.offlineStore.put('dives', UUID, FULL);
     await win.api.dives.update(UUID, { answers: { a: 1 } });

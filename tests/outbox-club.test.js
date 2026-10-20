@@ -58,7 +58,7 @@ describe('outbox — club quitté', () => {
     assert.equal(removed, 1);
     assert.equal(await win.outbox.get(a1.id), null);
     assert.ok(await win.outbox.get(a2.id), 'item en attente conservé (sera refusé puis purgé)');
-    assert.ok(await win.outbox.get(b1.id), 'revue d\'un autre club conservée');
+    assert.ok(await win.outbox.get(b1.id), "revue d'un autre club conservée");
   });
 
   test('purgeClub({ all: true }) retire aussi les items en attente de ce club', async () => {

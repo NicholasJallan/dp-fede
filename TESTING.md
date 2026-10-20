@@ -111,40 +111,40 @@ Recette de la migration des structures de production en clubs, sur un MariaDB je
 
 Modules couverts :
 
-| Module | Fonction | Tests |
-|---|---|---|
-| `src/domain/pal-rules.js` | `validatePal` | fixtures partagées PHP : taille, profondeur, GP, encadrants, PA, baptêmes, débutants, médical, mélanges |
-| `src/domain/depth-clamp.js` | `computePalHardLimit`, `clampProfMax` | bornes session / DP / aptitudes |
-| `src/offline/outbox.js` | `enqueue`, `ready`, `markFailed`, `coalesce` (backoff) | FIFO, backoff exp, nextWakeMs, revue |
-| `src/offline/offline-store.js` | `put`, `get`, `all`, `del` | fallback localStorage |
-| `src/offline/sync.js` | `drainOutbox`, `pullIncremental`, handlers `dive.*` / `diver.*` | succès, 409 idempotent, offline guard, ordre par entité |
-| `src/offline/offline-api.js` | `dives.get`, `dives.update` | persistance hors-ligne, fusion d'outbox |
-| `src/api/google-drive.js` | `getDriveToken`, `getCsrfToken` | cache-first, timeout, scope |
-| `src/domain/aptitudes.js` | `getDpMaxDepth` | E1→E4, N5, extensions PTH-120 |
-| `src/domain/aptitudes.js` | `getAvailableMelanges` | filtrage Air / Nx / Tx selon qualif DP |
-| `src/domain/aptitudes.js` | `getDiverAptitudes` | par niveau, bonus formation |
-| `src/domain/aptitudes.js` | `aptitudeMaxDepth` | toutes les aptitudes + fallback |
-| `src/domain/milieu.js` | `getMilieuType`, `isMilieuNaturel` | normalisation mer/lac/piscine/fosse |
-| `src/domain/aptitudes.js` | `getPalType` | priorité baptême > formation > guidée > exploration |
-| `src/domain/fiche.js` | `sortMembresForFiche` | ordre canonique + serre-file |
-| `src/domain/questions.js`, `checklist.js` | filtrage milieu / phase | items conditionnels piscine/fosse/mer |
-| Dive lifecycle | transitions prepared → in_progress → archived | refus rétrograde, auto-save flush |
-| Home buckets | groupement par statut + tri | ordre date, pending Drive |
-| `src/offline/*` (synchro terrain) | `recoverInflight`, `nextWakeMs`, `listWithFallback`, `purgeSyncedClubData` | `tests/sync-terrain.test.js` |
-| `src/domain/paliers.js`, `fiche/fin-rules.js` | `formatPaliers`, bornes de saisie | `tests/paliers.test.js` (fixtures `tests/fixtures/paliers.json` partagées avec PHPUnit) |
-| `src/api/drive-preference.js` | copie Drive facultative | `tests/drive-preference.test.js` |
-| Backend `LegacyWorkspaces` + `007_clubs.sql` | reprise des structures (règles, plan sur volumes de production, ordre SQL via `RecordingPdo`) | `LegacyWorkspacesTest.php`, `MigratorTest.php` |
+| Module                                        | Fonction                                                                                      | Tests                                                                                                   |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `src/domain/pal-rules.js`                     | `validatePal`                                                                                 | fixtures partagées PHP : taille, profondeur, GP, encadrants, PA, baptêmes, débutants, médical, mélanges |
+| `src/domain/depth-clamp.js`                   | `computePalHardLimit`, `clampProfMax`                                                         | bornes session / DP / aptitudes                                                                         |
+| `src/offline/outbox.js`                       | `enqueue`, `ready`, `markFailed`, `coalesce` (backoff)                                        | FIFO, backoff exp, nextWakeMs, revue                                                                    |
+| `src/offline/offline-store.js`                | `put`, `get`, `all`, `del`                                                                    | fallback localStorage                                                                                   |
+| `src/offline/sync.js`                         | `drainOutbox`, `pullIncremental`, handlers `dive.*` / `diver.*`                               | succès, 409 idempotent, offline guard, ordre par entité                                                 |
+| `src/offline/offline-api.js`                  | `dives.get`, `dives.update`                                                                   | persistance hors-ligne, fusion d'outbox                                                                 |
+| `src/api/google-drive.js`                     | `getDriveToken`, `getCsrfToken`                                                               | cache-first, timeout, scope                                                                             |
+| `src/domain/aptitudes.js`                     | `getDpMaxDepth`                                                                               | E1→E4, N5, extensions PTH-120                                                                           |
+| `src/domain/aptitudes.js`                     | `getAvailableMelanges`                                                                        | filtrage Air / Nx / Tx selon qualif DP                                                                  |
+| `src/domain/aptitudes.js`                     | `getDiverAptitudes`                                                                           | par niveau, bonus formation                                                                             |
+| `src/domain/aptitudes.js`                     | `aptitudeMaxDepth`                                                                            | toutes les aptitudes + fallback                                                                         |
+| `src/domain/milieu.js`                        | `getMilieuType`, `isMilieuNaturel`                                                            | normalisation mer/lac/piscine/fosse                                                                     |
+| `src/domain/aptitudes.js`                     | `getPalType`                                                                                  | priorité baptême > formation > guidée > exploration                                                     |
+| `src/domain/fiche.js`                         | `sortMembresForFiche`                                                                         | ordre canonique + serre-file                                                                            |
+| `src/domain/questions.js`, `checklist.js`     | filtrage milieu / phase                                                                       | items conditionnels piscine/fosse/mer                                                                   |
+| Dive lifecycle                                | transitions prepared → in_progress → archived                                                 | refus rétrograde, auto-save flush                                                                       |
+| Home buckets                                  | groupement par statut + tri                                                                   | ordre date, pending Drive                                                                               |
+| `src/offline/*` (synchro terrain)             | `recoverInflight`, `nextWakeMs`, `listWithFallback`, `purgeSyncedClubData`                    | `tests/sync-terrain.test.js`                                                                            |
+| `src/domain/paliers.js`, `fiche/fin-rules.js` | `formatPaliers`, bornes de saisie                                                             | `tests/paliers.test.js` (fixtures `tests/fixtures/paliers.json` partagées avec PHPUnit)                 |
+| `src/api/drive-preference.js`                 | copie Drive facultative                                                                       | `tests/drive-preference.test.js`                                                                        |
+| Backend `LegacyWorkspaces` + `007_clubs.sql`  | reprise des structures (règles, plan sur volumes de production, ordre SQL via `RecordingPdo`) | `LegacyWorkspacesTest.php`, `MigratorTest.php`                                                          |
 
 ## Backend PHP (Sprint 2)
 
 Scaffold PHPUnit dans `backend/`. Quatre suites en place :
 
-| Suite | Couvre |
-|---|---|
-| `AuthTest.php` | `Auth::isSuperAdmin`, constante `SUPER_ADMIN_EMAIL` (régression rôle) |
-| `CsrfTest.php` | `Csrf::verify` voie nominale, `Csrf::token` format hex |
-| `DiveDateHelpersTest.php` | `parseDiveDateToMySql`, `normalizeDiveDate` (frontière format date) |
-| `SyncHelpersTest.php` | `isValidUuid` (rempart contre injection PK), `parseSinceParam` |
+| Suite                     | Couvre                                                                |
+| ------------------------- | --------------------------------------------------------------------- |
+| `AuthTest.php`            | `Auth::isSuperAdmin`, constante `SUPER_ADMIN_EMAIL` (régression rôle) |
+| `CsrfTest.php`            | `Csrf::verify` voie nominale, `Csrf::token` format hex                |
+| `DiveDateHelpersTest.php` | `parseDiveDateToMySql`, `normalizeDiveDate` (frontière format date)   |
+| `SyncHelpersTest.php`     | `isValidUuid` (rempart contre injection PK), `parseSinceParam`        |
 
 Sur le Pi (ou en CI) :
 
@@ -155,6 +155,7 @@ composer test
 ```
 
 ### À venir (hors Sprint 2)
+
 - Tests d'intégration HTTP (Auth::abort + routes complètes) — nécessite stub PDO.
 - Coverage rapportée (pcov ou xdebug).
 
@@ -162,11 +163,11 @@ composer test
 
 Trois golden paths contre la prod dans `tests-e2e/` (config `playwright.config.js`) :
 
-| Fichier | Couvre |
-|---|---|
-| `01-home-loads.spec.js` | Hero, badge Drive (absence par défaut), navigation |
-| `02-dive-create-flow.spec.js` | Création plongée → questionnaire → retour home |
-| `03-offline-resilience.spec.js` | Coupure réseau, reload, reconnexion |
+| Fichier                         | Couvre                                             |
+| ------------------------------- | -------------------------------------------------- |
+| `01-home-loads.spec.js`         | Hero, badge Drive (absence par défaut), navigation |
+| `02-dive-create-flow.spec.js`   | Création plongée → questionnaire → retour home     |
+| `03-offline-resilience.spec.js` | Coupure réseau, reload, reconnexion                |
 
 Voir `tests-e2e/README.md` pour le setup cookies + variables d'env.
 

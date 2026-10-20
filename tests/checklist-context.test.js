@@ -21,20 +21,19 @@ describe('REGLEMENTATION — veille réglementaire', () => {
   test('date à jour valide et non antérieure aux derniers textes 2025', () => {
     const d = new Date(REGLEMENTATION.aJour);
     assert.ok(!isNaN(d.getTime()), 'date invalide');
-    assert.ok(d >= new Date('2025-11-24'), 'doit intégrer l\'arrêté du 24 nov. 2025');
+    assert.ok(d >= new Date('2025-11-24'), "doit intégrer l'arrêté du 24 nov. 2025");
   });
 });
 
 // Aplatit toutes les questions / items en un seul tableau d'objets {id, when}.
-const allQuestions = QUESTIONS.flatMap(s => s.questions);
-const allChecklistItems = CHECKLIST_RULES.flatMap(p => p.items);
+const allQuestions = QUESTIONS.flatMap((s) => s.questions);
+const allChecklistItems = CHECKLIST_RULES.flatMap((p) => p.items);
 
-const findQuestion = (id) => allQuestions.find(q => q.id === id);
-const findItem = (id) => allChecklistItems.find(i => i.id === id);
+const findQuestion = (id) => allQuestions.find((q) => q.id === id);
+const findItem = (id) => allChecklistItems.find((i) => i.id === id);
 
 // Renvoie les ids visibles (matchCondition vrai) pour un jeu de réponses donné.
-const visibleIds = (items, answers) =>
-  items.filter(it => matchCondition(it.when, answers)).map(it => it.id);
+const visibleIds = (items, answers) => items.filter((it) => matchCondition(it.when, answers)).map((it) => it.id);
 
 describe('isMilieuNaturel', () => {
   test('mer / lac / carrière → naturel', () => {
@@ -52,10 +51,10 @@ describe('isMilieuNaturel', () => {
 });
 
 describe('Items fiche auto-référents supprimés', () => {
-  test('p1_fiche_init n\'existe plus', () => {
+  test("p1_fiche_init n'existe plus", () => {
     assert.equal(findItem('p1_fiche_init'), undefined);
   });
-  test('p2_fiche n\'existe plus', () => {
+  test("p2_fiche n'existe plus", () => {
     assert.equal(findItem('p2_fiche'), undefined);
   });
 });
@@ -110,10 +109,10 @@ describe('Contextualisation logistique — items bateau', () => {
   });
 });
 
-describe('Plongée en piscine — jeu d\'items minimal cohérent', () => {
+describe("Plongée en piscine — jeu d'items minimal cohérent", () => {
   const pool = { milieu: 'Piscine' };
   test('aucun item météo/marée/bouée ne ressort en piscine', () => {
-    const qIds = allQuestions.filter(q => matchCondition(q.when, pool)).map(q => q.id);
+    const qIds = allQuestions.filter((q) => matchCondition(q.when, pool)).map((q) => q.id);
     const cIds = visibleIds(allChecklistItems, pool);
     assert.ok(!qIds.includes('meteo'));
     assert.ok(!qIds.includes('bouee_surface'));

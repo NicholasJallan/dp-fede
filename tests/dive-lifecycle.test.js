@@ -28,9 +28,7 @@ describe('dive lifecycle — transitions de statut', () => {
     await win.offlineStore.put('dives', client_uuid, { client_uuid, status: 'prepared', _pending: true });
     await win.outbox.enqueue('dive.create', { client_uuid, status: 'prepared', site_nom: 'Lac' });
 
-    const calls = mockFetch([
-      async () => ({ status: 201, data: { id: 'srv-prep-1', duplicate: false } }),
-    ]);
+    const calls = mockFetch([async () => ({ status: 201, data: { id: 'srv-prep-1', duplicate: false } })]);
 
     await win.sync._drainOutbox();
 
@@ -47,16 +45,18 @@ describe('dive lifecycle — transitions de statut', () => {
   test('dive.update PATCH /api/dives/:id avec status=in_progress', async () => {
     const client_uuid = '22222222-2222-4222-8222-222222222222';
     await win.offlineStore.put('dives', client_uuid, {
-      client_uuid, server_id: 'srv-ip-1', status: 'prepared', _pending: false, synced: true,
+      client_uuid,
+      server_id: 'srv-ip-1',
+      status: 'prepared',
+      _pending: false,
+      synced: true,
     });
     await win.outbox.enqueue('dive.update', {
       client_uuid,
       patch: { status: 'in_progress', started_at: '2026-06-08T09:15:00' },
     });
 
-    const calls = mockFetch([
-      async () => ({ data: { id: 'srv-ip-1', status: 'in_progress' } }),
-    ]);
+    const calls = mockFetch([async () => ({ data: { id: 'srv-ip-1', status: 'in_progress' } })]);
 
     await win.sync._drainOutbox();
 
@@ -77,7 +77,8 @@ describe('dive lifecycle — transitions de statut', () => {
     const client_uuid = '33333333-3333-4333-8333-333333333333';
     await win.offlineStore.put('dives', client_uuid, { client_uuid, status: 'prepared', _pending: true });
     await win.outbox.enqueue('dive.update', {
-      client_uuid, patch: { answers: { site_id: 'abc' } },
+      client_uuid,
+      patch: { answers: { site_id: 'abc' } },
     });
 
     const calls = mockFetch([]);
@@ -94,13 +95,14 @@ describe('dive lifecycle — transitions de statut', () => {
   test('dive.delete DELETE /api/dives/:id', async () => {
     const client_uuid = '44444444-4444-4444-8444-444444444444';
     await win.offlineStore.put('dives', client_uuid, {
-      client_uuid, server_id: 'srv-del-1', status: 'prepared', _pending: false,
+      client_uuid,
+      server_id: 'srv-del-1',
+      status: 'prepared',
+      _pending: false,
     });
     await win.outbox.enqueue('dive.delete', { client_uuid });
 
-    const calls = mockFetch([
-      async () => ({ data: { id: 'srv-del-1', deleted: true } }),
-    ]);
+    const calls = mockFetch([async () => ({ data: { id: 'srv-del-1', deleted: true } })]);
 
     await win.sync._drainOutbox();
 
@@ -129,15 +131,16 @@ describe('dive lifecycle — transitions de statut', () => {
 });
 
 describe('dive lifecycle — FIFO garantit create avant update', () => {
-  test('create puis update s\'exécutent dans l\'ordre', async () => {
+  test("create puis update s'exécutent dans l'ordre", async () => {
     const client_uuid = '66666666-6666-4666-8666-666666666666';
     await win.offlineStore.put('dives', client_uuid, { client_uuid, status: 'prepared', _pending: true });
 
     // Enqueue create PUIS update (ordre FIFO naturel)
     await win.outbox.enqueue('dive.create', { client_uuid, site_nom: 'Mer', status: 'prepared' });
-    await new Promise(r => setTimeout(r, 5)); // createdAt distinct
+    await new Promise((r) => setTimeout(r, 5)); // createdAt distinct
     await win.outbox.enqueue('dive.update', {
-      client_uuid, patch: { answers: { meteo: 'beau' } },
+      client_uuid,
+      patch: { answers: { meteo: 'beau' } },
     });
 
     const calls = mockFetch([
@@ -150,8 +153,8 @@ describe('dive lifecycle — FIFO garantit create avant update', () => {
     await win.sync._drainOutbox();
 
     assert.equal(calls.length, 2);
-    assert.equal(calls[0].method, 'POST');   // create en premier
-    assert.equal(calls[1].method, 'PATCH');  // update en second
+    assert.equal(calls[0].method, 'POST'); // create en premier
+    assert.equal(calls[1].method, 'PATCH'); // update en second
     assert.equal(await win.outbox.size(), 0);
   });
 });
@@ -159,22 +162,22 @@ describe('dive lifecycle — FIFO garantit create avant update', () => {
 describe('dive lifecycle — calcul ±4h warning', () => {
   test('écart < 4h → pas de warning', () => {
     const planned = new Date(Date.now() - 2 * 3600_000); // il y a 2h
-    const now     = new Date();
-    const diffH   = Math.abs(now - planned) / 3_600_000;
+    const now = new Date();
+    const diffH = Math.abs(now - planned) / 3_600_000;
     assert.ok(diffH < 4, 'devrait être < 4h');
   });
 
   test('écart > 4h → warning requis', () => {
     const planned = new Date(Date.now() - 5 * 3600_000); // il y a 5h
-    const now     = new Date();
-    const diffH   = Math.abs(now - planned) / 3_600_000;
+    const now = new Date();
+    const diffH = Math.abs(now - planned) / 3_600_000;
     assert.ok(diffH > 4, 'devrait être > 4h');
   });
 
   test('date invalide → pas de warning (protection NaN)', () => {
     const planned = new Date('invalid');
-    const now     = new Date();
-    const diffH   = Math.abs(now - planned) / 3_600_000;
+    const now = new Date();
+    const diffH = Math.abs(now - planned) / 3_600_000;
     assert.ok(isNaN(diffH), 'NaN pour date invalide → guard isNaN dans le code');
   });
 });

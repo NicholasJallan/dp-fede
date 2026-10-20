@@ -10,20 +10,20 @@ const { getDpMaxDepth, getAvailableMelanges } = win;
 // =========================================================================
 // getDpMaxDepth — limites par qualification DP
 // =========================================================================
-describe('getDpMaxDepth — limites de base à l\'air', () => {
+describe("getDpMaxDepth — limites de base à l'air", () => {
   const cases = [
     // [niveau, palType, expected]
     // E1 / E2 : DP uniquement en piscine ou fosse ≤ 6 m (A322-98)
-    ['E1', 'formation',   6],
+    ['E1', 'formation', 6],
     ['E1', 'exploration', 6],
-    ['E2', 'formation',   6],
+    ['E2', 'formation', 6],
     ['E2', 'exploration', 6],
     // E3 (MF1) : air/nitrox en enseignement ou en exploration (III-15 a)
-    ['E3', 'formation',   60],
+    ['E3', 'formation', 60],
     ['E3', 'exploration', 60],
-    ['E4', 'formation',   60],
+    ['E4', 'formation', 60],
     ['E4', 'exploration', 60],
-    ['N5', 'formation',   0],
+    ['N5', 'formation', 0],
     ['N5', 'exploration', 60],
   ];
   for (const [niveau, palType, expected] of cases) {
@@ -90,41 +90,41 @@ describe('getAvailableMelanges', () => {
   test('DP E3 sans PN-C → seul Air autorisé', () => {
     const dp = { niveau_encadrant: 'E3', nitrox: [], trimix: [] };
     const opts = getAvailableMelanges(dp);
-    assert.equal(opts.find(o => o.value === 'Air').allowed, true);
-    assert.equal(opts.find(o => o.value === 'Nx ≤ 40%').allowed, false);
-    assert.equal(opts.find(o => o.value === 'Nx > 40%').allowed, false);
-    assert.equal(opts.find(o => o.value === 'Tx').allowed, false);
+    assert.equal(opts.find((o) => o.value === 'Air').allowed, true);
+    assert.equal(opts.find((o) => o.value === 'Nx ≤ 40%').allowed, false);
+    assert.equal(opts.find((o) => o.value === 'Nx > 40%').allowed, false);
+    assert.equal(opts.find((o) => o.value === 'Tx').allowed, false);
   });
 
   test('DP E3 + PN-C → Nx ≤ 40% et Nx > 40% autorisés', () => {
     const dp = { niveau_encadrant: 'E3', nitrox: ['PN-C'], trimix: [] };
     const opts = getAvailableMelanges(dp);
-    assert.equal(opts.find(o => o.value === 'Nx ≤ 40%').allowed, true);
-    assert.equal(opts.find(o => o.value === 'Nx > 40%').allowed, true);
-    assert.equal(opts.find(o => o.value === 'Tx').allowed, false);
+    assert.equal(opts.find((o) => o.value === 'Nx ≤ 40%').allowed, true);
+    assert.equal(opts.find((o) => o.value === 'Nx > 40%').allowed, true);
+    assert.equal(opts.find((o) => o.value === 'Tx').allowed, false);
   });
 
   test('DP E4 + PN-C + PTH-120 → Trimix autorisé', () => {
     const dp = { niveau_encadrant: 'E4', nitrox: ['PN-C'], trimix: ['PTH-120'] };
     const opts = getAvailableMelanges(dp);
-    assert.equal(opts.find(o => o.value === 'Tx').allowed, true);
+    assert.equal(opts.find((o) => o.value === 'Tx').allowed, true);
   });
 
   test('DP E2 + PTH-120 → Trimix interdit (E1/E2 jamais Tx)', () => {
     const dp = { niveau_encadrant: 'E2', nitrox: ['PN-C'], trimix: ['PTH-120'] };
     const opts = getAvailableMelanges(dp);
-    assert.equal(opts.find(o => o.value === 'Tx').allowed, false);
+    assert.equal(opts.find((o) => o.value === 'Tx').allowed, false);
   });
 
   test('DP N5 + PTH-120 → Trimix interdit (N5 jamais Tx selon règle DP)', () => {
     const dp = { niveau_encadrant: 'N5', nitrox: ['PN-C'], trimix: ['PTH-120'] };
     const opts = getAvailableMelanges(dp);
-    assert.equal(opts.find(o => o.value === 'Tx').allowed, false);
+    assert.equal(opts.find((o) => o.value === 'Tx').allowed, false);
   });
 
   test('Air toujours autorisé', () => {
     const dp = null;
     const opts = getAvailableMelanges(dp);
-    assert.equal(opts.find(o => o.value === 'Air').allowed, true);
+    assert.equal(opts.find((o) => o.value === 'Air').allowed, true);
   });
 });

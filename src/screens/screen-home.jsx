@@ -27,12 +27,14 @@ function splitDives(dives) {
   if (!dives) return { inProgress: [], prepared: [], archived: [] };
   const by = (k) => (a, b) => (a[k] || '').localeCompare(b[k] || '');
   return {
-    inProgress: dives.filter(d => d.status === 'in_progress').sort((a, b) => by('started_at')(b, a)),
-    prepared: dives.filter(d => d.status === 'prepared').sort((a, b) => {
-      const cmp = (a.planned_at || a.date_plongee || '').localeCompare(b.planned_at || b.date_plongee || '');
-      return cmp !== 0 ? cmp : (a.dp_nom || '').localeCompare(b.dp_nom || '');
-    }),
-    archived: dives.filter(d => !d.status || d.status === 'archived').sort((a, b) => by('date_plongee')(b, a)),
+    inProgress: dives.filter((d) => d.status === 'in_progress').sort((a, b) => by('started_at')(b, a)),
+    prepared: dives
+      .filter((d) => d.status === 'prepared')
+      .sort((a, b) => {
+        const cmp = (a.planned_at || a.date_plongee || '').localeCompare(b.planned_at || b.date_plongee || '');
+        return cmp !== 0 ? cmp : (a.dp_nom || '').localeCompare(b.dp_nom || '');
+      }),
+    archived: dives.filter((d) => !d.status || d.status === 'archived').sort((a, b) => by('date_plongee')(b, a)),
   };
 }
 
@@ -44,7 +46,11 @@ function HomeConsole({ user, driveAuth, onNew, canWrite, role }) {
       <div className="home-console-id">
         <img src="logo-ffessm.png" alt="" className="home-logo" width="52" height="52" />
         <div>
-          <p className="home-clock"><span className="long">{formatDateLong(now)}</span><span className="short">{formatDate(now)}</span><b>{now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</b></p>
+          <p className="home-clock">
+            <span className="long">{formatDateLong(now)}</span>
+            <span className="short">{formatDate(now)}</span>
+            <b>{now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</b>
+          </p>
           <h1 id="home-title">Préparer et diriger la plongée</h1>
           {user?.club_nom && <p className="home-club">{user.club_nom}</p>}
         </div>
@@ -52,11 +58,31 @@ function HomeConsole({ user, driveAuth, onNew, canWrite, role }) {
       <div className="home-console-action">
         {canWrite && (
           <button type="button" className="btn go lg" onClick={onNew} disabled={pending}>
-            {pending ? <><Icon.Refresh />Autorisation Google Drive…</> : <><Icon.Plus />Nouvelle plongée</>}
+            {pending ? (
+              <>
+                <Icon.Refresh />
+                Autorisation Google Drive…
+              </>
+            ) : (
+              <>
+                <Icon.Plus />
+                Nouvelle plongée
+              </>
+            )}
           </button>
         )}
-        {!canWrite && <span className="drive-state"><StatusIcon tone="info" />Rôle {roleLabel(role)} : consultation des plongées</span>}
-        {canWrite && driveAuth === 'ok' && <span className="drive-state"><StatusIcon tone="ok" />Google Drive autorisé</span>}
+        {!canWrite && (
+          <span className="drive-state">
+            <StatusIcon tone="info" />
+            Rôle {roleLabel(role)} : consultation des plongées
+          </span>
+        )}
+        {canWrite && driveAuth === 'ok' && (
+          <span className="drive-state">
+            <StatusIcon tone="ok" />
+            Google Drive autorisé
+          </span>
+        )}
       </div>
     </section>
   );
@@ -67,15 +93,20 @@ function ResumeCard({ dives, onResume }) {
   return (
     <section className="resume-card" aria-labelledby="resume-title">
       <div>
-        <span className="label"><StatusIcon tone="ok" />Plongée en cours</span>
+        <span className="label">
+          <StatusIcon tone="ok" />
+          Plongée en cours
+        </span>
         <h2 id="resume-title">{d.site_nom || 'Site non renseigné'}</h2>
         <p>
-          DP {d.dp_nom || '—'}{d.started_at ? `, mise à l'eau ${formatDateTime(d.started_at)}` : ''}
+          DP {d.dp_nom || '—'}
+          {d.started_at ? `, mise à l'eau ${formatDateTime(d.started_at)}` : ''}
           {dives.length > 1 ? `. ${dives.length - 1} autre${dives.length > 2 ? 's' : ''} en cours.` : ''}
         </p>
       </div>
       <button type="button" className="btn primary lg" onClick={() => onResume(diveKey(d), 'fiche', 'execute')}>
-        <Icon.Play />Reprendre le suivi
+        <Icon.Play />
+        Reprendre le suivi
       </button>
     </section>
   );
@@ -83,17 +114,35 @@ function ResumeCard({ dives, onResume }) {
 
 function PendingDriveNotice({ count, online, finalizing, message, onFinalize, onDisable }) {
   return (
-    <Notice tone="info" live
+    <Notice
+      tone="info"
+      live
       title={`${count} plongée${count > 1 ? 's' : ''} archivée${count > 1 ? 's' : ''} sans copie Google Drive`}
-      actions={<>
-        <button type="button" className="btn primary" onClick={onFinalize} disabled={!online || finalizing}>
-          {finalizing ? <><span className="spin"><Icon.Refresh /></span>Dépôt en cours…</> : 'Déposer une copie sur Google Drive'}
-        </button>
-        <button type="button" className="btn ghost" onClick={onDisable}>Ne plus proposer sur cet appareil</button>
-      </>}>
-      <p>{online
-        ? 'Les PDF sont archivés par le club ; la copie dans votre Google Drive est facultative.'
-        : 'La copie reprendra au retour du réseau.'}</p>
+      actions={
+        <>
+          <button type="button" className="btn primary" onClick={onFinalize} disabled={!online || finalizing}>
+            {finalizing ? (
+              <>
+                <span className="spin">
+                  <Icon.Refresh />
+                </span>
+                Dépôt en cours…
+              </>
+            ) : (
+              'Déposer une copie sur Google Drive'
+            )}
+          </button>
+          <button type="button" className="btn ghost" onClick={onDisable}>
+            Ne plus proposer sur cet appareil
+          </button>
+        </>
+      }
+    >
+      <p>
+        {online
+          ? 'Les PDF sont archivés par le club ; la copie dans votre Google Drive est facultative.'
+          : 'La copie reprendra au retour du réseau.'}
+      </p>
       {message && <p className="num small">{message}</p>}
     </Notice>
   );
@@ -106,9 +155,7 @@ function DiveSection({ id, title, count, loading, empty, children }) {
         <h2 id={id}>{title}</h2>
         {!loading && <span className="count">{count}</span>}
       </div>
-      <div className="dive-list">
-        {loading ? <DiveListSkeleton /> : count === 0 ? empty : children}
-      </div>
+      <div className="dive-list">{loading ? <DiveListSkeleton /> : count === 0 ? empty : children}</div>
     </section>
   );
 }
@@ -116,10 +163,17 @@ function DiveSection({ id, title, count, loading, empty, children }) {
 // Autorisation Drive demandée au clic « Nouvelle plongée » (jamais au
 // chargement), seulement si la copie Drive est activée sur l'appareil.
 function useDriveAuth(online, onNew, driveEnabled) {
-  const [driveAuth, setDriveAuth] = useState(() => (getCachedToken && getCachedToken()) ? 'ok' : 'idle');
+  const [driveAuth, setDriveAuth] = useState(() => (getCachedToken && getCachedToken() ? 'ok' : 'idle'));
   const handleNew = useCallback(async () => {
-    if (!driveEnabled || !online || !isGisAvailable || !isGisAvailable()) { onNew(); return; }
-    if (getCachedToken && getCachedToken()) { setDriveAuth('ok'); onNew(); return; }
+    if (!driveEnabled || !online || !isGisAvailable || !isGisAvailable()) {
+      onNew();
+      return;
+    }
+    if (getCachedToken && getCachedToken()) {
+      setDriveAuth('ok');
+      onNew();
+      return;
+    }
     setDriveAuth('pending-explicit');
     try {
       await getDriveToken({ explicit: false, timeoutMs: 15000 });
@@ -146,9 +200,14 @@ function usePendingDrive(user, showToast, reload) {
 
   const finalizeAll = useCallback(async () => {
     if (finalizing) return;
-    setFinalizing(true); setMessage('');
+    setFinalizing(true);
+    setMessage('');
     let divers = [];
-    try { divers = await offlineStore.all('divers'); } catch (err) { console.warn('[DP] annuaire local illisible :', err.message); }
+    try {
+      divers = await offlineStore.all('divers');
+    } catch (err) {
+      console.warn('[DP] annuaire local illisible :', err.message);
+    }
     let ok = 0;
     for (const [i, archive] of pendingDrive.entries()) {
       const label = `${i + 1}/${pendingDrive.length} ${archive.site_nom || 'plongée'}`;
@@ -161,8 +220,14 @@ function usePendingDrive(user, showToast, reload) {
         break;
       }
     }
-    setFinalizing(false); setMessage('');
-    if (ok > 0) showToast({ tone: 'ok', title: 'Déposé sur Google Drive', body: `${ok} plongée${ok > 1 ? 's' : ''} déposée${ok > 1 ? 's' : ''}.` });
+    setFinalizing(false);
+    setMessage('');
+    if (ok > 0)
+      showToast({
+        tone: 'ok',
+        title: 'Déposé sur Google Drive',
+        body: `${ok} plongée${ok > 1 ? 's' : ''} déposée${ok > 1 ? 's' : ''}.`,
+      });
     refreshPending();
     reload();
   }, [pendingDrive, user, finalizing, showToast, refreshPending, reload]);
@@ -174,8 +239,13 @@ function useDives() {
   const [dives, setDives] = useState(null);
   const [loadError, setLoadError] = useState('');
   const loadDives = useCallback(async () => {
-    try { setDives(await api.dives.list()); setLoadError(''); }
-    catch (err) { setDives([]); setLoadError(err.message); }
+    try {
+      setDives(await api.dives.list());
+      setLoadError('');
+    } catch (err) {
+      setDives([]);
+      setLoadError(err.message);
+    }
   }, []);
   return { dives, loadError, loadDives };
 }
@@ -198,7 +268,10 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
   useEffect(() => {
     loadDives();
     refreshPending();
-    const onChange = () => { loadDives(); refreshPending(); };
+    const onChange = () => {
+      loadDives();
+      refreshPending();
+    };
     window.addEventListener('dp:dataChanged', onChange);
     window.addEventListener('dp:syncDone', onChange);
     return () => {
@@ -209,9 +282,13 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
 
   const run = (id, fn, errTitle) => async () => {
     setBusyId(id);
-    try { await fn(); }
-    catch (err) { showToast({ tone: 'err', title: errTitle, body: err.message }); }
-    finally { setBusyId(null); }
+    try {
+      await fn();
+    } catch (err) {
+      showToast({ tone: 'err', title: errTitle, body: err.message });
+    } finally {
+      setBusyId(null);
+    }
   };
 
   const confirmDelete = async () => {
@@ -234,73 +311,176 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
       <AlertsBanner data={alerts.data} onOpen={() => onNavigate('admin-divers')} />
 
       {driveEnabled && drive.pendingDrive.length > 0 && (
-        <PendingDriveNotice count={drive.pendingDrive.length} online={online} finalizing={drive.finalizing}
+        <PendingDriveNotice
+          count={drive.pendingDrive.length}
+          online={online}
+          finalizing={drive.finalizing}
           onDisable={() => setDriveEnabled(false)}
-          message={drive.message} onFinalize={drive.finalizeAll} />
+          message={drive.message}
+          onFinalize={drive.finalizeAll}
+        />
       )}
 
       {loadError && !online && (
-        <Notice tone="info" title="Hors ligne">Liste issue de cet appareil. Elle se mettra à jour au retour du réseau.</Notice>
+        <Notice tone="info" title="Hors ligne">
+          Liste issue de cet appareil. Elle se mettra à jour au retour du réseau.
+        </Notice>
       )}
 
       {otherLive.length > 0 && (
-      <DiveSection id="sec-progress" title={canWrite ? 'Autres plongées en cours' : 'Plongées en cours'} count={otherLive.length} loading={loading} empty={null}>
-        {otherLive.map(d => (
-          <DiveRow key={diveKey(d)} dive={d} live
-            actions={canWrite && <button type="button" className="btn primary" onClick={() => onLoadDive(diveKey(d), 'fiche', 'execute')}>
-              <Icon.Play />Reprendre</button>} />
-        ))}
-      </DiveSection>
+        <DiveSection
+          id="sec-progress"
+          title={canWrite ? 'Autres plongées en cours' : 'Plongées en cours'}
+          count={otherLive.length}
+          loading={loading}
+          empty={null}
+        >
+          {otherLive.map((d) => (
+            <DiveRow
+              key={diveKey(d)}
+              dive={d}
+              live
+              actions={
+                canWrite && (
+                  <button
+                    type="button"
+                    className="btn primary"
+                    onClick={() => onLoadDive(diveKey(d), 'fiche', 'execute')}
+                  >
+                    <Icon.Play />
+                    Reprendre
+                  </button>
+                )
+              }
+            />
+          ))}
+        </DiveSection>
       )}
 
-      <DiveSection id="sec-prepared" title="Préparées" count={prepared.length} loading={loading}
-        empty={<div className="empty-state"><b>Aucune plongée préparée</b><span>Créez une plongée avec « Nouvelle plongée » : profil, palanquées, puis check-list de préparation.</span></div>}>
-        {prepared.map(d => {
+      <DiveSection
+        id="sec-prepared"
+        title="Préparées"
+        count={prepared.length}
+        loading={loading}
+        empty={
+          <div className="empty-state">
+            <b>Aucune plongée préparée</b>
+            <span>
+              Créez une plongée avec « Nouvelle plongée » : profil, palanquées, puis check-list de préparation.
+            </span>
+          </div>
+        }
+      >
+        {prepared.map((d) => {
           const id = diveKey(d);
           const busy = busyId === id;
           return (
-            <DiveRow key={id} dive={d} actions={canWrite && <>
-              <button type="button" className="btn primary" onClick={() => onStartExecution(d)}><Icon.Play />Démarrer</button>
-              <button type="button" className="btn" onClick={() => onLoadDive(id, 'profil', 'prepare')}><Icon.Edit />Modifier</button>
-              <button type="button" className="btn" disabled={busy} title="Copie identique, 3 heures plus tard (météo à refaire)"
-                onClick={run(id, () => onCloneH3(id), 'Duplication impossible')}><Icon.Copy />Dupliquer +3 h</button>
-              <button type="button" className="btn danger icon" disabled={busy} aria-label={`Supprimer la plongée ${d.site_nom || ''}`}
-                onClick={() => setToDelete(d)}><Icon.Trash /></button>
-            </>} />
+            <DiveRow
+              key={id}
+              dive={d}
+              actions={
+                canWrite && (
+                  <>
+                    <button type="button" className="btn primary" onClick={() => onStartExecution(d)}>
+                      <Icon.Play />
+                      Démarrer
+                    </button>
+                    <button type="button" className="btn" onClick={() => onLoadDive(id, 'profil', 'prepare')}>
+                      <Icon.Edit />
+                      Modifier
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={busy}
+                      title="Copie identique, 3 heures plus tard (météo à refaire)"
+                      onClick={run(id, () => onCloneH3(id), 'Duplication impossible')}
+                    >
+                      <Icon.Copy />
+                      Dupliquer +3 h
+                    </button>
+                    <button
+                      type="button"
+                      className="btn danger icon"
+                      disabled={busy}
+                      aria-label={`Supprimer la plongée ${d.site_nom || ''}`}
+                      onClick={() => setToDelete(d)}
+                    >
+                      <Icon.Trash />
+                    </button>
+                  </>
+                )
+              }
+            />
           );
         })}
       </DiveSection>
 
-      <DiveSection id="sec-archived" title="Archivées" count={archived.length} loading={loading}
-        empty={<div className="empty-state"><b>Aucune plongée archivée</b><span>Les plongées terminées et archivées apparaîtront ici.</span></div>}>
-        {archived.map(d => {
+      <DiveSection
+        id="sec-archived"
+        title="Archivées"
+        count={archived.length}
+        loading={loading}
+        empty={
+          <div className="empty-state">
+            <b>Aucune plongée archivée</b>
+            <span>Les plongées terminées et archivées apparaîtront ici.</span>
+          </div>
+        }
+      >
+        {archived.map((d) => {
           const id = d.id || d.client_uuid;
           return (
-            <DiveRow key={diveKey(d)} dive={d} archived actions={<>
-              {d.drive_link && (
-                <a className="btn" href={d.drive_link} target="_blank" rel="noopener noreferrer"><Icon.External />Drive</a>
-              )}
-              {canWrite && (
-                <button type="button" className="btn" disabled={busyId !== null}
-                  title="Nouvelle plongée sur ce modèle, dans 3 heures"
-                  onClick={run(id, () => onClone(id), 'Duplication impossible')}><Icon.Copy />Réutiliser</button>
-              )}
-            </>} />
+            <DiveRow
+              key={diveKey(d)}
+              dive={d}
+              archived
+              actions={
+                <>
+                  {d.drive_link && (
+                    <a className="btn" href={d.drive_link} target="_blank" rel="noopener noreferrer">
+                      <Icon.External />
+                      Drive
+                    </a>
+                  )}
+                  {canWrite && (
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={busyId !== null}
+                      title="Nouvelle plongée sur ce modèle, dans 3 heures"
+                      onClick={run(id, () => onClone(id), 'Duplication impossible')}
+                    >
+                      <Icon.Copy />
+                      Réutiliser
+                    </button>
+                  )}
+                </>
+              }
+            />
           );
         })}
       </DiveSection>
 
       {toDelete && (
-        <ConfirmDialog title="Supprimer la plongée préparée ?" danger confirmLabel="Supprimer"
-          onCancel={() => setToDelete(null)} onConfirm={confirmDelete}>
-          <p><b>{toDelete.site_nom || 'Site non renseigné'}</b>, {formatDateTime(toDelete.planned_at || toDelete.date_plongee)}.</p>
+        <ConfirmDialog
+          title="Supprimer la plongée préparée ?"
+          danger
+          confirmLabel="Supprimer"
+          onCancel={() => setToDelete(null)}
+          onConfirm={confirmDelete}
+        >
+          <p>
+            <b>{toDelete.site_nom || 'Site non renseigné'}</b>,{' '}
+            {formatDateTime(toDelete.planned_at || toDelete.date_plongee)}.
+          </p>
           <p>La préparation (profil, palanquées, check-list) sera supprimée.</p>
         </ConfirmDialog>
       )}
 
       <p className="disclaimer">
-        Outil d'aide à la décision. Il ne remplace ni la responsabilité personnelle du directeur de plongée,
-        ni la lecture du Code du sport (art. A322-71 à A322-101) et des textes fédéraux en vigueur.
+        Outil d'aide à la décision. Il ne remplace ni la responsabilité personnelle du directeur de plongée, ni la
+        lecture du Code du sport (art. A322-71 à A322-101) et des textes fédéraux en vigueur.
       </p>
     </div>
   );

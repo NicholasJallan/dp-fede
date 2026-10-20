@@ -5,7 +5,9 @@ import assert from 'node:assert/strict';
 import { bootOffline } from './helpers/offline-harness.js';
 
 let win;
-beforeEach(() => { win = bootOffline(); });
+beforeEach(() => {
+  win = bootOffline();
+});
 
 describe('outbox — enqueue / pending / size', () => {
   test('enqueue persiste un item avec id, kind, payload, attempts=0', async () => {
@@ -19,7 +21,7 @@ describe('outbox — enqueue / pending / size', () => {
 
   test('pending() retourne les items en attente', async () => {
     await win.outbox.enqueue('diver.create', { id: 'a' });
-    await win.outbox.enqueue('site.create',  { id: 'b' });
+    await win.outbox.enqueue('site.create', { id: 'b' });
     const all = await win.outbox.pending();
     assert.equal(all.length, 2);
     assert.equal(await win.outbox.size(), 2);
@@ -36,7 +38,7 @@ describe('outbox — ready / FIFO / nextWakeMs', () => {
   test('ready() retourne items où nextRetryAt <= now, triés par createdAt', async () => {
     const a = await win.outbox.enqueue('diver.create', { id: 'a' });
     // petit délai pour garantir createdAt distinct
-    await new Promise(r => setTimeout(r, 5));
+    await new Promise((r) => setTimeout(r, 5));
     const b = await win.outbox.enqueue('site.create', { id: 'b' });
     const ready = await win.outbox.ready();
     assert.equal(ready.length, 2);
@@ -57,7 +59,7 @@ describe('outbox — ready / FIFO / nextWakeMs', () => {
 });
 
 describe('outbox — markDone / markFailed / backoff exp', () => {
-  test('markDone supprime l\'item', async () => {
+  test("markDone supprime l'item", async () => {
     const it = await win.outbox.enqueue('diver.create', { id: 'a' });
     await win.outbox.markDone(it.id);
     assert.equal(await win.outbox.size(), 0);

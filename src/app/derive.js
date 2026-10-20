@@ -6,17 +6,20 @@ import { CHECKLIST_RULES, getMilieuType, isBassinDerogation, matchCondition, val
 export function computeProfilNotes(answers) {
   const notes = [];
   const profNum = parseFloat(answers.prof_max);
-  if (answers.activite !== "Exploration" && profNum > 40) {
-    notes.push({ tone:"info", text:"Enseignement au-delà de 40 m : l'encadrant de la palanquée doit être E4 (Annexe III-16 a)." });
+  if (answers.activite !== 'Exploration' && profNum > 40) {
+    notes.push({
+      tone: 'info',
+      text: "Enseignement au-delà de 40 m : l'encadrant de la palanquée doit être E4 (Annexe III-16 a).",
+    });
   }
   if (answers.recycleur && profNum > 6) {
-    notes.push({ tone:"info", text:"Recycleur > 6 m : un secours circuit-ouvert est obligatoire (Art. A322-94)." });
+    notes.push({ tone: 'info', text: 'Recycleur > 6 m : un secours circuit-ouvert est obligatoire (Art. A322-94).' });
   }
   if (answers.depart_bateau && !answers.vhf && getMilieuType(answers.milieu) === 'mer') {
-    notes.push({ tone:"warn", text:"En mer au départ d'une embarcation, une VHF est obligatoire (Art. A322-78)." });
+    notes.push({ tone: 'warn', text: "En mer au départ d'une embarcation, une VHF est obligatoire (Art. A322-78)." });
   }
   if (isBassinDerogation(answers, profNum || 0)) {
-    notes.push({ tone:"info", text:"En piscine ≤ 6 m : la fiche de sécurité n'est pas obligatoire (Art. A322-98)." });
+    notes.push({ tone: 'info', text: "En piscine ≤ 6 m : la fiche de sécurité n'est pas obligatoire (Art. A322-98)." });
   }
   return { notes };
 }
@@ -25,15 +28,17 @@ export function computeProfilNotes(answers) {
 // [{ id, nom, errs: [{ code, text, ref }] }].
 export function computeBlockingPalSummary(palanquees, divers, answers) {
   const diversById = {};
-  divers.forEach(d => { diversById[d.id] = d; });
-  const dp = divers.find(d => d.id === answers.dp_id) || null;
+  divers.forEach((d) => {
+    diversById[d.id] = d;
+  });
+  const dp = divers.find((d) => d.id === answers.dp_id) || null;
   return palanquees
     .map((p, idx) => {
       const issues = validatePal(p, diversById, answers, dp);
-      const errs = issues.filter(i => i.tone === 'err').map(({ code, text, ref }) => ({ code, text, ref }));
+      const errs = issues.filter((i) => i.tone === 'err').map(({ code, text, ref }) => ({ code, text, ref }));
       return { id: p.id, nom: p.nom || `Palanquée ${idx + 1}`, errs };
     })
-    .filter(s => s.errs.length > 0);
+    .filter((s) => s.errs.length > 0);
 }
 
 // Item « décision finale du DP » : verrou avant le passage en exécution.
@@ -50,29 +55,28 @@ function itemVisible(it, answers) {
 // Phases de check-list affichées pour un mode : 'prepare' → phase 1,
 // 'execute' → phase 2, autre → toutes. Items filtrés par le profil.
 export function visibleChecklist(answers, mode) {
-  return CHECKLIST_RULES
-    .filter(phase => (mode === 'prepare' ? phase.phase === 1 : mode === 'execute' ? phase.phase === 2 : true))
-    .map(phase => ({ ...phase, items: phase.items.filter(it => itemVisible(it, answers)) }));
+  return CHECKLIST_RULES.filter((phase) =>
+    mode === 'prepare' ? phase.phase === 1 : mode === 'execute' ? phase.phase === 2 : true,
+  ).map((phase) => ({ ...phase, items: phase.items.filter((it) => itemVisible(it, answers)) }));
 }
 
 // Progression de la check-list du mode courant : { total, doneCount }.
 // Seuls les items visibles comptent (un item coché puis masqué par le profil
 // ne gonfle plus le compteur).
 export function checklistProgress(answers, checked, mode) {
-  const items = visibleChecklist(answers, mode).flatMap(p => p.items);
-  return { total: items.length, doneCount: items.filter(it => checked[it.id]).length };
+  const items = visibleChecklist(answers, mode).flatMap((p) => p.items);
+  return { total: items.length, doneCount: items.filter((it) => checked[it.id]).length };
 }
 
 // Avancement de l'exécution : palanquées à l'eau / sorties.
 export function exitProgress(palanquees, heuresDebut, heuresFin) {
   const total = palanquees.length;
-  const out = palanquees.filter(p => heuresDebut[p.id] && heuresFin[p.id]).length;
-  const water = palanquees.filter(p => heuresDebut[p.id] && !heuresFin[p.id]).length;
+  const out = palanquees.filter((p) => heuresDebut[p.id] && heuresFin[p.id]).length;
+  const water = palanquees.filter((p) => heuresDebut[p.id] && !heuresFin[p.id]).length;
   return { total, out, water };
 }
 
 // Toutes les palanquées ont une heure de début ET de fin.
 export function areAllPalanqueesFinished(palanquees, heuresDebut, heuresFin) {
-  return palanquees.length > 0
-    && palanquees.every(p => heuresDebut[p.id] && heuresFin[p.id]);
+  return palanquees.length > 0 && palanquees.every((p) => heuresDebut[p.id] && heuresFin[p.id]);
 }

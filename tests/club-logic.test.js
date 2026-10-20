@@ -8,7 +8,13 @@ import { can, PERMISSIONS, ROLES, roleLabel, describeApiError } from '../src/clu
 import { seasonLabel, seasonRange, isSeason, ageOn, isMinor, seasonChoices } from '../src/club/season.js';
 import { summarizeAlerts, groupAlertsByDiver, describeAlert, alertTone, alertsSentence } from '../src/club/alerts.js';
 import {
-  importRows, summarizeImport, filterImportRows, countByFilter, describeFormat, checkImportFile, fieldLabel,
+  importRows,
+  summarizeImport,
+  filterImportRows,
+  countByFilter,
+  describeFormat,
+  checkImportFile,
+  fieldLabel,
 } from '../src/club/import-report.js';
 import { isDeleteConfirmed, describeDeletion, describeAccountDeletionError } from '../src/club/deletion.js';
 import { parseInvitationHash } from '../src/club/invitation.js';
@@ -17,10 +23,38 @@ import { filenameFromDisposition } from '../src/api/download.js';
 
 describe('droits par rôle (matrice docs/api-club.md)', () => {
   const expect = {
-    responsable: { 'club.manage': true, 'divers.write': true, 'divers.import': true, 'documents.generate': true, 'alerts.read': true, 'stats.read': true },
-    dp:          { 'club.manage': false, 'divers.write': true, 'divers.import': true, 'documents.generate': true, 'alerts.read': true, 'stats.read': true },
-    encadrant:   { 'club.manage': false, 'divers.write': false, 'divers.import': false, 'documents.generate': false, 'alerts.read': true, 'stats.read': true },
-    lecture:     { 'club.manage': false, 'divers.write': false, 'divers.import': false, 'documents.generate': false, 'alerts.read': false, 'stats.read': true },
+    responsable: {
+      'club.manage': true,
+      'divers.write': true,
+      'divers.import': true,
+      'documents.generate': true,
+      'alerts.read': true,
+      'stats.read': true,
+    },
+    dp: {
+      'club.manage': false,
+      'divers.write': true,
+      'divers.import': true,
+      'documents.generate': true,
+      'alerts.read': true,
+      'stats.read': true,
+    },
+    encadrant: {
+      'club.manage': false,
+      'divers.write': false,
+      'divers.import': false,
+      'documents.generate': false,
+      'alerts.read': true,
+      'stats.read': true,
+    },
+    lecture: {
+      'club.manage': false,
+      'divers.write': false,
+      'divers.import': false,
+      'documents.generate': false,
+      'alerts.read': false,
+      'stats.read': true,
+    },
   };
   for (const role of ROLES) {
     test(`rôle ${role}`, () => {
@@ -46,14 +80,17 @@ describe('droits par rôle (matrice docs/api-club.md)', () => {
 
   test('chaque permission est une liste de rôles connus', () => {
     for (const roles of Object.values(PERMISSIONS)) {
-      assert.ok(roles.every(r => ROLES.includes(r)));
+      assert.ok(roles.every((r) => ROLES.includes(r)));
     }
     assert.equal(roleLabel('dp'), 'DP');
     assert.equal(roleLabel('inconnu'), 'inconnu');
   });
 
   test('describeApiError : 403 explicite et actionnable', () => {
-    const msg = describeApiError({ status: 403, message: 'Action non autorisée pour votre rôle dans le club' }, 'modifier le club');
+    const msg = describeApiError(
+      { status: 403, message: 'Action non autorisée pour votre rôle dans le club' },
+      'modifier le club',
+    );
     assert.match(msg, /Action non autorisée/);
     assert.match(msg, /modifier le club/);
     assert.match(msg, /responsable du club/);
@@ -62,10 +99,17 @@ describe('droits par rôle (matrice docs/api-club.md)', () => {
   });
 
   test('describeApiError : club quitté et documents archivés complets', () => {
-    const lost = describeApiError({ status: 403, code: 'CLUB_NOT_MEMBER', message: "Vous n'êtes pas membre de ce club" });
+    const lost = describeApiError({
+      status: 403,
+      code: 'CLUB_NOT_MEMBER',
+      message: "Vous n'êtes pas membre de ce club",
+    });
     assert.match(lost, /plus membre/);
     assert.doesNotMatch(lost, /rôle/);
-    const complete = describeApiError({ status: 409, code: 'DOCUMENTS_COMPLETE', message: 'Documents archivés complets et intègres' }, 'régénérer les PDF');
+    const complete = describeApiError(
+      { status: 409, code: 'DOCUMENTS_COMPLETE', message: 'Documents archivés complets et intègres' },
+      'régénérer les PDF',
+    );
     assert.match(complete, /complets/);
     assert.equal(describeApiError({ status: 422, message: 'Champ invalide' }), 'Champ invalide');
   });
@@ -102,13 +146,48 @@ describe('saison FFESSM et mineurs', () => {
 
 describe('alertes du club', () => {
   const data = {
-    season: '2026-2027', days: 30,
+    season: '2026-2027',
+    days: 30,
     counts: { caci_expire: 2, licence_expire_bientot: 1, autorisation_parentale_manquante: 1 },
     items: [
-      { diver_id: 'a', nom: 'Dupont', prenom: 'Jean', type: 'caci_expire', severity: 'error', date: '2026-10-01', days: -19 },
-      { diver_id: 'b', nom: 'Petit', prenom: 'Léa', type: 'autorisation_parentale_manquante', severity: 'error', date: null, days: null, season: '2026-2027', age: 14 },
-      { diver_id: 'c', nom: 'Moreau', prenom: 'Paul', type: 'caci_expire', severity: 'error', date: '2026-09-01', days: -49 },
-      { diver_id: 'a', nom: 'Dupont', prenom: 'Jean', type: 'licence_expire_bientot', severity: 'warn', date: '2026-11-01', days: 12 },
+      {
+        diver_id: 'a',
+        nom: 'Dupont',
+        prenom: 'Jean',
+        type: 'caci_expire',
+        severity: 'error',
+        date: '2026-10-01',
+        days: -19,
+      },
+      {
+        diver_id: 'b',
+        nom: 'Petit',
+        prenom: 'Léa',
+        type: 'autorisation_parentale_manquante',
+        severity: 'error',
+        date: null,
+        days: null,
+        season: '2026-2027',
+        age: 14,
+      },
+      {
+        diver_id: 'c',
+        nom: 'Moreau',
+        prenom: 'Paul',
+        type: 'caci_expire',
+        severity: 'error',
+        date: '2026-09-01',
+        days: -49,
+      },
+      {
+        diver_id: 'a',
+        nom: 'Dupont',
+        prenom: 'Jean',
+        type: 'licence_expire_bientot',
+        severity: 'warn',
+        date: '2026-11-01',
+        days: 12,
+      },
     ],
   };
 
@@ -119,7 +198,10 @@ describe('alertes du club', () => {
     assert.equal(s.warnings, 1);
     assert.equal(s.divers, 3);
     assert.equal(s.tone, 'err');
-    assert.deepEqual(s.byType.map(t => t.type), ['caci_expire', 'licence_expire_bientot', 'autorisation_parentale_manquante']);
+    assert.deepEqual(
+      s.byType.map((t) => t.type),
+      ['caci_expire', 'licence_expire_bientot', 'autorisation_parentale_manquante'],
+    );
     assert.equal(alertsSentence(s), '2 CACI expirés, 1 licence expirant bientôt, 1 autorisation parentale manquante');
   });
 
@@ -133,7 +215,10 @@ describe('alertes du club', () => {
 
   test('regroupement par plongeur, forme ■ si au moins une alerte bloquante', () => {
     const groups = groupAlertsByDiver(data.items);
-    assert.deepEqual(groups.map(g => g.diver_id), ['a', 'b', 'c']);
+    assert.deepEqual(
+      groups.map((g) => g.diver_id),
+      ['a', 'b', 'c'],
+    );
     assert.equal(groups[0].items.length, 2);
     assert.equal(groups[0].tone, 'err');
     assert.equal(alertTone(data.items[3]), 'warn');
@@ -150,9 +235,21 @@ describe('alertes du club', () => {
 
 describe("rapport d'import", () => {
   const report = {
-    dry_run: true, encoding: 'UTF-8 (BOM)', separator: ';', total: 5, created: 1, updated: 1, unchanged: 1,
-    errors: [{ line: 4, message: 'Date invalide pour caci : « 31/02/2026 »' }, { line: 6, message: 'Niveau inconnu' }],
-    warnings: [{ line: 3, message: 'Qualification trimix : PN-C ajouté (prérequis)' }, { line: 6, message: 'Aptitude ignorée' }],
+    dry_run: true,
+    encoding: 'UTF-8 (BOM)',
+    separator: ';',
+    total: 5,
+    created: 1,
+    updated: 1,
+    unchanged: 1,
+    errors: [
+      { line: 4, message: 'Date invalide pour caci : « 31/02/2026 »' },
+      { line: 6, message: 'Niveau inconnu' },
+    ],
+    warnings: [
+      { line: 3, message: 'Qualification trimix : PN-C ajouté (prérequis)' },
+      { line: 6, message: 'Aptitude ignorée' },
+    ],
     items: [
       { line: 5, action: 'unchanged', nom: 'Moreau', prenom: 'Paul', changes: [] },
       { line: 2, action: 'create', nom: 'Dupont', prenom: 'Jean', changes: ['nom', 'licence'] },
@@ -162,7 +259,16 @@ describe("rapport d'import", () => {
 
   test('lignes triées par numéro, erreurs comprises, avec leur message', () => {
     const rows = importRows(report);
-    assert.deepEqual(rows.map(r => [r.line, r.action]), [[2, 'create'], [3, 'update'], [4, 'error'], [5, 'unchanged'], [6, 'error']]);
+    assert.deepEqual(
+      rows.map((r) => [r.line, r.action]),
+      [
+        [2, 'create'],
+        [3, 'update'],
+        [4, 'error'],
+        [5, 'unchanged'],
+        [6, 'error'],
+      ],
+    );
     assert.equal(rows[0].name, 'Jean DUPONT');
     assert.equal(rows[0].detail, 'Nouvelle fiche');
     assert.equal(rows[1].detail, 'Modifié : CACI, identifiant externe, source');
@@ -172,9 +278,9 @@ describe("rapport d'import", () => {
 
   test('avertissements rattachés à leur ligne (fiche ou erreur)', () => {
     const rows = importRows(report);
-    assert.deepEqual(rows.find(r => r.line === 3).warnings, ['Qualification trimix : PN-C ajouté (prérequis)']);
-    assert.deepEqual(rows.find(r => r.line === 6).warnings, ['Aptitude ignorée']);
-    assert.deepEqual(rows.find(r => r.line === 2).warnings, []);
+    assert.deepEqual(rows.find((r) => r.line === 3).warnings, ['Qualification trimix : PN-C ajouté (prérequis)']);
+    assert.deepEqual(rows.find((r) => r.line === 6).warnings, ['Aptitude ignorée']);
+    assert.deepEqual(rows.find((r) => r.line === 2).warnings, []);
   });
 
   test('synthèse : confirmation possible seulement en simulation avec des changements', () => {
@@ -216,11 +322,15 @@ describe('suppressions définitives', () => {
   });
 
   test('message serveur et fiches conservées (A322-72)', () => {
-    const d = describeDeletion({
-      deleted: true, retained: { fiches: 3, until: '2027-07-14', clubs: 1 },
-      message: '3 fiches de sécurité archivées conservées jusqu\'au 14/07/2027.',
-    }, 'Votre compte a été supprimé.');
-    assert.equal(d.message, '3 fiches de sécurité archivées conservées jusqu\'au 14/07/2027.');
+    const d = describeDeletion(
+      {
+        deleted: true,
+        retained: { fiches: 3, until: '2027-07-14', clubs: 1 },
+        message: "3 fiches de sécurité archivées conservées jusqu'au 14/07/2027.",
+      },
+      'Votre compte a été supprimé.',
+    );
+    assert.equal(d.message, "3 fiches de sécurité archivées conservées jusqu'au 14/07/2027.");
     assert.equal(d.retained.fiches, 3);
     assert.equal(d.retained.until, '2027-07-14');
     assert.equal(d.retained.clubs, 1);
@@ -236,7 +346,10 @@ describe('suppressions définitives', () => {
   });
 
   test('409 seul responsable : action « écran Club » ; 409 dernier admin : sans', () => {
-    const club = describeAccountDeletionError({ status: 409, message: 'Vous êtes le seul responsable du club « X », qui compte d\'autres membres' });
+    const club = describeAccountDeletionError({
+      status: 409,
+      message: "Vous êtes le seul responsable du club « X », qui compte d'autres membres",
+    });
     assert.equal(club.clubAction, true);
     assert.match(club.body, /écran Club/);
     const admin = describeAccountDeletionError({ status: 409, message: 'Vous êtes le seul administrateur' });
@@ -259,8 +372,15 @@ describe("lien d'invitation", () => {
 
 describe('formulaire plongeur : champs club', () => {
   test('fiche importée : provenance lue, jamais renvoyée', () => {
-    const form = diverToForm({ id: 'd', nom: 'Dupont', source: 'vpdive', external_id: '1042', licence_fin: '2027-09-14',
-      representant_legal: null, autorisation_parentale_saison: '2026-2027' });
+    const form = diverToForm({
+      id: 'd',
+      nom: 'Dupont',
+      source: 'vpdive',
+      external_id: '1042',
+      licence_fin: '2027-09-14',
+      representant_legal: null,
+      autorisation_parentale_saison: '2026-2027',
+    });
     assert.equal(form.source, 'vpdive');
     const payload = formToPayload(form);
     assert.equal('source' in payload, false);
@@ -270,7 +390,7 @@ describe('formulaire plongeur : champs club', () => {
     assert.equal(payload.representant_legal, '');
   });
 
-  test('fiche en cache sans les nouveaux champs : clés vides non envoyées (pas d\'effacement)', () => {
+  test("fiche en cache sans les nouveaux champs : clés vides non envoyées (pas d'effacement)", () => {
     const payload = formToPayload(diverToForm({ id: 'd', nom: 'Dupont', medical: '2026-01-01' }));
     assert.equal('licence_fin' in payload, false);
     assert.equal('representant_legal' in payload, false);
@@ -293,8 +413,14 @@ describe('formulaire plongeur : champs club', () => {
 
 describe('téléchargements', () => {
   test('nom de fichier de Content-Disposition', () => {
-    assert.equal(filenameFromDisposition('attachment; filename="2026-10-20-fiche-lac.pdf"'), '2026-10-20-fiche-lac.pdf');
-    assert.equal(filenameFromDisposition("attachment; filename*=UTF-8''statistiques-%C3%A9t%C3%A9.csv"), 'statistiques-été.csv');
+    assert.equal(
+      filenameFromDisposition('attachment; filename="2026-10-20-fiche-lac.pdf"'),
+      '2026-10-20-fiche-lac.pdf',
+    );
+    assert.equal(
+      filenameFromDisposition("attachment; filename*=UTF-8''statistiques-%C3%A9t%C3%A9.csv"),
+      'statistiques-été.csv',
+    );
     assert.equal(filenameFromDisposition('attachment; filename=export.json'), 'export.json');
     assert.equal(filenameFromDisposition('attachment; filename="../../etc/passwd"'), 'passwd');
     assert.equal(filenameFromDisposition(null, 'fiche.pdf'), 'fiche.pdf');

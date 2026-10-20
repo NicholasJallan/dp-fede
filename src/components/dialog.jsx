@@ -13,13 +13,18 @@ import { createPortal } from 'react-dom';
 import { StatusIcon } from './icons.jsx';
 
 const FOCUSABLE = [
-  'a[href]', 'button:not([disabled])', 'input:not([disabled]):not([type="hidden"])',
-  'select:not([disabled])', 'textarea:not([disabled])', '[tabindex]:not([tabindex="-1"])',
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
 function focusables(node) {
-  return Array.from(node.querySelectorAll(FOCUSABLE))
-    .filter(el => el.offsetParent !== null || el === document.activeElement);
+  return Array.from(node.querySelectorAll(FOCUSABLE)).filter(
+    (el) => el.offsetParent !== null || el === document.activeElement,
+  );
 }
 
 // Verrou de défilement partagé entre dialogues imbriqués.
@@ -34,20 +39,24 @@ function unlockScroll() {
 }
 
 function initialTarget(node) {
-  return node.querySelector('[data-autofocus]')
-    || focusables(node.querySelector('.dialog-body') || node)[0]
-    || node;
+  return node.querySelector('[data-autofocus]') || focusables(node.querySelector('.dialog-body') || node)[0] || node;
 }
 
 function trapTab(e, node) {
   const items = focusables(node);
-  if (items.length === 0) { e.preventDefault(); node.focus(); return; }
+  if (items.length === 0) {
+    e.preventDefault();
+    node.focus();
+    return;
+  }
   const first = items[0];
   const last = items[items.length - 1];
   if (e.shiftKey && (document.activeElement === first || document.activeElement === node)) {
-    e.preventDefault(); last.focus();
+    e.preventDefault();
+    last.focus();
   } else if (!e.shiftKey && document.activeElement === last) {
-    e.preventDefault(); first.focus();
+    e.preventDefault();
+    first.focus();
   }
 }
 
@@ -64,8 +73,17 @@ function trapTab(e, node) {
  * @param {string} [props.className]
  */
 export function Dialog({
-  title, onClose, children, footer, size = 'md', tone = null, icon = null,
-  variant = null, dismissible = true, className = '', describedBy,
+  title,
+  onClose,
+  children,
+  footer,
+  size = 'md',
+  tone = null,
+  icon = null,
+  variant = null,
+  dismissible = true,
+  className = '',
+  describedBy,
 }) {
   const ref = useRef(null);
   const titleId = useId();
@@ -97,16 +115,30 @@ export function Dialog({
   };
 
   const classes = ['dialog', size !== 'md' && size, tone && `tone-${tone}`, variant, className]
-    .filter(Boolean).join(' ');
+    .filter(Boolean)
+    .join(' ');
 
   return createPortal(
     <div className={`dialog-scrim ${variant || ''}`} onMouseDown={onScrimDown}>
-      <div ref={ref} className={classes} role="dialog" aria-modal="true" aria-labelledby={titleId}
-        aria-describedby={describedBy} tabIndex={-1} onKeyDown={onKeyDown}>
+      <div
+        ref={ref}
+        className={classes}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={describedBy}
+        tabIndex={-1}
+        onKeyDown={onKeyDown}
+      >
         <div className="dialog-head">
-          <h2 id={titleId}>{icon && <StatusIcon tone={icon} />}{title}</h2>
+          <h2 id={titleId}>
+            {icon && <StatusIcon tone={icon} />}
+            {title}
+          </h2>
           {dismissible && (
-            <button type="button" className="x" aria-label="Fermer" onClick={() => onCloseRef.current?.()}>×</button>
+            <button type="button" className="x" aria-label="Fermer" onClick={() => onCloseRef.current?.()}>
+              ×
+            </button>
           )}
         </div>
         <div className="dialog-body">{children}</div>
@@ -122,20 +154,41 @@ export function Dialog({
  * l'action est destructive (tone="danger"), sinon le bouton de confirmation.
  */
 export function ConfirmDialog({
-  title, children, confirmLabel = 'Confirmer', cancelLabel = 'Annuler',
-  danger = false, busy = false, icon, tone, onConfirm, onCancel,
+  title,
+  children,
+  confirmLabel = 'Confirmer',
+  cancelLabel = 'Annuler',
+  danger = false,
+  busy = false,
+  icon,
+  tone,
+  onConfirm,
+  onCancel,
 }) {
   return (
-    <Dialog title={title} onClose={onCancel} size="sm" icon={icon} tone={tone}
-      footer={<>
-        <button type="button" className="btn" onClick={onCancel} data-autofocus={danger ? '' : undefined}>
-          {cancelLabel}
-        </button>
-        <button type="button" className={`btn ${danger ? 'danger solid' : 'primary'}`} onClick={onConfirm}
-          disabled={busy} data-autofocus={danger ? undefined : ''}>
-          {confirmLabel}
-        </button>
-      </>}>
+    <Dialog
+      title={title}
+      onClose={onCancel}
+      size="sm"
+      icon={icon}
+      tone={tone}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onCancel} data-autofocus={danger ? '' : undefined}>
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            className={`btn ${danger ? 'danger solid' : 'primary'}`}
+            onClick={onConfirm}
+            disabled={busy}
+            data-autofocus={danger ? undefined : ''}
+          >
+            {confirmLabel}
+          </button>
+        </>
+      }
+    >
       {children}
     </Dialog>
   );

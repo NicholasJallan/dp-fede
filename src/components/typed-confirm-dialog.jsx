@@ -24,21 +24,40 @@ export function TypedConfirmDialog({ title, confirmLabel, busy = false, error = 
     if (ok && !busy) onConfirm();
   };
   return (
-    <Dialog title={title} onClose={onCancel} size="md" tone="err" icon="err" dismissible={!busy}
-      footer={<>
-        <button type="button" className="btn" onClick={onCancel} disabled={busy} data-autofocus="">Annuler</button>
-        <button type="submit" form={`${id}-form`} className="btn danger solid" disabled={!ok || busy}>
-          {busy ? 'Suppression…' : confirmLabel}
-        </button>
-      </>}>
+    <Dialog
+      title={title}
+      onClose={onCancel}
+      size="md"
+      tone="err"
+      icon="err"
+      dismissible={!busy}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onCancel} disabled={busy} data-autofocus="">
+            Annuler
+          </button>
+          <button type="submit" form={`${id}-form`} className="btn danger solid" disabled={!ok || busy}>
+            {busy ? 'Suppression…' : confirmLabel}
+          </button>
+        </>
+      }
+    >
       {children}
       {error}
       <form id={`${id}-form`} className="field plain" onSubmit={submit}>
         <label htmlFor={`${id}-input`}>
           Pour confirmer, saisissez <span className="confirm-word">{DELETE_CONFIRMATION}</span>
         </label>
-        <input id={`${id}-input`} className="input mono" value={text} autoComplete="off" autoCapitalize="characters"
-          spellCheck={false} onChange={e => setText(e.target.value)} disabled={busy} />
+        <input
+          id={`${id}-input`}
+          className="input mono"
+          value={text}
+          autoComplete="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          onChange={(e) => setText(e.target.value)}
+          disabled={busy}
+        />
       </form>
     </Dialog>
   );

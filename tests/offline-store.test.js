@@ -6,7 +6,9 @@ import assert from 'node:assert/strict';
 import { bootOffline } from './helpers/offline-harness.js';
 
 let win;
-beforeEach(() => { win = bootOffline(); });
+beforeEach(() => {
+  win = bootOffline();
+});
 
 describe('offline-store — CRUD via fallback localStorage', () => {
   test('put + get aller-retour', async () => {
@@ -36,13 +38,13 @@ describe('offline-store — CRUD via fallback localStorage', () => {
   test('all retourne tous les items du store, sans collision entre stores', async () => {
     await win.offlineStore.put('divers', 'd1', { id: 'd1', nom: 'D1' });
     await win.offlineStore.put('divers', 'd2', { id: 'd2', nom: 'D2' });
-    await win.offlineStore.put('sites',  's1', { id: 's1', nom: 'S1' });
+    await win.offlineStore.put('sites', 's1', { id: 's1', nom: 'S1' });
     const divers = await win.offlineStore.all('divers');
-    const sites  = await win.offlineStore.all('sites');
+    const sites = await win.offlineStore.all('sites');
     assert.equal(divers.length, 2);
     assert.equal(sites.length, 1);
     // Pas de fuite entre stores
-    assert.ok(divers.every(d => d.id.startsWith('d')));
+    assert.ok(divers.every((d) => d.id.startsWith('d')));
   });
 
   test('allKeys retourne les clés brutes', async () => {
@@ -54,7 +56,7 @@ describe('offline-store — CRUD via fallback localStorage', () => {
 
   test('clear vide un store sans toucher aux autres', async () => {
     await win.offlineStore.put('divers', 'd1', { id: 'd1' });
-    await win.offlineStore.put('sites',  's1', { id: 's1' });
+    await win.offlineStore.put('sites', 's1', { id: 's1' });
     await win.offlineStore.clear('divers');
     assert.equal((await win.offlineStore.all('divers')).length, 0);
     assert.equal((await win.offlineStore.all('sites')).length, 1);

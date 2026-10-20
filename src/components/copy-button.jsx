@@ -11,7 +11,9 @@ async function copyText(text, input) {
   try {
     await navigator.clipboard.writeText(text);
     return true;
-  } catch { /* API refusée ou indisponible : repli sur la sélection */ }
+  } catch {
+    /* API refusée ou indisponible : repli sur la sélection */
+  }
   try {
     input?.focus();
     input?.select();
@@ -42,7 +44,17 @@ export function CopyButton({ text, inputRef, label = 'Copier le lien' }) {
   return (
     <>
       <button type="button" className="btn primary" onClick={onCopy}>
-        {state === 'copied' ? <><Icon.Check />Copié</> : <><Icon.Copy />{label}</>}
+        {state === 'copied' ? (
+          <>
+            <Icon.Check />
+            Copié
+          </>
+        ) : (
+          <>
+            <Icon.Copy />
+            {label}
+          </>
+        )}
       </button>
       <span className="sr-only" role="status">
         {state === 'copied' ? 'Lien copié dans le presse-papiers.' : ''}

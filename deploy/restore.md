@@ -154,5 +154,5 @@ Uniquement après les étapes 1 à 3 réussies.
 ## Journal des exercices de restauration
 
 | Date | Sauvegarde testée | Résultat | Par |
-|------|-------------------|----------|-----|
+| ---- | ----------------- | -------- | --- |
 |      |                   |          |     |

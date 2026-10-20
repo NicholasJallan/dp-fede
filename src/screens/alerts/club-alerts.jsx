@@ -5,17 +5,35 @@
 import React, { useState } from 'react';
 import { Notice } from '../../components/components.jsx';
 import { Icon, StatusIcon } from '../../components/icons.jsx';
-import { alertLabel, alertTone, alertsSentence, describeAlert, groupAlertsByDiver, summarizeAlerts } from '../../club/alerts.js';
+import {
+  alertLabel,
+  alertTone,
+  alertsSentence,
+  describeAlert,
+  groupAlertsByDiver,
+  summarizeAlerts,
+} from '../../club/alerts.js';
 
 /** Bandeau « N alertes » de l'accueil (rien s'il n'y en a pas). */
 export function AlertsBanner({ data, onOpen }) {
   const s = summarizeAlerts(data);
   if (!s.total) return null;
   return (
-    <Notice tone={s.tone} className="alerts-banner"
+    <Notice
+      tone={s.tone}
+      className="alerts-banner"
       title={`${s.total} alerte${s.total > 1 ? 's' : ''} sur l'annuaire, ${s.divers} plongeur${s.divers > 1 ? 's' : ''}`}
-      actions={<button type="button" className="btn" onClick={onOpen}>Voir les alertes<Icon.ChevronRight /></button>}>
-      <p>{alertsSentence(s)}{data?.days ? `. Échéances à ${data.days} jours.` : '.'}</p>
+      actions={
+        <button type="button" className="btn" onClick={onOpen}>
+          Voir les alertes
+          <Icon.ChevronRight />
+        </button>
+      }
+    >
+      <p>
+        {alertsSentence(s)}
+        {data?.days ? `. Échéances à ${data.days} jours.` : '.'}
+      </p>
     </Notice>
   );
 }
@@ -29,15 +47,22 @@ function AlertGroup({ g, onEdit }) {
         <ul>
           {g.items.map((it, i) => (
             <li key={`${it.type}-${i}`} className={alertTone(it) === 'err' ? 'text-err' : 'text-warn'}>
-              <StatusIcon tone={alertTone(it)} /><b>{alertLabel(it.type)}</b><span className="when">{describeAlert(it)}</span>
+              <StatusIcon tone={alertTone(it)} />
+              <b>{alertLabel(it.type)}</b>
+              <span className="when">{describeAlert(it)}</span>
             </li>
           ))}
         </ul>
       </div>
       {onEdit && (
-        <button type="button" className="btn" onClick={onEdit}
-          aria-label={`Mettre à jour la fiche de ${[g.prenom, g.nom].filter(Boolean).join(' ')}`}>
-          <Icon.Edit />Mettre à jour
+        <button
+          type="button"
+          className="btn"
+          onClick={onEdit}
+          aria-label={`Mettre à jour la fiche de ${[g.prenom, g.nom].filter(Boolean).join(' ')}`}
+        >
+          <Icon.Edit />
+          Mettre à jour
         </button>
       )}
     </div>
@@ -61,12 +86,19 @@ export function AlertsPanel({ data, canEdit, onEdit }) {
       </div>
       {groups.length > 0 && (
         <div className="card-body flush">
-          {shown.map(g => <AlertGroup key={g.diver_id} g={g} onEdit={canEdit ? () => onEdit(g.diver_id) : null} />)}
+          {shown.map((g) => (
+            <AlertGroup key={g.diver_id} g={g} onEdit={canEdit ? () => onEdit(g.diver_id) : null} />
+          ))}
         </div>
       )}
       {groups.length > COLLAPSED && (
         <div className="card-body dense">
-          <button type="button" className="btn ghost mt-3 mb-3" aria-expanded={expanded} onClick={() => setExpanded(v => !v)}>
+          <button
+            type="button"
+            className="btn ghost mt-3 mb-3"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((v) => !v)}
+          >
             {expanded ? 'Réduire la liste' : `Voir les ${groups.length} plongeurs concernés`}
           </button>
         </div>

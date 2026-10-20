@@ -10,19 +10,21 @@ Règles réglementaires appliquées par l'outil, telles qu'elles sont codées.
 
 ## Où vivent les règles
 
-| Élément | Fichier |
-|---|---|
-| Tableaux des annexes (données pures) | `src/domain/cds-tables.js` |
-| Moteur de validation (`validatePal`) | `src/domain/pal-rules.js` |
-| Aptitudes d'un plongeur, profondeurs, type de palanquée | `src/domain/aptitudes.js` |
-| Portage serveur (comportement identique) | `backend/lib/Rules.php` |
+| Élément                                                                    | Fichier                         |
+| -------------------------------------------------------------------------- | ------------------------------- |
+| Tableaux des annexes (données pures)                                       | `src/domain/cds-tables.js`      |
+| Moteur de validation (`validatePal`)                                       | `src/domain/pal-rules.js`       |
+| Aptitudes d'un plongeur, profondeurs, type de palanquée                    | `src/domain/aptitudes.js`       |
+| Portage serveur (comportement identique)                                   | `backend/lib/Rules.php`         |
 | **Cas réglementaires partagés JS + PHP** (95 cas, chacun avec son article) | `tests/fixtures/pal-rules.json` |
 
 Toute modification de règle :
+
 1. commence par un cas dans la fixture ;
 2. doit passer `npm test` **et** `composer test`.
 
 Chaque issue de validation porte :
+
 - un `code` stable ;
 - une référence `ref` au texte ;
 - les `ids` des plongeurs concernés, mis en évidence dans l'interface.
@@ -56,28 +58,28 @@ Chaque issue de validation porte :
 
 ## 2. Limites absolues (A322-73, A322-76, A322-92)
 
-| Règle | Code |
-|---|---|
-| Air et nitrox : 60 m maximum. Si de l'air figure avec du trimix, il limite aussi la palanquée (A322-73). | `AIR_60` |
-| Trimix encadré : 80 m maximum. Trimix autonome : 120 m maximum. | `TX_DEPTH` |
-| Nitrox : PpO₂ ≤ 1,6 bar, soit une profondeur maximale d'utilisation de `⌊(1,6 / FO₂ − 1) × 10⌋` m. | `PPO2_MAX` |
-| Nitrox : % d'O₂ non saisi → avertissement. | `O2_UNKNOWN` |
-| Au trimix, le nitrox déclaré est un gaz de décompression : pas de contrôle de PpO₂ au fond. | — |
-| Une palanquée compte au moins deux plongeurs. | `PAL_SOLO` |
-| La profondeur est limitée par l'aptitude la plus restrictive. Le **panachage d'aptitudes est autorisé**. | `APT_DEPTH` |
+| Règle                                                                                                    | Code         |
+| -------------------------------------------------------------------------------------------------------- | ------------ |
+| Air et nitrox : 60 m maximum. Si de l'air figure avec du trimix, il limite aussi la palanquée (A322-73). | `AIR_60`     |
+| Trimix encadré : 80 m maximum. Trimix autonome : 120 m maximum.                                          | `TX_DEPTH`   |
+| Nitrox : PpO₂ ≤ 1,6 bar, soit une profondeur maximale d'utilisation de `⌊(1,6 / FO₂ − 1) × 10⌋` m.       | `PPO2_MAX`   |
+| Nitrox : % d'O₂ non saisi → avertissement.                                                               | `O2_UNKNOWN` |
+| Au trimix, le nitrox déclaré est un gaz de décompression : pas de contrôle de PpO₂ au fond.              | —            |
+| Une palanquée compte au moins deux plongeurs.                                                            | `PAL_SOLO`   |
+| La profondeur est limitée par l'aptitude la plus restrictive. Le **panachage d'aptitudes est autorisé**. | `APT_DEPTH`  |
 
 ---
 
 ## 3. Aptitudes des plongeurs (III-14 a/b, A322-77)
 
-| Brevet | Aptitudes |
-|---|---|
+| Brevet                  | Aptitudes                                                                     |
+| ----------------------- | ----------------------------------------------------------------------------- |
 | Débutant (aucun brevet) | Baptême, PE-12, PE-20 — uniquement en formation, ou en exploration de 0 à 6 m |
-| N1 | PE-20 (+ PA-12 / PA-20 si acquises) |
-| N2 | PE-40, PA-20 (+ PA-40 si acquise) |
-| N3 | PE-60, PA-60 |
-| E1 (initiateur) | aptitudes de son niveau plongeur : N2 par défaut, N3 si saisi |
-| N4 / GP, E2 → E4 | aptitudes N3 + rôle d'encadrement |
+| N1                      | PE-20 (+ PA-12 / PA-20 si acquises)                                           |
+| N2                      | PE-40, PA-20 (+ PA-40 si acquise)                                             |
+| N3                      | PE-60, PA-60                                                                  |
+| E1 (initiateur)         | aptitudes de son niveau plongeur : N2 par défaut, N3 si saisi                 |
+| N4 / GP, E2 → E4        | aptitudes N3 + rôle d'encadrement                                             |
 
 - **E-2 = initiateur ET guide de palanquée** (III-15 b) : rôle GP de droit. C'est vrai pour le GIP FFESSM. Les équivalents CMAS et FSGT de la ligne E-2 ne sont pas distingués (application orientée FFESSM).
 - **Bonus de formation, uniquement en enseignement à l'air** (III-16 a, « en cours de formation vers… ») :
@@ -94,16 +96,17 @@ Chaque issue de validation porte :
 
 ### Enseignement (III-16 a)
 
-| Espace | Élèves | Encadrant minimal | Effectif (encadrant non compris) |
-|---|---|---|---|
-| 0-6 m | baptême | E1 | **1** (*) |
-| 0-6 m | débutants | E1 | 4 (*) |
-| 0-12 m | débutants → PE-12 / PA-12 | E2 | 4 (*) |
-| 0-20 m | débutants ou PE-12 → PE-20 / PA-20 | E2 | 4 (*) |
-| 0-40 m | PE-20 ou PA-20 → PE-40 / PA-40 | E3 | 4 (*) |
-| 0-60 m | PE-40 ou PA-40 → PE-60 / PA-60 | E4 | 4 |
+| Espace | Élèves                             | Encadrant minimal | Effectif (encadrant non compris) |
+| ------ | ---------------------------------- | ----------------- | -------------------------------- |
+| 0-6 m  | baptême                            | E1                | **1** (*)                        |
+| 0-6 m  | débutants                          | E1                | 4 (*)                            |
+| 0-12 m | débutants → PE-12 / PA-12          | E2                | 4 (*)                            |
+| 0-20 m | débutants ou PE-12 → PE-20 / PA-20 | E2                | 4 (*)                            |
+| 0-40 m | PE-20 ou PA-20 → PE-40 / PA-40     | E3                | 4 (*)                            |
+| 0-60 m | PE-40 ou PA-40 → PE-60 / PA-60     | E4                | 4                                |
 
 **(\*) Plongeur supplémentaire** : un plongeur de plus, au minimum GP ou P4, est admis.
+
 - Un second encadrant E2, E3 ou E4 compte comme ce plongeur supplémentaire.
 - Un GP ou P4 inscrit avec une aptitude PE aussi.
 - Au-delà : `EXTRA_TOO_MANY`. Dans un espace sans (\*) : `EXTRA_NOT_ALLOWED`.
@@ -112,15 +115,16 @@ Codes : `ENS_NO_ENSEIGNANT`, `ENS_LEVEL`, `EFFECTIF_BAPTEME`, `EFFECTIF_ENCADRES
 
 ### Exploration encadrée (III-16 b)
 
-| Espace | Encadrés | Encadrant minimal | Effectif |
-|---|---|---|---|
-| 0-6 m | débutants | E1, GP ou P4 | 4 (*) |
-| 0-12 m | PE-12 | E2, GP ou P4 | 4 (*) |
-| 0-20 m | PE-20 | E2, GP ou P4 | 4 (*) |
-| 0-40 m | PE-40 | E3, GP ou P4 | 4 (*) |
-| 0-60 m | PE-60 | **E4** | 4 |
+| Espace | Encadrés  | Encadrant minimal | Effectif |
+| ------ | --------- | ----------------- | -------- |
+| 0-6 m  | débutants | E1, GP ou P4      | 4 (*)    |
+| 0-12 m | PE-12     | E2, GP ou P4      | 4 (*)    |
+| 0-20 m | PE-20     | E2, GP ou P4      | 4 (*)    |
+| 0-40 m | PE-40     | E3, GP ou P4      | 4 (*)    |
+| 0-60 m | PE-60     | **E4**            | 4        |
 
 Codes :
+
 - `EXPLO_COMPETENCE` ;
 - `DEBUTANT_EXPLO` (débutants au-delà de 6 m ou au nitrox) ;
 - `EFFECTIF_ENCADRES`.
@@ -133,12 +137,12 @@ Codes :
   - un baptême ou un débutant sans encadrant est bloquant (`AUTO_ENCADREMENT`).
 - Âge minimal :
 
-  | Autonomie | Âge minimal |
-  |---|---|
-  | PA-12, PA-20 | 16 ans |
-  | PA-40 | 17 ans |
-  | PA-60 | 18 ans |
-  | Trimix | majeurs uniquement |
+  | Autonomie    | Âge minimal        |
+  | ------------ | ------------------ |
+  | PA-12, PA-20 | 16 ans             |
+  | PA-40        | 17 ans             |
+  | PA-60        | 18 ans             |
+  | Trimix       | majeurs uniquement |
 
   Âge insuffisant → `AGE_AUTONOMIE`. Date de naissance absente → avertissement `AGE_UNKNOWN`.
 
@@ -151,11 +155,11 @@ Codes :
 - **Exploration et autonomie** : chaque plongeur justifie PN (`NX_PN`).
 - **Enseignement** :
 
-  | Espace | Élèves | PN exigé |
-  |---|---|---|
-  | 0-6 m | débutants admis | non |
-  | 0-12 m, 0-20 m | PE-12 / PE-20 en formation PN ; débutants interdits (`NX_DEBUTANT`) | non |
-  | 0-40 m, 0-60 m | PE-40 / PE-60 | **oui** |
+  | Espace         | Élèves                                                              | PN exigé |
+  | -------------- | ------------------------------------------------------------------- | -------- |
+  | 0-6 m          | débutants admis                                                     | non      |
+  | 0-12 m, 0-20 m | PE-12 / PE-20 en formation PN ; débutants interdits (`NX_DEBUTANT`) | non      |
+  | 0-40 m, 0-60 m | PE-40 / PE-60                                                       | **oui**  |
 
 - **Encadrant** : PN-C (`NX_ENCADRANT`) ; en enseignement, E2 minimum même de 0 à 6 m.
 - **Plongeur supplémentaire** : GP ou P4 + PN-C (`EXTRA_NX`).
@@ -168,12 +172,12 @@ Codes :
 
 Qualifications, de la moins à la plus étendue : PN-C ⊂ PTH-40 ⊂ PTH-70 ⊂ PTH-120.
 
-| Espace | Enseignement : élèves / encadrant | Exploration encadrée : plongeurs / encadrant | Autonomie |
-|---|---|---|---|
-| 0-40 m | PE-40 + PN-C / E3 + PTH-70 | PE-40 + PTH-40 / E3 + PTH-40 | PA-40 + PTH-40 |
-| 0-70 m | PE-60 + PTH-40 / E4 + PTH-120 | PE-60 + PTH-70 / E4 + PTH-70 | PA-60 + PTH-70 |
-| 0-80 m | PE-60 + PTH-70 / E4 + PTH-120 | PE-60 + PTH-120 / E4 + PTH-120 | PA-60 + PTH-120 |
-| 80-120 m | — | — | PA-60 + PTH-120 |
+| Espace   | Enseignement : élèves / encadrant | Exploration encadrée : plongeurs / encadrant | Autonomie       |
+| -------- | --------------------------------- | -------------------------------------------- | --------------- |
+| 0-40 m   | PE-40 + PN-C / E3 + PTH-70        | PE-40 + PTH-40 / E3 + PTH-40                 | PA-40 + PTH-40  |
+| 0-70 m   | PE-60 + PTH-40 / E4 + PTH-120     | PE-60 + PTH-70 / E4 + PTH-70                 | PA-60 + PTH-70  |
+| 0-80 m   | PE-60 + PTH-70 / E4 + PTH-120     | PE-60 + PTH-120 / E4 + PTH-120               | PA-60 + PTH-120 |
+| 80-120 m | —                                 | —                                            | PA-60 + PTH-120 |
 
 - Effectif : 4 encadrés, ou 3 en autonomie.
 - Pas de plongeur supplémentaire.
@@ -197,12 +201,12 @@ Codes : `TX_GP`, `TX_ENCADRANT`, `TX_ENCADRANT_QUAL`, `TX_AIR`, `TX_QUAL`, `TX_P
 
 ## 7. Directeur de plongée (A322-72, III-15 a, A322-98)
 
-| Qualification | Milieu naturel | Bassin ≤ 6 m | Enseignement | Trimix |
-|---|---|---|---|---|
-| N5 (P5 / DPE) | oui | non | **non** (exploration seule) | non |
-| E1, E2 | non | oui | oui | non |
-| E3 (MF1) | oui | oui | oui | enseignement ≤ 40 m, exploration ≤ 70 m |
-| E4 (MF2 / BEPPA) | oui | oui | oui | enseignement ≤ 80 m, exploration ≤ 120 m |
+| Qualification    | Milieu naturel | Bassin ≤ 6 m | Enseignement                | Trimix                                   |
+| ---------------- | -------------- | ------------ | --------------------------- | ---------------------------------------- |
+| N5 (P5 / DPE)    | oui            | non          | **non** (exploration seule) | non                                      |
+| E1, E2           | non            | oui          | oui                         | non                                      |
+| E3 (MF1)         | oui            | oui          | oui                         | enseignement ≤ 40 m, exploration ≤ 70 m  |
+| E4 (MF2 / BEPPA) | oui            | oui          | oui                         | enseignement ≤ 80 m, exploration ≤ 120 m |
 
 Le DP doit en outre justifier PN-C au nitrox et PTH-120 au trimix (A322-72).
 
@@ -228,6 +232,7 @@ Codes : `DP_QUAL_MILIEU`, `DP_MODE`, `DP_GAS`, `DP_DEPTH`, `DP_MISSING`.
 Items conditionnels de `CHECKLIST_RULES` (`src/domain/checklist.js`).
 
 **Phase 1 — préparation**
+
 - Secours (A322-78) :
   - plan de secours écrit et à jour ;
   - oxygénothérapie normobare ;
@@ -242,6 +247,7 @@ Items conditionnels de `CHECKLIST_RULES` (`src/domain/checklist.js`).
 - TIV et requalification des blocs.
 
 **Phase 2 — sur site**
+
 - Équipement des plongeurs et des encadrants (A322-80).
 - **Un parachute de palier par palanquée** en milieu naturel (A322-80).
 - Moyen de rappel depuis l'embarcation.

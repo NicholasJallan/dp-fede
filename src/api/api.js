@@ -52,7 +52,9 @@ async function errorBody(res) {
   try {
     const j = JSON.parse(text);
     if (j?.error) return { message: j.error, code: j.code || null };
-  } catch { /* corps non JSON */ }
+  } catch {
+    /* corps non JSON */
+  }
   return { message: text.trim().slice(0, 300) || `HTTP ${res.status}`, code: null };
 }
 
@@ -145,73 +147,75 @@ async function fetchPdfBlob(diveId, type = 'fiche') {
 export const api = {
   auth: {
     google: (credential) => apiFetch('/auth/google', { method: 'POST', body: { credential } }),
-    me:     ()           => apiFetch('/auth/me'),
-    logout: ()           => apiFetch('/auth/logout', { method: 'POST', body: {} }),
-    update: (data)       => apiFetch('/auth/account', { method: 'PATCH', body: data }),
+    me: () => apiFetch('/auth/me'),
+    logout: () => apiFetch('/auth/logout', { method: 'POST', body: {} }),
+    update: (data) => apiFetch('/auth/account', { method: 'PATCH', body: data }),
   },
   divers: {
-    list:   ()           => apiFetch('/divers'),
-    create: (d)          => apiFetch('/divers', { method: 'POST', body: d }),
-    update: (id, d)      => apiFetch(`/divers/${id}`, { method: 'PUT', body: d }),
-    delete: (id)         => apiFetch(`/divers/${id}`, { method: 'DELETE', body: {} }),
+    list: () => apiFetch('/divers'),
+    create: (d) => apiFetch('/divers', { method: 'POST', body: d }),
+    update: (id, d) => apiFetch(`/divers/${id}`, { method: 'PUT', body: d }),
+    delete: (id) => apiFetch(`/divers/${id}`, { method: 'DELETE', body: {} }),
     // Non décoré par l'offline : l'import exige le réseau (rapport serveur).
     import: importDivers,
   },
   sites: {
-    list:   ()           => apiFetch('/sites'),
-    create: (s)          => apiFetch('/sites', { method: 'POST', body: s }),
-    update: (id, s)      => apiFetch(`/sites/${id}`, { method: 'PUT', body: s }),
-    delete: (id)         => apiFetch(`/sites/${id}`, { method: 'DELETE', body: {} }),
+    list: () => apiFetch('/sites'),
+    create: (s) => apiFetch('/sites', { method: 'POST', body: s }),
+    update: (id, s) => apiFetch(`/sites/${id}`, { method: 'PUT', body: s }),
+    delete: (id) => apiFetch(`/sites/${id}`, { method: 'DELETE', body: {} }),
   },
   users: {
-    list:       ()           => apiFetch('/users'),
-    stats:      ()           => apiFetch('/users/stats'),
-    setRole:    (id, role)   => apiFetch(`/users/${id}/role`, { method: 'PATCH', body: { role } }),
-    delete:     (id)         => apiFetch(`/users/${id}`, { method: 'DELETE', body: {} }),
+    list: () => apiFetch('/users'),
+    stats: () => apiFetch('/users/stats'),
+    setRole: (id, role) => apiFetch(`/users/${id}/role`, { method: 'PATCH', body: { role } }),
+    delete: (id) => apiFetch(`/users/${id}`, { method: 'DELETE', body: {} }),
   },
   dives: {
-    list:   ()           => apiFetch('/dives'),
-    get:    (id)         => apiFetch(`/dives/${id}`),
-    create: (data)       => apiFetch('/dives', { method: 'POST', body: data }),
-    update: (id, patch)  => apiFetch(`/dives/${id}`, { method: 'PATCH', body: patch }),
-    delete: (id)         => apiFetch(`/dives/${id}`, { method: 'DELETE', body: {} }),
+    list: () => apiFetch('/dives'),
+    get: (id) => apiFetch(`/dives/${id}`),
+    create: (data) => apiFetch('/dives', { method: 'POST', body: data }),
+    update: (id, patch) => apiFetch(`/dives/${id}`, { method: 'PATCH', body: patch }),
+    delete: (id) => apiFetch(`/dives/${id}`, { method: 'DELETE', body: {} }),
     // Envoi réseau immédiat, sans passer par l'outbox (non décoré par
     // src/offline/offline-api.js) : utilisé juste avant une génération PDF serveur.
     pushNow: (id, patch) => apiFetch(`/dives/${id}`, { method: 'PATCH', body: patch }),
     // PDF archivés par le club (A322-72) : id serveur ou client_uuid.
-    documents:           (id)       => apiFetch(`/dives/${enc(id)}/documents`),
-    downloadDocument:    (id, type) => apiBlob(`/dives/${enc(id)}/documents/${enc(type)}`, `${type}.pdf`),
-    regenerateDocuments: (id)       => apiFetch(`/dives/${enc(id)}/documents`, { method: 'POST', body: {} }),
+    documents: (id) => apiFetch(`/dives/${enc(id)}/documents`),
+    downloadDocument: (id, type) => apiBlob(`/dives/${enc(id)}/documents/${enc(type)}`, `${type}.pdf`),
+    regenerateDocuments: (id) => apiFetch(`/dives/${enc(id)}/documents`, { method: 'POST', body: {} }),
   },
   club: {
-    get:         ()         => apiFetch('/club'),
-    update:      (fields)   => apiFetch('/club', { method: 'PATCH', body: fields }),
-    delete:      ()         => apiFetch('/club', { method: 'DELETE', body: CONFIRM_DELETE }),
-    memberships: ()         => apiFetch('/club/memberships'),
-    switch:      (clubId)   => apiFetch('/club/switch', { method: 'POST', body: { club_id: clubId } }),
-    members:     ()         => apiFetch('/club/members'),
-    setRole:     (userId, role) => apiFetch(`/club/members/${enc(userId)}`, { method: 'PATCH', body: { role } }),
-    removeMember: (userId)  => apiFetch(`/club/members/${enc(userId)}`, { method: 'DELETE', body: {} }),
+    get: () => apiFetch('/club'),
+    update: (fields) => apiFetch('/club', { method: 'PATCH', body: fields }),
+    delete: () => apiFetch('/club', { method: 'DELETE', body: CONFIRM_DELETE }),
+    memberships: () => apiFetch('/club/memberships'),
+    switch: (clubId) => apiFetch('/club/switch', { method: 'POST', body: { club_id: clubId } }),
+    members: () => apiFetch('/club/members'),
+    setRole: (userId, role) => apiFetch(`/club/members/${enc(userId)}`, { method: 'PATCH', body: { role } }),
+    removeMember: (userId) => apiFetch(`/club/members/${enc(userId)}`, { method: 'DELETE', body: {} }),
     invitations: {
-      list:    ()                => apiFetch('/club/invitations'),
-      create:  ({ email, role }) => apiFetch('/club/invitations', { method: 'POST', body: { email, role } }),
-      revoke:  (id)              => apiFetch(`/club/invitations/${enc(id)}`, { method: 'DELETE', body: {} }),
-      preview: (token)           => apiFetch('/club/invitations/preview', { method: 'POST', body: { token } }),
-      accept:  (token)           => apiFetch('/club/invitations/accept', { method: 'POST', body: { token } }),
+      list: () => apiFetch('/club/invitations'),
+      create: ({ email, role }) => apiFetch('/club/invitations', { method: 'POST', body: { email, role } }),
+      revoke: (id) => apiFetch(`/club/invitations/${enc(id)}`, { method: 'DELETE', body: {} }),
+      preview: (token) => apiFetch('/club/invitations/preview', { method: 'POST', body: { token } }),
+      accept: (token) => apiFetch('/club/invitations/accept', { method: 'POST', body: { token } }),
     },
-    alerts:   (days = 30)       => apiFetch(`/club/alerts${query({ days })}`),
-    stats:    ({ from, to } = {}) => apiFetch(`/club/stats${query({ from, to })}`),
+    alerts: (days = 30) => apiFetch(`/club/alerts${query({ days })}`),
+    stats: ({ from, to } = {}) => apiFetch(`/club/stats${query({ from, to })}`),
     statsCsv: ({ from, to } = {}) => apiBlob(`/club/stats${query({ from, to, format: 'csv' })}`, 'statistiques.csv'),
   },
   account: {
-    export: ()                  => apiFetch('/account/export'),
-    delete: ()                  => apiFetch('/account', { method: 'DELETE', body: CONFIRM_DELETE }),
+    export: () => apiFetch('/account/export'),
+    delete: () => apiFetch('/account', { method: 'DELETE', body: CONFIRM_DELETE }),
   },
   pdf: {
     blob: fetchPdfBlob,
   },
   proxy: {
     maree: (lat, lng, date) =>
-      apiFetch(`/proxy/maree?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&date=${encodeURIComponent(date)}`),
+      apiFetch(
+        `/proxy/maree?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&date=${encodeURIComponent(date)}`,
+      ),
   },
 };

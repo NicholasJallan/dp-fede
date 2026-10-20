@@ -192,16 +192,16 @@ Prérequis : §1 à §5 faits, `deploy/backup.sh` installé (docs/deploy/README.
 
 Résultat attendu sur la production (volumes au 20/10/2026) :
 
-| | Attendu |
-|---|---|
-| Clubs | 19 : un club personnel par compte (18) + « BEPPA Hendaye 2026 » |
-| Compte-structure (id 14) | conservé, `kind = 'workspace'`, ni club, ni adhésion, ni club courant ; toujours non connectable |
-| Membres du club BEPPA | 2 responsable ; 6, 15, 16, 18, 19, 20 dp |
-| Plongées | club BEPPA 7 (ex-user 14) ; club personnel de 2 : 19, de 4 : 2, de 5 : 2, de 10 : 1, de 21 : 1 |
-| Plongeurs | club BEPPA 20 ; personnels 2 : 10, 4 : 5, 5 : 2, 6 : 1, 9 : 1, 10 : 2 |
-| Auteur (`user_id`) des lignes BEPPA | `created_by` s'il désigne un compte existant, sinon NULL (« auteur inconnu ») |
-| Club courant | BEPPA pour les membres dont la **session la plus récente** (non expirée) était dans la structure ; club personnel pour les autres |
-| `updated_at`, `dive_runtime_state`, tables `workspaces*` | inchangés |
+|                                                          | Attendu                                                                                                                           |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Clubs                                                    | 19 : un club personnel par compte (18) + « BEPPA Hendaye 2026 »                                                                   |
+| Compte-structure (id 14)                                 | conservé, `kind = 'workspace'`, ni club, ni adhésion, ni club courant ; toujours non connectable                                  |
+| Membres du club BEPPA                                    | 2 responsable ; 6, 15, 16, 18, 19, 20 dp                                                                                          |
+| Plongées                                                 | club BEPPA 7 (ex-user 14) ; club personnel de 2 : 19, de 4 : 2, de 5 : 2, de 10 : 1, de 21 : 1                                    |
+| Plongeurs                                                | club BEPPA 20 ; personnels 2 : 10, 4 : 5, 5 : 2, 6 : 1, 9 : 1, 10 : 2                                                             |
+| Auteur (`user_id`) des lignes BEPPA                      | `created_by` s'il désigne un compte existant, sinon NULL (« auteur inconnu »)                                                     |
+| Club courant                                             | BEPPA pour les membres dont la **session la plus récente** (non expirée) était dans la structure ; club personnel pour les autres |
+| `updated_at`, `dive_runtime_state`, tables `workspaces*` | inchangés                                                                                                                         |
 
 Contrôles manuels après la bascule :
 

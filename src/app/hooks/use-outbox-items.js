@@ -15,10 +15,10 @@ export function useOutboxItems(user) {
     refreshOutbox();
     const onChange = () => refreshOutbox();
     window.addEventListener('dp:outboxChanged', onChange);
-    window.addEventListener('dp:syncDone',      onChange);
+    window.addEventListener('dp:syncDone', onChange);
     return () => {
       window.removeEventListener('dp:outboxChanged', onChange);
-      window.removeEventListener('dp:syncDone',      onChange);
+      window.removeEventListener('dp:syncDone', onChange);
     };
   }, [user, refreshOutbox]);
   return outboxItems;

@@ -35,15 +35,19 @@ export class ErrorBoundary extends React.Component {
     if (!this.state.error) return this.props.children;
     return (
       <section className="error-screen" role="alert" aria-labelledby="error-screen-title">
-        <h2 id="error-screen-title"><StatusIcon tone="err" />Cet écran n'a pas pu s'afficher</h2>
-        <p>
-          Vos saisies sont enregistrées sur cet appareil. Réessayez l'affichage
-          ou rechargez l'application.
-        </p>
+        <h2 id="error-screen-title">
+          <StatusIcon tone="err" />
+          Cet écran n'a pas pu s'afficher
+        </h2>
+        <p>Vos saisies sont enregistrées sur cet appareil. Réessayez l'affichage ou rechargez l'application.</p>
         <pre className="error-screen-detail">{String(this.state.error?.message || this.state.error)}</pre>
         <div className="error-screen-actions">
-          <button type="button" className="btn" onClick={this.reset}>Réessayer</button>
-          <button type="button" className="btn primary" onClick={() => window.location.reload()}>Recharger</button>
+          <button type="button" className="btn" onClick={this.reset}>
+            Réessayer
+          </button>
+          <button type="button" className="btn primary" onClick={() => window.location.reload()}>
+            Recharger
+          </button>
         </div>
       </section>
     );

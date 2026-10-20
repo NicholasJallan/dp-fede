@@ -21,37 +21,57 @@ const STATUS_TEXT = {
 
 // Message d'erreur de l'aperçu ou de l'acceptation.
 export function invitationErrorText(err, userEmail) {
-  if (err?.status === 404) return 'Lien d\'invitation inconnu : vérifiez qu\'il a été copié en entier, ou demandez-en un nouveau.';
-  if (err?.status === 403) return `Cette invitation est destinée à une autre adresse e-mail que ${userEmail || 'celle de votre compte'}. Connectez-vous avec le compte Google invité.`;
+  if (err?.status === 404)
+    return "Lien d'invitation inconnu : vérifiez qu'il a été copié en entier, ou demandez-en un nouveau.";
+  if (err?.status === 403)
+    return `Cette invitation est destinée à une autre adresse e-mail que ${userEmail || 'celle de votre compte'}. Connectez-vous avec le compte Google invité.`;
   if (err?.status === 410) return `${err.message}. Demandez un nouveau lien au responsable du club.`;
   if (err?.status === 429) return `${err.message}. Réessayez dans un quart d'heure.`;
-  if (!err?.status) return 'Connexion requise pour lire l\'invitation. Le lien reste mémorisé : réessayez une fois en ligne.';
+  if (!err?.status)
+    return "Connexion requise pour lire l'invitation. Le lien reste mémorisé : réessayez une fois en ligne.";
   return err.message;
 }
 
 function PreviewFacts({ p }) {
   return (
     <dl className="kv-list">
-      <div><dt>Club</dt><dd>{p.club_nom || '—'}</dd></div>
-      <div><dt>Rôle proposé</dt><dd>{roleLabel(p.role)}</dd></div>
-      <div><dt>Invitation adressée à</dt><dd className="wrap-anywhere">{p.email}</dd></div>
-      <div><dt>Valable jusqu'au</dt><dd className="num">{formatDateTime(p.expires_at)}</dd></div>
+      <div>
+        <dt>Club</dt>
+        <dd>{p.club_nom || '—'}</dd>
+      </div>
+      <div>
+        <dt>Rôle proposé</dt>
+        <dd>{roleLabel(p.role)}</dd>
+      </div>
+      <div>
+        <dt>Invitation adressée à</dt>
+        <dd className="wrap-anywhere">{p.email}</dd>
+      </div>
+      <div>
+        <dt>Valable jusqu'au</dt>
+        <dd className="num">{formatDateTime(p.expires_at)}</dd>
+      </div>
     </dl>
   );
 }
 
 function PreviewNotes({ p, userEmail }) {
-  return (<>
-    {!p.email_matches && (
-      <Alert tone="err" title="Adresse e-mail différente">
-        Vous êtes connecté avec {userEmail}. Cette invitation ne peut être acceptée qu'avec le compte Google {p.email}.
-      </Alert>
-    )}
-    {p.status && p.status !== 'pending' && <Alert tone="warn">{STATUS_TEXT[p.status] || p.status}</Alert>}
-    {p.already_member && (
-      <Alert tone="info">Vous êtes déjà membre de ce club : accepter en fera votre club courant, votre rôle actuel est conservé.</Alert>
-    )}
-  </>);
+  return (
+    <>
+      {!p.email_matches && (
+        <Alert tone="err" title="Adresse e-mail différente">
+          Vous êtes connecté avec {userEmail}. Cette invitation ne peut être acceptée qu'avec le compte Google {p.email}
+          .
+        </Alert>
+      )}
+      {p.status && p.status !== 'pending' && <Alert tone="warn">{STATUS_TEXT[p.status] || p.status}</Alert>}
+      {p.already_member && (
+        <Alert tone="info">
+          Vous êtes déjà membre de ce club : accepter en fera votre club courant, votre rôle actuel est conservé.
+        </Alert>
+      )}
+    </>
+  );
 }
 
 export function InvitationDialog({ onAccepted }) {
@@ -68,17 +88,29 @@ export function InvitationDialog({ onAccepted }) {
     if (!online || !token) return undefined;
     let cancelled = false;
     setError('');
-    api.club.invitations.preview(token)
-      .then(p => { if (!cancelled) setPreview(p); })
-      .catch(err => { if (!cancelled) setError(invitationErrorText(err, user?.email)); });
-    return () => { cancelled = true; };
+    api.club.invitations
+      .preview(token)
+      .then((p) => {
+        if (!cancelled) setPreview(p);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(invitationErrorText(err, user?.email));
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [token, online, user?.email]);
 
   const accept = async () => {
-    setBusy(true); setError('');
+    setBusy(true);
+    setError('');
     try {
       const res = await club.acceptInvitation(token);
-      showToast({ tone: 'ok', title: 'Bienvenue', body: `Vous avez rejoint ${res?.club?.nom || preview?.club_nom || 'le club'}.` });
+      showToast({
+        tone: 'ok',
+        title: 'Bienvenue',
+        body: `Vous avez rejoint ${res?.club?.nom || preview?.club_nom || 'le club'}.`,
+      });
       onAccepted();
     } catch (err) {
       setError(invitationErrorText(err, user?.email));
@@ -91,22 +123,44 @@ export function InvitationDialog({ onAccepted }) {
   const title = preview ? `Rejoindre ${preview.club_nom || 'le club'} ?` : 'Invitation à rejoindre un club';
 
   return (
-    <Dialog title={title} onClose={club.dismissInvitation} size="sm" icon={mismatch ? 'err' : 'info'}
-      footer={<>
-        <button type="button" className="btn" onClick={club.dismissInvitation}>Ignorer l'invitation</button>
-        {/* keepLocal : données conservées pour le même compte ; un autre compte les purge à la connexion. */}
-        {mismatch && <button type="button" className="btn" onClick={() => logout({ keepLocal: true })}>Changer de compte Google</button>}
-        {mismatch && <DeviceDataPurgeButton />}
-        {usable && (
-          <button type="button" className="btn primary" onClick={accept} disabled={busy} data-autofocus="">
-            {busy ? 'Adhésion…' : `Rejoindre en tant que ${roleLabel(preview.role)}`}
+    <Dialog
+      title={title}
+      onClose={club.dismissInvitation}
+      size="sm"
+      icon={mismatch ? 'err' : 'info'}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={club.dismissInvitation}>
+            Ignorer l'invitation
           </button>
-        )}
-      </>}>
-      {!preview && !error && <p role="status">{online ? 'Lecture de l\'invitation…' : 'Hors ligne : l\'invitation sera lue au retour du réseau.'}</p>}
+          {/* keepLocal : données conservées pour le même compte ; un autre compte les purge à la connexion. */}
+          {mismatch && (
+            <button type="button" className="btn" onClick={() => logout({ keepLocal: true })}>
+              Changer de compte Google
+            </button>
+          )}
+          {mismatch && <DeviceDataPurgeButton />}
+          {usable && (
+            <button type="button" className="btn primary" onClick={accept} disabled={busy} data-autofocus="">
+              {busy ? 'Adhésion…' : `Rejoindre en tant que ${roleLabel(preview.role)}`}
+            </button>
+          )}
+        </>
+      }
+    >
+      {!preview && !error && (
+        <p role="status">
+          {online ? "Lecture de l'invitation…" : "Hors ligne : l'invitation sera lue au retour du réseau."}
+        </p>
+      )}
       {preview && <PreviewFacts p={preview} />}
       {preview && <PreviewNotes p={preview} userEmail={user?.email} />}
-      {usable && <p>Le club deviendra votre club courant : son annuaire, ses sites et ses plongées remplaceront ceux affichés sur cet appareil.</p>}
+      {usable && (
+        <p>
+          Le club deviendra votre club courant : son annuaire, ses sites et ses plongées remplaceront ceux affichés sur
+          cet appareil.
+        </p>
+      )}
       {error && <Alert tone="err">{error}</Alert>}
     </Dialog>
   );

@@ -38,8 +38,14 @@ import {
 
 // API publique historique de ce module (helpers déplacés dans ./pal-helpers.js).
 export {
-  ENS_LEVELS, getMaxEnsLevel, peLevel, paLevel, diverFullName,
-  hasGasQual, derivePalMode, isBassinDerogation,
+  ENS_LEVELS,
+  getMaxEnsLevel,
+  peLevel,
+  paLevel,
+  diverFullName,
+  hasGasQual,
+  derivePalMode,
+  isBassinDerogation,
 } from './pal-helpers.js';
 
 // ── Règles transverses ──────────────────────────────────────────────────
@@ -269,12 +275,7 @@ function checkAutonomie(ctx, add) {
     );
   }
   if (ctx.membres.length > tables().AUTONOMIE_MAX) {
-    add(
-      'err',
-      'AUTO_EFFECTIF',
-      `Palanquée autonome : 3 plongeurs maximum (${ctx.membres.length} actuellement).`,
-      ref,
-    );
+    add('err', 'AUTO_EFFECTIF', `Palanquée autonome : 3 plongeurs maximum (${ctx.membres.length} actuellement).`, ref);
   }
   checkAutonomieAges(ctx, add);
 }
@@ -379,9 +380,7 @@ function checkTrimixEncadrant(ctx, row, space, ref, add) {
     return;
   }
   if (personRank(enc) < ensRank('E3')) {
-    add('err', 'TX_GP', 'Trimix : un guide de palanquée ne peut pas encadrer (E3 ou E4 requis).', ref, [
-      memberId(enc),
-    ]);
+    add('err', 'TX_GP', 'Trimix : un guide de palanquée ne peut pas encadrer (E3 ou E4 requis).', ref, [memberId(enc)]);
   } else if (personRank(enc) < ensRank(row.minE)) {
     add('err', 'TX_ENCADRANT', `Trimix dans l'espace 0-${space} m : encadrant ${row.minE} minimum.`, ref, [
       memberId(enc),
@@ -473,12 +472,7 @@ function checkTrimixAutonome(ctx, add) {
   }
   checkTrimixMembers(ctx, row.air, row.qual, ref, add);
   if (ctx.membres.length > tables().AUTONOMIE_MAX) {
-    add(
-      'err',
-      'AUTO_EFFECTIF',
-      `Palanquée autonome : 3 plongeurs maximum (${ctx.membres.length} actuellement).`,
-      ref,
-    );
+    add('err', 'AUTO_EFFECTIF', `Palanquée autonome : 3 plongeurs maximum (${ctx.membres.length} actuellement).`, ref);
   }
   checkAutonomieAges(ctx, add);
 }

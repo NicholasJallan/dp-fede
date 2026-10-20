@@ -14,19 +14,19 @@ import { derivePalMode } from './pal-helpers.js';
 // optional  : possible (aptitudes_sup dans le profil du plongeur)
 // =========================================================================
 export const APTITUDE_MAP = {
-  N1: { mandatory: ['PE20'],                       optional: ['PA12','PA20'] },
-  N2: { mandatory: ['PE20','PE40','PA12','PA20'],  optional: ['PA40'] },
+  N1: { mandatory: ['PE20'], optional: ['PA12', 'PA20'] },
+  N2: { mandatory: ['PE20', 'PE40', 'PA12', 'PA20'], optional: ['PA40'] },
   // N3 = autonome 60 m → PA60 inclus de droit
-  N3: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40','PA60'], optional: [] },
+  N3: { mandatory: ['PE20', 'PE40', 'PE60', 'PA12', 'PA20', 'PA40', 'PA60'], optional: [] },
   // Encadrants : toutes les aptitudes plongeur N3 (PA60 inclus) + rôle encadrant
-  N4: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40','PA60','GP'], optional: [] },
-  N5: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40','PA60'],      optional: [] },
+  N4: { mandatory: ['PE20', 'PE40', 'PE60', 'PA12', 'PA20', 'PA40', 'PA60', 'GP'], optional: [] },
+  N5: { mandatory: ['PE20', 'PE40', 'PE60', 'PA12', 'PA20', 'PA40', 'PA60'], optional: [] },
   // E1 (initiateur) : N2 minimum — aptitudes N3 seulement si niveau plongeur N3.
-  E1: { mandatory: ['PE20','PE40','PA12','PA20'],                          optional: ['PA40','GP','Enseignant'] },
+  E1: { mandatory: ['PE20', 'PE40', 'PA12', 'PA20'], optional: ['PA40', 'GP', 'Enseignant'] },
   // III-15 b : E-2 = initiateur ET guide de palanquée → GP de droit.
-  E2: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40','PA60','GP'], optional: ['Enseignant'] },
-  E3: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40','PA60','GP','Enseignant'], optional: [] },
-  E4: { mandatory: ['PE20','PE40','PE60','PA12','PA20','PA40','PA60','GP','Enseignant'], optional: [] },
+  E2: { mandatory: ['PE20', 'PE40', 'PE60', 'PA12', 'PA20', 'PA40', 'PA60', 'GP'], optional: ['Enseignant'] },
+  E3: { mandatory: ['PE20', 'PE40', 'PE60', 'PA12', 'PA20', 'PA40', 'PA60', 'GP', 'Enseignant'], optional: [] },
+  E4: { mandatory: ['PE20', 'PE40', 'PE60', 'PA12', 'PA20', 'PA40', 'PA60', 'GP', 'Enseignant'], optional: [] },
 };
 
 /**
@@ -71,8 +71,8 @@ export function getFormationBonusAptitudes(diver, maxEnsLevel, mode) {
   const ne = diver.niveau_encadrant || null;
   const sup = diver.aptitudes_sup || [];
   if (ne) return []; // les encadrants ont déjà toutes les aptitudes plongeur
-  if (np === 'N1' && ['E3','E4'].includes(maxEnsLevel)) return sup.includes('PA20') ? ['PE40','PA40'] : ['PE40'];
-  if (np === 'N2' && maxEnsLevel === 'E4') return sup.includes('PA40') ? ['PE60','PA60'] : ['PE60'];
+  if (np === 'N1' && ['E3', 'E4'].includes(maxEnsLevel)) return sup.includes('PA20') ? ['PE40', 'PA40'] : ['PE40'];
+  if (np === 'N2' && maxEnsLevel === 'E4') return sup.includes('PA40') ? ['PE60', 'PA60'] : ['PE60'];
   return [];
 }
 
@@ -86,11 +86,11 @@ export function getFormationBonusAptitudes(diver, maxEnsLevel, mode) {
  * @returns {string[]} Aptitudes triées dans l'ordre canonique
  */
 export function getDiverAptitudes(diver, isExploration, palContext) {
-  const np  = diver.niveau_plongeur  || null;
-  const ne  = diver.niveau_encadrant || null;
+  const np = diver.niveau_plongeur || null;
+  const ne = diver.niveau_encadrant || null;
   const trimix = diver.trimix || [];
-  const sup    = diver.aptitudes_sup || [];
-  const apts   = new Set();
+  const sup = diver.aptitudes_sup || [];
+  const apts = new Set();
   const maxEnsLevel = palContext?.maxEnsLevel || null;
 
   // Licencié débutant (sans aucun niveau) : baptême, ou formation vers PE-12 /
@@ -104,38 +104,51 @@ export function getDiverAptitudes(diver, isExploration, palContext) {
     if (sup.includes('PA20')) apts.add('PA20');
   }
   if (np === 'N2') {
-    apts.add('PE20'); apts.add('PE40');
-    apts.add('PA12'); apts.add('PA20');
+    apts.add('PE20');
+    apts.add('PE40');
+    apts.add('PA12');
+    apts.add('PA20');
     if (sup.includes('PA40')) apts.add('PA40');
   }
   if (np === 'N3') {
-    apts.add('PE20'); apts.add('PE40'); apts.add('PE60');
-    apts.add('PA12'); apts.add('PA20'); apts.add('PA40'); apts.add('PA60');
+    apts.add('PE20');
+    apts.add('PE40');
+    apts.add('PE60');
+    apts.add('PA12');
+    apts.add('PA20');
+    apts.add('PA40');
+    apts.add('PA60');
   }
 
   // Encadrants : aptitudes plongeur N3 + rôle encadrant. Exception : un E1
   // (initiateur) peut n'être que N2 — ses aptitudes plongeur suivent alors son
   // niveau plongeur (III-14 b, A322-89), N2 par défaut.
   if (ne === 'E1' && np !== 'N3') {
-    apts.add('PE20'); apts.add('PE40'); apts.add('PA12'); apts.add('PA20');
+    apts.add('PE20');
+    apts.add('PE40');
+    apts.add('PA12');
+    apts.add('PA20');
     if (sup.includes('PA40')) apts.add('PA40');
   } else if (ne) {
-    apts.add('PE20'); apts.add('PE40'); apts.add('PE60');
-    apts.add('PA12'); apts.add('PA20'); apts.add('PA40'); apts.add('PA60');
+    apts.add('PE20');
+    apts.add('PE40');
+    apts.add('PE60');
+    apts.add('PA12');
+    apts.add('PA20');
+    apts.add('PA40');
+    apts.add('PA60');
   }
   if (ne) {
-
     if (ne === 'N4') apts.add('GP');
-    else if (ne === 'N5') { /* N5 = DP plongeur, pas guide */ }
-    else if (ne === 'E1') {
+    else if (ne === 'N5') {
+      /* N5 = DP plongeur, pas guide */
+    } else if (ne === 'E1') {
       if (sup.includes('GP')) apts.add('GP');
       apts.add(ne); // Enseignant
-    }
-    else if (ne === 'E2') {
+    } else if (ne === 'E2') {
       apts.add('GP'); // III-15 b : initiateur ET guide de palanquée
       apts.add(ne);
-    }
-    else if (['E3','E4'].includes(ne)) {
+    } else if (['E3', 'E4'].includes(ne)) {
       apts.add('GP');
       apts.add(ne); // Enseignant
     }
@@ -146,12 +159,28 @@ export function getDiverAptitudes(diver, isExploration, palContext) {
   if (trimix.includes('PTH-120')) apts.add('PTH120');
 
   // Bonus formation : PE niveau supérieur si enseignant suffisant dans la palanquée
-  getFormationBonusAptitudes(diver, maxEnsLevel, palContext?.mode).forEach(a => apts.add(a));
+  getFormationBonusAptitudes(diver, maxEnsLevel, palContext?.mode).forEach((a) => apts.add(a));
 
   // Ordre canonique : Baptême < PE < PA < GP < Enseignant
-  const ORDER = ['Baptême','PE12','PE20','PE40','PE60','PA12','PA20','PA40','PA60',
-                 'PTH70','PTH120','GP','E1','E2','E3','E4'];
-  return ORDER.filter(a => apts.has(a));
+  const ORDER = [
+    'Baptême',
+    'PE12',
+    'PE20',
+    'PE40',
+    'PE60',
+    'PA12',
+    'PA20',
+    'PA40',
+    'PA60',
+    'PTH70',
+    'PTH120',
+    'GP',
+    'E1',
+    'E2',
+    'E3',
+    'E4',
+  ];
+  return ORDER.filter((a) => apts.has(a));
 }
 
 /**
@@ -165,12 +194,22 @@ export function getDiverAptitudes(diver, isExploration, palContext) {
  */
 export function aptitudeMaxDepth(aptitude) {
   const map = {
-    'Baptême': 6,
-    'PE12': 12, 'PE20': 20, 'PE40': 40, 'PE60': 60,
-    'PA12': 12, 'PA20': 20, 'PA40': 40, 'PA60': 60,
-    'GP':   40,
-    'E1':   6,  'E2': 20, 'E3': 40, 'E4': 60,
-    'PTH70': 70, 'PTH120': 120,
+    Baptême: 6,
+    PE12: 12,
+    PE20: 20,
+    PE40: 40,
+    PE60: 60,
+    PA12: 12,
+    PA20: 20,
+    PA40: 40,
+    PA60: 60,
+    GP: 40,
+    E1: 6,
+    E2: 20,
+    E3: 40,
+    E4: 60,
+    PTH70: 70,
+    PTH120: 120,
   };
   return map[aptitude] ?? 0;
 }
@@ -187,11 +226,11 @@ export function aptitudeMaxDepth(aptitude) {
  * @returns {'bapteme'|'formation'|'guidee'|'exploration'}
  */
 export function getPalType(membres, mode) {
-  const apts = (membres || []).map(m => m.aptitude || '');
+  const apts = (membres || []).map((m) => m.aptitude || '');
   if (apts.includes('Baptême')) return 'bapteme';
   const effective = derivePalMode({ membres, mode });
   if (effective === 'enseignement') return 'formation';
-  if (apts.some(a => a === 'GP' || ['E1','E2','E3','E4'].includes(a))) return 'guidee';
+  if (apts.some((a) => a === 'GP' || ['E1', 'E2', 'E3', 'E4'].includes(a))) return 'guidee';
   return 'exploration';
 }
 
@@ -207,16 +246,16 @@ export function getPalType(membres, mode) {
  * @returns {Array<{value:string, allowed:boolean, reason:string|null}>}
  */
 export function getAvailableMelanges(dp) {
-  const nitrox    = dp?.nitrox || [];
-  const trimix    = dp?.trimix || [];
-  const ne        = dp?.niveau_encadrant || '';
-  const hasPNC    = nitrox.includes('PN-C');
+  const nitrox = dp?.nitrox || [];
+  const trimix = dp?.trimix || [];
+  const ne = dp?.niveau_encadrant || '';
+  const hasPNC = nitrox.includes('PN-C');
   const hasPTH120 = trimix.includes('PTH-120');
   const canTrimix = hasPTH120 && !!CDS.DP_QUALIF[ne]?.trimix;
   return [
-    { value:'Air',      allowed:true,      reason:null },
-    { value:'Nx ≤ 40%', allowed:hasPNC,    reason:'DP doit être PN-C' },
-    { value:'Nx > 40%', allowed:hasPNC,    reason:'DP doit être PN-C' },
-    { value:'Tx',       allowed:canTrimix, reason:'DP doit être PTH-120 (E3/E4)' },
+    { value: 'Air', allowed: true, reason: null },
+    { value: 'Nx ≤ 40%', allowed: hasPNC, reason: 'DP doit être PN-C' },
+    { value: 'Nx > 40%', allowed: hasPNC, reason: 'DP doit être PN-C' },
+    { value: 'Tx', allowed: canTrimix, reason: 'DP doit être PTH-120 (E3/E4)' },
   ];
 }

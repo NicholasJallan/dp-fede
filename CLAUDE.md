@@ -176,6 +176,7 @@ Toute nouvelle API externe appelée via `fetch()` doit être ajoutée à
 dp-fede. Sans ça, le navigateur émet « Failed to fetch » silencieusement.
 
 État au 13/06/2026 (Sprint 4 sécurité durcie) :
+
 - `'self'`
 - `https://maps.googleapis.com`, `https://maps.gstatic.com` (Maps + Places)
 - `https://api.open-meteo.com` (bouton « Précompléter depuis météo »)
@@ -192,6 +193,7 @@ Vérifier régulièrement ce fichier pour identifier les nouvelles
 violations.
 
 Headers sécurité associés :
+
 - `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`
   (préinscription HSTS effective si soumise à hstspreload.org).
 - `Permissions-Policy: camera=(), microphone=(), geolocation=(self), payment=(), usb=()`
@@ -219,12 +221,14 @@ Les tests sont des modules ES (`tests/package.json` → `"type": "module"`) qui
 importent directement `src/domain/*` et les fabriques de `src/offline/*`.
 Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **391 tests JS**, 407 PHPUnit, 42 e2e locaux
 (métier FFESSM/Code du Sport + offline : outbox, offline-store, sync, dive-lifecycle, home-buckets + contextualisation check-list par milieu
-+ socle club : `sync-club.test.js` (X-DP-Club, périmètre club du store), `club-logic.test.js` (droits, alertes, rapport d'import, suppressions)
-+ `sync-terrain.test.js` (inflight, listes réconciliées, premier rattachement), `paliers.test.js` (fixtures partagées avec PHP), `drive-preference.test.js).
+
+- socle club : `sync-club.test.js` (X-DP-Club, périmètre club du store), `club-logic.test.js` (droits, alertes, rapport d'import, suppressions)
+- `sync-terrain.test.js` (inflight, listes réconciliées, premier rattachement), `paliers.test.js` (fixtures partagées avec PHP), `drive-preference.test.js).
 
 ## Données métier
 
 Modules purs dans `src/domain/` (ré-exportés par `src/domain/index.js`) :
+
 - `QUESTIONS` (`questions.js`) — sections du questionnaire (A, B, C, E, F, G), questions conditionnelles (`when`)
 - `CHECKLIST_RULES` (`checklist.js`) — 2 phases (préparation / sur site avant mise à l'eau), items conditionnels (`when`) ; `matchCondition(when, answers)` (`conditions.js`)
 - `LEVELS` / `STRUCTURE_LABELS` (`levels.js`) — libellés des niveaux FFESSM (flag `canBeDP`) et des structures

@@ -33,9 +33,7 @@ describe('sync — drainOutbox avec handlers par défaut', () => {
   test('diver.create POST /api/divers et stocke la réponse serveur', async () => {
     await win.outbox.enqueue('diver.create', { id: 'd-1', nom: 'Doe', prenom: 'John' });
 
-    const calls = mockFetch([
-      async () => ({ data: { id: 'd-1', nom: 'Doe', prenom: 'John', server_returned: true } }),
-    ]);
+    const calls = mockFetch([async () => ({ data: { id: 'd-1', nom: 'Doe', prenom: 'John', server_returned: true } })]);
 
     await win.sync._drainOutbox();
 
@@ -57,12 +55,13 @@ describe('sync — drainOutbox avec handlers par défaut', () => {
     // Préparer l'entrée locale (simulate offline-api.create)
     await win.offlineStore.put('dives', client_uuid, { client_uuid, site_nom: 'Lac', _pending: true, synced: false });
     await win.outbox.enqueue('dive.create', {
-      client_uuid, site_nom: 'Lac', answers: {}, palanquees: [],
+      client_uuid,
+      site_nom: 'Lac',
+      answers: {},
+      palanquees: [],
     });
 
-    mockFetch([
-      async () => ({ status: 201, data: { id: 'srv-42', duplicate: false } }),
-    ]);
+    mockFetch([async () => ({ status: 201, data: { id: 'srv-42', duplicate: false } })]);
 
     await win.sync._drainOutbox();
 
@@ -78,7 +77,9 @@ describe('sync — gestion erreurs et idempotence', () => {
     await win.outbox.enqueue('diver.create', { id: 'd-2', nom: 'B' });
 
     const calls = mockFetch([
-      async () => { throw new Error('network down'); },
+      async () => {
+        throw new Error('network down');
+      },
     ]);
 
     await win.sync._drainOutbox();
@@ -88,22 +89,22 @@ describe('sync — gestion erreurs et idempotence', () => {
     // Les deux items sont toujours en outbox
     assert.equal(await win.outbox.size(), 2);
     const items = await win.outbox.pending();
-    const failed = items.find(it => it.payload.id === 'd-1');
+    const failed = items.find((it) => it.payload.id === 'd-1');
     assert.equal(failed.attempts, 1);
     assert.match(failed.lastError, /network/);
   });
 
-  test('HTTP 409 sans marqueur d\'idempotence : mis en revue, jamais compté comme succès', async () => {
+  test("HTTP 409 sans marqueur d'idempotence : mis en revue, jamais compté comme succès", async () => {
     const client_uuid = '22222222-2222-4222-8222-222222222222';
     await win.offlineStore.put('dives', client_uuid, { client_uuid, _pending: true });
     await win.outbox.enqueue('dive.create', {
       client_uuid,
-      site_nom: 'X', answers: {}, palanquees: [],
+      site_nom: 'X',
+      answers: {},
+      palanquees: [],
     });
 
-    mockFetch([
-      async () => ({ status: 409, ok: false, error: 'duplicate' }),
-    ]);
+    mockFetch([async () => ({ status: 409, ok: false, error: 'duplicate' })]);
 
     await win.sync._drainOutbox();
 
@@ -112,7 +113,7 @@ describe('sync — gestion erreurs et idempotence', () => {
     assert.equal(item.lastError, 'duplicate');
   });
 
-  test('handler manquant : l\'item reste en attente sans erreur', async () => {
+  test("handler manquant : l'item reste en attente sans erreur", async () => {
     await win.outbox.enqueue('dive.drive', { client_uuid: 'x' });
     mockFetch([]);
     await win.sync._drainOutbox();
@@ -121,7 +122,9 @@ describe('sync — gestion erreurs et idempotence', () => {
 
   test('registerHandler override le handler par défaut', async () => {
     let called = false;
-    win.sync.registerHandler('diver.create', async () => { called = true; });
+    win.sync.registerHandler('diver.create', async () => {
+      called = true;
+    });
     await win.outbox.enqueue('diver.create', { id: 'd-1' });
     mockFetch([]);
     await win.sync._drainOutbox();

@@ -5,24 +5,24 @@ import { useState, useCallback, useRef } from 'react';
 
 export function useDiveSession() {
   const [currentDiveId, setCurrentDiveId] = useState(null); // client_uuid de la plongée ouverte
-  const [answers,       setAnswers]       = useState({});
-  const [palanquees,    setPalanquees]    = useState([]);
-  const [checked,       setChecked]       = useState({});
-  const [comments,      setComments]      = useState({});
-  const [pressions,     setPressions]     = useState({});
-  const [realises,      setRealises]      = useState({});
-  const [heuresDebut,   setHeuresDebut]   = useState({});
-  const [heuresFin,     setHeuresFin]     = useState({});
-  const [plongeeFigee,  setPlongeeFigee]  = useState(false);
-  const [confirmModal,  setConfirmModal]  = useState(false);
-  const [archiveDone,   setArchiveDone]   = useState(false);
+  const [answers, setAnswers] = useState({});
+  const [palanquees, setPalanquees] = useState([]);
+  const [checked, setChecked] = useState({});
+  const [comments, setComments] = useState({});
+  const [pressions, setPressions] = useState({});
+  const [realises, setRealises] = useState({});
+  const [heuresDebut, setHeuresDebut] = useState({});
+  const [heuresFin, setHeuresFin] = useState({});
+  const [plongeeFigee, setPlongeeFigee] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(false);
+  const [archiveDone, setArchiveDone] = useState(false);
   // Nombre de palanquées démarrées connu : sert à détecter le 1er départ
   // (transition prepared → in_progress, cf. useDiveLifecycle).
   const startedCountRef = useRef(0);
 
-  const setAnswer     = useCallback((id, v) => setAnswers(prev => ({ ...prev, [id]: v })), []);
-  const updateChecked = useCallback((id, v) => setChecked(prev => ({ ...prev, [id]: v })), []);
-  const updateComment = useCallback((id, v) => setComments(prev => ({ ...prev, [id]: v })), []);
+  const setAnswer = useCallback((id, v) => setAnswers((prev) => ({ ...prev, [id]: v })), []);
+  const updateChecked = useCallback((id, v) => setChecked((prev) => ({ ...prev, [id]: v })), []);
+  const updateComment = useCallback((id, v) => setComments((prev) => ({ ...prev, [id]: v })), []);
 
   // Vide l'état mémoire (ne modifie pas currentDiveId)
   const resetDiveState = useCallback(() => {
@@ -45,12 +45,12 @@ export function useDiveSession() {
     const rs = content.renderState;
     setAnswers(content.answers);
     setPalanquees(content.palanquees);
-    setChecked(rs.checked   || {});
-    setComments(rs.comments  || {});
+    setChecked(rs.checked || {});
+    setComments(rs.comments || {});
     setPressions(rs.pressions || {});
-    setRealises(rs.realises  || {});
+    setRealises(rs.realises || {});
     setHeuresDebut(rs.heuresDebut || {});
-    setHeuresFin(rs.heuresFin   || {});
+    setHeuresFin(rs.heuresFin || {});
     setPlongeeFigee(archived);
     startedCountRef.current = Object.keys(rs.heuresDebut || {}).length;
     setCurrentDiveId(clientUuid);
@@ -59,19 +59,33 @@ export function useDiveSession() {
   }, []);
 
   return {
-    currentDiveId, setCurrentDiveId,
-    answers, setAnswers, setAnswer,
-    palanquees, setPalanquees,
-    checked, updateChecked,
-    comments, updateComment,
-    pressions, setPressions,
-    realises, setRealises,
-    heuresDebut, setHeuresDebut,
-    heuresFin, setHeuresFin,
-    plongeeFigee, setPlongeeFigee,
-    confirmModal, setConfirmModal,
-    archiveDone, setArchiveDone,
+    currentDiveId,
+    setCurrentDiveId,
+    answers,
+    setAnswers,
+    setAnswer,
+    palanquees,
+    setPalanquees,
+    checked,
+    updateChecked,
+    comments,
+    updateComment,
+    pressions,
+    setPressions,
+    realises,
+    setRealises,
+    heuresDebut,
+    setHeuresDebut,
+    heuresFin,
+    setHeuresFin,
+    plongeeFigee,
+    setPlongeeFigee,
+    confirmModal,
+    setConfirmModal,
+    archiveDone,
+    setArchiveDone,
     startedCountRef,
-    resetDiveState, applyDive,
+    resetDiveState,
+    applyDive,
   };
 }

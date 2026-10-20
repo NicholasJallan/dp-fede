@@ -78,9 +78,9 @@ export const PULL_INTERVAL_MS = 60_000;
 export function createSync({ store, outbox, getNetStatus }) {
   // ── État interne ────────────────────────────────────────────────────────
   let _cycleInFlight = null;
-  let _cycleQueued   = false;
-  let _wakeTimer     = null;
-  const _handlers    = {};  // kind → async (item) => void
+  let _cycleQueued = false;
+  let _wakeTimer = null;
+  const _handlers = {}; // kind → async (item) => void
 
   // ── Helpers réseau ──────────────────────────────────────────────────────
   // Lecture CSRF centralisée dans src/api/google-drive.js (getCsrfToken).
@@ -99,11 +99,13 @@ export function createSync({ store, outbox, getNetStatus }) {
   // serveur (seulement pour /api/sync/state, qui sert à le découvrir).
   async function http(method, path, body, clubId = null) {
     const headers = { 'Content-Type': 'application/json', ...clubHeaders(clubId) };
-    if (['POST','PUT','PATCH','DELETE'].includes(method)) {
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
       headers['X-CSRF-Token'] = csrfToken();
     }
     const res = await fetch(path, {
-      method, headers, credentials: 'include',
+      method,
+      headers,
+      credentials: 'include',
       body: body != null ? JSON.stringify(body) : undefined,
     });
     const json = await res.json().catch(() => ({ ok: false, error: 'invalid json' }));
@@ -144,9 +146,11 @@ export function createSync({ store, outbox, getNetStatus }) {
         server_id: res.id,
         synced: true,
       });
-      window.dispatchEvent(new CustomEvent('dp:diveSynced', {
-        detail: { client_uuid: item.payload.client_uuid, server_id: res.id },
-      }));
+      window.dispatchEvent(
+        new CustomEvent('dp:diveSynced', {
+          detail: { client_uuid: item.payload.client_uuid, server_id: res.id },
+        }),
+      );
     },
 
     'dive.update': async (item) => {
@@ -176,8 +180,9 @@ export function createSync({ store, outbox, getNetStatus }) {
       if (updated) {
         // Saisie poursuivie pendant l'envoi : un autre PATCH attend, la fiche
         // reste _pending (sinon le pull écraserait ce qui n'est pas encore parti).
-        const stillQueued = (await outbox.pending()).some(i => i.id !== item.id
-          && i.kind === 'dive.update' && i.payload?.client_uuid === client_uuid);
+        const stillQueued = (await outbox.pending()).some(
+          (i) => i.id !== item.id && i.kind === 'dive.update' && i.payload?.client_uuid === client_uuid,
+        );
         await store.put('dives', client_uuid, { ...updated, ...patch, _pending: stillQueued });
       }
       window.dispatchEvent(new CustomEvent('dp:dataChanged', { detail: { store: 'dives' } }));
@@ -254,9 +259,9 @@ export function createSync({ store, outbox, getNetStatus }) {
     const items = await outbox.ready();
     // Entités bloquées : en revue, en attente de backoff ou échouées pendant ce drain.
     const all = await outbox.pending();
-    const blocked = new Set(all
-      .filter(it => it.status === 'review' || (it.nextRetryAt || 0) > Date.now())
-      .map(entityKey));
+    const blocked = new Set(
+      all.filter((it) => it.status === 'review' || (it.nextRetryAt || 0) > Date.now()).map(entityKey),
+    );
 
     for (const item of items) {
       const key = entityKey(item);
@@ -302,7 +307,7 @@ export function createSync({ store, outbox, getNetStatus }) {
   // Attention : Date.parse(0) vaut l'an 2000 dans V8 — ne jamais parser un
   // fallback numérique, sinon une table vide déclenche un pull à chaque cycle.
   function ts(v) {
-    return v ? (Date.parse(v) || 0) : 0;
+    return v ? Date.parse(v) || 0 : 0;
   }
 
   async function pullIncremental() {
@@ -329,7 +334,7 @@ export function createSync({ store, outbox, getNetStatus }) {
 
     // Helper qui décide s'il faut pull et persiste le nouveau curseur.
     async function pullIfChanged(table, getter) {
-      const local  = meta[table];
+      const local = meta[table];
       if (!state[table]) return;
       const remote = Math.max(ts(state[table].updated_at), ts(state[table].deleted_at));
       if (!remote) return;
@@ -337,7 +342,7 @@ export function createSync({ store, outbox, getNetStatus }) {
       if (remote <= localTs) return; // rien de neuf
 
       const since = local || '1970-01-01T00:00:00';
-      const list  = await getter(since);
+      const list = await getter(since);
       for (const row of list || []) {
         if (row.deleted) {
           await store.del(table, row.id);
@@ -353,10 +358,10 @@ export function createSync({ store, outbox, getNetStatus }) {
     }
 
     try {
-      await pullIfChanged('divers',
-        (since) => http('GET', `/api/divers?since=${encodeURIComponent(since)}`, null, club));
-      await pullIfChanged('sites',
-        (since) => http('GET', `/api/sites?since=${encodeURIComponent(since)}`, null, club));
+      await pullIfChanged('divers', (since) =>
+        http('GET', `/api/divers?since=${encodeURIComponent(since)}`, null, club),
+      );
+      await pullIfChanged('sites', (since) => http('GET', `/api/sites?since=${encodeURIComponent(since)}`, null, club));
       // dives : clé = client_uuid (pas id serveur)
       await pullDivesIfChanged(meta, state, club);
     } catch (err) {
@@ -376,7 +381,7 @@ export function createSync({ store, outbox, getNetStatus }) {
     if (remote <= localTs) return;
 
     const since = meta.dives || '1970-01-01T00:00:00';
-    const list  = await http('GET', `/api/dives?since=${encodeURIComponent(since)}`, null, club);
+    const list = await http('GET', `/api/dives?since=${encodeURIComponent(since)}`, null, club);
     for (const row of list || []) {
       const key = row.client_uuid || row.id;
       if (!key) continue;
@@ -388,14 +393,17 @@ export function createSync({ store, outbox, getNetStatus }) {
         // La liste serveur est un résumé (sans answers/palanquees/render_state) :
         // on fusionne pour ne jamais perdre le contenu complet déjà en local.
         await store.put('dives', key, {
-          ...(cur || {}), ...row, client_uuid: key,
-          server_id: row.id, synced: true, drive_synced: !!row.drive_link,
+          ...(cur || {}),
+          ...row,
+          client_uuid: key,
+          server_id: row.id,
+          synced: true,
+          drive_synced: !!row.drive_link,
         });
       }
     }
     meta.dives = state.dives.updated_at || state.dives.deleted_at || meta.dives;
   }
-
 
   // ── Cycle complet ───────────────────────────────────────────────────────
   async function cycle() {
@@ -425,7 +433,7 @@ export function createSync({ store, outbox, getNetStatus }) {
   async function scheduleWake() {
     if (_wakeTimer) clearTimeout(_wakeTimer);
     const delay = await outbox.nextWakeMs();
-    if (delay == null) return;          // rien à attendre
+    if (delay == null) return; // rien à attendre
     const ms = Math.max(1000, Math.min(delay, 5 * 60 * 1000)); // 1s .. 5min max
     _wakeTimer = setTimeout(() => cycle(), ms);
   }
@@ -452,8 +460,10 @@ export function createSync({ store, outbox, getNetStatus }) {
     // Background Sync API si supportée (Chrome Android principalement).
     if ('serviceWorker' in navigator && 'SyncManager' in window) {
       navigator.serviceWorker.ready
-        .then(reg => reg.sync.register('dp-outbox'))
-        .catch(() => { /* unsupported ou refusé */ });
+        .then((reg) => reg.sync.register('dp-outbox'))
+        .catch(() => {
+          /* unsupported ou refusé */
+        });
     }
 
     setInterval(() => {
@@ -469,7 +479,9 @@ export function createSync({ store, outbox, getNetStatus }) {
 
   // ── API publique ────────────────────────────────────────────────────────
   return {
-    trigger, cycle, start,
+    trigger,
+    cycle,
+    start,
     registerHandler,
     // Pour les tests.
     _drainOutbox: drainOutbox,

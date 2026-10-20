@@ -93,8 +93,7 @@ describe('api/google-drive — getDriveToken', () => {
     await win.getDriveToken({});
     assert.equal(win.dp_driveToken.access_token, 'FRESH');
     const delta = win.dp_driveToken.expires_at - Date.now();
-    assert.ok(delta > 50 * 60 * 1000 && delta <= 55 * 60 * 1000,
-      `expires_at devrait être ~55min, got ${delta}ms`);
+    assert.ok(delta > 50 * 60 * 1000 && delta <= 55 * 60 * 1000, `expires_at devrait être ~55min, got ${delta}ms`);
   });
 });
 
@@ -105,7 +104,9 @@ describe('api/google-drive — getCsrfToken', () => {
   function withFakeDocument(cookie, fn) {
     const prev = globalThis.document;
     globalThis.document = { cookie };
-    try { return fn(); } finally {
+    try {
+      return fn();
+    } finally {
       if (prev === undefined) delete globalThis.document;
       else globalThis.document = prev;
     }

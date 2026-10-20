@@ -17,18 +17,20 @@ import { netStatus } from '../../offline/net.js';
 
 async function readState(diveId) {
   const online = netStatus().online;
-  const items = (await outbox.pending()).filter(it => it.kind.startsWith('dive.') && it.payload?.client_uuid === diveId);
-  const review = items.find(it => it.status === 'review');
+  const items = (await outbox.pending()).filter(
+    (it) => it.kind.startsWith('dive.') && it.payload?.client_uuid === diveId,
+  );
+  const review = items.find((it) => it.status === 'review');
   if (review) return { state: 'review', error: review.lastError || 'Refus du serveur sans motif.' };
   if (items.length > 0) {
-    const failed = items.find(it => it.attempts > 0 && it.lastError);
+    const failed = items.find((it) => it.attempts > 0 && it.lastError);
     return { state: online ? 'pending' : 'offline', error: failed?.lastError || '' };
   }
   if (!online) return { state: 'offline', error: '' };
   try {
     const remote = await api.dives.getRemote(diveId);
     if (remote?.status === 'archived') return { state: 'confirmed', driveLink: remote.drive_link || '' };
-    return { state: 'rejected', error: 'Le serveur indique que la plongée n\'est pas archivée.' };
+    return { state: 'rejected', error: "Le serveur indique que la plongée n'est pas archivée." };
   } catch (err) {
     return { state: 'pending', error: err.message };
   }
@@ -50,8 +52,8 @@ export function useArchiveConfirmation(diveId, active) {
     refresh();
     sync.trigger('archive');
     const events = ['dp:outboxChanged', 'dp:syncDone', 'dp:netchange', 'dp:dataChanged'];
-    events.forEach(e => window.addEventListener(e, refresh));
-    return () => events.forEach(e => window.removeEventListener(e, refresh));
+    events.forEach((e) => window.addEventListener(e, refresh));
+    return () => events.forEach((e) => window.removeEventListener(e, refresh));
   }, [active, refresh]);
 
   const retry = useCallback(async () => {

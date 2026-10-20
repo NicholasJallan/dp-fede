@@ -5,6 +5,27 @@ Dates en ISO 8601.
 
 ## [Unreleased]
 
+### Conformité Code du sport (texte consolidé du 08/10/2026)
+- Moteur de règles réécrit à partir des annexes III-15 a à III-18 c (`src/domain/cds-tables.js`, `pal-rules.js`) et porté à l'identique en PHP ; 95 cas réglementaires partagés JS/PHP (`tests/fixtures/pal-rules.json`), revus de façon indépendante.
+- Situations auparavant autorisées à tort désormais bloquées : E1 avec 2 baptêmes, air > 60 m, trimix autonome à 6, âge minimal en autonomie, DP E1/E2 en fosse > 6 m, nitrox en formation, GP à 0-60 m, PpO₂ > 1,6 bar…
+- Blocages injustifiés levés : E1/E2 en milieu naturel, panachage d'aptitudes, PA en formation, exploration encadrée par un E sous DP N5, plongeur supplémentaire GP/P4.
+- DTR saisie par le DP (plus jamais calculée d'office) ; check-list complétée (A322-78/80/93/97) ; date de naissance et PTH-40.
+
+### Stabilité et données
+- Crash de l'étape 4 corrigé ; ErrorBoundary. Plus de perte de données hors-ligne (fusion des données synchronisées, garde-fou serveur 409, outbox fusionnée par entité, état « à revoir »). Service Worker sans cache API ; données locales liées à l'utilisateur et au club.
+- PDF générés depuis la base (état d'exécution inclus) ; mode « HTML client » supprimé (SSRF).
+
+### Interface
+- Direction « console de bord » : thèmes Soleil / Nuit, carte « cadran » en exécution, palanquées bloquées explicites avec article du Code du sport, Dialog accessible, responsive 320 → 1440, axe-core sans violation.
+
+### Club (léger, compatible import VPDive)
+- Clubs, rôles, invitations ; import CSV idempotent ; alertes CACI / licences / mineurs ; archivage serveur des fiches (conservation 1 an, A322-72) ; statistiques ; export et suppression de compte (RGPD).
+
+### Technique et exploitation
+- Code front en modules ES dans `src/` ; ESLint ; CI GitHub Actions ; backend PHP 8.2 (php-jwt 7) ; migrations en CLI ; déploiement, sauvegardes et restauration versionnés dans `deploy/` ; `docs/rgpd.md`, `docs/deploy/`.
+
+### Historique antérieur (sprints 1 à 4)
+
 ### Added — Sprint 4 (sécurité durcie)
 - `docs/security/README.md` : vue d'ensemble architecture sécurité + table de surfaces d'attaque.
 - `docs/security/gcp-checklist.md` : audit trimestriel GCP (OAuth Consent Screen, OAuth Client, API Keys, Quotas).

@@ -59,17 +59,18 @@ function SyncPill({ online, items, onOpen }) {
 
 function ThemeToggle({ theme, onToggle }) {
   const isNight = theme === 'dark';
+  const label = isNight ? 'Nuit' : 'Soleil';
+  // Le nom accessible reprend le libellé visible (WCAG 2.5.3, commande vocale).
   return (
     <button
       type="button"
       className="topbar-btn theme-toggle"
       onClick={onToggle}
-      aria-pressed={isNight}
-      aria-label="Mode nuit"
+      aria-label={`Thème ${label}`}
       title={isNight ? 'Passer en mode Soleil' : 'Passer en mode Nuit'}
     >
       {isNight ? <Icon.Moon /> : <Icon.Sun />}
-      <span className="label">{isNight ? 'Nuit' : 'Soleil'}</span>
+      <span className="label">{label}</span>
     </button>
   );
 }

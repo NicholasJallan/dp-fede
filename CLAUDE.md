@@ -1,7 +1,7 @@
 # CLAUDE.md — DP Assistant
 
 Outil d'aide au Directeur de Plongée (FFESSM / Code du Sport).
-Frontend : React 18 + esbuild. Backend : PHP 8.5-FPM (pool dédié dp-fede à côté du pool « dive » d'une autre application — ne jamais modifier ce pool ni de réglage global de php8.5-fpm ; cf. `docs/deploy/php85.md`) + MariaDB sur Raspberry Pi. PrestaShop/WordPress restent en PHP 7.4 sur le même Pi. `composer.json` : `php >= 8.2`, `config.platform.php = 8.5.11` ; CI PHPUnit en 8.2 et 8.5.
+Frontend : React 19 + esbuild. Backend : PHP 8.5-FPM (pool dédié dp-fede à côté du pool « dive » d'une autre application — ne jamais modifier ce pool ni de réglage global de php8.5-fpm ; cf. `docs/deploy/php85.md`) + MariaDB sur Raspberry Pi. PrestaShop/WordPress restent en PHP 7.4 sur le même Pi. `composer.json` : `php >= 8.2`, `config.platform.php = 8.5.11` ; CI PHPUnit en 8.2 et 8.5.
 
 ## Build frontend
 

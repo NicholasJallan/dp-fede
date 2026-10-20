@@ -303,9 +303,10 @@ test.describe('build local — parcours en ligne', () => {
   test('bascule Soleil / Nuit mémorisée', async ({ page }) => {
     await openHome(page);
     const toggle = page.locator('.theme-toggle');
-    const initial = await toggle.getAttribute('aria-pressed');
+    // Le libellé reflète le thème effectif (choix mémorisé ou thème système).
+    const initial = await toggle.locator('.label').textContent();
     await toggle.click();
-    const expected = initial === 'true' ? 'light' : 'dark';
+    const expected = initial === 'Nuit' ? 'light' : 'dark';
     await expect(page.locator('html')).toHaveAttribute('data-theme', expected);
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-theme', expected);

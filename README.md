@@ -66,7 +66,7 @@ Profilage de la plongée, check-list conditionnelle, composition des palanquées
 
 ```mermaid
 graph TD
-    Browser["Navigateur\n(React 18, bundle esbuild)"]
+    Browser["Navigateur\n(React 19, bundle esbuild)"]
     Nginx["nginx\n(TLS, CSP, proxy)"]
     PHP["PHP-FPM\n/var/www/dp-fede-api"]
     MariaDB["MariaDB\ndp_fede"]

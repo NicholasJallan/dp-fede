@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useToasts } from './toast.jsx';
+import { useOnline } from './lib/use-online.jsx';
 import { Alert, diverFullName, formatDateTime } from './components.jsx';
 
 // ---------------------------------------------------------------------------
@@ -22,7 +23,7 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
   // useEffect([online]) de déclencher doArchive() avant que init() ait
   // eu le temps de détecter une plongée déjà archivée.
   const [initialized,     setInitialized]     = useState(false);
-  const online = window.useOnline ? window.useOnline() : true;
+  const online = useOnline();
 
   // Enqueue offline : enregistre l'archive localement (passe via offline-api
   // qui pose un client_uuid et déclenche le sync). Le rendu PDF a besoin de
@@ -84,38 +85,22 @@ function ScreenArchive({ answers, palanquees, divers, user, pressions, realises,
     return `${date}${time ? '-' + time : ''}-${type}-${site}.pdf`;
   };
 
-  // Génération PDF via le backend (C1.2) : envoie dive_id, le serveur charge
-  // les données depuis la DB et appelle wkhtmltopdf. Plus de DOM offscreen.
+  // Génération PDF côté serveur (mPDF) à partir des données en base.
   const generatePdfBlob = async (type = 'fiche') => {
     if (!diveId) throw new Error('diveId requis pour la génération PDF côté serveur.');
-    const csrf = window.getCsrfToken ? window.getCsrfToken() : '';
-    const res  = await fetch('/api/pdf/fiche', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-      body: JSON.stringify({ dive_id: diveId, type }),
-    });
-    if (!res.ok) {
-      const t = await res.text();
-      let detail = t.slice(0, 300);
-      try { const j = JSON.parse(t); if (j?.error) detail = j.error; }
-      catch { /* fallback texte déjà défini */ }
-      throw new Error(`PDF ${type} — HTTP ${res.status} : ${detail}`);
-    }
-    return await res.blob();
+    return window.api.pdf.blob(diveId, type);
   };
 
   // Logique d'archivage une fois le token Drive obtenu.
   const proceedWithToken = async (token) => {
     try {
-      // Flush immédiat du render_state avant la génération PDF : le serveur doit
-      // avoir les données à jour (pressions, heures, check-list) avant de rendre.
-      const csrf = window.getCsrfToken ? window.getCsrfToken() : '';
+      // Flush immédiat avant la génération PDF : le serveur doit avoir les
+      // données à jour (pressions, heures, check-list). Un échec arrête
+      // l'archivage — un PDF réglementaire incomplet ne doit pas partir.
       if (diveId) {
-        await fetch(`/api/dives/${diveId}`, {
-          method: 'PATCH', credentials: 'include',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-          body: JSON.stringify({ render_state: { pressions, realises, heuresDebut, heuresFin, checked, comments } }),
+        await window.api.dives.pushNow(diveId, {
+          answers, palanquees,
+          render_state: { pressions, realises, heuresDebut, heuresFin, checked, comments },
         });
       }
 
@@ -409,20 +394,7 @@ async function finalizePendingDrive(archive, divers, user, onProgress) {
     return `${date}${time ? '-' + time : ''}-${kind}-${site}.pdf`;
   };
 
-  const csrf = window.getCsrfToken ? window.getCsrfToken() : '';
-
-  async function genPdf(type) {
-    const res = await fetch('/api/pdf/fiche', {
-      method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-      body: JSON.stringify({ dive_id: archive.server_id, type }),
-    });
-    if (!res.ok) {
-      const t = await res.text();
-      throw new Error(`PDF ${type} HTTP ${res.status} : ${t.slice(0, 200)}`);
-    }
-    return await res.blob();
-  }
+  const genPdf = (type) => window.api.pdf.blob(archive.server_id, type);
 
   if (onProgress) onProgress('generating');
   const fichePdf     = await genPdf('fiche');

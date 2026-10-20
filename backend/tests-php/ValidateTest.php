@@ -8,7 +8,9 @@ class ValidateTest extends TestCase
     private function errors(Validate $v): array
     {
         $r = new \ReflectionProperty(Validate::class, 'errors');
-        $r->setAccessible(true);
+        if (PHP_VERSION_ID < 80100) {
+            $r->setAccessible(true); // requis seulement avant PHP 8.1
+        }
         return $r->getValue($v);
     }
 

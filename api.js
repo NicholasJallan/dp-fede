@@ -32,6 +32,30 @@ async function apiFetch(path, options = {}) {
   return json.data;
 }
 
+// Génère un PDF côté serveur (mPDF) depuis les données de la plongée en base.
+// type : 'fiche' | 'checklist'. Retourne un Blob.
+async function fetchPdfBlob(diveId, type = 'fiche') {
+  const res = await fetch(`${API_BASE}/pdf/fiche`, {
+    method: 'POST',
+    credentials: 'include',
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': window.getCsrfToken ? window.getCsrfToken() : '',
+    },
+    body: JSON.stringify({ dive_id: diveId, type }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    let detail = text.slice(0, 300);
+    try { const j = JSON.parse(text); if (j?.error) detail = j.error; } catch { /* texte brut */ }
+    const err = new Error(`PDF ${type} — HTTP ${res.status} : ${detail}`);
+    err.status = res.status;
+    throw err;
+  }
+  return await res.blob();
+}
+
 const api = {
   auth: {
     google: (credential) => apiFetch('/auth/google', { method: 'POST', body: { credential } }),
@@ -63,6 +87,12 @@ const api = {
     create: (data)       => apiFetch('/dives', { method: 'POST', body: data }),
     update: (id, patch)  => apiFetch(`/dives/${id}`, { method: 'PATCH', body: patch }),
     delete: (id)         => apiFetch(`/dives/${id}`, { method: 'DELETE', body: {} }),
+    // Envoi réseau immédiat, sans passer par l'outbox (non décoré par
+    // offline-api.js) : utilisé juste avant une génération PDF serveur.
+    pushNow: (id, patch) => apiFetch(`/dives/${id}`, { method: 'PATCH', body: patch }),
+  },
+  pdf: {
+    blob: fetchPdfBlob,
   },
 };
 

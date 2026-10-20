@@ -49,6 +49,11 @@ if ($method === 'POST' && $path === '/api/sites') {
 
     $clientId = $v->nullable('id');
     $id       = $clientId && SyncHelpers::isValidUuid($clientId) ? $clientId : Db::uuid();
+    // L'UPSERT ne doit jamais toucher la ligne d'un autre compte.
+    $owner = Db::row('SELECT user_id FROM sites WHERE id=?', [$id]);
+    if ($owner && (string)$owner['user_id'] !== (string)$user['id']) {
+        Json::abort(409, 'Identifiant déjà utilisé');
+    }
     $coord    = $v->arr('coordonnees');
 
     Db::q(

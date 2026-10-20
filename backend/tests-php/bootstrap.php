@@ -26,7 +26,6 @@ if (!class_exists('Config')) {
 
 // Charge les autres libs.
 require_once __DIR__ . '/../lib/Validate.php';
-require_once __DIR__ . '/../lib/HtmlSanitizer.php';
 require_once __DIR__ . '/../lib/Csrf.php';
 require_once __DIR__ . '/../lib/SyncHelpers.php';
 require_once __DIR__ . '/../lib/Auth.php';

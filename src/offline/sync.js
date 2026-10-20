@@ -29,6 +29,27 @@ import { outbox as defaultOutbox } from './outbox.js';
 import { netStatus } from './net.js';
 import { getCsrfToken } from '../api/google-drive.js';
 import { notifyIfAuthExpired } from '../api/auth-events.js';
+import { clubHeaders } from '../api/club-header.js';
+import { bindLocalDataToClub, isInLocalScope } from './club-scope.js';
+
+// 400/404/422 : refus métier ; 403 hors CSRF/origine : rôle insuffisant ou
+// club quitté (X-DP-Club refusé). Rejouer ne sert à rien tant que
+// l'utilisateur n'a pas corrigé → revue. Les autres échecs (401, 403 CSRF,
+// 429, 5xx, réseau) sont transitoires.
+const REVIEW_STATUSES = new Set([400, 404, 422]);
+const TRANSIENT_403_CODES = new Set(['CSRF_INVALID', 'ORIGIN_FORBIDDEN']);
+// Repli pour un serveur qui n'enverrait pas encore de code stable.
+const TRANSIENT_403 = /csrf|origine/i;
+
+/** Échec définitif (revue) plutôt que transitoire (nouvel essai) ? */
+export function isPermanentRefusal(err) {
+  if (!err?.status) return false;
+  if (REVIEW_STATUSES.has(err.status)) return true;
+  if (err.status !== 403) return false;
+  const code = err.responseBody?.code;
+  if (code) return !TRANSIENT_403_CODES.has(code);
+  return !TRANSIENT_403.test(String(err.message || ''));
+}
 
 // Fabrique : `store` (offline-store), `outbox` (createOutbox) et
 // `getNetStatus` (() => { online }) sont injectés. fetch, window et document
@@ -52,8 +73,10 @@ export function createSync({ store, outbox, getNetStatus }) {
     return !!status && !status.online;
   }
 
-  async function http(method, path, body) {
-    const headers = { 'Content-Type': 'application/json' };
+  // `item` (optionnel) : item d'outbox rejoué → en-tête X-DP-Club du club
+  // de sa mise en file.
+  async function http(method, path, body, item = null) {
+    const headers = { 'Content-Type': 'application/json', ...clubHeaders(item?.club_id) };
     if (['POST','PUT','PATCH','DELETE'].includes(method)) {
       headers['X-CSRF-Token'] = csrfToken();
     }
@@ -72,10 +95,20 @@ export function createSync({ store, outbox, getNetStatus }) {
     return json.data;
   }
 
+  // La réponse d'un item d'un autre club ne revient pas dans le store local.
+  const inScope = (item) => isInLocalScope(store, item.club_id);
+
+  // Écrit la réponse serveur d'un plongeur / site si l'item est du club local.
+  async function storeDirectoryRow(storeName, item, id, row) {
+    if (await inScope(item)) await store.put(storeName, id, { ...row, _pending: false });
+    window.dispatchEvent(new CustomEvent('dp:dataChanged', { detail: { store: storeName } }));
+  }
+
   // ── Handlers par défaut (HTTP-only) ─────────────────────────────────────
   const DEFAULT_HANDLERS = {
     'dive.create': async (item) => {
-      const res = await http('POST', '/api/dives', item.payload);
+      const res = await http('POST', '/api/dives', item.payload, item);
+      if (!(await inScope(item))) return;
       const local = await store.get('dives', item.payload.client_uuid);
       await store.put('dives', item.payload.client_uuid, {
         ...(local || {}),
@@ -92,15 +125,18 @@ export function createSync({ store, outbox, getNetStatus }) {
     'dive.update': async (item) => {
       const { client_uuid, patch } = item.payload;
       const local = await store.get('dives', client_uuid);
-      if (!local?.server_id) {
+      // Plongée absente du store (données d'un autre club purgées) : le
+      // serveur accepte aussi le client_uuid comme identifiant.
+      const target = local ? local.server_id : client_uuid;
+      if (!target) {
         throw new Error(`dive.update: server_id inconnu pour ${client_uuid} — create pas encore synced`);
       }
       try {
-        await http('PATCH', `/api/dives/${encodeURIComponent(local.server_id)}`, patch);
+        await http('PATCH', `/api/dives/${encodeURIComponent(target)}`, patch, item);
       } catch (err) {
         // 409 = le serveur a refusé un patch qui aurait vidé la plongée : on
         // lève le flag local pour que le prochain pull rapatrie la vraie version.
-        if (err.status === 409) {
+        if (err.status === 409 && local) {
           const cur = await store.get('dives', client_uuid);
           if (cur) await store.put('dives', client_uuid, { ...cur, _pending: false });
           const meta = (await store.get('meta', 'sync')) || {};
@@ -118,47 +154,45 @@ export function createSync({ store, outbox, getNetStatus }) {
     'dive.delete': async (item) => {
       const { client_uuid } = item.payload;
       const local = await store.get('dives', client_uuid);
-      if (local?.server_id) {
-        await http('DELETE', `/api/dives/${encodeURIComponent(local.server_id)}`, {});
+      // Jamais synchronisée (pas de server_id) : rien à supprimer côté serveur.
+      const target = local ? local.server_id : client_uuid;
+      if (target) {
+        await http('DELETE', `/api/dives/${encodeURIComponent(target)}`, {}, item);
       }
       await store.del('dives', client_uuid);
       window.dispatchEvent(new CustomEvent('dp:dataChanged', { detail: { store: 'dives' } }));
     },
 
     'diver.create': async (item) => {
-      const res = await http('POST', '/api/divers', item.payload);
-      await store.put('divers', item.payload.id, { ...res, _pending: false });
-      window.dispatchEvent(new CustomEvent('dp:dataChanged', { detail: { store: 'divers' } }));
+      const res = await http('POST', '/api/divers', item.payload, item);
+      await storeDirectoryRow('divers', item, item.payload.id, res);
     },
 
     'diver.update': async (item) => {
       const { id, ...patch } = item.payload;
-      const res = await http('PUT', `/api/divers/${encodeURIComponent(id)}`, patch);
-      await store.put('divers', id, { ...res, _pending: false });
-      window.dispatchEvent(new CustomEvent('dp:dataChanged', { detail: { store: 'divers' } }));
+      const res = await http('PUT', `/api/divers/${encodeURIComponent(id)}`, patch, item);
+      await storeDirectoryRow('divers', item, id, res);
     },
 
     'diver.delete': async (item) => {
-      await http('DELETE', `/api/divers/${encodeURIComponent(item.payload.id)}`, {});
+      await http('DELETE', `/api/divers/${encodeURIComponent(item.payload.id)}`, {}, item);
       await store.del('divers', item.payload.id);
       window.dispatchEvent(new CustomEvent('dp:dataChanged', { detail: { store: 'divers' } }));
     },
 
     'site.create': async (item) => {
-      const res = await http('POST', '/api/sites', item.payload);
-      await store.put('sites', item.payload.id, { ...res, _pending: false });
-      window.dispatchEvent(new CustomEvent('dp:dataChanged', { detail: { store: 'sites' } }));
+      const res = await http('POST', '/api/sites', item.payload, item);
+      await storeDirectoryRow('sites', item, item.payload.id, res);
     },
 
     'site.update': async (item) => {
       const { id, ...patch } = item.payload;
-      const res = await http('PUT', `/api/sites/${encodeURIComponent(id)}`, patch);
-      await store.put('sites', id, { ...res, _pending: false });
-      window.dispatchEvent(new CustomEvent('dp:dataChanged', { detail: { store: 'sites' } }));
+      const res = await http('PUT', `/api/sites/${encodeURIComponent(id)}`, patch, item);
+      await storeDirectoryRow('sites', item, id, res);
     },
 
     'site.delete': async (item) => {
-      await http('DELETE', `/api/sites/${encodeURIComponent(item.payload.id)}`, {});
+      await http('DELETE', `/api/sites/${encodeURIComponent(item.payload.id)}`, {}, item);
       await store.del('sites', item.payload.id);
       window.dispatchEvent(new CustomEvent('dp:dataChanged', { detail: { store: 'sites' } }));
     },
@@ -180,11 +214,6 @@ export function createSync({ store, outbox, getNetStatus }) {
     const type = String(item.kind).split('.')[0];
     return `${type}:${p.client_uuid || p.id || ''}`;
   }
-
-  // 400/422 : refus métier, rejouer ne sert à rien tant que l'utilisateur
-  // n'a pas corrigé → revue. 401/403/429/5xx/réseau : problème transitoire
-  // ou de session → on retente plus tard et on arrête le drain.
-  const REVIEW_STATUSES = new Set([400, 404, 422]);
 
   async function drainOutbox() {
     // On ne tente que si on est online (selon notre détecteur).
@@ -220,7 +249,7 @@ export function createSync({ store, outbox, getNetStatus }) {
         }
         console.warn(`[sync] ${item.kind} échec :`, err.message);
         blocked.add(key);
-        if (REVIEW_STATUSES.has(err.status)) {
+        if (isPermanentRefusal(err)) {
           await outbox.markReview(item.id, err);
           continue;
         }
@@ -249,6 +278,11 @@ export function createSync({ store, outbox, getNetStatus }) {
       // émettra dp:authExpired via son re-check.
       return;
     }
+
+    // Club courant changé côté serveur (switch sur un autre appareil,
+    // invitation, retrait) : purge des données de l'ancien club et de ses
+    // curseurs, le pull qui suit repart de zéro.
+    if (state?.club_id) await bindLocalDataToClub(store, state.club_id);
 
     const meta = (await store.get('meta', 'sync')) || {};
 

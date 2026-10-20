@@ -1,6 +1,8 @@
-// DP Assistant — Annuaire plongeurs + sites de l'utilisateur.
+// DP Assistant — Annuaire plongeurs + sites du club courant.
 // Chargement initial avec repli sur le pré-cache localStorage (hors-ligne),
-// puis rafraîchissement explicite à l'ouverture d'une plongée.
+// puis rafraîchissement explicite à l'ouverture d'une plongée. Au changement
+// de club (dp:clubChanged), les listes de l'ancien club sont vidées puis
+// rechargées : jamais l'annuaire d'un club affiché dans un autre.
 
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../api/api.js';
@@ -51,6 +53,16 @@ export function useDirectory(user) {
       console.warn('[DP] rafraîchissement annuaire/sites :', err.message);
     }
   }, [setDivers, setSites]);
+
+  useEffect(() => {
+    const onClubChanged = () => {
+      setDivers([]);
+      setSites([]);
+      refreshDiversAndSites();
+    };
+    window.addEventListener('dp:clubChanged', onClubChanged);
+    return () => window.removeEventListener('dp:clubChanged', onClubChanged);
+  }, [setDivers, setSites, refreshDiversAndSites]);
 
   return { divers, setDivers, diversLoaded, sites, setSites, sitesLoaded, refreshDiversAndSites };
 }

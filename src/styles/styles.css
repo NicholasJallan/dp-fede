@@ -10,6 +10,7 @@
  *   palanquees.css  composition des palanquées
  *   execute.css     mode exécution (cartes « cadran »)
  *   fiche.css       fiche de sécurité imprimable (A4, noir et blanc)
+ *   club.css        club (membres, invitations), import, alertes, statistiques
  */
 
 @import "./tokens.css";
@@ -21,3 +22,4 @@
 @import "./palanquees.css";
 @import "./execute.css";
 @import "./fiche.css";
+@import "./club.css";

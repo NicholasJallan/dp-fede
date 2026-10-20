@@ -15,18 +15,26 @@
 //   - hors-ligne sans écran blanc (avec et sans Service Worker) ;
 //   - captures 320 / 768 / 1024 / 1440 px en Soleil et Nuit
 //     → test-results/screens/<écran>-<largeur>-<thème>.png
+//   - socle club : écran Club (invitation + copie du lien), changement de
+//     club, acceptation d'invitation (et e-mail différent), import CSV en
+//     simulation puis confirmation, alertes sur l'accueil, PDF archivés,
+//     statistiques, export du compte, suppression (409 puis succès),
+//     en-tête X-DP-Club sur les écritures de l'outbox ; captures 375 / 1440
+//     des écrans Club et Import, audit axe-core.
 
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { default: AxeBuilder } = require('@axe-core/playwright');
-const { newState, mockBackend } = require('./local-fixtures.js');
+const { newState, mockBackend, CLUB_ID, OTHER_CLUB_ID, INVITATION_TOKEN, MISMATCH_TOKEN } = require('./local-fixtures.js');
 
 const SHOTS = path.join(__dirname, '..', 'test-results', 'screens');
 
 // Erreurs console + exceptions non rattrapées de la page.
 function trackErrors(page) {
   const errors = [];
-  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('console', (m) => {
+    if (m.type() === 'error') errors.push(m.text());
+  });
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   return errors;
 }
@@ -119,7 +127,10 @@ test.describe('build local — parcours en ligne', () => {
     await expect(heading(page)).toContainText('Fiche de sécurité');
     const cadran = page.locator('.cadran').first();
     await cadran.getByRole('button', { name: 'ENTRÉE' }).click();
-    await page.getByRole('dialog', { name: /Première mise à l'eau/ }).getByRole('button', { name: "Confirmer l'entrée" }).click();
+    await page
+      .getByRole('dialog', { name: /Première mise à l'eau/ })
+      .getByRole('button', { name: "Confirmer l'entrée" })
+      .click();
     await expect(cadran.locator('.cadran-state')).toContainText("À l'eau");
     await expect(nextBtn(page)).toBeDisabled();
     await cadran.getByRole('button', { name: 'SORTIE' }).click();
@@ -131,19 +142,24 @@ test.describe('build local — parcours en ligne', () => {
 
     // ── Archivage : Google indisponible en test → archivage sans Drive, confirmé par le serveur
     await nextBtn(page).click();
-    await page.getByRole('dialog', { name: /Figer et archiver/ }).getByRole('button', { name: 'Figer et archiver' }).click();
+    await page
+      .getByRole('dialog', { name: /Figer et archiver/ })
+      .getByRole('button', { name: 'Figer et archiver' })
+      .click();
     await expect(heading(page)).toHaveText('Archiver la plongée');
     await page.getByRole('button', { name: 'Archiver sans Drive' }).click();
     await expect(page.locator('.notice.ok')).toContainText('confirmée par le serveur', { timeout: 15_000 });
-    expect(state.dives.find(d => d.site_nom === 'Carrière du Test' && d.status === 'archived')).toBeTruthy();
+    expect(state.dives.find((d) => d.site_nom === 'Carrière du Test' && d.status === 'archived')).toBeTruthy();
 
-    expect(errors.filter(e => !isNetworkNoise(e))).toEqual([]);
+    expect(errors.filter((e) => !isNetworkNoise(e))).toEqual([]);
   });
 
   test("exécution d'une plongée préparée : URGENCE et fiche", async ({ page }) => {
     const errors = trackErrors(page);
     await openHome(page);
-    await diveRow(page, 'Lac de Test').getByRole('button', { name: /Démarrer/ }).click();
+    await diveRow(page, 'Lac de Test')
+      .getByRole('button', { name: /Démarrer/ })
+      .click();
     await expect(heading(page)).toHaveText("Sur site, avant la mise à l'eau");
 
     // URGENCE intégré à la barre basse en mode exécution.
@@ -164,7 +180,9 @@ test.describe('build local — parcours en ligne', () => {
   test("refus serveur de l'archivage : motif affiché et Réessayer", async ({ page }) => {
     state.rejectArchive = true;
     await openHome(page);
-    await diveRow(page, 'Lac de Test').getByRole('button', { name: /Démarrer/ }).click();
+    await diveRow(page, 'Lac de Test')
+      .getByRole('button', { name: /Démarrer/ })
+      .click();
     await page.getByRole('checkbox', { name: /Décision finale du DP/ }).click();
     await nextBtn(page).click();
     await nextBtn(page).click();
@@ -200,7 +218,13 @@ test.describe('build local — accessibilité (axe-core)', () => {
       await openHome(page);
       const audit = async (label) => {
         const res = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-        const summary = res.violations.map(v => `${label} — ${v.id}: ${v.nodes.map(n => n.target.join(' ')).slice(0, 3).join(' | ')}`);
+        const summary = res.violations.map(
+          (v) =>
+            `${label} — ${v.id}: ${v.nodes
+              .map((n) => n.target.join(' '))
+              .slice(0, 3)
+              .join(' | ')}`,
+        );
         expect(summary).toEqual([]);
       };
       await audit('accueil');
@@ -209,7 +233,10 @@ test.describe('build local — accessibilité (axe-core)', () => {
       await expect(page.locator('.pal.is-blocked')).toBeVisible();
       await audit('palanquées');
       await page.locator('.topbar-home').click();
-      await page.locator('.resume-card').getByRole('button', { name: /Reprendre/ }).click();
+      await page
+        .locator('.resume-card')
+        .getByRole('button', { name: /Reprendre/ })
+        .click();
       await expect(page.locator('.cadran').first()).toBeVisible();
       await audit('fiche');
     });
@@ -227,7 +254,10 @@ test.describe('build local — hors-ligne', () => {
 
     await page.locator('.topbar').getByRole('button', { name: 'Historique' }).click();
     await expect(page.locator('#root')).not.toBeEmpty();
-    await page.locator('.topbar').getByRole('button', { name: /Accueil/ }).click();
+    await page
+      .locator('.topbar')
+      .getByRole('button', { name: /Accueil/ })
+      .click();
     await page.getByRole('button', { name: /Nouvelle plongée/ }).click();
     await expect(heading(page)).toHaveText('Caractériser la plongée à venir');
     await expect(page.locator('.sync-pill .count')).toHaveText(/\d+/);
@@ -266,17 +296,21 @@ test.describe('build local — hors-ligne', () => {
 const WIDTHS = [320, 768, 1024, 1440];
 const THEMES = ['light', 'dark'];
 
-// Pleine page : la barre basse fixe est replacée en fin de page pour ne pas
-// masquer le contenu sur la capture.
+// Pleine page : la barre basse fixe et la barre haute collante sont replacées
+// dans le flux pour ne pas masquer le contenu sur la capture.
 async function shot(page, name) {
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({
-    path: path.join(SHOTS, `${name}.png`), fullPage: true, style: '.footnav { position: static !important; }',
+    path: path.join(SHOTS, `${name}.png`),
+    fullPage: true,
+    style: '.footnav, .topbar { position: static !important; }',
   });
 }
 
 async function noHorizontalOverflow(page) {
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
   expect(overflow).toBeLessThanOrEqual(0);
 }
 
@@ -299,10 +333,303 @@ test.describe('build local — captures', () => {
         await shot(page, `palanquees-${width}-${theme}`);
 
         await page.locator('.topbar-home').click();
-        await page.locator('.resume-card').getByRole('button', { name: /Reprendre/ }).click();
+        await page
+          .locator('.resume-card')
+          .getByRole('button', { name: /Reprendre/ })
+          .click();
         await expect(page.locator('.cadran').nth(1)).toBeVisible();
         await noHorizontalOverflow(page);
         await shot(page, `fiche-${width}-${theme}`);
+      });
+    }
+  }
+});
+
+// ── Socle club ───────────────────────────────────────────────────────────
+
+const IMPORT_CSV = [
+  'Nom;Prénom;N° licence;CACI;Email',
+  'Dupont;Jean;A-123456;2026-02-01;jean@example.org',
+  'Leroy;Inès;A-29-d-n3;2026-03-01;',
+  'Faux;Max;A-1;31/02/2026;',
+  'Petit;Zoé;A-29-d-n1;2026-09-01;',
+].join('\n');
+
+async function openTopbar(page, name) {
+  await page.locator('.topbar-nav').getByRole('button', { name }).click();
+}
+
+async function openImport(page) {
+  await openTopbar(page, 'Annuaire');
+  await page.getByRole('button', { name: 'Importer un fichier' }).click();
+  await expect(heading(page)).toHaveText('Importer des plongeurs');
+}
+
+async function simulateImport(page) {
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'export-vpdive.csv', mimeType: 'text/csv', buffer: Buffer.from(IMPORT_CSV, 'utf-8'),
+  });
+  await expect(page.locator('.dropzone')).toContainText('export-vpdive.csv');
+  await page.getByRole('button', { name: "Simuler l'import" }).click();
+  await expect(page.getByRole('heading', { name: 'Rapport de simulation' })).toBeVisible();
+}
+
+async function axeViolations(page, label) {
+  const res = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+  return res.violations.map((v) => `${label} — ${v.id}: ${v.nodes.map((n) => n.target.join(' ')).slice(0, 3).join(' | ')}`);
+}
+
+test.describe('build local — socle club', () => {
+  test('écran Club : membres, invitation et copie du lien', async ({ page, context }) => {
+    const errors = trackErrors(page);
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await openHome(page);
+    await openTopbar(page, 'Club');
+    await expect(heading(page)).toHaveText('Club Test');
+    await expect(page.locator('.club-role')).toContainText('Responsable');
+    await expect(page.getByRole('combobox', { name: 'Rôle de Paul Martin' })).toHaveValue('dp');
+    await expect(page.locator('.diver-admin-row', { hasText: 'invite.attente@example.org' })).toBeVisible();
+
+    await page.getByLabel('E-mail du compte Google invité').fill('nouveau.dp@example.org');
+    await page.getByLabel('Rôle', { exact: true }).selectOption('encadrant');
+    await page.getByRole('button', { name: 'Créer le lien' }).click();
+    const link = page.getByLabel("Lien d'invitation");
+    await expect(link).toHaveValue(/#invitation=c{64}$/);
+    await page.getByRole('button', { name: 'Copier le lien' }).click();
+    await expect(page.getByRole('button', { name: 'Copié' })).toBeVisible();
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied).toBe(await link.inputValue());
+    expect(state.invitations[0]).toMatchObject({ email: 'nouveau.dp@example.org', role: 'encadrant' });
+
+    // Annulation d'une invitation en attente.
+    await page.getByRole('button', { name: "Annuler l'invitation de invite.attente@example.org" }).click();
+    await page.getByRole('dialog', { name: "Annuler l'invitation ?" }).getByRole('button', { name: "Annuler l'invitation" }).click();
+    await expect(page.locator('.diver-admin-row', { hasText: 'invite.attente@example.org' })).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
+  test('changement de club : données locales de l\'ancien club purgées', async ({ page }) => {
+    await openHome(page);
+    await openTopbar(page, 'Club');
+    const row = page.locator('.club-switch-row', { hasText: 'Bulles du Lac' });
+    await row.getByRole('button', { name: 'Passer sur ce club' }).click();
+    await page.getByRole('dialog', { name: /Passer sur Bulles du Lac/ }).getByRole('button', { name: 'Changer de club' }).click();
+    await expect(page.getByRole('button', { name: /Nouvelle plongée/ })).toBeVisible();
+    await expect(page.locator('.topbar-club')).toHaveText('Bulles du Lac');
+    expect(state.currentClub).toBe(OTHER_CLUB_ID);
+    const localClub = await page.evaluate(() => localStorage.getItem('dp-club-id'));
+    expect(localClub).toBe(OTHER_CLUB_ID);
+  });
+
+  test("acceptation d'une invitation après connexion", async ({ page }) => {
+    await page.goto(`/#invitation=${INVITATION_TOKEN}`);
+    await page.getByRole('dialog', { name: /Bonjour/ }).getByRole('button', { name: 'Commencer' }).click();
+    const dlg = page.getByRole('dialog', { name: 'Rejoindre Bulles du Lac ?' });
+    await expect(dlg).toContainText('dp.test@example.org');
+    await expect(page).toHaveURL(/\/$/); // jeton retiré de la barre d'adresse
+    await dlg.getByRole('button', { name: 'Rejoindre en tant que DP' }).click();
+    await expect(dlg).toBeHidden();
+    await expect(page.locator('.toast')).toContainText('Bulles du Lac');
+    expect(state.accepted).toBe(true);
+  });
+
+  test('invitation destinée à un autre e-mail : acceptation impossible', async ({ page }) => {
+    await page.goto(`/#invitation=${MISMATCH_TOKEN}`);
+    await page.getByRole('dialog', { name: /Bonjour/ }).getByRole('button', { name: 'Commencer' }).click();
+    const dlg = page.getByRole('dialog', { name: 'Rejoindre Bulles du Lac ?' });
+    await expect(dlg.locator('.alert.err')).toContainText('autre.personne@example.org');
+    await expect(dlg.getByRole('button', { name: /Rejoindre en tant que/ })).toHaveCount(0);
+    await expect(dlg.getByRole('button', { name: 'Changer de compte Google' })).toBeVisible();
+    await dlg.getByRole('button', { name: "Ignorer l'invitation" }).click();
+    await expect(dlg).toBeHidden();
+    expect(state.accepted).toBe(false);
+  });
+
+  test("import de l'annuaire : simulation puis confirmation", async ({ page }) => {
+    const errors = trackErrors(page);
+    await openHome(page);
+    await openImport(page);
+    await simulateImport(page);
+    const table = page.locator('.data-table');
+    await expect(table.locator('tbody tr')).toHaveCount(4);
+    await expect(table.locator('tr.is-error')).toContainText('31/02/2026');
+    await expect(table.locator('tr.is-error td').first()).toHaveText('4');
+    await expect(table).toContainText('PN-C ajouté');
+    await page.getByRole('radio', { name: /Erreurs/ }).click();
+    await expect(table.locator('tbody tr')).toHaveCount(1);
+    expect(state.imports).toEqual(['dry_run']);
+
+    await page.getByRole('button', { name: "Confirmer l'import (2 fiches)" }).click();
+    await expect(page.getByRole('heading', { name: 'Import terminé' })).toBeVisible();
+    await expect(page.locator('.alert.ok')).toContainText('1 fiche créée, 1 mise à jour');
+    expect(state.imports).toEqual(['dry_run', 'apply']);
+    await page.getByRole('button', { name: "Voir l'annuaire" }).click();
+    await expect(heading(page)).toHaveText('Annuaire des plongeurs');
+    expect(errors).toEqual([]);
+  });
+
+  test("alertes sur l'accueil puis détail dans l'annuaire", async ({ page }) => {
+    await openHome(page);
+    const banner = page.locator('.alerts-banner');
+    await expect(banner).toContainText("4 alertes sur l'annuaire, 3 plongeurs");
+    await expect(banner).toContainText('2 CACI expirés');
+    await expect(banner).toHaveClass(/err/);
+    await banner.getByRole('button', { name: 'Voir les alertes' }).click();
+    const panel = page.locator('#annuaire-alertes');
+    await expect(panel).toContainText('Hugo BERNARD');
+    await expect(panel).toContainText('Autorisation parentale manquante');
+    await panel.getByRole('button', { name: 'Mettre à jour la fiche de Zoé PETIT' }).click();
+    const dlg = page.getByRole('dialog', { name: /Modifier Zoé PETIT/ });
+    await expect(dlg.getByLabel('Fin de licence')).toBeVisible();
+  });
+
+  test('historique : PDF archivés par le club', async ({ page }) => {
+    await openHome(page);
+    await openTopbar(page, 'Historique');
+    const row = page.locator('.archive-row', { hasText: 'sortie club' });
+    await expect(row).toContainText('PDF archivés');
+    await row.click();
+    await expect(page.locator('.doc-status')).toContainText('PDF archivés par le club');
+    const download = page.waitForEvent('download');
+    await page.locator('.doc-row', { hasText: 'Fiche de sécurité' }).getByRole('button', { name: 'Télécharger' }).click();
+    expect((await download).suggestedFilename()).toBe('2026-10-19-fiche-carriere.pdf');
+    expect(state.downloads).toEqual(['srv-4/fiche']);
+  });
+
+  test('statistiques et export CSV', async ({ page }) => {
+    await openHome(page);
+    await openTopbar(page, 'Club');
+    await page.getByRole('button', { name: 'Statistiques du club' }).click();
+    await expect(heading(page)).toHaveText('Statistiques du club');
+    await expect(page.locator('.kpi', { hasText: 'Plongeurs distincts' })).toContainText('57');
+    await expect(page.locator('.kpi', { hasText: 'Heures-plongeur' })).toContainText('198,5');
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Exporter en CSV' }).click();
+    expect((await download).suggestedFilename()).toBe('statistiques-2026-09-15-2027-09-14.csv');
+  });
+
+  test('mon compte : export des données', async ({ page }) => {
+    await openHome(page);
+    await openTopbar(page, 'Test');
+    await expect(heading(page)).toHaveText('Mon compte');
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Télécharger mes données' }).click();
+    expect((await download).suggestedFilename()).toMatch(/^dp-assistant-export-\d{4}-\d{2}-\d{2}\.json$/);
+    expect(state.calls).toContain('GET /api/account/export');
+  });
+
+  test('suppression du compte : 409 actionnable puis succès et purge locale', async ({ page }) => {
+    state.deleteConflict = true;
+    await openHome(page);
+    await openTopbar(page, 'Test');
+    await page.getByRole('button', { name: 'Supprimer mon compte' }).click();
+    const dlg = page.getByRole('dialog', { name: 'Supprimer votre compte ?' });
+    const confirm = dlg.getByRole('button', { name: 'Supprimer mon compte' });
+    await expect(confirm).toBeDisabled();
+    await dlg.getByLabel(/Pour confirmer, saisissez/).fill('SUPPRIMER');
+    await confirm.click();
+    await expect(dlg.locator('.alert.err')).toContainText('seul responsable du club');
+    await expect(dlg.getByRole('button', { name: "Ouvrir l'écran Club" })).toBeVisible();
+
+    state.deleteConflict = false;
+    await confirm.click();
+    await expect(page.getByRole('heading', { name: 'Connexion' })).toBeVisible();
+    await expect(page.locator('.login-card .notice')).toContainText('3 fiches de sécurité archivées conservées');
+    await expect(page.locator('.login-card .kv-list')).toContainText('14 juil. 2027');
+    const local = await page.evaluate(async () => {
+      const db = await new Promise((res, rej) => {
+        const r = indexedDB.open('dp-offline');
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+      });
+      const count = (name) => new Promise((res) => {
+        const q = db.transaction(name, 'readonly').objectStore(name).count();
+        q.onsuccess = () => res(q.result);
+      });
+      return {
+        lastUser: localStorage.getItem('dp-last-user'),
+        clubId: localStorage.getItem('dp-club-id'),
+        dives: await count('dives'),
+        meta: await count('meta'),
+      };
+    });
+    expect(local).toEqual({ lastUser: null, clubId: null, dives: 0, meta: 0 });
+  });
+
+  test("écritures de l'outbox envoyées avec l'en-tête X-DP-Club", async ({ page }) => {
+    await openHome(page);
+    await page.getByRole('button', { name: /Nouvelle plongée/ }).click();
+    await expect.poll(() => state.calls.includes('POST /api/dives')).toBe(true);
+    expect(state.clubHeaders).toContainEqual({ call: 'POST /api/dives', club: CLUB_ID });
+  });
+
+  test('rôle « lecture » : actions d\'écriture masquées, pas d\'alertes', async ({ page }) => {
+    state.role = 'lecture';
+    await page.goto('/');
+    await page.getByRole('dialog', { name: /Bonjour/ }).getByRole('button', { name: 'Commencer' }).click();
+    await expect(page.locator('.home-console')).toContainText('Rôle Lecture : consultation des plongées');
+    await expect(page.locator('.dive-row').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Nouvelle plongée/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Démarrer/ })).toHaveCount(0);
+    await expect(page.locator('.alerts-banner')).toHaveCount(0);
+    await openTopbar(page, 'Annuaire');
+    await expect(page.getByRole('button', { name: 'Nouveau plongeur' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Importer un fichier' })).toHaveCount(0);
+    await openTopbar(page, 'Club');
+    await expect(page.getByRole('button', { name: 'Créer le lien' })).toHaveCount(0);
+    await expect(page.getByLabel('Nom du club ou de la structure')).toHaveCount(0);
+    await expect(page.locator('.kv-rows')).toContainText('06123456');
+  });
+
+  for (const scheme of ['light', 'dark']) {
+    test(`club, import, statistiques et compte sans violation WCAG A/AA (${scheme})`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
+      await openHome(page);
+      const found = [];
+      await openTopbar(page, 'Club');
+      await expect(page.locator('.diver-admin-row').first()).toBeVisible();
+      await page.getByLabel('E-mail du compte Google invité').fill('a11y@example.org');
+      await page.getByRole('button', { name: 'Créer le lien' }).click();
+      await expect(page.getByLabel("Lien d'invitation")).toBeVisible();
+      found.push(...(await axeViolations(page, 'club')));
+      await page.getByRole('button', { name: 'Statistiques du club' }).click();
+      await expect(page.locator('.kpi').first()).toBeVisible();
+      found.push(...(await axeViolations(page, 'statistiques')));
+      await openImport(page);
+      await simulateImport(page);
+      found.push(...(await axeViolations(page, 'import')));
+      await openTopbar(page, 'Test');
+      await page.getByRole('button', { name: 'Supprimer mon compte' }).click();
+      found.push(...(await axeViolations(page, 'suppression du compte')));
+      expect(found).toEqual([]);
+    });
+  }
+
+  for (const theme of THEMES) {
+    for (const width of [375, 1440]) {
+      test(`captures club et import ${width}px ${theme}`, async ({ page }) => {
+        state.realFonts = true;
+        await page.setViewportSize({ width, height: width < 768 ? 720 : 900 });
+        await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
+        await openHome(page);
+        const nav = async (name) => {
+          if (width >= 1024) return openTopbar(page, name);
+          await page.locator('.topbar-menu > button').click();
+          return page.locator('.menu-pop').getByRole('button', { name }).click();
+        };
+        await nav('Club');
+        await expect(page.locator('.diver-admin-row').first()).toBeVisible();
+        await page.getByLabel('E-mail du compte Google invité').fill('nouveau.dp@example.org');
+        await page.getByRole('button', { name: 'Créer le lien' }).click();
+        await expect(page.getByLabel("Lien d'invitation")).toBeVisible();
+        await noHorizontalOverflow(page);
+        await shot(page, `club-${width}-${theme}`);
+
+        await nav('Annuaire');
+        await page.getByRole('button', { name: 'Importer un fichier' }).click();
+        await simulateImport(page);
+        await noHorizontalOverflow(page);
+        await shot(page, `import-${width}-${theme}`);
       });
     }
   }

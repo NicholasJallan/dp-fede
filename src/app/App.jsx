@@ -4,6 +4,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ToastProvider, useToasts } from '../components/toast.jsx';
 import { AuthProvider, useAuth } from '../auth/auth-context.jsx';
+import { ClubProvider, useClub } from '../club/club-context.jsx';
+import { InvitationDialog } from '../screens/club/invitation-dialog.jsx';
 import { ErrorBoundary } from '../components/error-boundary.jsx';
 import { SyncDrawer } from '../components/components.jsx';
 import { useAutoSave } from '../offline/use-auto-save.jsx';
@@ -36,6 +38,23 @@ import { FootNav } from './components/FootNav.jsx';
 import { UrgenceModal } from './components/UrgenceModal.jsx';
 import { ConfirmLogoutModal, ConfirmStartModal, StepConfirmModal } from './components/ConfirmModals.jsx';
 import { ScreenRouter } from './components/ScreenRouter.jsx';
+
+// Club courant changé (switch, invitation, retrait, autre appareil) : la
+// plongée ouverte appartient à l'ancien club — on la ferme et on revient à
+// l'accueil, qui affiche les plongées du nouveau club.
+function useCloseDiveOnClubChange(session, setScreen, setDiveMode) {
+  const { resetDiveState, setCurrentDiveId } = session;
+  useEffect(() => {
+    const onChanged = () => {
+      resetDiveState();
+      setCurrentDiveId(null);
+      setDiveMode('prepare');
+      setScreen(s => (s === 'club' || s === 'stats' ? s : 'home'));
+    };
+    window.addEventListener('dp:clubChanged', onChanged);
+    return () => window.removeEventListener('dp:clubChanged', onChanged);
+  }, [resetDiveState, setCurrentDiveId, setScreen, setDiveMode]);
+}
 
 // Migration one-time : supprimer l'ancien brouillon localStorage v1 (désormais obsolète)
 function useLegacyDraftCleanup() {
@@ -86,6 +105,7 @@ function useAppController() {
     heuresDebut: session.heuresDebut, heuresFin: session.heuresFin,
   });
   useDiveLifecycle(session);
+  useCloseDiveOnClubChange(session, setScreen, setDiveMode);
 
   const actions = useDiveActions({
     session, flushSave, showToast, setScreen, setDiveMode,
@@ -143,7 +163,9 @@ function AppHeader({ ctl }) {
 
 function AppOverlays({ ctl }) {
   const { session, actions, outboxItems, online } = ctl;
+  const club = useClub();
   return (<>
+    {club.invitationToken && !ctl.showSplash && <InvitationDialog onAccepted={() => ctl.setScreen('home')} />}
     {ctl.confirmLogout && (
       <ConfirmLogoutModal count={outboxItems.length}
         onCancel={() => ctl.setConfirmLogout(false)}
@@ -190,7 +212,8 @@ function AppShell({ ctl }) {
           {useSide && !wide && <SideSummaryCompact {...summaryProps} />}
           <ErrorBoundary resetKey={screen}>
             <ScreenRouter screen={screen} session={session} directory={ctl.directory}
-              derived={ctl.derived} diveMode={ctl.diveMode} actions={ctl.actions} user={ctl.user} />
+              derived={ctl.derived} diveMode={ctl.diveMode} actions={ctl.actions} user={ctl.user}
+              onNavigate={ctl.setScreen} />
           </ErrorBoundary>
         </div>
         {useSide && wide && <SideSummary {...summaryProps} />}
@@ -223,7 +246,9 @@ export function App() {
     <ErrorBoundary>
       <ToastProvider>
         <AuthProvider>
-          <AppInner />
+          <ClubProvider>
+            <AppInner />
+          </ClubProvider>
         </AuthProvider>
       </ToastProvider>
     </ErrorBoundary>

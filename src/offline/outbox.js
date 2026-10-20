@@ -12,6 +12,9 @@
 //     lastError:    message du dernier échec,
 //     nextRetryAt:  timestamp ms du prochain essai (backoff exp),
 //     createdAt:    timestamp ms,
+//     club_id:      club courant au moment de la mise en file (ou null) :
+//                   la sync rejoue l'item avec l'en-tête X-DP-Club, il reste
+//                   dans ce club même après un changement de club,
 //     status:       'pending' | 'inflight' | 'review' (les 'done' sont
 //                   supprimés immédiatement). 'review' = refus métier du
 //                   serveur (400/422) : pas de retry automatique, l'item reste
@@ -25,6 +28,7 @@
 
 import { offlineStore } from './offline-store.js';
 import { randomUUID } from './uuid.js';
+import { getCurrentClubId } from '../api/club-header.js';
 
 const STORE = 'outbox';
 
@@ -33,9 +37,12 @@ const STORE = 'outbox';
 const BACKOFF_S = [10, 30, 60, 120, 300, 600, 1800, 3600, 7200];
 
 // Fabrique : `store` = instance offline-store (get/put/del/all/allKeys/clear),
-// `uuid` = générateur d'identifiants. Les événements dp:outboxChanged sont
-// émis sur le `window` global au moment de l'appel.
-export function createOutbox({ store, uuid = randomUUID }) {
+// `uuid` = générateur d'identifiants, `getClubId` = club courant (capturé à
+// la mise en file). Les événements dp:outboxChanged sont émis sur le
+// `window` global au moment de l'appel.
+export function createOutbox({ store, uuid = randomUUID, getClubId = () => null }) {
+  const currentClub = () => getClubId() || null;
+
   function nextRetryDelayMs(attempts) {
     const idx = Math.min(attempts, BACKOFF_S.length - 1);
     // Petit jitter ±15% pour ne pas synchroniser N clients qui auraient eu
@@ -49,6 +56,7 @@ export function createOutbox({ store, uuid = randomUUID }) {
     const id = uuid();
     const item = {
       id, kind, payload,
+      club_id: currentClub(),
       attempts: 0,
       lastError: null,
       nextRetryAt: Date.now(),
@@ -115,11 +123,13 @@ export function createOutbox({ store, uuid = randomUUID }) {
 
   // Fusionne `payload` dans le dernier item `kind` non parti qui satisfait
   // `match`, sinon en crée un nouveau. Évite d'empiler un PATCH complet par
-  // frappe (auto-save) et garantit que seul le dernier état part.
+  // frappe (auto-save) et garantit que seul le dernier état part. Jamais de
+  // fusion entre clubs : chaque item part vers le club de sa mise en file.
   async function coalesce(kind, payload, match, merge) {
     const all = await store.all(STORE);
+    const club = currentClub();
     const target = all
-      .filter(it => it.kind === kind && it.status !== 'inflight' && match(it))
+      .filter(it => it.kind === kind && it.status !== 'inflight' && (it.club_id || null) === club && match(it))
       .sort((a, b) => b.createdAt - a.createdAt)[0];
     if (!target) return await enqueue(kind, payload);
     const next = {
@@ -194,4 +204,4 @@ export function createOutbox({ store, uuid = randomUUID }) {
   };
 }
 
-export const outbox = createOutbox({ store: offlineStore });
+export const outbox = createOutbox({ store: offlineStore, getClubId: getCurrentClubId });

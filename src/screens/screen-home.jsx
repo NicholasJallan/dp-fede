@@ -1,4 +1,5 @@
-// DP Assistant — Accueil : plongée en cours, préparées, archivées.
+// DP Assistant — Accueil : plongée en cours, alertes de l'annuaire,
+// plongées préparées et archivées du club courant.
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../auth/auth-context.jsx';
@@ -13,6 +14,10 @@ import { DiveRow, DiveListSkeleton, useNow } from './home-parts.jsx';
 import { api } from '../api/api.js';
 import { getCachedToken, getDriveToken, isGisAvailable } from '../api/google-drive.js';
 import { offlineStore } from '../offline/offline-store.js';
+import { useClub } from '../club/club-context.jsx';
+import { useClubAlerts } from '../club/use-club-alerts.js';
+import { roleLabel } from '../club/permissions.js';
+import { AlertsBanner } from './alerts/club-alerts.jsx';
 
 const diveKey = (d) => d.client_uuid || d.id;
 
@@ -30,7 +35,7 @@ function splitDives(dives) {
   };
 }
 
-function HomeConsole({ user, driveAuth, onNew }) {
+function HomeConsole({ user, driveAuth, onNew, canWrite, role }) {
   const now = useNow(30_000);
   const pending = driveAuth === 'pending-explicit';
   return (
@@ -44,10 +49,13 @@ function HomeConsole({ user, driveAuth, onNew }) {
         </div>
       </div>
       <div className="home-console-action">
-        <button type="button" className="btn go lg" onClick={onNew} disabled={pending}>
-          {pending ? <><Icon.Refresh />Autorisation Google Drive…</> : <><Icon.Plus />Nouvelle plongée</>}
-        </button>
-        {driveAuth === 'ok' && <span className="drive-state"><StatusIcon tone="ok" />Google Drive autorisé</span>}
+        {canWrite && (
+          <button type="button" className="btn go lg" onClick={onNew} disabled={pending}>
+            {pending ? <><Icon.Refresh />Autorisation Google Drive…</> : <><Icon.Plus />Nouvelle plongée</>}
+          </button>
+        )}
+        {!canWrite && <span className="drive-state"><StatusIcon tone="info" />Rôle {roleLabel(role)} : consultation des plongées</span>}
+        {canWrite && driveAuth === 'ok' && <span className="drive-state"><StatusIcon tone="ok" />Google Drive autorisé</span>}
       </div>
     </section>
   );
@@ -169,9 +177,12 @@ function useDives() {
   return { dives, loadError, loadDives };
 }
 
-function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone, onCloneH3 }) {
+function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone, onCloneH3, onNavigate }) {
   const online = useOnline();
   const { user } = useAuth();
+  const club = useClub();
+  const alerts = useClubAlerts();
+  const canWrite = club.can('dives.write');
   const { showToast } = useToasts();
   const { dives, loadError, loadDives } = useDives();
   const [driveAuth, handleNew] = useDriveAuth(online, onNew);
@@ -207,12 +218,16 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
 
   const { inProgress, prepared, archived } = useMemo(() => splitDives(dives), [dives]);
   const loading = dives === null;
+  // La 1re plongée en cours est dans la carte « Reprendre » (rôles qui écrivent).
+  const otherLive = canWrite ? inProgress.slice(1) : inProgress;
 
   return (
     <div>
-      <HomeConsole user={user} driveAuth={driveAuth} onNew={handleNew} />
+      <HomeConsole user={user} driveAuth={driveAuth} onNew={handleNew} canWrite={canWrite} role={club.role} />
 
-      {inProgress.length > 0 && <ResumeCard dives={inProgress} onResume={onLoadDive} />}
+      {inProgress.length > 0 && canWrite && <ResumeCard dives={inProgress} onResume={onLoadDive} />}
+
+      <AlertsBanner data={alerts.data} onOpen={() => onNavigate('admin-divers')} />
 
       {drive.pendingDrive.length > 0 && (
         <PendingDriveNotice count={drive.pendingDrive.length} online={online} finalizing={drive.finalizing}
@@ -223,11 +238,11 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
         <Notice tone="info" title="Hors ligne">Liste issue de cet appareil. Elle se mettra à jour au retour du réseau.</Notice>
       )}
 
-      {inProgress.length > 1 && (
-      <DiveSection id="sec-progress" title="Autres plongées en cours" count={inProgress.length - 1} loading={loading} empty={null}>
-        {inProgress.slice(1).map(d => (
+      {otherLive.length > 0 && (
+      <DiveSection id="sec-progress" title={canWrite ? 'Autres plongées en cours' : 'Plongées en cours'} count={otherLive.length} loading={loading} empty={null}>
+        {otherLive.map(d => (
           <DiveRow key={diveKey(d)} dive={d} live
-            actions={<button type="button" className="btn primary" onClick={() => onLoadDive(diveKey(d), 'fiche', 'execute')}>
+            actions={canWrite && <button type="button" className="btn primary" onClick={() => onLoadDive(diveKey(d), 'fiche', 'execute')}>
               <Icon.Play />Reprendre</button>} />
         ))}
       </DiveSection>
@@ -239,7 +254,7 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
           const id = diveKey(d);
           const busy = busyId === id;
           return (
-            <DiveRow key={id} dive={d} actions={<>
+            <DiveRow key={id} dive={d} actions={canWrite && <>
               <button type="button" className="btn primary" onClick={() => onStartExecution(d)}><Icon.Play />Démarrer</button>
               <button type="button" className="btn" onClick={() => onLoadDive(id, 'profil', 'prepare')}><Icon.Edit />Modifier</button>
               <button type="button" className="btn" disabled={busy} title="Copie identique, 3 heures plus tard (météo à refaire)"
@@ -260,9 +275,11 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
               {d.drive_link && (
                 <a className="btn" href={d.drive_link} target="_blank" rel="noopener noreferrer"><Icon.External />Drive</a>
               )}
-              <button type="button" className="btn" disabled={busyId !== null}
-                title="Nouvelle plongée sur ce modèle, dans 3 heures"
-                onClick={run(id, () => onClone(id), 'Duplication impossible')}><Icon.Copy />Réutiliser</button>
+              {canWrite && (
+                <button type="button" className="btn" disabled={busyId !== null}
+                  title="Nouvelle plongée sur ce modèle, dans 3 heures"
+                  onClick={run(id, () => onClone(id), 'Duplication impossible')}><Icon.Copy />Réutiliser</button>
+              )}
             </>} />
           );
         })}

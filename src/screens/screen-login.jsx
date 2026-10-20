@@ -5,9 +5,23 @@ import { useAuth } from '../auth/auth-context.jsx';
 import { useOnline } from '../offline/use-online.jsx';
 import { Notice } from '../components/ui.jsx';
 import { BrandMark } from '../components/icons.jsx';
+import { readPendingInvitation } from '../club/invitation.js';
+import { RetainedFacts } from './club/retained-facts.jsx';
+
+// Message de fin de session (ex. compte supprimé) : texte du serveur et
+// fiches de sécurité conservées (art. A322-72), s'il y en a.
+function SessionNotice({ notice }) {
+  return (
+    <Notice tone="ok" title={notice.title} live>
+      <p>{notice.message}</p>
+      {notice.retained && <RetainedFacts retained={notice.retained} />}
+    </Notice>
+  );
+}
 
 function ScreenLogin() {
-  const { handleGoogleCredential } = useAuth();
+  const { handleGoogleCredential, loginNotice } = useAuth();
+  const invitation = readPendingInvitation();
   const btnRef = useRef(null);
   const online = useOnline();
 
@@ -41,8 +55,14 @@ function ScreenLogin() {
       <div className="login-card">
         <img src="logo-ffessm.png" alt="FFESSM" className="login-logo" width="56" height="56" />
         <div className="login-brand"><BrandMark /><span>DP Assistant</span></div>
+        {loginNotice && <SessionNotice notice={loginNotice} />}
         <h1>Connexion</h1>
         <p className="login-sub">Aide au directeur de plongée : palanquées, check-list et fiche de sécurité selon le Code du sport.</p>
+        {invitation && (
+          <Notice tone="info" title="Invitation à rejoindre un club">
+            Connectez-vous avec le compte Google de l'adresse invitée : l'invitation s'affichera ensuite.
+          </Notice>
+        )}
         <div className="login-btn-wrap" ref={btnRef}></div>
         {!online && (
           <Notice tone="warn" title="Hors ligne">

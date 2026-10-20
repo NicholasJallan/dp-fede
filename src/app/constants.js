@@ -8,7 +8,13 @@ export const STEPS = [
   { id:"archive",    num:"05", label:"Archiver la plongée",       sub:"Google Drive" },
 ];
 
-export const ADMIN_SCREENS = ["admin-divers", "admin-sites", "admin-users", "account", "archives"];
+export const ADMIN_SCREENS = [
+  "admin-divers", "admin-sites", "admin-users", "account", "archives",
+  "club", "stats", "import-divers",
+];
+
+// Écran secondaire → onglet mis en évidence dans la navigation.
+export const PARENT_SCREEN = { "import-divers": "admin-divers", stats: "club" };
 
 export const FICHE_IDX    = STEPS.findIndex(s => s.id === "fiche");
 export const ARCHIVE_IDX  = STEPS.findIndex(s => s.id === "archive");

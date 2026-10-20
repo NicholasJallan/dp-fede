@@ -197,7 +197,7 @@ class Club
         $requested = self::requestedClubId();
         if ($requested !== null) {
             if (!isset($memberships[$requested])) {
-                Json::abort(403, 'Vous n\'êtes pas membre de ce club');
+                Json::abort(403, 'Vous n\'êtes pas membre de ce club', 'CLUB_NOT_MEMBER');
             }
             return [$requested, $memberships[$requested]];
         }
@@ -230,7 +230,7 @@ class Club
     public static function requirePermission(array $user, string $action): void
     {
         if (!self::can($user['club_role'] ?? null, $action)) {
-            Json::abort(403, 'Action non autorisée pour votre rôle dans le club');
+            Json::abort(403, 'Action non autorisée pour votre rôle dans le club', 'CLUB_ROLE_FORBIDDEN');
         }
     }
 

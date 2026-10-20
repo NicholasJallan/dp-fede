@@ -31,17 +31,30 @@ src/                         modules ES, organisés par fonctionnalité
                 use-outbox-items, use-auth-expired), components/ (Topbar,
                 DiveStepper, AdminNav, SideSummary, FootNav, UrgenceModal,
                 ExecuteOverlays, ConfirmModals, ScreenRouter)
-  screens/      screen-*.jsx (un écran par fichier)
+  screens/      screen-*.jsx (un écran par fichier) ; sous-dossiers par écran :
+                club/ (screen-club : infos, membres, invitations, mes clubs,
+                quitter/supprimer ; invitation-dialog), import/ (screen-import :
+                CSV dry_run → rapport → confirmation), stats/ (screen-stats),
+                alerts/ (bandeau accueil + liste annuaire), archives/
+                (dive-documents : PDF archivés), account/ (RGPD export/suppression)
   components/   ui.jsx, cds-link.jsx, format.js, sync-drawer.jsx, toast.jsx,
-                error-boundary.jsx, diver-form.jsx, components.jsx (ré-exports)
-  auth/         auth-context.jsx, super-admin.js
+                error-boundary.jsx, diver-form.jsx (+ diver-payload.js, logique
+                pure), typed-confirm-dialog.jsx (saisie SUPPRIMER), copy-button.jsx,
+                components.jsx (ré-exports)
+  auth/         auth-context.jsx (exporte purgeLocalData ; refreshUser, endSession), super-admin.js
+  club/         socle club côté front : club-context.jsx (useClub : club courant,
+                rôle, can(perm), switchClub, acceptInvitation), permissions.js
+                (miroir de Club::PERMISSIONS), alerts.js, import-report.js,
+                deletion.js, season.js, invitation.js (#invitation=…),
+                use-club-alerts.js
   domain/       règles métier pures (index.js ré-exporte tout) : cds-tables,
                 pal-rules, pal-helpers, depth-clamp, aptitudes, questions, checklist,
                 conditions, milieu, levels, cds-articles, reglementation,
                 fiche, emergency, types
   offline/      net.js, uuid.js, offline-store.js, outbox.js, sync.js,
-                offline-api.js, use-online.jsx, use-auto-save.jsx
-  api/          api.js, google-drive.js, drive-upload.js, storage-keys.js
+                offline-api.js, club-scope.js, use-online.jsx, use-auto-save.jsx
+  api/          api.js, google-drive.js, drive-upload.js, storage-keys.js,
+                club-header.js (club courant + en-tête X-DP-Club), download.js
   package.json  { "type": "module" } (import direct par node --test)
 
 /var/www/html/dp-fede/       ← dist/ rsynced ici
@@ -63,10 +76,14 @@ chargement, `window.GOOGLE_CLIENT_ID`, callback `__gmapsReady`,
 enregistrement du SW), Google Identity Services et Google Maps.
 Ordre d'amorçage (`src/app/bootstrap.js`, appelé par `main.jsx` avant le
 rendu) : `startNetMonitor()` → `decorateApiForOffline(api)` (décore EN PLACE
-le singleton `api`) → `sync.start()` au tick suivant.
+le singleton `api`) → `sync.start()` au tick suivant → capture du lien
+d'invitation `#invitation=…` (sessionStorage, fragment retiré de l'URL).
 
 - Auth : Google OAuth 2.0 (Google Identity Services) — pas de mot de passe
-- Annuaire plongeurs et sites : per-user, stockés en MariaDB
+- Annuaire plongeurs, sites et plongées : **par club** (club courant), stockés en MariaDB.
+  Rôles responsable / dp / encadrant / lecture (contrat : `docs/api-club.md`) ;
+  le front masque les actions non autorisées via `useClub().can(perm)`, le serveur tranche (403).
+  Écrans : Club (barre haute + onglets admin), Statistiques, Import (depuis l'annuaire).
 - Session : cookie HttpOnly SameSite=Lax + CSRF double-submit cookie
 - Premier utilisateur connecté = admin automatiquement
 
@@ -200,8 +217,9 @@ pas la modifier à la main. `PRECACHE_URLS` liste l'app shell : `/`,
 Lancer : `npm test` (utilise `node --test`, Node 20+ requis, zéro dépendance NPM).
 Les tests sont des modules ES (`tests/package.json` → `"type": "module"`) qui
 importent directement `src/domain/*` et les fabriques de `src/offline/*`.
-Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **261 tests**
-(métier FFESSM/Code du Sport + offline : outbox, offline-store, sync, dive-lifecycle, home-buckets + contextualisation check-list par milieu).
+Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **324 tests**
+(métier FFESSM/Code du Sport + offline : outbox, offline-store, sync, dive-lifecycle, home-buckets + contextualisation check-list par milieu
++ socle club : `sync-club.test.js` (X-DP-Club, périmètre club du store), `club-logic.test.js` (droits, alertes, rapport d'import, suppressions)).
 
 ## Données métier
 
@@ -260,4 +278,5 @@ Modules purs dans `src/domain/` (ré-exportés par `src/domain/index.js`) :
 - **Cycle de vie** : plongée créée à `status='prepared'` dès le clic "+ Nouvelle plongée". Transition → `in_progress` au 1er `heuresDebut` posé (`src/app/hooks/use-dive-lifecycle.js`). Transition → `archived` à l'archivage Drive. PATCH refusé en rétrograde (`archived` → autre statut).
 - **Auto-save** (`src/offline/use-auto-save.jsx`) : debounce 500 ms vers `api.dives.update(currentDiveId, { answers, palanquees, render_state })`. Flush immédiat au retour accueil (`flushSave`) et lors de `loadDive` (bascule entre plongées).
 - **`diveMode`** dans `src/app/App.jsx` (`useAppController`) : `'prepare'` (étapes 1-3) ou `'execute'` (étapes 3-5). Check-list filtre les phases selon `mode`.
-- **Outbox kinds** : `dive.create`, `dive.update`, `dive.delete` ; `diver.create`, `diver.update`, `diver.delete` ; `site.create`, `site.update`, `site.delete`. Handlers dans `src/offline/sync.js` (`DEFAULT_HANDLERS`). Le dépôt Google Drive n'est pas un kind d'outbox (jeton Google interactif) : il passe par `finalizePendingDrive` (`src/screens/screen-archive.jsx`), relancé depuis l'accueil.
+- **Outbox kinds** : `dive.create`, `dive.update`, `dive.delete` ; `diver.create`, `diver.update`, `diver.delete` ; `site.create`, `site.update`, `site.delete`. Handlers dans `src/offline/sync.js` (`DEFAULT_HANDLERS`). Chaque item porte `club_id` (club courant à la mise en file, `getCurrentClubId()`) et est rejoué avec l'en-tête **`X-DP-Club`** : il reste dans son club même après un changement de club. Pas de coalesce entre clubs ; la réponse d'un item d'un autre club n'est pas réécrite dans le store local. 403 hors CSRF/origine (rôle insuffisant, club quitté) → item « à revoir », comme 400/404/422.
+- **Changement de club** : `bindLocalDataToClub` (`src/offline/club-scope.js`, `meta.club`) purge annuaire, sites, plongées et curseurs `?since=` de l'ancien club (outbox conservée) puis émet `dp:clubChanged` (annuaire rechargé, plongée ouverte fermée, retour accueil). Déclenché par `/api/auth/me` (`club_id`), `useClub().switchClub` / `acceptInvitation`, et `GET /api/sync/state` (`club_id`) si le club a changé ailleurs. Le dépôt Google Drive n'est pas un kind d'outbox (jeton Google interactif) : il passe par `finalizePendingDrive` (`src/screens/screen-archive.jsx`), relancé depuis l'accueil.

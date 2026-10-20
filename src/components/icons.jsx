@@ -65,6 +65,10 @@ export const Icon = {
   History:      (p) => <Svg {...p}><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2" /></Svg>,
   Users:        (p) => <Svg {...p}><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6" /></Svg>,
   Pin:          (p) => <Svg {...p}><path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12Z" /><circle cx="12" cy="9" r="2.5" /></Svg>,
+  Upload:       (p) => <Svg {...p}><path d="M12 16V5M7 10l5-5 5 5M5 20h14" /></Svg>,
+  Flag:         (p) => <Svg {...p}><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></Svg>,
+  Chart:        (p) => <Svg {...p}><path d="M4 20V4M4 20h16M8 16v-5M12 16V8M16 16v-3" /></Svg>,
+  Link:         (p) => <Svg {...p}><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></Svg>,
 };
 
 /** Marque « DP Assistant » : cadran de profondimètre stylisé. */

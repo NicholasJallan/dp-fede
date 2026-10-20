@@ -6,6 +6,7 @@ import { ConfirmDialog, Dialog } from '../components/dialog.jsx';
 import { Icon, StatusIcon } from '../components/icons.jsx';
 import { DiveListSkeleton } from './home-parts.jsx';
 import { api } from '../api/api.js';
+import { useClub } from '../club/club-context.jsx';
 
 const MILIEUX_LIST = ['En mer','Lac','Carrière','Piscine','Autre'];
 const emptySite = () => ({
@@ -274,6 +275,7 @@ function SiteFormModal({ initial, title, onSave, onClose }) {
 
 // ── ScreenAdminSites ───────────────────────────────────────────────────────
 function ScreenAdminSites({ sites, setSites, sitesLoaded }) {
+  const club = useClub();
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('');
   const [editing, setEditing] = useState(null);
@@ -315,6 +317,7 @@ function ScreenAdminSites({ sites, setSites, sitesLoaded }) {
     setConfirmDelete(null);
   };
 
+  const canWrite = club.can('sites.write');
   const filtered = sites.filter(s => {
     const f = filter.toLowerCase();
     return !f || s.nom.toLowerCase().includes(f) || (s.milieu || '').toLowerCase().includes(f);
@@ -330,7 +333,7 @@ function ScreenAdminSites({ sites, setSites, sitesLoaded }) {
       <div className="toolbar">
         <label className="sr-only" htmlFor="sites-search">Rechercher un site</label>
         <input id="sites-search" className="input" type="search" placeholder="Nom ou milieu" value={filter} onChange={e => setFilter(e.target.value)} />
-        <button type="button" className="btn primary" onClick={openNew}><Icon.Plus />Nouveau site</button>
+        {canWrite && <button type="button" className="btn primary" onClick={openNew}><Icon.Plus />Nouveau site</button>}
       </div>
       <div className="diver-admin-list">
         {loading && <DiveListSkeleton rows={3} />}
@@ -355,10 +358,12 @@ function ScreenAdminSites({ sites, setSites, sitesLoaded }) {
               </div>
               {s.notes && <span className="muted small">{s.notes}</span>}
             </div>
-            <div className="diver-admin-actions">
-              <button type="button" className="btn" onClick={() => openEdit(s)}><Icon.Edit />Modifier</button>
-              <button type="button" className="btn danger icon" aria-label={`Supprimer ${s.nom}`} onClick={() => setConfirmDelete(s)}><Icon.Trash /></button>
-            </div>
+            {canWrite && (
+              <div className="diver-admin-actions">
+                <button type="button" className="btn" onClick={() => openEdit(s)}><Icon.Edit />Modifier</button>
+                <button type="button" className="btn danger icon" aria-label={`Supprimer ${s.nom}`} onClick={() => setConfirmDelete(s)}><Icon.Trash /></button>
+              </div>
+            )}
           </div>
         ))}
         {!loading && filtered.length === 0 && (

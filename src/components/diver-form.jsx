@@ -7,6 +7,8 @@ import { Alert } from './ui.jsx';
 import { Dialog } from './dialog.jsx';
 import { APTITUDE_MAP } from '../domain/index.js';
 import { api } from '../api/api.js';
+import { isMinor, isSeason, seasonChoices, seasonLabel } from '../club/season.js';
+import { emptyDiver, formToPayload, sourceLabel } from './diver-payload.js';
 
 export const NIVEAUX_PLONGEUR = ['N1', 'N2', 'N3'];
 export const NIVEAUX_ENCADRANT = ['N4', 'N5', 'E1', 'E2', 'E3', 'E4'];
@@ -14,34 +16,7 @@ const DIPLOMES_PRO = ['BEES1', 'DEJEPS', 'DESJEPS', 'Autre'];
 const RECYCLEURS = ['Revo', 'AP', 'Triton', 'JJccr', 'Xccr', 'Megalodon', 'Shark', 'Submatix', 'Autre'];
 const TRIMIX_QUALS = ['PTH-40', 'PTH-70', 'PTH-120'];
 
-export const emptyDiver = () => ({
-  nom: '', prenom: '', licence: '', date_naissance: '',
-  niveau_plongeur: '', niveau_encadrant: '',
-  nitrox: [], trimix: [], recycleurs: [],
-  diplome_pro: '', rifap: false, tiv: false,
-  aptitudes_sup: [], medical: '', notes: '',
-});
-
-export function diverToForm(d) {
-  return {
-    ...emptyDiver(),
-    nom: d.nom || '', prenom: d.prenom || '', licence: d.licence || '',
-    niveau_plongeur: d.niveau_plongeur || '', niveau_encadrant: d.niveau_encadrant || '',
-    nitrox: d.nitrox || [], trimix: d.trimix || [], recycleurs: d.recycleurs || [],
-    diplome_pro: d.diplome_pro || '', rifap: !!d.rifap, tiv: !!d.tiv,
-    aptitudes_sup: d.aptitudes_sup || [], medical: d.medical || '', notes: d.notes || '',
-    date_naissance: d.date_naissance || '',
-  };
-}
-
-export function formToPayload(form) {
-  return {
-    ...form,
-    diplome_pro: form.diplome_pro || null,
-    niveau_plongeur: form.niveau_plongeur || null,
-    niveau_encadrant: form.niveau_encadrant || null,
-  };
-}
+export { CLUB_FIELDS, emptyDiver, diverToForm, formToPayload, sourceLabel } from './diver-payload.js';
 
 // Niveau plongeur implicite d'un encadrant : N3, sauf l'initiateur (E1) qui
 // peut être N2 (son niveau plongeur reste alors modifiable).
@@ -176,9 +151,14 @@ export function DiverFormFields({ f }) {
       <Input label="Prénom"><input className="input" autoComplete="off" value={form.prenom} onChange={e => setField('prenom', e.target.value)} /></Input>
       <Input label="Nom" required><input className="input" autoComplete="off" value={form.nom} onChange={e => setField('nom', e.target.value)} /></Input>
     </div>
-    <Input label="Numéro de licence">
-      <input className="input mono" value={form.licence} placeholder="A-29-001234" onChange={e => setField('licence', e.target.value)} />
-    </Input>
+    <div className="grid-2">
+      <Input label="Numéro de licence">
+        <input className="input mono" value={form.licence} placeholder="A-29-001234" onChange={e => setField('licence', e.target.value)} />
+      </Input>
+      <Input label="Fin de licence" hint="Date de fin de validité (alerte à l'échéance).">
+        <input className="input mono" type="date" value={form.licence_fin || ''} onChange={e => setField('licence_fin', e.target.value)} />
+      </Input>
+    </div>
     <div className="grid-2">
       <Input label="Niveau plongeur" hint={form.niveau_encadrant ? 'N3 pour un encadrant (N2 possible pour un E1).' : undefined}>
         <select className="input" value={form.niveau_plongeur} disabled={!!form.niveau_encadrant && form.niveau_encadrant !== 'E1'}
@@ -235,16 +215,63 @@ export function DiverFormFields({ f }) {
           onChange={e => setField('date_naissance', e.target.value)} />
       </Input>
     </div>
-    <Input label="Notes">
+    <MinorFields form={form} setField={setField} />
+    <Input label="Notes" hint="Pas d'information médicale : seule la date du certificat est conservée.">
       <textarea className="textarea" rows={2} value={form.notes} onChange={e => setField('notes', e.target.value)} />
     </Input>
+    <ProvenanceFields form={form} />
   </>);
 }
 
 export function validateDiverForm(form) {
   if (!form.nom.trim()) return 'Le nom est obligatoire.';
   if (!form.medical) return 'La date du certificat médical est obligatoire.';
+  if (form.autorisation_parentale_saison && !isSeason(form.autorisation_parentale_saison)) {
+    return 'Saison de l\'autorisation parentale invalide (format 2026-2027).';
+  }
+  if ((form.representant_legal || '').length > 200) return 'Représentant légal : 200 caractères maximum.';
   return '';
+}
+
+
+function ProvenanceFields({ form }) {
+  if (!form.source || form.source === 'manuel') return null;
+  return (
+    <div className="grid-2">
+      <Input label="Source" hint="Renseignée par l'import ; un nouvel import met cette fiche à jour.">
+        <input className="input" value={sourceLabel(form.source)} readOnly />
+      </Input>
+      <Input label="Identifiant externe">
+        <input className="input mono" value={form.external_id || '—'} readOnly />
+      </Input>
+    </div>
+  );
+}
+
+// Mineur, ou champs déjà renseignés : représentant légal et autorisation
+// parentale de la saison (alerte club si absente pour la saison en cours).
+function MinorFields({ form, setField }) {
+  const minor = isMinor(form.date_naissance);
+  if (!minor && !form.representant_legal && !form.autorisation_parentale_saison) return null;
+  const current = seasonLabel();
+  return (<>
+    {minor && form.autorisation_parentale_saison !== current && (
+      <Alert tone="warn">Plongeur mineur : autorisation parentale de la saison {current} à enregistrer.</Alert>
+    )}
+    <div className="grid-2">
+      <Input label="Représentant légal" hint="Nom et téléphone du responsable légal.">
+        <input className="input" maxLength={200} value={form.representant_legal || ''}
+          onChange={e => setField('representant_legal', e.target.value)} />
+      </Input>
+      <Input label="Autorisation parentale (saison)" hint="Saison FFESSM du 15/09 au 14/09.">
+        <select className="input mono" value={form.autorisation_parentale_saison || ''}
+          onChange={e => setField('autorisation_parentale_saison', e.target.value)}>
+          <option value="">Aucune</option>
+          {seasonChoices(new Date(), form.autorisation_parentale_saison).map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+      </Input>
+    </div>
+  </>);
 }
 
 // ── Création rapide (profil, palanquées) ────────────────────────────────

@@ -11,12 +11,18 @@
 //
 // Au succès du login Google, on précache divers + sites pour bootstrap rapide
 // au prochain boot offline.
+//
+// Club courant (docs/api-club.md) : /api/auth/me renvoie club_id ; les
+// données locales sont rattachées à ce club (bindLocalDataToClub) et celles
+// d'un autre club purgées avant tout affichage.
 
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { api } from '../api/api.js';
 import { STORAGE_KEYS, TTL } from '../api/storage-keys.js';
 import { offlineStore } from '../offline/offline-store.js';
 import { outbox } from '../offline/outbox.js';
+import { bindLocalDataToClub } from '../offline/club-scope.js';
+import { setCurrentClubId } from '../api/club-header.js';
 
 const AuthContext = createContext(null);
 
@@ -76,6 +82,7 @@ async function bindLocalDataToUser(u) {
     const owner = await offlineStore.get('meta', 'owner');
     if (owner && owner !== u.id) await purgeLocalData();
     await offlineStore.put('meta', 'owner', u.id);
+    if (u.club_id) await bindLocalDataToClub(offlineStore, u.club_id);
     // Session (re)confirmée : les actions en attente repartent immédiatement.
     if (outbox?.retryNow) await outbox.retryNow();
   } catch (err) {
@@ -83,7 +90,8 @@ async function bindLocalDataToUser(u) {
   }
 }
 
-// Purge complète des données locales de l'appareil.
+// Purge complète des données locales de l'appareil (déconnexion, changement
+// d'utilisateur, suppression du compte) : IndexedDB, pré-caches, club courant.
 async function purgeLocalData() {
   try {
     if (offlineStore?.clearAll) await offlineStore.clearAll();
@@ -91,8 +99,9 @@ async function purgeLocalData() {
     console.error('[auth] purge IndexedDB :', err?.message || err);
   }
   try {
-    [SKEYS.CACHE_DIVERS, SKEYS.CACHE_SITES].forEach(k => localStorage.removeItem(k));
+    [SKEYS.CACHE_DIVERS, SKEYS.CACHE_SITES, SKEYS.CLUB_SNAPSHOT].forEach(k => localStorage.removeItem(k));
   } catch { /* stockage indisponible : rien à purger */ }
+  setCurrentClubId(null);
   try {
     if (window.caches) {
       const names = await caches.keys();
@@ -107,6 +116,8 @@ function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   // 'online' = session confirmée par le serveur ; 'offline' = fallback snapshot
   const [authMode, setAuthMode] = useState('online');
+  // Message affiché sur l'écran de connexion (ex. compte supprimé).
+  const [loginNotice, setLoginNotice] = useState(null);
 
   // Au démarrage : tente /api/auth/me, fallback snapshot si KO.
   useEffect(() => {
@@ -184,12 +195,38 @@ function AuthProvider({ children }) {
     window.location.reload();
   }, []);
 
+  // Relit /api/auth/me (club courant changé : nom du club, rôle…).
+  const refreshUser = useCallback(async () => {
+    try {
+      const u = await api.auth.me();
+      if (u) {
+        writeLastUser(u);
+        setUser(u);
+      }
+      return u;
+    } catch (err) {
+      console.warn('[auth] relecture du compte :', err?.message || err);
+      return null;
+    }
+  }, []);
+
+  // Fin de session sans appel serveur (compte supprimé : la session l'est
+  // aussi) : purge locale puis écran de connexion, avec un message éventuel.
+  const endSession = useCallback(async ({ notice = null } = {}) => {
+    clearLastUser();
+    await purgeLocalData();
+    setLoginNotice(notice);
+    setAuthMode('online');
+    setUser(null);
+  }, []);
+
   // Callback Google Identity Services
   const handleGoogleCredential = useCallback(async (response) => {
     try {
       const u = await api.auth.google(response.credential);
       writeLastUser(u);
       await bindLocalDataToUser(u);
+      setLoginNotice(null);
       setUser(u);
       setAuthMode('online');
       prefetchUserData();
@@ -199,7 +236,10 @@ function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout, handleGoogleCredential, setUser, authMode }}>
+    <AuthContext.Provider value={{
+      user, loading, logout, handleGoogleCredential, setUser, authMode,
+      refreshUser, endSession, loginNotice,
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -209,4 +249,4 @@ function useAuth() {
   return useContext(AuthContext);
 }
 
-export { AuthProvider, useAuth, AuthContext };
+export { AuthProvider, useAuth, AuthContext, purgeLocalData };

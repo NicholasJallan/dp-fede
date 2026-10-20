@@ -3,6 +3,7 @@
 
 import React, { useState, useRef, useEffect, useId } from 'react';
 import { BrandMark, Icon, StatusIcon } from '../../components/icons.jsx';
+import { PARENT_SCREEN } from '../constants.js';
 
 // État de synchronisation résumé pour la pastille et son libellé accessible.
 export function syncSummary(online, items) {
@@ -45,6 +46,7 @@ function navItems(user) {
   return [
     { id: 'archives',     label: 'Historique', icon: Icon.History },
     { id: 'admin-divers', label: 'Annuaire',   icon: Icon.Users },
+    { id: 'club',         label: 'Club',       icon: Icon.Flag, title: 'Club, membres et invitations' },
     { id: 'account',      label: name,         icon: Icon.User, title: 'Mon compte' },
   ];
 }
@@ -95,8 +97,9 @@ function MenuPopover({ user, items, screen, onNavigate, onLogout }) {
   );
 }
 
-export function Topbar({ user, online, outboxItems, screen, showHomeLink, theme, onToggleTheme, onHome, onOpenDrawer, onNavigate, onLogout }) {
+export function Topbar({ user, online, outboxItems, screen: rawScreen, showHomeLink, theme, onToggleTheme, onHome, onOpenDrawer, onNavigate, onLogout }) {
   const items = navItems(user);
+  const screen = PARENT_SCREEN[rawScreen] || rawScreen;
   return (
     <header className="topbar">
       <button type="button" className="topbar-brand" onClick={onHome} aria-label="DP Assistant" title="Retour à l'accueil">

@@ -45,7 +45,7 @@ class Csrf {
     // Validate the X-CSRF-Token header against cookie (double-submit pattern)
     public static function verify(): void {
         if (!self::isValid()) {
-            Json::abort(403, 'Jeton CSRF invalide');
+            Json::abort(403, 'Jeton CSRF invalide', 'CSRF_INVALID');
         }
     }
 
@@ -65,7 +65,7 @@ class Csrf {
         $origin  = isset($_SERVER['HTTP_ORIGIN'])  ? (string)$_SERVER['HTTP_ORIGIN']  : null;
         $referer = isset($_SERVER['HTTP_REFERER']) ? (string)$_SERVER['HTTP_REFERER'] : null;
         if (!self::isTrustedOrigin($origin, $referer, $domain)) {
-            Json::abort(403, 'Origine de la requête non autorisée');
+            Json::abort(403, 'Origine de la requête non autorisée', 'ORIGIN_FORBIDDEN');
         }
     }
 

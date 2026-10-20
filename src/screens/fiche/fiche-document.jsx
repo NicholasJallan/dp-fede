@@ -12,7 +12,7 @@ const AIR_OUT = "panne d'air";
 const yesNo = (v, yes = 'Oui', no = 'Non') => (v ? yes : no);
 
 function structureLine(user) {
-  if (!user?.club_nom) return 'Structure non renseignée (à compléter dans Mon compte)';
+  if (!user?.club_nom) return 'Structure non renseignée (à compléter dans l\'écran Club)';
   const type = user.structure_type ? `, ${STRUCTURE_LABELS[user.structure_type] || user.structure_type}` : '';
   return `${user.club_nom}${type}${user.club_numero ? ` (${user.club_numero})` : ''}`;
 }

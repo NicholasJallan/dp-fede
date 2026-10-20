@@ -12,6 +12,9 @@ import { ScreenAccount } from '../../screens/screen-account.jsx';
 import { ScreenAdminDivers } from '../../screens/screen-admin-divers.jsx';
 import { ScreenAdminSites } from '../../screens/screen-admin-sites.jsx';
 import { ScreenAdminUsers } from '../../screens/screen-admin-users.jsx';
+import { ScreenClub } from '../../screens/club/screen-club.jsx';
+import { ScreenStats } from '../../screens/stats/screen-stats.jsx';
+import { ScreenImport } from '../../screens/import/screen-import.jsx';
 import { isSuperAdmin } from '../../auth/super-admin.js';
 import { ADMIN_SCREENS } from '../constants.js';
 
@@ -68,23 +71,27 @@ function DiveStepScreen({ screen, session, directory, derived, diveMode, actions
   }
 }
 
-function AdminScreen({ screen, directory, user }) {
-  const { divers, setDivers, diversLoaded, sites, setSites, sitesLoaded } = directory;
+function AdminScreen({ screen, directory, user, onNavigate }) {
+  const { divers, setDivers, diversLoaded, sites, setSites, sitesLoaded, refreshDiversAndSites } = directory;
   switch (screen) {
-    case "archives":     return <ScreenArchives />;
-    case "admin-divers": return <ScreenAdminDivers divers={divers} setDivers={setDivers} diversLoaded={diversLoaded} />;
-    case "admin-sites":  return <ScreenAdminSites sites={sites} setSites={setSites} sitesLoaded={sitesLoaded} />;
-    case "admin-users":  return isSuperAdmin(user) ? <ScreenAdminUsers /> : null;
-    case "account":      return <ScreenAccount />;
-    default:             return null;
+    case "archives":      return <ScreenArchives />;
+    case "admin-divers":  return <ScreenAdminDivers divers={divers} setDivers={setDivers} diversLoaded={diversLoaded} onNavigate={onNavigate} />;
+    case "import-divers": return <ScreenImport onNavigate={onNavigate} onImported={refreshDiversAndSites} />;
+    case "admin-sites":   return <ScreenAdminSites sites={sites} setSites={setSites} sitesLoaded={sitesLoaded} />;
+    case "admin-users":   return isSuperAdmin(user) ? <ScreenAdminUsers /> : null;
+    case "club":          return <ScreenClub onNavigate={onNavigate} />;
+    case "stats":         return <ScreenStats onNavigate={onNavigate} />;
+    case "account":       return <ScreenAccount onNavigate={onNavigate} />;
+    default:              return null;
   }
 }
 
 export function ScreenRouter(props) {
-  const { screen, actions } = props;
+  const { screen, actions, onNavigate } = props;
   if (screen === "home") {
     return (
       <ScreenHome
+        onNavigate={onNavigate}
         onNew={actions.startPreparation}
         onLoadDive={actions.loadDive}
         onStartExecution={actions.startExecution}

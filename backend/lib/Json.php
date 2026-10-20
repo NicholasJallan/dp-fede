@@ -10,10 +10,16 @@ class Json {
         exit;
     }
 
-    public static function abort(int $code, string $message): void {
+    /**
+     * Termine la requête en erreur. $errorCode (facultatif) est un code stable
+     * que le client peut tester sans dépendre du libellé (ex. 'CSRF_INVALID').
+     */
+    public static function abort(int $code, string $message, ?string $errorCode = null): void {
         http_response_code($code);
         header('Cache-Control: no-store');
-        echo json_encode(['ok' => false, 'error' => $message], JSON_UNESCAPED_UNICODE);
+        $payload = ['ok' => false, 'error' => $message];
+        if ($errorCode !== null) $payload['code'] = $errorCode;
+        echo json_encode($payload, JSON_UNESCAPED_UNICODE);
         exit;
     }
 

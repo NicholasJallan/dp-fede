@@ -16,6 +16,12 @@ export const STORAGE_KEYS = Object.freeze({
   METEO_SEEN:  'dp-meteo-warned',
   // Préférence UI : visite guidée déjà vue
   TOUR_SEEN:   'dp-tour-seen',
+  // Club courant (src/api/club-header.js) — en-tête X-DP-Club des items d'outbox
+  CLUB_ID:     'dp-club-id',
+  // Dernier GET /api/club (src/club/club-context.jsx) — rôle et droits hors ligne
+  CLUB_SNAPSHOT: 'dp-club',
+  // Jeton d'invitation lu dans #invitation=… (sessionStorage, src/club/invitation.js)
+  INVITATION:  'dp-invitation',
 });
 
 // Cookies (non localStorage mais regroupés ici pour cohérence)

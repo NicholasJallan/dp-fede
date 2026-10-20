@@ -1,13 +1,34 @@
-/* DP Assistant — Composition des palanquées : annuaire, cartes, règles. */
+/* DP Assistant — Composition des palanquées : annuaire, cartes, règles.
+ *
+ * Mise en page par requêtes de CONTENEUR (largeur réellement disponible, et
+ * non celle de l'écran) : annuaire à côté des palanquées dès 600 px de
+ * contenu — tablette 10" en portrait, ou portable avec la synthèse à droite
+ * — au lieu d'une longue colonne unique. Les cartes de palanquée se
+ * compactent selon leur propre largeur. Repli sans container queries :
+ * anciens paliers par largeur d'écran (@supports not). */
 
+.pal-layout { container: pal-layout / inline-size; }
 .divers-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--sp-4);
   align-items: start;
 }
-@media (min-width: 900px) {
-  .divers-grid { grid-template-columns: 300px minmax(0, 1fr); }
+@container pal-layout (min-width: 600px) {
+  .divers-grid { grid-template-columns: 224px minmax(0, 1fr); gap: var(--sp-3); }
+  .diver-pool { padding: var(--sp-2); position: sticky; top: calc(var(--topbar-h) + var(--sp-4)); max-height: calc(100vh - var(--topbar-h) - var(--footnav-h) - var(--sp-6)); overflow-y: auto; }
+  .pal-list { gap: var(--sp-3); }
+}
+@container pal-layout (min-width: 920px) {
+  .divers-grid { grid-template-columns: 290px minmax(0, 1fr); gap: var(--sp-4); }
+  .diver-pool { padding: var(--sp-3); }
+  .pal-list { gap: var(--sp-4); }
+}
+@supports not (container-type: inline-size) {
+  @media (min-width: 900px) {
+    .divers-grid { grid-template-columns: 300px minmax(0, 1fr); }
+    .diver-pool { position: sticky; top: calc(var(--topbar-h) + var(--sp-4)); max-height: calc(100vh - var(--topbar-h) - var(--footnav-h) - var(--sp-6)); overflow-y: auto; }
+  }
 }
 
 /* Annuaire */
@@ -18,9 +39,6 @@
   padding: var(--sp-3);
   display: grid;
   gap: var(--sp-2);
-}
-@media (min-width: 900px) {
-  .diver-pool { position: sticky; top: calc(var(--topbar-h) + var(--sp-4)); max-height: calc(100vh - var(--topbar-h) - var(--footnav-h) - var(--sp-6)); overflow-y: auto; }
 }
 .diver-pool h2 { font-size: var(--fs-md); display: flex; gap: var(--sp-2); align-items: baseline; }
 .diver-pool h2 .num { color: var(--c-ink-2); font-size: var(--fs-sm); }
@@ -59,6 +77,7 @@
 /* Liste des palanquées */
 .pal-list { display: grid; gap: var(--sp-4); }
 .pal {
+  container: pal / inline-size;
   border: 2px solid var(--c-line);
   border-radius: var(--r-2);
   background: var(--c-surface);
@@ -151,9 +170,17 @@
 .diver-row.flagged .flag { display: inline-flex; gap: var(--sp-1); align-items: center; color: var(--c-stop); font-weight: 700; font-size: var(--fs-xs); }
 .role-sel { min-height: var(--touch); }
 .role-sel.invalid { border-color: var(--c-stop); }
-@media (max-width: 520px) {
+/* Carte étroite (téléphone, ou colonne à côté de l'annuaire) : l'aptitude
+   passe sous le nom. */
+@container pal (max-width: 500px) {
   .diver-row { grid-template-columns: auto minmax(0, 1fr) var(--touch); }
   .diver-row .role-sel, .diver-row .apt-fixed { grid-column: 1 / -1; grid-row: 2; }
+}
+@supports not (container-type: inline-size) {
+  @media (max-width: 520px) {
+    .diver-row { grid-template-columns: auto minmax(0, 1fr) var(--touch); }
+    .diver-row .role-sel, .diver-row .apt-fixed { grid-column: 1 / -1; grid-row: 2; }
+  }
 }
 
 /* Règles : une ligne par issue, forme + texte + référence visible */
@@ -190,9 +217,20 @@
 .pal-add:hover:not(:disabled) { border-style: solid; background: var(--c-sunken); }
 .pal-add:disabled { opacity: 0.5; cursor: not-allowed; }
 
-@media (max-width: 520px) {
+@container pal (max-width: 520px) {
+  .pal-body { padding: var(--sp-3); gap: var(--sp-3); }
+  .pal-params { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: var(--sp-2); }
+}
+@container pal (max-width: 440px) {
   .pal-head { flex-wrap: wrap; }
   .pal-head .input { order: 4; flex: 1 1 100%; }
   .pal-head .pal-type { margin-left: auto; }
-  .pal-body { padding: var(--sp-3); }
+}
+@supports not (container-type: inline-size) {
+  @media (max-width: 520px) {
+    .pal-head { flex-wrap: wrap; }
+    .pal-head .input { order: 4; flex: 1 1 100%; }
+    .pal-head .pal-type { margin-left: auto; }
+    .pal-body { padding: var(--sp-3); }
+  }
 }

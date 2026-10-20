@@ -226,6 +226,9 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
         </Alert>
       )}
 
+      {/* Conteneur de requêtes : annuaire et palanquées côte à côte dès que la
+          place le permet (tablette portrait, ou à côté de la synthèse). */}
+      <div className="pal-layout">
       <div className="divers-grid">
         <DiverPool divers={divers} assignedIds={assignedIds} palanquees={palanquees}
           onAdd={mut.addToPal} onAddNew={mut.addPalWithDiver} onCreate={() => setShowQuickDiver(true)} />
@@ -263,6 +266,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
             <Icon.Plus />Ajouter une palanquée
           </button>
         </div>
+      </div>
       </div>
 
       {showQuickDiver && (

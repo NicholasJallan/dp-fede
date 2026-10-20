@@ -268,6 +268,18 @@ test.describe('build local — parcours en ligne', () => {
     expect(await page.evaluate(() => localStorage.getItem('dp-drive-export'))).toBe('off');
   });
 
+  test('rappel PA / PE / GP accessible sur petit écran (400 × 650)', async ({ page }) => {
+    // Production 04/09/2026 : le bouton « Commencer » sortait de l'écran.
+    await page.setViewportSize({ width: 400, height: 650 });
+    await page.goto('/');
+    const splash = page.getByRole('dialog', { name: /Bonjour/ });
+    const start = splash.getByRole('button', { name: 'Commencer' });
+    await expect(start).toBeInViewport();
+    await start.click();
+    await expect(splash).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Nouvelle plongée/ })).toBeVisible();
+  });
+
   test('bascule Soleil / Nuit mémorisée', async ({ page }) => {
     await openHome(page);
     const toggle = page.locator('.theme-toggle');

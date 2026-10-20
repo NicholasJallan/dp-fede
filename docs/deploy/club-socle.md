@@ -27,8 +27,8 @@ PHP-FPM ne peut pas écrire les PDF et les plongées archivées restent en
 `documents_status = error`).
 
 ```bash
-sudo install -o root -g root -m 644 deploy/php-fpm-dp-fede.conf /etc/php/8.2/fpm/pool.d/dp-fede.conf
-sudo php-fpm8.2 -t && sudo systemctl reload php8.2-fpm
+sudo install -o root -g root -m 644 deploy/php-fpm-dp-fede.conf /etc/php/8.5/fpm/pool.d/dp-fede.conf
+sudo php-fpm8.5 -t && sudo systemctl reload php8.5-fpm
 ```
 
 ## 3. Sauvegardes
@@ -57,7 +57,7 @@ bloque la bascule du code).
 Vérifications après déploiement :
 
 ```bash
-sudo -u www-data php8.2 /var/www/dp-fede-api/bin/migrate.php --status
+sudo -u www-data php8.5 /var/www/dp-fede-api/bin/migrate.php --status
 sudo mysql dp_fede -e "SELECT COUNT(*) FROM users WHERE current_club_id IS NULL;
                        SELECT COUNT(*) FROM club_members WHERE role='responsable';
                        SELECT COUNT(*) FROM divers WHERE club_id IS NULL;"
@@ -85,14 +85,14 @@ l'archivage A322-72 : une génération interrompue (worker FPM tué par
 
 ```cron
 # Toutes les heures à :40 — reprise des PDF archivés en échec ou bloqués.
-40 * * * * www-data /usr/bin/php8.2 /var/www/dp-fede-api/bin/documents.php --retry >> /var/log/dp-fede-purge.log 2>&1
+40 * * * * www-data /usr/bin/php8.5 /var/www/dp-fede-api/bin/documents.php --retry >> /var/log/dp-fede-purge.log 2>&1
 ```
 
 Rattrapage ponctuel des plongées archivées avant la phase 5 (moins d'un an) :
 
 ```bash
-sudo -u www-data php8.2 /var/www/dp-fede-api/bin/documents.php --backfill --dry-run
-sudo -u www-data php8.2 /var/www/dp-fede-api/bin/documents.php --backfill --limit=200
+sudo -u www-data php8.5 /var/www/dp-fede-api/bin/documents.php --backfill --dry-run
+sudo -u www-data php8.5 /var/www/dp-fede-api/bin/documents.php --backfill --limit=200
 ```
 
 `bin/purge.php` (cron existant) purge désormais aussi les invitations closes

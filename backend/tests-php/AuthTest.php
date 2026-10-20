@@ -69,4 +69,22 @@ final class AuthTest extends TestCase
             'entier 1 (non standard)' => [1, false],
         ];
     }
+
+    /**
+     * Cache JWKS dans l'APCu partagé par les pools de php8.5-fpm : une entrée
+     * écrite par une autre application (clés injectées) doit être ignorée.
+     */
+    public function testJwksCacheEntryIsSigned(): void
+    {
+        $secret = random_bytes(32);
+        $jwks   = ['keys' => [['kid' => 'k1', 'n' => 'abc', 'e' => 'AQAB']]];
+        $entry  = \Auth::sealJwks($jwks, $secret);
+        $this->assertSame($jwks, \Auth::unsealJwks($entry, $secret));
+
+        $forged = ['keys' => [['kid' => 'k1', 'n' => 'attaquant', 'e' => 'AQAB']]];
+        $this->assertNull(\Auth::unsealJwks(['json' => json_encode($forged), 'mac' => $entry['mac']], $secret));
+        $this->assertNull(\Auth::unsealJwks(\Auth::sealJwks($forged, 'autre-secret'), $secret));
+        $this->assertNull(\Auth::unsealJwks($jwks, $secret), 'ancienne entrée non signée');
+        $this->assertNull(\Auth::unsealJwks(false, $secret));
+    }
 }

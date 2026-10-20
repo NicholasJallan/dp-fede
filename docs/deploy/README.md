@@ -16,7 +16,8 @@ secret** ; les secrets vivent uniquement sur le Pi :
 
 | Fichier | Rôle | Installé en |
 |---------|------|-------------|
-| `deploy-backend.sh` | Lint + tests, rsync vers un staging, `composer install --no-dev`, sauvegarde, `bin/migrate.php`, bascule, reload FPM, test de fumée | lancé depuis le Mac |
+| `deploy-backend.sh` | Lint + tests, rsync vers un staging, `composer install --no-dev`, sauvegarde, plan de reprise des structures, `bin/migrate.php`, vérification du plan, bascule, reload FPM, test de fumée | lancé depuis le Mac |
+| `recette-migration-clubs.php` | Rejoue la reprise structures → clubs (003 → 011) sur un MariaDB jetable : volumes de production, coupure à chaque instruction, idempotence | lancé depuis le Mac |
 | `deploy-frontend.sh` | `npm run build` + rsync `dist/` | lancé depuis le Mac |
 | `backup.sh` + `backup.env.example` | Sauvegarde MariaDB vérifiée + rétention + hooks | `/usr/local/sbin/dp-fede-backup`, `/etc/dp-fede/backup.env` |
 | `backup-upload-rclone.sh` | Hook : copie distante (pCloud, S3…) | `/usr/local/sbin/dp-fede-backup-upload` |
@@ -24,7 +25,7 @@ secret** ; les secrets vivent uniquement sur le Pi :
 | `restore.md` | Procédure de restauration + journal des exercices | — |
 | `cron.example` | Sauvegarde 02:30, purge 03:15 | `/etc/cron.d/dp-fede` |
 | `logrotate-dp-fede` | Rotation de `/var/log/dp-fede*.log` (12 semaines) | `/etc/logrotate.d/dp-fede` |
-| `php-fpm-dp-fede.conf`, `php-dp-fede.ini` | Pool PHP 8.2 dédié + OPcache/APCu | `/etc/php/8.2/fpm/…` |
+| `php-fpm-dp-fede.conf` | Pool PHP 8.5 dédié (php8.5-fpm partagé avec l'application « dive », jamais modifiée) | `/etc/php/8.5/fpm/pool.d/dp-fede.conf` |
 | `nginx-dp-fede.conf`, `nginx-dp-fede-security-headers.conf` | Bloc serveur + en-têtes (CSP…) | `/etc/nginx/sites-available/dp-fede`, `/etc/nginx/snippets/` |
 
 ## Première mise en production — ordre des opérations
@@ -50,10 +51,10 @@ Optionnel, tout de suite ou plus tard : hooks rclone et e-mail (voir les
 en-têtes des deux scripts), puis `BACKUP_UPLOAD_HOOK` / `BACKUP_NOTIFY_HOOK`
 dans `backup.env`.
 
-### 2. PHP 8.2 + pool dédié + bascule nginx minimale
+### 2. PHP 8.5 + pool dédié
 
-Suivre [php82-migration.md](php82-migration.md) §1 à §8 en s'arrêtant à **7a**
-(seul `fastcgi_pass` change). Composer est installé au §6.
+Suivre [php85.md](php85.md) §1 à §5 (extensions, pool `[dp-fede]` à côté du
+pool « dive », Composer).
 
 ### 3. Déploiement du backend
 
@@ -63,14 +64,20 @@ deploy/deploy-backend.sh --dry-run     # relire les suppressions annoncées (« 
 deploy/deploy-backend.sh
 ```
 
-Le script applique les migrations **003** (date de naissance), **004** (repli du schéma inline), **005**
-(FK + suppression des orphelins — d'où la sauvegarde automatique juste avant)
-et **006** (`users.last_seen_at`). Ensuite :
+**Premier déploiement de cette version : suivre la bascule de production
+[php85.md §6](php85.md#6-bascule-de-production-premier-déploiement-de-cette-version)**
+(maintenance des écritures, nginx vers le pool 8.5, backend puis frontend).
+Le script applique les migrations **003** (date de naissance), **004** (repli
+du schéma inline), **005** (FK + suppression des orphelins — d'où la
+sauvegarde automatique juste avant), **006** (`users.last_seen_at`), puis
+**007 → 011** (socle club, dont la reprise des structures de production,
+encadrée par `bin/workspaces-plan.php`, cf. [club-socle.md](club-socle.md)).
+Ensuite :
 
 ```bash
 # Pi
-sudo -u www-data php8.2 /var/www/dp-fede-api/bin/migrate.php --status   # tout « appliquée »
-sudo -u www-data php8.2 /var/www/dp-fede-api/bin/purge.php --dry-run
+sudo -u www-data php8.5 /var/www/dp-fede-api/bin/migrate.php --status   # tout « appliquée »
+sudo -u www-data php8.5 /var/www/dp-fede-api/bin/purge.php --dry-run
 ```
 
 ### 4. Tâches planifiées et journaux
@@ -90,7 +97,7 @@ dp-fede.
 
 ### 5. Configuration nginx versionnée
 
-[php82-migration.md](php82-migration.md) §7b, puis §8 (vérifications) et
+[php85.md](php85.md) §7, puis §8 (vérifications) et
 surveillance de `/var/log/dp-fede-csp.log`.
 
 ### 6. Frontend

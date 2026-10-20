@@ -4,7 +4,7 @@
 
 Le backend **embarque des dépendances Composer en production**, installées sur
 le Pi par `deploy/deploy-backend.sh` (`composer install --no-dev
---optimize-autoloader`, exécuté en `www-data` sous PHP 8.2). `composer.lock`
+--optimize-autoloader`, exécuté en `www-data` sous PHP 8.5). `composer.lock`
 est versionné : la prod installe exactement les versions testées en CI.
 
 | Paquet (direct) | Rôle | Surface |
@@ -16,12 +16,16 @@ Dépendances transitives (via mPDF) : `setasign/fpdi`, `myclabs/deep-copy`,
 `psr/log`, `psr/http-message`, `mpdf/psr-http-message-shim`,
 `mpdf/psr-log-aware-trait`, `paragonie/random_compat`.
 
-Dev uniquement (jamais installé sur le Pi) : `phpunit/phpunit` ^9.6.
+Dev uniquement (jamais installé sur le Pi) : `phpunit/phpunit` ^9.6 et
+`doctrine/instantiator` ~2.0.0 (dépendance de PHPUnit épinglée : la 2.1 exige
+PHP 8.4, la CI teste aussi 8.2).
 
-`composer.json` fixe `config.platform.php = 8.2.x` : la résolution des
-versions correspond au PHP de production, quelle que soit la version locale.
-Au runtime, `vendor/composer/platform_check.php` refuse de démarrer sous
-PHP < 8.2 (cf. [../deploy/php82-migration.md](../deploy/php82-migration.md)).
+`composer.json` exige `"php": ">=8.2"` et fixe `config.platform.php = 8.5.11`
+(PHP du pool de production) : la résolution correspond à la production,
+quelle que soit la version locale, et chaque paquet verrouillé accepte aussi
+8.2 (CI 8.2 et 8.5). Au runtime, `vendor/composer/platform_check.php` refuse
+de démarrer sous PHP < 8.2 (cf. [../deploy/php85.md](../deploy/php85.md)).
+Régénérer le verrou : `composer update` (jamais `--ignore-platform-reqs`).
 
 Sans `vendor/`, l'API démarre quand même : la vérification JWT retombe sur
 l'endpoint `tokeninfo` de Google et la génération PDF échoue (500).
@@ -29,7 +33,7 @@ l'endpoint `tokeninfo` de Google et la génération PDF échoue (500).
 ## Audit
 
 - **CI** : `composer audit` à chaque push/PR (`.github/workflows/ci.yml`, job
-  backend, PHP 8.2 et 8.3).
+  backend, PHP 8.2 et 8.5).
 - **Local** :
 
   ```bash
@@ -60,8 +64,11 @@ l'endpoint `tokeninfo` de Google et la génération PDF échoue (500).
   `pi-scripts/backup_report.php` l'inclut encore : le remplacer par
   `deploy/backup-notify-mail.sh` (sendmail/msmtp, sans PHP) — cf.
   [../deploy/README.md](../deploy/README.md).
-- PHP 7.4 (fin de vie novembre 2022) → PHP 8.2 pour le backend, dans un pool
-  FPM dédié ; PrestaShop/WordPress restent en 7.4 sur le même Pi.
+- PHP 7.4 (fin de vie novembre 2022) → PHP 8.5 pour le backend, dans un pool
+  FPM dédié de php8.5-fpm (partagé avec l'application « dive ») ;
+  PrestaShop/WordPress restent en 7.4 sur le même Pi. L'autoloader restreint
+  `lib/PdfAutoload.php` et `lib/psr-log-shim/` (contournement de la
+  production sous 7.4) sont supprimés : `vendor/autoload.php` complet.
 
 En cas de CVE corrigée par une mise à jour, documenter le correctif dans
 `docs/security/incidents/AAAA-MM-JJ.md`.

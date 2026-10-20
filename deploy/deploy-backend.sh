@@ -35,8 +35,8 @@
 #   DP_FEDE_DOMAIN=dp-fede.bullesenvalais.ch
 #   DP_FEDE_APP_DIR=/var/www/dp-fede-api
 #   DP_FEDE_STAGE_DIR=/var/www/dp-fede-api-release
-#   DP_FEDE_PHP=php8.2
-#   DP_FEDE_FPM_SERVICE=php8.2-fpm
+#   DP_FEDE_PHP=php8.5
+#   DP_FEDE_FPM_SERVICE=php8.5-fpm
 #   DP_FEDE_BACKUP_CMD=/usr/local/sbin/dp-fede-backup
 
 set -euo pipefail
@@ -45,8 +45,8 @@ REMOTE="${DP_FEDE_REMOTE:-pi@bullesenvalais.ch}"
 DOMAIN="${DP_FEDE_DOMAIN:-dp-fede.bullesenvalais.ch}"
 APP_DIR="${DP_FEDE_APP_DIR:-/var/www/dp-fede-api}"
 STAGE_DIR="${DP_FEDE_STAGE_DIR:-/var/www/dp-fede-api-release}"
-PHP_BIN="${DP_FEDE_PHP:-php8.2}"
-FPM_SERVICE="${DP_FEDE_FPM_SERVICE:-php8.2-fpm}"
+PHP_BIN="${DP_FEDE_PHP:-php8.5}"
+FPM_SERVICE="${DP_FEDE_FPM_SERVICE:-php8.5-fpm}"
 BACKUP_CMD="${DP_FEDE_BACKUP_CMD:-/usr/local/sbin/dp-fede-backup}"
 
 DRY_RUN=0
@@ -136,7 +136,7 @@ set -euo pipefail
 STAGE_DIR="$1"; APP_DIR="$2"; PHP_BIN="$3"; FPM_SERVICE="$4"; BACKUP_CMD="$5"; SKIP_BACKUP="$6"
 say() { printf '[Pi] %s\n' "$*"; }
 
-command -v "$PHP_BIN" >/dev/null || { say "ERREUR : $PHP_BIN absent (voir docs/deploy/php82-migration.md)"; exit 1; }
+command -v "$PHP_BIN" >/dev/null || { say "ERREUR : $PHP_BIN absent (voir docs/deploy/php85.md)"; exit 1; }
 COMPOSER="$(command -v composer || true)"
 [[ -n "$COMPOSER" ]] || { say "ERREUR : composer absent sur le Pi (voir docs/deploy/README.md)"; exit 1; }
 [[ -f /etc/dp-fede/config.php ]] || { say "ERREUR : /etc/dp-fede/config.php absent"; exit 1; }

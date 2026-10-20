@@ -65,7 +65,7 @@ class RateLimit {
 
     private static function fallbackApcu(string $bucket, int $max, int $windowSec, string $errMsg, string $ident): void {
         if (!extension_loaded('apcu') || !apcu_enabled()) return;
-        $key = "rl_{$bucket}_{$ident}";
+        $key = "dp_fede:rl_{$bucket}_{$ident}";   // APCu partagé entre pools : préfixe
         $n   = apcu_fetch($key);
         if ($n === false) {
             apcu_store($key, 1, $windowSec);

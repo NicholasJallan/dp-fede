@@ -5,8 +5,8 @@ declare(strict_types=1);
  * Applique les migrations SQL en attente (backend/migrations/NNN_*.sql).
  *
  * Usage (sur le Pi, en tant que www-data pour lire /etc/dp-fede/config.php) :
- *   sudo -u www-data php8.2 /var/www/dp-fede-api/bin/migrate.php
- *   sudo -u www-data php8.2 /var/www/dp-fede-api/bin/migrate.php --status
+ *   sudo -u www-data php8.5 /var/www/dp-fede-api/bin/migrate.php
+ *   sudo -u www-data php8.5 /var/www/dp-fede-api/bin/migrate.php --status
  *
  * Variable d'environnement DP_FEDE_CONFIG : autre fichier de config (ex. base
  * temporaire lors d'un test de restauration, cf. deploy/restore.md).

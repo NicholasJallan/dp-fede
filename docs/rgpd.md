@@ -218,7 +218,7 @@ actions « à revoir » destinées à un club quitté sont retirées automatique
 Toujours tester un changement avec `--dry-run` :
 
 ```bash
-sudo -u www-data php8.2 /var/www/dp-fede-api/bin/purge.php --dry-run --archived-dives-years=5
+sudo -u www-data php8.5 /var/www/dp-fede-api/bin/purge.php --dry-run --archived-dives-years=5
 ```
 
 ## Mesures de sécurité (résumé)

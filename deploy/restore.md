@@ -86,9 +86,9 @@ sudo grep "'name'" /etc/dp-fede/config-restore.php              # → la base te
 # L'utilisateur applicatif doit avoir les droits sur la base temporaire :
 sudo mysql -e "GRANT ALL PRIVILEGES ON \`$TMPDB\`.* TO 'dp_fede_user'@'localhost'"
 sudo -u www-data DP_FEDE_CONFIG=/etc/dp-fede/config-restore.php \
-  php8.2 /var/www/dp-fede-api/bin/migrate.php
+  php8.5 /var/www/dp-fede-api/bin/migrate.php
 sudo -u www-data DP_FEDE_CONFIG=/etc/dp-fede/config-restore.php \
-  php8.2 /var/www/dp-fede-api/bin/migrate.php --status
+  php8.5 /var/www/dp-fede-api/bin/migrate.php --status
 ```
 
 ## 4. Fin d'exercice (pas de bascule)
@@ -103,11 +103,14 @@ sudo rm -f /etc/dp-fede/config-restore.php
 
 Uniquement après les étapes 1 à 3 réussies.
 
-1. **Couper l'écriture** : mettre l'API en maintenance en arrêtant le pool
-   dédié (PrestaShop/WordPress, en PHP 7.4, ne sont pas affectés) :
+1. **Couper l'écriture** : mettre l'API en maintenance en désactivant le
+   SEUL pool dp-fede. Ne jamais arrêter le service `php8.5-fpm` : il sert
+   aussi le pool « dive » d'une autre application (PrestaShop/WordPress, en
+   PHP 7.4, ne sont pas concernés) :
 
    ```bash
-   sudo systemctl stop php8.2-fpm
+   sudo mv /etc/php/8.5/fpm/pool.d/dp-fede.conf /etc/php/8.5/fpm/pool.d/dp-fede.conf.off
+   sudo systemctl reload php8.5-fpm      # rechargement en douceur, pool dive intact
    ```
 
    Les clients PWA passent en mode hors-ligne : leurs écritures restent dans
@@ -131,8 +134,9 @@ Uniquement après les étapes 1 à 3 réussies.
 4. **Remettre le schéma à niveau** puis **relancer l'API** :
 
    ```bash
-   sudo -u www-data php8.2 /var/www/dp-fede-api/bin/migrate.php
-   sudo systemctl start php8.2-fpm
+   sudo -u www-data php8.5 /var/www/dp-fede-api/bin/migrate.php
+   sudo mv /etc/php/8.5/fpm/pool.d/dp-fede.conf.off /etc/php/8.5/fpm/pool.d/dp-fede.conf
+   sudo php-fpm8.5 -t && sudo systemctl reload php8.5-fpm
    curl -s https://dp-fede.bullesenvalais.ch/api/auth/me     # → {"ok":true,"data":null}
    ```
 

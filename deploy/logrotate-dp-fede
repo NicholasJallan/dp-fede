@@ -6,7 +6,7 @@
 # Fichiers couverts :
 #   /var/log/dp-fede.log         actions métier (NDJSON, Log::action)
 #   /var/log/dp-fede-csp.log     rapports CSP
-#   /var/log/dp-fede-php.log     erreurs PHP du pool php8.2-fpm dp-fede
+#   /var/log/dp-fede-php.log     erreurs PHP du pool php8.5-fpm dp-fede
 #   /var/log/dp-fede-purge.log   sortie de bin/purge.php (cron)
 #   /var/log/dp-fede-backup.log  sortie de dp-fede-backup (cron)
 #

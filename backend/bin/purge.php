@@ -5,7 +5,7 @@ declare(strict_types=1);
  * Purges périodiques (cron quotidien, cf. deploy/cron.example et docs/rgpd.md).
  *
  * Usage :
- *   php8.2 bin/purge.php [--dry-run]
+ *   php8.5 bin/purge.php [--dry-run]
  *                        [--soft-deleted-days=N]        défaut 180, 0 = off
  *                        [--archived-dives-years=N]     défaut 0 = off, N ≥ 1
  *                        [--inactive-accounts-years=N]  défaut 0 = off, N ≥ 2

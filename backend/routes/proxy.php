@@ -76,7 +76,7 @@ if ($method === 'GET' && $path === '/api/proxy/maree') {
                  . '&typeName=SPM_PORTS_WFS:liste_ports_spm_h2m&outputFormat=application/json';
 
         $harbors = null;
-        $cacheKey = 'shom_harbors_v1';
+        $cacheKey = 'dp_fede:shom_harbors_v1';   // APCu partagé entre pools : préfixe
         if (extension_loaded('apcu') && apcu_enabled()) {
             $cached = apcu_fetch($cacheKey, $ok);
             if ($ok) {

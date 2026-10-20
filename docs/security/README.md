@@ -11,7 +11,7 @@ Documentation et procédures sécurité du projet.
 - [../rgpd.md](../rgpd.md) — Registre simplifié des traitements, durées de
   conservation, export / suppression de compte.
 - [../deploy/README.md](../deploy/README.md) — Mise en production, sauvegardes,
-  restauration, nginx, PHP 8.2.
+  restauration, nginx, PHP 8.5.
 
 ## Architecture sécurité
 
@@ -33,10 +33,10 @@ Documentation et procédures sécurité du projet.
 │  - Cross-Origin-Opener-Policy : same-origin-allow-popups     │
 │  - CSP report-uri → /api/csp/report                          │
 └──────────────────────────────────────────────────────────────┘
-                          │ fastcgi_pass /api/* → PHP-FPM 8.2 (pool dp-fede)
+                          │ fastcgi_pass /api/* → PHP-FPM 8.5 (pool dp-fede)
                           ▼
 ┌──────────────────────────────────────────────────────────────┐
-│ PHP 8.2 backend (pool FPM dédié, open_basedir)               │
+│ PHP 8.5 backend (pool FPM dédié, open_basedir)               │
 │  - Auth::verifyGoogleToken : JWKS local (RS256) + fallback   │
 │    tokeninfo. Audience + issuer + exp toujours revalidés.    │
 │  - Rate-limit MariaDB : login 10/15min ; writes 120/min/IP ; │
@@ -96,7 +96,7 @@ ssh pi@bullesenvalais.ch "ls -la /etc/dp-fede/"
 ### Audit automatique (en CI)
 
 En place (`.github/workflows/ci.yml`) :
-- `composer audit` + PHPUnit (PHP 8.2 / 8.3)
+- `composer audit` + PHPUnit (PHP 8.2 / 8.5)
 
 À venir :
 - `npm audit` (déjà à 0 deps prod, mais Playwright en dev)

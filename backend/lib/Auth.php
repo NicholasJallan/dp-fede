@@ -13,7 +13,11 @@ class Auth {
     private const SLIDE_THRESHOLD = 302400; // 3,5 jours
     private const GOOGLE_TOKENINFO = 'https://oauth2.googleapis.com/tokeninfo?id_token=';
     private const GOOGLE_JWKS      = 'https://www.googleapis.com/oauth2/v3/certs';
-    private const JWKS_CACHE_KEY   = 'google_jwks_v1';
+    // APCu est partagé par tous les pools de php8.5-fpm (dont une autre
+    // application) : clé préfixée ET entrée signée (HMAC, secret lu dans la
+    // config, illisible par les autres pools) — des clés JWKS injectées
+    // permettraient sinon de forger un jeton Google.
+    private const JWKS_CACHE_KEY   = 'dp_fede:google_jwks_v2';
     private const JWKS_CACHE_TTL   = 21600; // 6h — Google rotate les clés rarement
 
     /**
@@ -90,19 +94,40 @@ class Auth {
     }
 
     private static function fetchJwks(): ?array {
-        if (function_exists('apcu_enabled') && apcu_enabled()) {
-            $cached = apcu_fetch(self::JWKS_CACHE_KEY, $ok);
-            if ($ok && is_array($cached)) return $cached;
+        $cacheKey = self::jwksCacheSecret();
+        if ($cacheKey !== null && function_exists('apcu_enabled') && apcu_enabled()) {
+            $jwks = self::unsealJwks(apcu_fetch(self::JWKS_CACHE_KEY), $cacheKey);
+            if ($jwks !== null) return $jwks;
         }
         $ctx = stream_context_create(['http' => ['timeout' => 6, 'ignore_errors' => true]]);
         $raw = @file_get_contents(self::GOOGLE_JWKS, false, $ctx);
         if (!$raw) return null;
         $jwks = json_decode($raw, true);
         if (!is_array($jwks) || !isset($jwks['keys'])) return null;
-        if (function_exists('apcu_enabled') && apcu_enabled()) {
-            apcu_store(self::JWKS_CACHE_KEY, $jwks, self::JWKS_CACHE_TTL);
+        if ($cacheKey !== null && function_exists('apcu_enabled') && apcu_enabled()) {
+            apcu_store(self::JWKS_CACHE_KEY, self::sealJwks($jwks, $cacheKey), self::JWKS_CACHE_TTL);
         }
         return $jwks;
+    }
+
+    /** Secret de signature du cache (dérivé de la config ; null = pas de cache). */
+    private static function jwksCacheSecret(): ?string {
+        $pass = (string)(Config::get('db')['pass'] ?? '');
+        return $pass === '' ? null : hash('sha256', 'dp-fede/apcu-jwks|' . $pass, true);
+    }
+
+    /** Entrée de cache signée : { json, mac }. */
+    public static function sealJwks(array $jwks, string $secret): array {
+        $json = (string)json_encode($jwks);
+        return ['json' => $json, 'mac' => hash_hmac('sha256', $json, $secret)];
+    }
+
+    /** JWKS d'une entrée de cache, ou null si absente, altérée ou forgée. */
+    public static function unsealJwks($entry, string $secret): ?array {
+        if (!is_array($entry) || !is_string($entry['json'] ?? null) || !is_string($entry['mac'] ?? null)) return null;
+        if (!hash_equals(hash_hmac('sha256', $entry['json'], $secret), $entry['mac'])) return null;
+        $jwks = json_decode($entry['json'], true);
+        return (is_array($jwks) && isset($jwks['keys'])) ? $jwks : null;
     }
 
     // Create or update user from Google payload, return user row

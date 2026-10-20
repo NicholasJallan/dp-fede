@@ -5,7 +5,7 @@ declare(strict_types=1);
  * Archivage serveur des fiches (A322-72) — reprise et rattrapage.
  *
  * Usage (sur le Pi, en www-data : écriture dans /var/lib/dp-fede/documents) :
- *   sudo -u www-data php8.2 /var/www/dp-fede-api/bin/documents.php [--dry-run]
+ *   sudo -u www-data php8.5 /var/www/dp-fede-api/bin/documents.php [--dry-run]
  *        [--retry]            plongées en 'error', ou 'pending' depuis plus de 15 min (défaut)
  *        [--backfill]         + plongées archivées sans document de moins d'un an
  *                             (archivées avant la phase 5)

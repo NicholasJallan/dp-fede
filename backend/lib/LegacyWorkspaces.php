@@ -128,11 +128,16 @@ final class LegacyWorkspaces
         }
 
         $warnings = [];
+        $blocking = [];   // avertissements qui feraient échouer la migration
         foreach ($clubs as $key => $c) {
             if (!in_array('responsable', $c['members'], true)) $warnings[] = "{$key} : aucun responsable (à désigner après migration)";
         }
         foreach (array_keys($technical) as $id) {
-            if (!isset($wsByDataUser[$id])) $warnings[] = "compte-structure {$id} sans structure : ses lignes resteraient sans club (la migration échouerait)";
+            if (!isset($wsByDataUser[$id])) {
+                $msg = "compte-structure {$id} sans structure : ses lignes resteraient sans club (la migration échouerait)";
+                $warnings[] = $msg;
+                $blocking[] = $msg;
+            }
         }
 
         $current = [];
@@ -140,6 +145,17 @@ final class LegacyWorkspaces
             $sessions = array_values(array_filter($s['sessions'], static fn(array $x): bool => (int)$x['user_id'] === $id));
             $ws = self::currentWorkspace($sessions, $eligible[$id] ?? [], $s['now']);
             $current[$id] = $ws === null ? "perso:{$id}" : "ws:{$ws}";
+        }
+
+        // Plongées de structure de même (auteur, client_uuid) : seule celle de
+        // plus petit id garde l'auteur (miroir du LEFT JOIN « sib » de 007).
+        $firstSibling = [];
+        foreach ($s['rows']['dives'] ?? [] as $i => $r) {
+            if ($r['user_id'] === null || !isset($wsByDataUser[(int)$r['user_id']])) continue;
+            if ($r['created_by'] === null || ($r['client_uuid'] ?? null) === null) continue;
+            $k = (int)$r['created_by'] . '|' . $r['client_uuid'];
+            $id = (string)($r['id'] ?? sprintf('%020d', $i));
+            if (!isset($firstSibling[$k]) || strcmp($id, $firstSibling[$k]) < 0) $firstSibling[$k] = $id;
         }
 
         // Plongées personnelles (auteur, client_uuid) : conflit d'unicité possible.
@@ -154,12 +170,14 @@ final class LegacyWorkspaces
         foreach ($s['rows'] as $table => $list) {
             $rows[$table] = [];
             $orphans = 0;
-            foreach ($list as $r) {
+            foreach ($list as $i => $r) {
                 $uid = $r['user_id'] === null ? null : (int)$r['user_id'];
                 if ($uid !== null && isset($wsByDataUser[$uid])) {
                     $by = $r['created_by'] === null ? null : (int)$r['created_by'];
+                    $siblingKey = $by . '|' . ($r['client_uuid'] ?? '');
                     $conflict = $table === 'dives' && $by !== null && ($r['client_uuid'] ?? null) !== null
-                        && isset($personalDives[$by . '|' . $r['client_uuid']]);
+                        && (isset($personalDives[$siblingKey])
+                            || ($firstSibling[$siblingKey] ?? null) !== (string)($r['id'] ?? sprintf('%020d', $i)));
                     $bucket = $wsByDataUser[$uid] . '|' . (self::author($by, $persons, $conflict) ?? 'null');
                 } elseif ($uid !== null && isset($persons[$uid])) {
                     $bucket = "perso:{$uid}|{$uid}";
@@ -177,7 +195,7 @@ final class LegacyWorkspaces
 
         ksort($clubs);
         ksort($current);
-        return ['clubs' => $clubs, 'current' => $current, 'rows' => $rows, 'warnings' => $warnings];
+        return ['clubs' => $clubs, 'current' => $current, 'rows' => $rows, 'warnings' => $warnings, 'blocking' => $blocking];
     }
 
     /**
@@ -190,8 +208,9 @@ final class LegacyWorkspaces
         $int = static fn($v): ?int => $v === null ? null : (int)$v;
         $rows = [];
         foreach (['divers', 'sites', 'dives'] as $t) {
-            $cols = $t === 'dives' ? 'user_id, created_by, client_uuid' : 'user_id, created_by';
+            $cols = $t === 'dives' ? 'id, user_id, created_by, client_uuid' : 'user_id, created_by';
             $rows[$t] = array_map(static fn(array $r): array => [
+                'id' => isset($r['id']) ? (string)$r['id'] : null,
                 'user_id' => $int($r['user_id']), 'created_by' => $int($r['created_by']),
                 'client_uuid' => $r['client_uuid'] ?? null,
             ], $all("SELECT {$cols} FROM {$t}"));

@@ -100,7 +100,9 @@ pools → clés préfixées et cache JWKS signé. Voir [deploy/php85.md](deploy/
   `updated_at` et runtime state intacts, plan (`LegacyWorkspaces`) = SQL,
   reprise après coupure à chacune des 22 instructions de données de 007,
   idempotence, cas limites (structure archivée, sans owner, conflit
-  `client_uuid`). `bin/migrate.php` testé aussi sur base neuve (préparations
+  `client_uuid` avec une plongée personnelle ou entre deux structures).
+  `workspaces-plan.php --save` sort en erreur sur un cas bloquant (compte-
+  structure sans structure) avant toute migration. `bin/migrate.php` testé aussi sur base neuve (préparations
   natives : `SHOW TABLES LIKE ?` remplacé, il échouait sous MariaDB).
 
 ## Risques pour la bascule de production

@@ -353,10 +353,15 @@ UPDATE sites s
   LEFT JOIN users a ON a.id = s.created_by AND a.kind = 'person'
    SET s.user_id = a.id, s.updated_at = s.updated_at;
 -- dives : l'index unique (user_id, client_uuid) existe encore (supprimé en
--- 011) ; si l'auteur a déjà une plongée personnelle de même client_uuid
--- (rejeu d'outbox dans les deux espaces), l'auteur reste NULL.
+-- 011). L'auteur reste NULL si (auteur, client_uuid) existe déjà parmi ses
+-- plongées personnelles, ou sur une autre plongée de structure de même
+-- auteur et plus petit id (rejeu d'outbox dans deux espaces) : seule la
+-- première garde l'auteur. Critère « structure » sur club_id (stable pendant
+-- l'UPDATE), pas sur user_id (modifié par lui).
 UPDATE dives v
   JOIN workspaces w ON w.data_user_id = v.user_id
   LEFT JOIN users a ON a.id = v.created_by AND a.kind = 'person'
   LEFT JOIN dives dup ON dup.user_id = a.id AND dup.client_uuid = v.client_uuid AND dup.id <> v.id
-   SET v.user_id = IF(dup.id IS NULL, a.id, NULL), v.updated_at = v.updated_at;
+  LEFT JOIN dives sib ON sib.created_by = v.created_by AND sib.client_uuid = v.client_uuid AND sib.id < v.id
+  LEFT JOIN clubs sc ON sc.id = sib.club_id AND sc.legacy_workspace_id IS NOT NULL
+   SET v.user_id = IF(dup.id IS NULL AND sc.id IS NULL, a.id, NULL), v.updated_at = v.updated_at;

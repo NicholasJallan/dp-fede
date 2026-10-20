@@ -71,6 +71,10 @@ try {
 
     $plan = LegacyWorkspaces::plan(LegacyWorkspaces::snapshot($pdo));
     print_plan($plan);
+    if ($plan['blocking']) {
+        cli_err('Reprise impossible en l\'état (corriger avant de migrer) : ' . implode(' ; ', $plan['blocking']));
+        exit(1);
+    }
     if ($mode === '--save') {
         if (file_put_contents($file, json_encode($plan, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) === false) {
             cli_err("écriture impossible : {$file}");

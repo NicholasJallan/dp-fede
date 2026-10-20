@@ -119,6 +119,7 @@ final class LegacyWorkspacesTest extends TestCase
         $plan = \LegacyWorkspaces::plan(self::productionSnapshot());
 
         $this->assertSame([], $plan['warnings']);
+        $this->assertSame([], $plan['blocking']);
         $this->assertCount(19, $plan['clubs'], '18 clubs personnels + 1 club de structure');
         $this->assertArrayNotHasKey('perso:14', $plan['clubs'], 'pas de club personnel pour le compte-structure');
         $this->assertSame(
@@ -173,7 +174,15 @@ final class LegacyWorkspacesTest extends TestCase
         // Ligne orpheline (compte supprimé) : supprimée par 005.
         $s['rows']['sites'][] = ['user_id' => 77, 'created_by' => null, 'client_uuid' => null];
 
+        // Même (auteur, client_uuid) dans deux structures : seule la plus petite id garde l'auteur.
+        $s['users'][] = ['id' => 32, 'kind' => 'workspace'];
+        $s['workspaces'][] = ['id' => 4, 'name' => 'Autre', 'data_user_id' => 32, 'created_by' => 2, 'archived' => false];
+        $s['rows']['dives'][] = ['id' => 'b-2', 'user_id' => 32, 'created_by' => 6, 'client_uuid' => 'jumeau'];
+        $s['rows']['dives'][] = ['id' => 'a-1', 'user_id' => 14, 'created_by' => 6, 'client_uuid' => 'jumeau'];
+
         $plan = \LegacyWorkspaces::plan($s);
+        $this->assertSame(1, $plan['rows']['dives']['ws:4|null'], 'jumeau d\'id supérieure : auteur inconnu');
+        $this->assertSame(2, $plan['rows']['dives']['ws:1|6'], 'jumeau d\'id inférieure : auteur conservé');
         $this->assertSame([4 => 'responsable'], $plan['clubs']['ws:2']['members'], 'structure archivée : owners seulement');
         $this->assertSame('perso:5', $plan['current'][5], 'structure archivée : club personnel');
         $this->assertSame([9 => 'responsable', 10 => 'dp'], $plan['clubs']['ws:3']['members'], 'sans owner : créateur responsable');
@@ -186,10 +195,10 @@ final class LegacyWorkspacesTest extends TestCase
     {
         $s = self::productionSnapshot();
         $s['users'][] = ['id' => 40, 'kind' => 'workspace'];
-        $this->assertContains(
-            'compte-structure 40 sans structure : ses lignes resteraient sans club (la migration échouerait)',
-            \LegacyWorkspaces::plan($s)['warnings']
-        );
+        $plan = \LegacyWorkspaces::plan($s);
+        $msg = 'compte-structure 40 sans structure : ses lignes resteraient sans club (la migration échouerait)';
+        $this->assertContains($msg, $plan['warnings']);
+        $this->assertSame([$msg], $plan['blocking'], 'bloquant : workspaces-plan --save sort en erreur');
     }
 
     // ── Cohérence avec le SQL de 007 ───────────────────────────────────────
@@ -216,7 +225,9 @@ final class LegacyWorkspacesTest extends TestCase
         // Club courant : session la plus récente non expirée, structure active, membre.
         $this->assertMatchesRegularExpression('/MAX\(s\.expires_at\).*WHERE s\.expires_at > NOW\(\).*JOIN workspaces w ON w\.id = s\.workspace_id AND w\.archived_at IS NULL.*JOIN club_members m ON m\.club_id = c\.id AND m\.user_id = u\.id/', $sql);
         // Conflit (auteur, client_uuid) : auteur NULL.
-        $this->assertStringContainsString('SET v.user_id = IF(dup.id IS NULL, a.id, NULL)', $sql);
+        $this->assertStringContainsString('SET v.user_id = IF(dup.id IS NULL AND sc.id IS NULL, a.id, NULL)', $sql);
+        // Même (auteur, client_uuid) dans deux structures : critère sur club_id (stable pendant l'UPDATE).
+        $this->assertStringContainsString('LEFT JOIN dives sib ON sib.created_by = v.created_by AND sib.client_uuid = v.client_uuid AND sib.id < v.id LEFT JOIN clubs sc ON sc.id = sib.club_id AND sc.legacy_workspace_id IS NOT NULL', $sql);
     }
 
     public function testSqlOrderProtectsTheData(): void

@@ -41,6 +41,10 @@ const rowKey = (row) => row?.client_uuid || row?.id;
 // Hors ligne : uniquement le store. (La liste sans ?since= exclut les
 // soft-deletes : ce qui n'y est pas et n'est pas en attente n'existe plus.)
 async function listWithFallback(store, storeName, networkCall, hiddenKeys = async () => new Set()) {
+  // Lignes déjà synchronisées AVANT l'appel : seules elles peuvent être
+  // purgées (une ligne poussée pendant l'appel n'est pas encore dans la
+  // réponse et ne doit pas disparaître du store).
+  const syncedBefore = new Set((await store.all(storeName)).filter(r => !r?._pending).map(rowKey));
   let list;
   try {
     list = await networkCall();
@@ -68,7 +72,7 @@ async function listWithFallback(store, storeName, networkCall, hiddenKeys = asyn
   }
   for (const row of local) {
     const key = rowKey(row);
-    if (key && !seen.has(key) && !pending.has(key)) await store.del(storeName, key);
+    if (key && !seen.has(key) && !pending.has(key) && syncedBefore.has(key)) await store.del(storeName, key);
   }
   const merged = list.filter(row => !hidden.has(rowKey(row))).map(row => pending.get(rowKey(row)) || row);
   for (const [key, row] of pending) if (!seen.has(key)) merged.push(row);   // création pas encore poussée

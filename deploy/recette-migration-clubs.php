@@ -108,6 +108,14 @@ function seedProd(PDO $pdo, bool $edge = false): array {
 
     $diveCounts = [2 => 19, 4 => 2, 5 => 2, 10 => 1, 14 => 7, 21 => 1];
     if ($edge) $diveCounts += [30 => 1];
+    if ($edge) {
+        // Même auteur, même client_uuid dans DEUX structures (rejeu d'outbox) :
+        // l'index (user_id, client_uuid) ne doit pas faire échouer 007.
+        $twin = uuid();
+        $ins2 = $pdo->prepare("INSERT INTO dives (id, user_id, client_uuid, site_nom, status, created_by) VALUES (?,?,?,?,'prepared',6)");
+        $ins2->execute(['00000000-0000-4000-8000-000000000001', 14, $twin, 'Jumeau A']);
+        $ins2->execute(['00000000-0000-4000-8000-000000000002', 31, $twin, 'Jumeau B']);
+    }
     // 8 plongées avec created_by : 6 du stage, 2 personnelles.
     $createdBy = [14 => [2, 2, 6, 15, 16, 2, null], 2 => [2], 4 => [4]];
     $v = $pdo->prepare('INSERT INTO dives (id, user_id, client_uuid, site_nom, date_plongee, status, answers, palanquees, created_by, updated_at, created_at)
@@ -258,7 +266,9 @@ check($e->query("SELECT GROUP_CONCAT(user_id, ':', role ORDER BY user_id) FROM c
 check($e->query("SELECT current_club_id FROM users WHERE id = 10")->fetchColumn() === $orphan, 'structure active dans la dernière session : club courant');
 check((int)$e->query("SELECT COUNT(*) FROM dives WHERE club_id = (SELECT id FROM clubs WHERE legacy_workspace_id = 1) AND user_id IS NULL")->fetchColumn() === 2,
       'conflit (auteur, client_uuid) avec une plongée personnelle : auteur NULL au lieu d\'un échec');
-check((int)$e->query('SELECT COUNT(*) FROM dives')->fetchColumn() === 33, 'aucune plongée perdue (33)');
+check((int)$e->query('SELECT COUNT(*) FROM dives')->fetchColumn() === 35, 'aucune plongée perdue (35)');
+check($e->query("SELECT GROUP_CONCAT(COALESCE(user_id, 'NULL') ORDER BY id) FROM dives WHERE site_nom LIKE 'Jumeau%'")->fetchColumn() === '6,NULL',
+      'même (auteur, client_uuid) dans deux structures : la première garde l\'auteur, la seconde NULL');
 
 echo $failures === 0 ? "\nTOUT EST VERT\n" : "\n{$failures} ÉCHEC(S)\n";
 exit($failures === 0 ? 0 : 1);

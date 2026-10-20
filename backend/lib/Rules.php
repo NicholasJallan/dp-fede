@@ -380,7 +380,9 @@ class Rules
         }
         if (!$hasErr) {
             $type = self::getPalType(self::listOf($pal['membres'] ?? null), $ctx['mode']);
-            $add('ok', 'OK', "Composition conforme — {$type}.");
+            $labels = ['bapteme' => 'baptême', 'formation' => 'enseignement',
+                'guidee' => 'exploration encadrée', 'exploration' => 'exploration en autonomie'];
+            $add('ok', 'OK', 'Composition conforme — ' . ($labels[$type] ?? $type) . '.');
         }
         return $issues;
     }

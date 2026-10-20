@@ -18,7 +18,7 @@ if ($method === 'POST' && $path === '/api/auth/google') {
     Csrf::token(); // émet le cookie CSRF
 
     Log::action('auth.login', ['user_id' => $user['id']]);
-    Json::ok(userPublic($user));
+    Json::ok(authUserPayload($user));
 }
 
 // GET /api/auth/me — utilisateur courant
@@ -27,7 +27,7 @@ if ($method === 'GET' && $path === '/api/auth/me') {
     if (!$user) Json::ok(null);
 
     Csrf::token();
-    Json::ok(userPublic($user));
+    Json::ok(authUserPayload($user));
 }
 
 // POST /api/auth/logout
@@ -43,48 +43,53 @@ if ($method === 'POST' && $path === '/api/auth/logout') {
     Json::ok(null);
 }
 
-// PATCH /api/auth/account — modifier son propre profil
+// PATCH /api/auth/account — modifier son propre profil (nom, prénom).
+// Compatibilité : le front actuel envoie aussi les anciens champs club_*
+// (club_nom, president_nom…). Ils modifient désormais le club COURANT, ce
+// qui est réservé au responsable ; pour un autre rôle, des champs club
+// inchangés sont ignorés et une modification est refusée (403).
 if ($method === 'PATCH' && $path === '/api/auth/account') {
     Csrf::verify();
     $user = Auth::require();
-    $v    = new Validate(Json::body());
-    $STRUCTURE_TYPES = ['club','sca','csa','autre'];
+    $body = Json::body();
+    $v    = new Validate($body);
     $v->maxLen('nom', 100, 'Nom')
       ->maxLen('prenom', 100, 'Prénom')
-      ->maxLen('club_nom', 200, 'Nom du club')
-      ->maxLen('club_numero', 50, 'Numéro de club')
-      ->maxLen('club_siret', 50, 'SIRET')
-      ->maxLen('president_prenom', 100, 'Prénom du président')
-      ->maxLen('president_nom', 100, 'Nom du président')
-      ->maxLen('president_tel', 30, 'Téléphone du président')
-      ->maxLen('urgence_defaut', 20, 'Numéro d\'urgence')
       ->abortIfErrors();
 
-    $st = $v->nullable('structure_type');
-    if ($st && !in_array($st, $STRUCTURE_TYPES, true)) $st = null;
+    [$clubFields, $errors] = Club::sanitizeClubFields(Club::fieldsFromLegacyBody($body));
+    if ($errors) Json::abort(422, implode('; ', $errors));
+    $club    = Club::find((string)$user['club_id']) ?? [];
+    $changed = Club::changedFields($club, $clubFields);
+    if ($changed) {
+        Club::requirePermission($user, 'club.manage');
+        Club::update((string)$user['club_id'], $changed);
+        Log::action('club.updated', ['club_id' => $user['club_id']]);
+    }
 
     Db::q(
-        'UPDATE users SET nom=?, prenom=?, club_nom=?, club_numero=?, club_siret=?, structure_type=?, president_prenom=?, president_nom=?, president_tel=?, urgence_defaut=? WHERE id=?',
-        [
-            $v->str('nom', $user['nom']),
-            $v->str('prenom', $user['prenom']),
-            $v->str('club_nom', $user['club_nom']),
-            $v->str('club_numero', $user['club_numero']),
-            $v->str('club_siret', $user['club_siret']),
-            $st,
-            $v->str('president_prenom', $user['president_prenom'] ?? null),
-            $v->str('president_nom',    $user['president_nom']    ?? null),
-            $v->str('president_tel',    $user['president_tel']    ?? null),
-            $v->str('urgence_defaut',   $user['urgence_defaut']   ?? '18'),
-            $user['id'],
-        ]
+        'UPDATE users SET nom=?, prenom=? WHERE id=?',
+        [$v->str('nom', (string)$user['nom']), $v->str('prenom', (string)$user['prenom']), $user['id']]
     );
 
-    Json::ok(userPublic(Db::row('SELECT * FROM users WHERE id=?', [$user['id']])));
+    Json::ok(authUserPayload(Db::row('SELECT * FROM users WHERE id=?', [$user['id']])));
 }
 
 // Helper — strip sensitive fields
 function userPublic(array $u): array {
     unset($u['google_sub']);
     return $u;
+}
+
+/**
+ * Utilisateur courant + club courant. Les anciens champs users.club_*
+ * (club_nom, club_numero, club_siret, structure_type, president_*,
+ * urgence_defaut) reflètent le club courant : compatibilité du front actuel.
+ * Ajoute club_id, club_role et club_count.
+ */
+function authUserPayload(array $user): array {
+    $ctx  = Club::withContext($user);
+    $club = Club::find((string)$ctx['club_id']);
+    $n    = count(Club::membershipRoles((int)$user['id']));
+    return Club::profileOverlay(userPublic($user), $club, $ctx['club_role'], $n);
 }

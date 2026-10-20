@@ -18,7 +18,9 @@ $root = dirname(__DIR__);
 if (is_file($root . '/vendor/autoload.php')) {
     require_once $root . '/vendor/autoload.php';
 }
-foreach (['Config', 'Json', 'Db', 'Auth', 'Csrf', 'Validate', 'SyncHelpers', 'RateLimit', 'Log', 'Account', 'Migrator', 'Retention'] as $cls) {
+foreach (['Config', 'Json', 'Db', 'Auth', 'Csrf', 'Validate', 'SyncHelpers', 'RateLimit', 'Log', 'Account', 'Migrator', 'Retention',
+          'Club', 'ClubInvitation', 'ClubAlerts', 'ClubStats', 'LevelMapper', 'DiverImport', 'DiverImportPlan',
+          'DivePdf', 'DiveArchive', 'ClubRetention'] as $cls) {
     require_once $root . "/lib/{$cls}.php";
 }
 

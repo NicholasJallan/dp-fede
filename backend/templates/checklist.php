@@ -36,21 +36,25 @@ $comments = $renderState['comments'] ?? [];
 $milieu  = PdfRender::toText($answers['milieu'] ?? null);
 $isMilieuNaturel = !in_array(strtolower($milieu), ['piscine', 'fosse'], true);
 
-function matchCond(mixed $when, array $a): bool {
-    if (!$when) return true;
-    if ($when === null) return true;
-    // Pour les conditions tableau simples (équivalent des objets JS {key:true})
-    if (is_array($when)) {
-        foreach ($when as $k => $v) {
-            if ($v === true  && empty($a[$k]))     return false;
-            if ($v === false && !empty($a[$k]))    return false;
-            if (is_string($v) && ($a[$k] ?? null) !== $v) return false;
+// Déclaration conditionnelle : le template peut être rendu plusieurs fois
+// dans le même processus (archivage serveur, bin/documents.php).
+if (!function_exists('matchCond')) {
+    function matchCond(mixed $when, array $a): bool {
+        if (!$when) return true;
+        if ($when === null) return true;
+        // Pour les conditions tableau simples (équivalent des objets JS {key:true})
+        if (is_array($when)) {
+            foreach ($when as $k => $v) {
+                if ($v === true  && empty($a[$k]))     return false;
+                if ($v === false && !empty($a[$k]))    return false;
+                if (is_string($v) && ($a[$k] ?? null) !== $v) return false;
+            }
+            return true;
         }
+        // Callable : fn(array $answers): bool
+        if (is_callable($when)) return $when($a);
         return true;
     }
-    // Callable : fn(array $answers): bool
-    if (is_callable($when)) return $when($a);
-    return true;
 }
 
 $getMilieuType = function ($m): string {

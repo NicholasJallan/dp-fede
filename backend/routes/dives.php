@@ -7,7 +7,7 @@ require_once __DIR__ . '/../lib/Rules.php';
 // ['diversById' => [...], 'dp' => array|null]. Renvoie 422 si la validation
 // des règles dures échoue (erreurs bloquantes). Les warnings sont ignorés
 // (le front affiche le feedback temps réel, le back valide les dures seulement).
-function validatePalanqueesOrAbort(array $palanquees, array $answers, int $userId): void
+function validatePalanqueesOrAbort(array $palanquees, array $answers, string $clubId): void
 {
     if (empty($palanquees)) return;
 
@@ -29,8 +29,8 @@ function validatePalanqueesOrAbort(array $palanquees, array $answers, int $userI
             "SELECT id, nom, prenom, niveau_plongeur, niveau_encadrant,
                     aptitudes_sup, qualifs, medical, date_naissance
                FROM divers
-              WHERE id IN ({$phs}) AND user_id=? AND deleted_at IS NULL",
-            [...$ids, $userId]
+              WHERE id IN ({$phs}) AND club_id=? AND deleted_at IS NULL",
+            [...$ids, $clubId]
         );
         foreach ($rows as $row) {
             // Décoder qualifs → nitrox / trimix (même logique que routes/divers.php)
@@ -52,8 +52,8 @@ function validatePalanqueesOrAbort(array $palanquees, array $answers, int $userI
     if (!empty($answers['dp_id'])) {
         $dpRow = Db::row(
             'SELECT id, niveau_encadrant, qualifs, aptitudes_sup
-               FROM divers WHERE id=? AND user_id=? AND deleted_at IS NULL',
-            [$answers['dp_id'], $userId]
+               FROM divers WHERE id=? AND club_id=? AND deleted_at IS NULL',
+            [$answers['dp_id'], $clubId]
         );
         if ($dpRow) {
             $raw = json_decode($dpRow['qualifs'] ?? '[]', true) ?? [];
@@ -80,14 +80,15 @@ function validatePalanqueesOrAbort(array $palanquees, array $answers, int $userI
 // ?since=ISO8601 — pull incrémental (updated_at >= since).
 if ($method === 'GET' && $path === '/api/dives') {
     $user   = Auth::require();
+    Club::requirePermission($user, 'dives.read');
     $since  = $_GET['since']  ?? null;
     $status = isset($_GET['status'])
         ? array_filter(array_map('trim', explode(',', $_GET['status'])))
         : [];
     $allowed = ['prepared', 'in_progress', 'archived'];
 
-    $where  = ['d.user_id=?'];
-    $params = [$user['id']];
+    $where  = ['d.club_id=?'];
+    $params = [$user['club_id']];
 
     if ($since) {
         $sinceSql = SyncHelpers::parseSinceParam($since);
@@ -115,8 +116,11 @@ if ($method === 'GET' && $path === '/api/dives') {
         "SELECT d.id, d.client_uuid, d.status, d.site_nom, d.date_plongee,
                 d.dp_nom, d.dp_qual, d.activite, d.drive_link,
                 d.planned_at, d.started_at, d.closed_at,
-                d.palanquees, d.deleted_at, d.updated_at, d.created_at
+                d.palanquees, d.deleted_at, d.updated_at, d.created_at,
+                d.user_id, u.prenom AS auteur_prenom, u.nom AS auteur_nom,
+                d.documents_status
            FROM dives d
+           LEFT JOIN users u ON u.id = d.user_id
           WHERE {$whereStr}
           ORDER BY d.date_plongee DESC, d.created_at DESC",
         $params
@@ -141,23 +145,10 @@ if ($method === 'GET' && $path === '/api/dives') {
 // pas dépendre de dives.render_state (colonne gardée pour compatibilité).
 if ($method === 'GET' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
     $user = Auth::require();
-    $row  = Db::row(
-        'SELECT d.*, COALESCE(r.state, d.render_state) AS render_state
-           FROM dives d
-           LEFT JOIN dive_runtime_state r ON r.dive_id = d.id
-          WHERE d.id=? AND d.user_id=? AND d.deleted_at IS NULL',
-        [$m[1], $user['id']]
-    );
-    if (!$row) {
-        $row = Db::row(
-            'SELECT d.*, COALESCE(r.state, d.render_state) AS render_state
-               FROM dives d
-               LEFT JOIN dive_runtime_state r ON r.dive_id = d.id
-              WHERE d.client_uuid=? AND d.user_id=? AND d.deleted_at IS NULL',
-            [$m[1], $user['id']]
-        );
-    }
+    Club::requirePermission($user, 'dives.read');
+    $row  = DivePdf::loadForClub($m[1], (string)$user['club_id']);
     if (!$row) Json::abort(404, 'Plongée introuvable');
+    $row['documents'] = DiveArchive::listForDive((string)$row['id']);
     $row['answers']      = json_decode($row['answers']      ?? '{}', true) ?? [];
     $row['palanquees']   = json_decode($row['palanquees']   ?? '[]', true) ?? [];
     $row['render_state'] = json_decode($row['render_state'] ?? '{}', true) ?? [];
@@ -174,6 +165,7 @@ if ($method === 'GET' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
 if ($method === 'POST' && $path === '/api/dives') {
     Csrf::verify();
     $user = Auth::require();
+    Club::requirePermission($user, 'dives.write');
     $body = Json::body();
 
     $clientUuid = isset($body['client_uuid']) && SyncHelpers::isValidUuid((string)$body['client_uuid'])
@@ -198,18 +190,18 @@ if ($method === 'POST' && $path === '/api/dives') {
     // avancé (in_progress ou archived = sync offline d'une session déjà terminée).
     // Pour 'prepared', la palanquée peut être incomplète → pas de blocage.
     if (!empty($body['palanquees']) && in_array($status, ['in_progress', 'archived'], true)) {
-        validatePalanqueesOrAbort($body['palanquees'], $body['answers'] ?? [], $user['id']);
+        validatePalanqueesOrAbort($body['palanquees'], $body['answers'] ?? [], (string)$user['club_id']);
     }
     $rsJson = !empty($body['render_state']) ? renderStateJsonOrAbort($body['render_state']) : null;
 
     $id = Db::uuid();
     Db::q(
         'INSERT INTO dives
-         (id, user_id, client_uuid, status, site_nom, date_plongee, planned_at,
+         (id, club_id, user_id, client_uuid, status, site_nom, date_plongee, planned_at,
           dp_nom, dp_qual, activite, answers, palanquees, drive_link)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
         [
-            $id, $user['id'], $clientUuid, $status,
+            $id, $user['club_id'], $user['id'], $clientUuid, $status,
             substr((string)($body['site_nom']   ?? ''), 0, 255),
             $dpDate,
             $planned,
@@ -230,8 +222,16 @@ if ($method === 'POST' && $path === '/api/dives') {
         );
     }
 
-    Log::action('dive.created', ['dive_id' => $id]);
-    Json::ok(['id' => $id, 'duplicate' => false], 201);
+    Log::action('dive.created', ['dive_id' => $id, 'club_id' => $user['club_id']]);
+    $documentsStatus = null;
+    if ($status === 'archived') {
+        // Plongée archivée hors-ligne puis synchronisée : même traitement
+        // qu'un passage en 'archived' par PATCH.
+        Log::action('dive.archived', ['dive_id' => $id]);
+        DiveArchive::onArchived($id);
+        $documentsStatus = 'pending';
+    }
+    Json::ok(['id' => $id, 'duplicate' => false, 'documents_status' => $documentsStatus], 201);
 }
 
 // ── PATCH /api/dives/:id ────────────────────────────────────────────────────
@@ -242,11 +242,12 @@ if ($method === 'POST' && $path === '/api/dives') {
 if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
     Csrf::verify();
     $user = Auth::require();
+    Club::requirePermission($user, 'dives.write');
     $body = Json::body();
 
     $row = Db::row(
-        'SELECT id, status FROM dives WHERE (id=? OR client_uuid=?) AND user_id=? AND deleted_at IS NULL',
-        [$m[1], $m[1], $user['id']]
+        'SELECT id, status FROM dives WHERE (id=? OR client_uuid=?) AND club_id=? AND deleted_at IS NULL',
+        [$m[1], $m[1], $user['club_id']]
     );
     if (!$row) Json::abort(404, 'Plongée introuvable');
 
@@ -329,7 +330,7 @@ if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
             $existingAnswers = Db::row('SELECT answers FROM dives WHERE id=?', [$row['id']]);
             $ans = json_decode($existingAnswers['answers'] ?? '{}', true) ?? [];
         }
-        validatePalanqueesOrAbort($body['palanquees'], $ans, $user['id']);
+        validatePalanqueesOrAbort($body['palanquees'], $ans, (string)$user['club_id']);
     }
 
     // Garde-fou anti-écrasement : un client qui aurait ouvert la plongée sans
@@ -358,10 +359,11 @@ if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
         Db::q('UPDATE dives SET ' . implode(',', $sets) . ' WHERE id=?', $params);
     }
 
-    $updated = Db::row('SELECT id, status, drive_link FROM dives WHERE id=?', [$row['id']]);
     if ($newStatus === 'archived' && $curStatus !== 'archived') {
-        Log::action('dive.archived', ['dive_id' => $updated['id'], 'drive_link' => $updated['drive_link'] ?? null]);
+        Log::action('dive.archived', ['dive_id' => $row['id'], 'club_id' => $user['club_id']]);
+        DiveArchive::onArchived((string)$row['id']);
     }
+    $updated = Db::row('SELECT id, status, drive_link, documents_status FROM dives WHERE id=?', [$row['id']]);
     Json::ok($updated);
 }
 
@@ -370,10 +372,11 @@ if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
 if ($method === 'DELETE' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
     Csrf::verify();
     $user = Auth::require();
+    Club::requirePermission($user, 'dives.write');
 
     $row = Db::row(
-        'SELECT id, status FROM dives WHERE (id=? OR client_uuid=?) AND user_id=? AND deleted_at IS NULL',
-        [$m[1], $m[1], $user['id']]
+        'SELECT id, status FROM dives WHERE (id=? OR client_uuid=?) AND club_id=? AND deleted_at IS NULL',
+        [$m[1], $m[1], $user['club_id']]
     );
     if (!$row) Json::abort(404, 'Plongée introuvable');
     if ($row['status'] === 'archived') {
@@ -383,6 +386,73 @@ if ($method === 'DELETE' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
     Db::q('UPDATE dives SET deleted_at=NOW() WHERE id=?', [$row['id']]);
     Log::action('dive.deleted', ['dive_id' => $row['id']]);
     Json::ok(['id' => $row['id'], 'deleted' => true]);
+}
+
+// ── Documents archivés (A322-72) ───────────────────────────────────────────
+// GET  /api/dives/:id/documents        → { status, documents: [{type, sha256, bytes, created_at}] }
+// GET  /api/dives/:id/documents/:type  → PDF (fiche | checklist), intégrité SHA-256 vérifiée
+// POST /api/dives/:id/documents        → (re)génère les deux PDF, synchrone
+if (preg_match('#^/api/dives/([^/]+)/documents(?:/([a-z]+))?$#', $path, $m)) {
+    $docType = $m[2] ?? null;
+    if ($method === 'GET' && $docType === null) {
+        $user = Auth::require();
+        Club::requirePermission($user, 'documents.read');
+        $dive = archivedDiveOrAbort($m[1], (string)$user['club_id'], false);
+        Json::ok([
+            'dive_id'    => $dive['id'],
+            'status'     => $dive['documents_status'],
+            'updated_at' => SyncHelpers::toIso($dive['documents_updated_at'] ?? null),
+            'documents'  => DiveArchive::listForDive((string)$dive['id']),
+        ]);
+    }
+    if ($method === 'GET' && $docType !== null) {
+        if (!in_array($docType, DivePdf::TYPES, true)) Json::abort(404, 'Type de document inconnu');
+        $user = Auth::require();
+        Club::requirePermission($user, 'documents.read');
+        $dive = archivedDiveOrAbort($m[1], (string)$user['club_id'], false);
+        try {
+            $doc = DiveArchive::read((string)$dive['id'], $docType);
+        } catch (\RuntimeException $e) {
+            error_log('[dp-fede] ' . $e->getMessage());
+            Log::action('dive.document_unreadable', ['dive_id' => $dive['id'], 'type' => $docType]);
+            Json::abort(500, 'Document archivé illisible ou altéré : régénérer le document');
+        }
+        if ($doc === null) Json::abort(404, 'Document non disponible (statut : ' . ($dive['documents_status'] ?? 'aucun') . ')');
+        Log::action('dive.document_downloaded', ['dive_id' => $dive['id'], 'type' => $docType]);
+        PdfRender::stream($doc['content'], DivePdf::filename($dive, $docType));
+    }
+    if ($method === 'POST' && $docType === null) {
+        Csrf::verify();
+        $user = Auth::require();
+        Club::requirePermission($user, 'documents.generate');
+        $dive = archivedDiveOrAbort($m[1], (string)$user['club_id'], true);
+        DiveArchive::refreshParticipants((string)$dive['id']);
+        DiveArchive::setStatus((string)$dive['id'], 'pending');
+        if (!DiveArchive::generateDocuments((string)$dive['id'])) {
+            Json::abort(500, 'Échec de la génération des documents (détail journalisé côté serveur)');
+        }
+        Json::ok([
+            'dive_id'   => $dive['id'],
+            'status'    => 'ok',
+            'documents' => DiveArchive::listForDive((string)$dive['id']),
+        ]);
+    }
+}
+
+/** Plongée archivée du club, sinon 404 (409 si non archivée et $mustBeArchived). */
+function archivedDiveOrAbort(string $idOrUuid, string $clubId, bool $mustBeArchived): array {
+    $dive = Db::row(
+        'SELECT id, club_id, status, site_nom, date_plongee, documents_status, documents_updated_at
+           FROM dives
+          WHERE (id=? OR client_uuid=?) AND club_id=? AND deleted_at IS NULL
+          ORDER BY (id = ?) DESC LIMIT 1',
+        [$idOrUuid, $idOrUuid, $clubId, $idOrUuid]
+    );
+    if (!$dive) Json::abort(404, 'Plongée introuvable');
+    if ($mustBeArchived && $dive['status'] !== 'archived') {
+        Json::abort(409, 'Les documents ne sont générés que pour une plongée archivée');
+    }
+    return $dive;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

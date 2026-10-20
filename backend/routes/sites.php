@@ -3,23 +3,27 @@ declare(strict_types=1);
 
 $MILIEUX = ['En mer','Lac','Carrière','Piscine','Autre'];
 
+// Sites du CLUB COURANT (club_id) ; user_id = auteur.
+// Lecture : tous les rôles ; écriture : responsable, dp.
+
 // GET /api/sites
 // Paramètre optionnel ?since=ISO8601 — sync incrémental incluant les soft-deletes.
 if ($method === 'GET' && $path === '/api/sites') {
     $user  = Auth::require();
+    Club::requirePermission($user, 'sites.read');
     $since = $_GET['since'] ?? null;
     if ($since) {
         $sinceSql = SyncHelpers::parseSinceParam($since);
         $rows = Db::all(
             'SELECT * FROM sites
-             WHERE user_id=? AND (updated_at >= ? OR deleted_at >= ?)
+             WHERE club_id=? AND (updated_at >= ? OR deleted_at >= ?)
              ORDER BY nom',
-            [$user['id'], $sinceSql, $sinceSql]
+            [$user['club_id'], $sinceSql, $sinceSql]
         );
     } else {
         $rows = Db::all(
-            'SELECT * FROM sites WHERE user_id=? AND deleted_at IS NULL ORDER BY nom',
-            [$user['id']]
+            'SELECT * FROM sites WHERE club_id=? AND deleted_at IS NULL ORDER BY nom',
+            [$user['club_id']]
         );
     }
     Json::ok(array_map('decodeSite', $rows));
@@ -31,6 +35,7 @@ if ($method === 'GET' && $path === '/api/sites') {
 if ($method === 'POST' && $path === '/api/sites') {
     Csrf::verify();
     $user = Auth::require();
+    Club::requirePermission($user, 'sites.write');
     $v    = new Validate(Json::body());
     $v->required('nom', 'Nom du site')
       ->maxLen('nom', 200, 'Nom du site')
@@ -49,16 +54,16 @@ if ($method === 'POST' && $path === '/api/sites') {
 
     $clientId = $v->nullable('id');
     $id       = $clientId && SyncHelpers::isValidUuid($clientId) ? $clientId : Db::uuid();
-    // L'UPSERT ne doit jamais toucher la ligne d'un autre compte.
-    $owner = Db::row('SELECT user_id FROM sites WHERE id=?', [$id]);
-    if ($owner && (string)$owner['user_id'] !== (string)$user['id']) {
+    // L'UPSERT ne doit jamais toucher la ligne d'un autre club.
+    $owner = Db::row('SELECT club_id FROM sites WHERE id=?', [$id]);
+    if ($owner && (string)$owner['club_id'] !== (string)$user['club_id']) {
         Json::abort(409, 'Identifiant déjà utilisé');
     }
     $coord    = $v->arr('coordonnees');
 
     Db::q(
-        'INSERT INTO sites (id, user_id, nom, milieu, profondeur_max, coordonnees, notes, depart_bord, depart_bateau, shot_line, ville, pays, pays_code, region, acces_secours, caisson)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        'INSERT INTO sites (id, club_id, user_id, nom, milieu, profondeur_max, coordonnees, notes, depart_bord, depart_bateau, shot_line, ville, pays, pays_code, region, acces_secours, caisson)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
          ON DUPLICATE KEY UPDATE
            nom=VALUES(nom), milieu=VALUES(milieu), profondeur_max=VALUES(profondeur_max),
            coordonnees=VALUES(coordonnees), notes=VALUES(notes),
@@ -67,7 +72,7 @@ if ($method === 'POST' && $path === '/api/sites') {
            pays_code=VALUES(pays_code), region=VALUES(region),
            acces_secours=VALUES(acces_secours), caisson=VALUES(caisson), deleted_at=NULL',
         [
-            $id, $user['id'],
+            $id, $user['club_id'], $user['id'],
             $v->str('nom'), $v->str('milieu') ?: 'En mer',
             $v->float('profondeur_max'),
             $coord ? json_encode($coord, JSON_UNESCAPED_UNICODE) : null,
@@ -83,13 +88,14 @@ if ($method === 'POST' && $path === '/api/sites') {
             $v->str('caisson'),
         ]
     );
-    Json::ok(decodeSite(Db::row('SELECT * FROM sites WHERE id=? AND user_id=?', [$id, $user['id']])), 201);
+    Json::ok(decodeSite(Db::row('SELECT * FROM sites WHERE id=? AND club_id=?', [$id, $user['club_id']])), 201);
 }
 
 // GET /api/sites/:id
 if ($method === 'GET' && preg_match('#^/api/sites/([^/]+)$#', $path, $m)) {
     $user = Auth::require();
-    $row  = siteOwnerOrAbort($user['id'], $m[1]);
+    Club::requirePermission($user, 'sites.read');
+    $row  = siteInClubOrAbort((string)$user['club_id'], $m[1]);
     Json::ok(decodeSite($row));
 }
 
@@ -97,7 +103,8 @@ if ($method === 'GET' && preg_match('#^/api/sites/([^/]+)$#', $path, $m)) {
 if ($method === 'PUT' && preg_match('#^/api/sites/([^/]+)$#', $path, $m)) {
     Csrf::verify();
     $user = Auth::require();
-    siteOwnerOrAbort($user['id'], $m[1]);
+    Club::requirePermission($user, 'sites.write');
+    siteInClubOrAbort((string)$user['club_id'], $m[1]);
 
     $v = new Validate(Json::body());
     $v->required('nom', 'Nom du site')
@@ -118,7 +125,7 @@ if ($method === 'PUT' && preg_match('#^/api/sites/([^/]+)$#', $path, $m)) {
     $coord = $v->arr('coordonnees');
     Db::q(
         'UPDATE sites SET nom=?, milieu=?, profondeur_max=?, coordonnees=?, notes=?, depart_bord=?, depart_bateau=?, shot_line=?, ville=?, pays=?, pays_code=?, region=?, acces_secours=?, caisson=?, deleted_at=NULL
-         WHERE id=? AND user_id=?',
+         WHERE id=? AND club_id=?',
         [
             $v->str('nom'), $v->str('milieu') ?: 'En mer',
             $v->float('profondeur_max'),
@@ -133,24 +140,25 @@ if ($method === 'PUT' && preg_match('#^/api/sites/([^/]+)$#', $path, $m)) {
             $v->str('region'),
             $v->str('acces_secours'),
             $v->str('caisson'),
-            $m[1], $user['id'],
+            $m[1], $user['club_id'],
         ]
     );
-    Json::ok(decodeSite(Db::row('SELECT * FROM sites WHERE id=?', [$m[1]])));
+    Json::ok(decodeSite(Db::row('SELECT * FROM sites WHERE id=? AND club_id=?', [$m[1], $user['club_id']])));
 }
 
 // DELETE /api/sites/:id — soft delete pour propager aux clients via ?since=.
 if ($method === 'DELETE' && preg_match('#^/api/sites/([^/]+)$#', $path, $m)) {
     Csrf::verify();
     $user = Auth::require();
-    siteOwnerOrAbort($user['id'], $m[1]);
-    Db::q('UPDATE sites SET deleted_at=NOW() WHERE id=? AND user_id=?', [$m[1], $user['id']]);
-    Log::action('site.deleted', ['site_id' => $m[1]]);
+    Club::requirePermission($user, 'sites.write');
+    siteInClubOrAbort((string)$user['club_id'], $m[1]);
+    Db::q('UPDATE sites SET deleted_at=NOW() WHERE id=? AND club_id=?', [$m[1], $user['club_id']]);
+    Log::action('site.deleted', ['site_id' => $m[1], 'club_id' => $user['club_id']]);
     Json::ok(null);
 }
 
-function siteOwnerOrAbort(int $userId, string $siteId): array {
-    $row = Db::row('SELECT * FROM sites WHERE id=? AND user_id=?', [$siteId, $userId]);
+function siteInClubOrAbort(string $clubId, string $siteId): array {
+    $row = Db::row('SELECT * FROM sites WHERE id=? AND club_id=?', [$siteId, $clubId]);
     if (!$row) Json::abort(404, 'Site introuvable');
     return $row;
 }

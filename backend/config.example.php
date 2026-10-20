@@ -15,6 +15,12 @@ return [
     'app' => [
         'domain' => 'dp-fede.bullesenvalais.ch',
     ],
+    // Archivage serveur des fiches de sécurité (A322-72, conservation 1 an
+    // par l'établissement) : répertoire HORS web root, propriétaire www-data,
+    // mode 750, inclus dans open_basedir du pool PHP (cf. docs/deploy/club-socle.md).
+    'documents' => [
+        'path' => '/var/lib/dp-fede/documents',
+    ],
     // Durées de conservation appliquées par bin/purge.php (cf. docs/rgpd.md).
     // Les options CLI (--soft-deleted-days=…, etc.) priment sur ces valeurs.
     'retention' => [

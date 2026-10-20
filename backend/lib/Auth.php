@@ -196,8 +196,17 @@ class Auth {
         return $user;
     }
 
-    // Require authenticated user or abort 401
+    /**
+     * Utilisateur authentifié (401 sinon), complété du club courant :
+     * clés « club_id » et « club_role » (cf. Club::context — club personnel
+     * créé au besoin, en-tête X-DP-Club respecté).
+     */
     public static function require(): array {
+        return Club::withContext(self::requireUser());
+    }
+
+    /** Utilisateur authentifié SANS résolution du club (invitations, liste des clubs). */
+    public static function requireUser(): array {
         $user = self::current();
         if (!$user) Json::abort(401, 'Non authentifié');
         return $user;
@@ -205,7 +214,7 @@ class Auth {
 
     // Require admin role or abort 403
     public static function requireAdmin(): array {
-        $user = self::require();
+        $user = self::requireUser();
         if ($user['role'] !== 'admin') Json::abort(403, 'Accès réservé aux administrateurs');
         return $user;
     }
@@ -221,7 +230,7 @@ class Auth {
      * Aborte 403 sinon.
      */
     public static function requireSuperAdmin(): array {
-        $user = self::require();
+        $user = self::requireUser();
         if (($user['email'] ?? '') !== self::SUPER_ADMIN_EMAIL) {
             Json::abort(403, 'Accès restreint au super-administrateur');
         }

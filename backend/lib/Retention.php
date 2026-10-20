@@ -5,7 +5,11 @@ declare(strict_types=1);
  * Purges périodiques (bin/purge.php, cron quotidien) — cf. docs/rgpd.md.
  *
  * Toujours actif :
- *   - sessions expirées, compteurs de rate-limit périmés.
+ *   - sessions expirées, compteurs de rate-limit périmés ;
+ *   - clubs supprimés dont la conservation légale (A322-72, 365 jours) est
+ *     échue : suppression définitive des fiches conservées (lignes + PDF) ;
+ *   - invitations de club utilisées, annulées ou expirées depuis plus de
+ *     30 jours (elles contiennent une adresse e-mail).
  * Actif par défaut, paramétrable (0 = désactivé) :
  *   - lignes soft-deleted (divers, sites, plongées non archivées) depuis
  *     plus de N jours (défaut 180). La rétention temporaire sert à propager
@@ -13,8 +17,11 @@ declare(strict_types=1);
  * DÉSACTIVÉ par défaut (opt-in explicite) :
  *   - plongées archivées dont la date est antérieure à N années (N ≥ 1 :
  *     conservation minimale d'un an des fiches de sécurité, A322-72) ;
- *   - comptes inactifs depuis N années (N ≥ 2), hors administrateurs et
- *     hors comptes ayant une plongée de moins d'un an.
+ *   - comptes inactifs depuis N années (N ≥ 2), hors administrateurs,
+ *     hors comptes ayant une plongée de moins d'un an et hors seuls
+ *     responsables d'un club partagé.
+ * La suppression d'une plongée supprime aussi ses participants, ses
+ * documents (lignes dive_documents ET fichiers PDF) et son runtime state.
  *
  * Paramètres : section 'retention' de /etc/dp-fede/config.php, surchargée
  * par les options CLI (--soft-deleted-days=…, --archived-dives-years=…,
@@ -27,6 +34,8 @@ class Retention
     public const MIN_INACTIVE_ACCOUNT_YEARS = 2;
     /** A322-72 : une plongée de moins d'un an protège le compte de la purge. */
     private const RECENT_DIVE_GUARD_YEARS = 1;
+    /** Invitations closes (utilisées / annulées / expirées) conservées 30 jours. */
+    public const CLOSED_INVITATIONS_DAYS = 30;
 
     // ── Fonctions pures ────────────────────────────────────────────────────
 
@@ -109,14 +118,24 @@ class Retention
     {
         $dry = (bool)$opts['dry_run'];
         $out = [
-            'sessions_expired' => self::sessions($dry),
-            'rate_limits'      => self::rateLimits($dry),
+            'sessions_expired'   => self::sessions($dry),
+            'rate_limits'        => self::rateLimits($dry),
+            'clubs_retention_expired' => ClubRetention::purgeExpired($dry, $now),
+            'invitations_closed' => self::countOrDelete(
+                $dry,
+                'club_invitations',
+                '(accepted_at IS NOT NULL OR revoked_at IS NOT NULL OR expires_at < NOW()) AND created_at < ?',
+                [self::cutoff($now, self::CLOSED_INVITATIONS_DAYS, 'days')]
+            ),
         ];
 
         if ($opts['soft_deleted_days'] > 0) {
             $cut = self::cutoff($now, (int)$opts['soft_deleted_days'], 'days');
-            $out['divers_soft_deleted'] = self::countOrDelete($dry, 'divers', 'deleted_at IS NOT NULL AND deleted_at < ?', [$cut]);
-            $out['sites_soft_deleted']  = self::countOrDelete($dry, 'sites', 'deleted_at IS NOT NULL AND deleted_at < ?', [$cut]);
+            // Données d'un club en conservation légale (A322-72) : purgées avec
+            // le club par ClubRetention::purgeExpired, pas ici.
+            $retained = ' AND club_id NOT IN (SELECT id FROM clubs WHERE deleted_at IS NOT NULL)';
+            $out['divers_soft_deleted'] = self::countOrDelete($dry, 'divers', 'deleted_at IS NOT NULL AND deleted_at < ?' . $retained, [$cut]);
+            $out['sites_soft_deleted']  = self::countOrDelete($dry, 'sites', 'deleted_at IS NOT NULL AND deleted_at < ?' . $retained, [$cut]);
             $out['dives_soft_deleted']  = self::dives($dry, 'deleted_at IS NOT NULL AND deleted_at < ?', [$cut]);
         }
 
@@ -162,17 +181,26 @@ class Retention
         return Db::q("DELETE FROM {$table} WHERE {$where}", $params)->rowCount();
     }
 
-    /** Supprime des plongées et leur runtime state (explicitement, sans dépendre des FK). */
+    /**
+     * Supprime des plongées avec leur runtime state, leurs participants et
+     * leurs documents (explicitement, sans dépendre des FK). Les fichiers PDF
+     * sont effacés après validation de la transaction.
+     */
     private static function dives(bool $dry, string $where, array $params): int
     {
         if ($dry) return self::countOrDelete(true, 'dives', $where, $params);
-        return Db::transaction(static function (PDO $pdo) use ($where, $params): int {
-            $pdo->prepare("DELETE FROM dive_runtime_state WHERE dive_id IN (SELECT id FROM dives WHERE {$where})")
-                ->execute($params);
+        $paths = DiveArchive::documentPathsWhere($where, $params);
+        $n = Db::transaction(static function (PDO $pdo) use ($where, $params): int {
+            foreach (['dive_runtime_state', 'dive_participants', 'dive_documents'] as $child) {
+                $pdo->prepare("DELETE FROM {$child} WHERE dive_id IN (SELECT id FROM dives WHERE {$where})")
+                    ->execute($params);
+            }
             $st = $pdo->prepare("DELETE FROM dives WHERE {$where}");
             $st->execute($params);
             return $st->rowCount();
         });
+        DiveArchive::unlinkDocuments($paths);
+        return $n;
     }
 
     private static function inactiveAccounts(bool $dry, string $inactiveCutoff, string $recentDiveCutoff): int
@@ -189,6 +217,9 @@ class Retention
                 )",
             [Auth::SUPER_ADMIN_EMAIL, $inactiveCutoff, $recentDiveCutoff]
         );
+        // Seul responsable d'un club partagé : le compte est conservé (le club
+        // ne doit pas se retrouver sans responsable).
+        $ids = array_values(array_filter($ids, static fn(array $row): bool => !Account::clubBlockers((int)$row['id'])));
         if ($dry) return count($ids);
         foreach ($ids as $row) {
             Account::deleteUserData((int)$row['id']);

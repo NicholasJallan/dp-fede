@@ -39,6 +39,16 @@ require_once __DIR__ . '/../lib/Account.php';
 require_once __DIR__ . '/../lib/Migrator.php';
 require_once __DIR__ . '/../lib/Retention.php';
 require_once __DIR__ . '/../lib/PdfRender.php';
+require_once __DIR__ . '/../lib/Club.php';
+require_once __DIR__ . '/../lib/ClubInvitation.php';
+require_once __DIR__ . '/../lib/ClubAlerts.php';
+require_once __DIR__ . '/../lib/ClubStats.php';
+require_once __DIR__ . '/../lib/LevelMapper.php';
+require_once __DIR__ . '/../lib/DiverImport.php';
+require_once __DIR__ . '/../lib/DiverImportPlan.php';
+require_once __DIR__ . '/../lib/DivePdf.php';
+require_once __DIR__ . '/../lib/DiveArchive.php';
+require_once __DIR__ . '/../lib/ClubRetention.php';
 
 // Charge les helpers de routes utilisés (parseDiveDateToMySql, normalizeDiveDate).
 // Sans définir $method/$path → les blocs if du fichier ne se déclenchent pas,

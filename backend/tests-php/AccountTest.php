@@ -57,7 +57,7 @@ final class AccountTest extends TestCase
             '2026-10-20T10:00:00+02:00'
         );
 
-        $this->assertSame('dp-assistant-export/1', $export['format']);
+        $this->assertSame('dp-assistant-export/2', $export['format']);
         $this->assertSame('2026-10-20T10:00:00+02:00', $export['generated_at']);
         $this->assertSame(['nitrox' => ['PN']], $export['divers'][0]['qualifs']);
         $this->assertSame([], $export['divers'][0]['aptitudes_sup']);
@@ -67,6 +67,37 @@ final class AccountTest extends TestCase
         $this->assertInstanceOf(\stdClass::class, $export['dives'][0]['render_state']);
         $this->assertArrayNotHasKey('id', $export['sessions'][0]);
         $this->assertSame('192.0.2.1', $export['sessions'][0]['ip_addr']);
+    }
+
+    public function testSoleResponsableOfSharedClubCannotDelete(): void
+    {
+        $user = ['id' => 7, 'role' => 'user', 'email' => 'a@example.com'];
+        $err  = \Account::deletionError($user, self::CONFIRM, 0, [['club_id' => 'c1', 'nom' => 'Bulles']]);
+        $this->assertSame(409, $err[0]);
+        $this->assertStringContainsString('« Bulles »', $err[1]);
+        // La confirmation reste vérifiée en premier.
+        $this->assertSame(422, \Account::deletionError($user, [], 0, [['club_id' => 'c1', 'nom' => 'Bulles']])[0]);
+    }
+
+    public function testClubBlockerMessageNamesUnnamedClubs(): void
+    {
+        $msg = \Account::clubBlockerMessage([['club_id' => 'c1', 'nom' => ''], ['club_id' => 'c2', 'nom' => 'B']]);
+        $this->assertStringContainsString('« club sans nom », « B »', $msg);
+    }
+
+    public function testExportIncludesClubsAndStripsSecrets(): void
+    {
+        $export = \Account::buildExport(
+            ['id' => 3, 'email' => 'dp@example.com', 'google_sub' => '1234'],
+            [], [], [], [],
+            '2026-10-20T10:00:00+02:00',
+            [['club_id' => 'c1', 'nom' => 'Bulles', 'role' => 'responsable']],
+            [['id' => 'i1', 'email' => 'x@example.com', 'token_hash' => str_repeat('f', 64)]]
+        );
+        $this->assertArrayNotHasKey('google_sub', $export['account']);
+        $this->assertSame('responsable', $export['clubs'][0]['role']);
+        $this->assertArrayNotHasKey('token_hash', $export['invitations'][0]);
+        $this->assertSame('x@example.com', $export['invitations'][0]['email']);
     }
 
     public function testDecodeJsonFallsBackOnInvalidInput(): void

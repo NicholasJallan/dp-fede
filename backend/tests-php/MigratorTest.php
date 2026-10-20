@@ -80,6 +80,60 @@ final class MigratorTest extends TestCase
         $this->assertContains('003', $versions);
         $this->assertContains('004', $versions);
         $this->assertContains('005', $versions);
+        foreach (['006', '007', '008', '009'] as $v) $this->assertContains($v, $versions);
+    }
+
+    /**
+     * Migrations du socle club (006–008) : chaque instruction doit être
+     * rejouable après un échec partiel (MariaDB valide le DDL implicitement).
+     */
+    public function testClubMigrationsAreIdempotent(): void
+    {
+        $allowed = '/^(CREATE TABLE IF NOT EXISTS'
+            . '|ALTER TABLE \\w+ ADD COLUMN IF NOT EXISTS'
+            . '|ALTER TABLE \\w+\\s+MODIFY '
+            . '|CREATE (UNIQUE )?INDEX IF NOT EXISTS'
+            . '|INSERT IGNORE INTO'
+            . '|UPDATE .+ WHERE .+ IS NULL$'
+            . '|SET @\\w+ :='
+            . '|PREPARE fk_stmt FROM @ddl$|EXECUTE fk_stmt$|DEALLOCATE PREPARE fk_stmt$)/s';
+        foreach (['006_clubs.sql', '007_divers_club_fields.sql', '008_dive_archive.sql', '009_clubs_soft_delete.sql'] as $file) {
+            $stmts = \Migrator::splitStatements((string)file_get_contents(self::DIR . '/' . $file));
+            $this->assertNotEmpty($stmts, $file);
+            foreach ($stmts as $stmt) {
+                $this->assertMatchesRegularExpression($allowed, $stmt, "{$file} : instruction non idempotente : {$stmt}");
+                if (preg_match('/ALTER TABLE .*(ADD CONSTRAINT|DROP FOREIGN KEY)/', $stmt)) {
+                    $this->assertStringStartsWith('SET @ddl := IF(', $stmt, "{$file} : FK non gardée : {$stmt}");
+                }
+            }
+        }
+    }
+
+    /** Les FK créées à partir de 006 portent des noms uniques et jamais déjà utilisés. */
+    public function testNewConstraintNamesAreUnique(): void
+    {
+        $old = [];
+        $new = [];
+        foreach (glob(self::DIR . '/*.sql') as $path) {
+            preg_match_all('/CONSTRAINT\s+`?(\w+)`?\s+FOREIGN KEY/i', (string)file_get_contents($path), $m);
+            $isNew = (int)\Migrator::parseVersion(basename($path)) >= 6;
+            foreach ($m[1] as $n) {
+                if ($isNew) $new[] = strtolower($n); else $old[strtolower($n)] = true;
+            }
+        }
+        $this->assertNotEmpty($new);
+        $this->assertSame(count($new), count(array_unique($new)), 'Nom de contrainte en double');
+        foreach ($new as $n) $this->assertArrayNotHasKey($n, $old, "Nom déjà utilisé avant 006 : {$n}");
+    }
+
+    public function testClubBackfillCoversEveryUserAndTable(): void
+    {
+        $sql = (string)file_get_contents(self::DIR . '/006_clubs.sql');
+        foreach (['divers', 'sites', 'dives'] as $t) {
+            $this->assertMatchesRegularExpression("/UPDATE {$t} \\w+ JOIN clubs c ON c\\.auto_created_for = \\w+\\.user_id/", $sql, $t);
+            $this->assertStringContainsString("ALTER TABLE {$t} MODIFY user_id INT UNSIGNED NULL", $sql);
+        }
+        $this->assertStringContainsString('UNIQUE KEY uq_clubs_auto_created_for (auto_created_for)', $sql);
     }
 
     public function testConsolidationMigrationIsIdempotentDdl(): void

@@ -14,7 +14,9 @@ if (is_file(__DIR__ . '/vendor/autoload.php')) {
 }
 
 // Load libs
-foreach (['Config','Json','Db','Auth','Csrf','Validate','SyncHelpers','RateLimit','Log','Account'] as $cls) {
+foreach (['Config','Json','Db','Auth','Csrf','Validate','SyncHelpers','RateLimit','Log','Account',
+          'Club','ClubInvitation','ClubAlerts','ClubStats','LevelMapper','DiverImport','DiverImportPlan',
+          'DivePdf','DiveArchive','ClubRetention'] as $cls) {
     require_once __DIR__ . "/lib/{$cls}.php";
 }
 
@@ -36,7 +38,7 @@ if ($origin === $allowed) {
     header("Access-Control-Allow-Origin: {$origin}");
     header('Access-Control-Allow-Credentials: true');
     header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, X-CSRF-Token');
+    header('Access-Control-Allow-Headers: Content-Type, X-CSRF-Token, X-DP-Club');
     header('Access-Control-Max-Age: 600');
 }
 
@@ -74,7 +76,7 @@ if (strpos($path, '/api/proxy/') === 0) {
 // 120 mutations/min par IP — couvre largement un usage normal (auto-save
 // debouncé 500 ms + outbox drain ~3 items/s) mais coupe les abus.
 $writeMethods   = ['POST', 'PATCH', 'PUT', 'DELETE'];
-$writePathRoots = ['/api/dives', '/api/divers', '/api/sites', '/api/account'];
+$writePathRoots = ['/api/dives', '/api/divers', '/api/sites', '/api/account', '/api/club', '/api/pdf'];
 if (in_array($method, $writeMethods, true)) {
     foreach ($writePathRoots as $root) {
         if (strpos($path, $root) === 0) {
@@ -86,7 +88,7 @@ if (in_array($method, $writeMethods, true)) {
 
 // Router — load matching route file
 $routed = false;
-foreach (['auth','account','divers','sites','users','dives','sync','pdf','proxy','csp'] as $r) {
+foreach (['auth','account','club','divers','sites','users','dives','sync','pdf','proxy','csp'] as $r) {
     $file = __DIR__ . "/routes/{$r}.php";
     require $file;
 }

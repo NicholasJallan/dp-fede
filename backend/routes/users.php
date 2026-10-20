@@ -8,25 +8,34 @@ declare(strict_types=1);
 // GET /api/users — liste de tous les utilisateurs
 if ($method === 'GET' && $path === '/api/users') {
     Auth::requireSuperAdmin();
+    // club_* : club courant de l'utilisateur (repli : anciennes colonnes users.club_*).
     $rows = Db::all(
-        'SELECT id,email,nom,prenom,role,club_nom,club_numero,club_siret,
-                created_at,last_login
-         FROM users ORDER BY created_at'
+        'SELECT u.id, u.email, u.nom, u.prenom, u.role,
+                COALESCE(c.nom, u.club_nom) AS club_nom,
+                COALESCE(c.numero_ffessm, u.club_numero) AS club_numero,
+                COALESCE(c.siret, u.club_siret) AS club_siret,
+                u.current_club_id AS club_id,
+                (SELECT COUNT(*) FROM club_members m WHERE m.user_id = u.id) AS club_count,
+                u.created_at, u.last_login
+           FROM users u
+           LEFT JOIN clubs c ON c.id = u.current_club_id
+          ORDER BY u.created_at'
     );
     Json::ok($rows);
 }
 
-// GET /api/users/stats — stats agrégées par utilisateur
+// GET /api/users/stats — stats agrégées par utilisateur (lignes dont il est l'auteur)
 if ($method === 'GET' && $path === '/api/users/stats') {
     Auth::requireSuperAdmin();
     $rows = Db::all('
         SELECT
-          u.id, u.email, u.nom, u.prenom, u.club_nom, u.role,
+          u.id, u.email, u.nom, u.prenom, COALESCE(c.nom, u.club_nom) AS club_nom, u.role,
           u.created_at, u.last_login,
           (SELECT COUNT(*) FROM divers d WHERE d.user_id=u.id AND d.deleted_at IS NULL) AS nb_divers,
           (SELECT COUNT(*) FROM sites  s WHERE s.user_id=u.id AND s.deleted_at IS NULL) AS nb_sites,
           (SELECT COUNT(*) FROM dives  v WHERE v.user_id=u.id AND v.deleted_at IS NULL) AS nb_fiches
         FROM users u
+        LEFT JOIN clubs c ON c.id = u.current_club_id
         ORDER BY u.created_at DESC
     ');
     Json::ok($rows);
@@ -64,9 +73,17 @@ if ($method === 'DELETE' && preg_match('#^/api/users/(\d+)$#', $path, $m)) {
         Json::abort(400, 'Impossible de supprimer le super-administrateur');
     }
 
-    // Suppression explicite de toutes les données (plongées comprises : avant
-    // la migration 004, dives n'avait pas de FK et restait orpheline).
-    $counts = Account::deleteUserData((int)$m[1]);
-    Log::action('user.deleted', ['target_id' => (int)$m[1], 'rows' => $counts]);
-    Json::ok(null);
+    // Seul responsable d'un club partagé : transférer d'abord la responsabilité.
+    $blockers = Account::clubBlockers((int)$m[1]);
+    if ($blockers) Json::abort(409, Account::clubBlockerMessage($blockers));
+
+    // Suppression explicite : clubs dont il est le seul membre (avec toutes
+    // leurs données), sessions, adhésions ; ses contributions aux clubs
+    // partagés restent au club (auteur anonymisé).
+    $result = Account::deleteUserData((int)$m[1]);
+    Log::action('user.deleted', ['target_id' => (int)$m[1], 'rows' => $result['counts'], 'retained' => $result['retained']]);
+    Json::ok([
+        'retained' => $result['retained'],
+        'message'  => ClubRetention::message($result['retained']['fiches'], $result['retained']['until']),
+    ]);
 }

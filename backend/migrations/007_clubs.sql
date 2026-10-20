@@ -1,4 +1,4 @@
--- Migration 006 — Socle « club » (phase 5).
+-- Migration 007 — Socle « club » (phase 5).
 --
 -- Pourquoi : les données (annuaire, sites, plongées) appartiennent à la
 -- structure (club, SCA…), pas au compte d'un DP. Un club regroupe plusieurs
@@ -14,7 +14,7 @@
 --   - CREATE TABLE / ADD COLUMN / CREATE INDEX … IF NOT EXISTS ;
 --   - clubs.auto_created_for est UNIQUE : un seul club « personnel » créé
 --     automatiquement par utilisateur (reprise + création paresseuse côté PHP) ;
---   - FK ajoutées / remplacées via une garde information_schema (cf. 004).
+--   - FK ajoutées / remplacées via une garde information_schema (cf. 005).
 
 -- ── 1. Tables ───────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS clubs (
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS clubs (
     president_nom    VARCHAR(100) NULL,
     president_tel    VARCHAR(30)  NULL,
     urgence_defaut   VARCHAR(20)  NULL,
-    -- Club créé automatiquement pour cet utilisateur (reprise 006 ou premier
+    -- Club créé automatiquement pour cet utilisateur (reprise 007 ou premier
     -- accès d'un nouveau compte). Pas de FK : la suppression du compte ne
     -- doit pas emporter un club partagé.
     auto_created_for INT UNSIGNED NULL,
@@ -128,7 +128,7 @@ UPDATE dives v JOIN clubs c ON c.auto_created_for = v.user_id
    SET v.club_id = c.id, v.updated_at = v.updated_at
  WHERE v.club_id IS NULL;
 
--- Toutes les lignes ont un propriétaire existant (orphelins supprimés par 004,
+-- Toutes les lignes ont un propriétaire existant (orphelins supprimés par 005,
 -- FK users depuis) : la reprise couvre donc 100 % des lignes. Si ce MODIFY
 -- échoue, des lignes sans club subsistent : les examiner avant de rejouer
 -- (SELECT … WHERE club_id IS NULL).

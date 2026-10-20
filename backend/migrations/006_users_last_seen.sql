@@ -1,4 +1,4 @@
--- Migration 005 — Dernière activité des comptes (RGPD : purge des inactifs).
+-- Migration 006 — Dernière activité des comptes (RGPD : purge des inactifs).
 --
 -- Pourquoi : users.last_login n'est mis à jour qu'à la connexion Google.
 -- Or la session glisse (sliding 7 j) : un DP actif peut ne jamais se

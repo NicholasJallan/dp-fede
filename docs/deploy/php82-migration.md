@@ -204,7 +204,7 @@ violation signale une origine à ajouter (ou un script à retirer).
   `sudo nginx -t && sudo systemctl reload nginx`.
 - **Après** le déploiement du nouveau backend (vendor/ exige PHP ≥ 8.2) : un
   retour en 7.4 impose aussi de redéployer l'ancienne version du backend. Les
-  migrations 003 à 005 sont additives et compatibles avec l'ancien code.
+  migrations 003 à 006 sont additives et compatibles avec l'ancien code.
 - Configuration versionnée (§7b) : `sudo rm /etc/nginx/sites-enabled/dp-fede`,
   restaurer `/root/bullesenvalais.nginx.<date>`, `nginx -t`, reload.
 

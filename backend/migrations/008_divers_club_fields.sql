@@ -1,4 +1,4 @@
--- Migration 007 — Champs plongeurs pour l'import club (VPDive, CSV) et les alertes.
+-- Migration 008 — Champs plongeurs pour l'import club (VPDive, CSV) et les alertes.
 --
 --   source / external_id : provenance de la fiche ('manuel' saisie dans
 --     l'application, 'vpdive', 'csv'…) et identifiant dans le logiciel source.

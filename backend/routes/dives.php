@@ -164,7 +164,7 @@ if ($method === 'GET' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
 // Idempotence (outbox) : un client_uuid déjà porté par une plongée ACTIVE du
 // club courant renvoie 200 { id, duplicate: true }. Porté par une plongée
 // d'un autre club ou supprimée : 409 CLIENT_UUID_CONFLICT (jamais confondu
-// avec un rejeu). Index unique (club_id, client_uuid) : migration 010.
+// avec un rejeu). Index unique (club_id, client_uuid) : migration 011.
 // Plongée créée directement archivée (sync hors-ligne) : closed_at = heure
 // SERVEUR (base de la conservation légale, cf. ClubRetention).
 if ($method === 'POST' && $path === '/api/dives') {

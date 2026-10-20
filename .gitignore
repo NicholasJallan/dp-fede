@@ -20,3 +20,7 @@ playwright-report/
 # PHP
 backend/vendor/
 .phpunit.result.cache
+
+# Clés SSH déposées à la racine — ne jamais committer
+github_nja
+github_nja.pub

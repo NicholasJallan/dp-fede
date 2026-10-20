@@ -1,4 +1,4 @@
--- Migration 003 — Repli du schéma inline de l'ancien Db::migrate().
+-- Migration 004 — Repli du schéma inline de l'ancien Db::migrate().
 --
 -- Jusqu'ici, Db::migrate() rejouait à CHAQUE requête HTTP des CREATE TABLE
 -- IF NOT EXISTS + ~35 garde-fous addColumnIfMissing / addIndexIfMissing pour

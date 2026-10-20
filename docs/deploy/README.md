@@ -63,9 +63,9 @@ deploy/deploy-backend.sh --dry-run     # relire les suppressions annoncées (« 
 deploy/deploy-backend.sh
 ```
 
-Le script applique les migrations **003** (repli du schéma inline), **004**
+Le script applique les migrations **003** (date de naissance), **004** (repli du schéma inline), **005**
 (FK + suppression des orphelins — d'où la sauvegarde automatique juste avant)
-et **005** (`users.last_seen_at`). Ensuite :
+et **006** (`users.last_seen_at`). Ensuite :
 
 ```bash
 # Pi

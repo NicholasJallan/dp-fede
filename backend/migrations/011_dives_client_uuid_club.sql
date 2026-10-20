@@ -1,4 +1,4 @@
--- Migration 010 — Idempotence de POST /api/dives par club ; participants
+-- Migration 011 — Idempotence de POST /api/dives par club ; participants
 -- calculés une seule fois.
 --
 -- 1. client_uuid unique PAR CLUB (et non plus par auteur) : POST /api/dives

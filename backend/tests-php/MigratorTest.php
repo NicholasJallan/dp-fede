@@ -13,9 +13,12 @@ final class MigratorTest extends TestCase
 {
     private const DIR = __DIR__ . '/../migrations';
 
+    /** SHA-1 de 002_workspaces.sql tel que déployé (origin/main 3a9a3ae). */
+    private const WORKSPACES_SHA1 = 'fd5853414772125d065d2da97c3a19c2e0c3ddcb';
+
     public function testParseVersionAcceptsConvention(): void
     {
-        $this->assertSame('003', \Migrator::parseVersion('003_schema_consolidation.sql'));
+        $this->assertSame('004', \Migrator::parseVersion('004_schema_consolidation.sql'));
     }
 
     /** @dataProvider invalidNames */
@@ -77,14 +80,24 @@ final class MigratorTest extends TestCase
             $versions[] = $v;
         }
         $this->assertSame(count($versions), count(array_unique($versions)), 'Versions en double');
-        $this->assertContains('003', $versions);
-        $this->assertContains('004', $versions);
-        $this->assertContains('005', $versions);
-        foreach (['006', '007', '008', '009', '010'] as $v) $this->assertContains($v, $versions);
+        // 000 → 011 sans trou ; 002 = workspaces, déjà appliquée en production.
+        sort($versions, SORT_STRING);
+        $this->assertSame(array_map(static fn(int $n): string => sprintf('%03d', $n), range(0, 11)), $versions);
     }
 
     /**
-     * Migrations du socle club (006–008) : chaque instruction doit être
+     * 002_workspaces.sql est appliquée en production (schema_migrations : 000,
+     * 001, 002) : elle ne doit plus jamais changer, et nos migrations viennent
+     * après elle.
+     */
+    public function testWorkspacesMigrationIsTheProductionOne(): void
+    {
+        $sql = (string)file_get_contents(self::DIR . '/002_workspaces.sql');
+        $this->assertSame(self::WORKSPACES_SHA1, sha1($sql), '002_workspaces.sql diffère de la version appliquée en production');
+    }
+
+    /**
+     * Migrations du socle club (007–010) : chaque instruction doit être
      * rejouable après un échec partiel (MariaDB valide le DDL implicitement).
      */
     public function testClubMigrationsAreIdempotent(): void
@@ -97,7 +110,7 @@ final class MigratorTest extends TestCase
             . '|UPDATE .+ WHERE .+ IS NULL$'
             . '|SET @\\w+ :='
             . '|PREPARE fk_stmt FROM @ddl$|EXECUTE fk_stmt$|DEALLOCATE PREPARE fk_stmt$)/s';
-        foreach (['006_clubs.sql', '007_divers_club_fields.sql', '008_dive_archive.sql', '009_clubs_soft_delete.sql'] as $file) {
+        foreach (['007_clubs.sql', '008_divers_club_fields.sql', '009_dive_archive.sql', '010_clubs_soft_delete.sql'] as $file) {
             $stmts = \Migrator::splitStatements((string)file_get_contents(self::DIR . '/' . $file));
             $this->assertNotEmpty($stmts, $file);
             foreach ($stmts as $stmt) {
@@ -109,26 +122,26 @@ final class MigratorTest extends TestCase
         }
     }
 
-    /** Les FK créées à partir de 006 portent des noms uniques et jamais déjà utilisés. */
+    /** Les FK créées à partir de 007 portent des noms uniques et jamais déjà utilisés. */
     public function testNewConstraintNamesAreUnique(): void
     {
         $old = [];
         $new = [];
         foreach (glob(self::DIR . '/*.sql') as $path) {
             preg_match_all('/CONSTRAINT\s+`?(\w+)`?\s+FOREIGN KEY/i', (string)file_get_contents($path), $m);
-            $isNew = (int)\Migrator::parseVersion(basename($path)) >= 6;
+            $isNew = (int)\Migrator::parseVersion(basename($path)) >= 7;
             foreach ($m[1] as $n) {
                 if ($isNew) $new[] = strtolower($n); else $old[strtolower($n)] = true;
             }
         }
         $this->assertNotEmpty($new);
         $this->assertSame(count($new), count(array_unique($new)), 'Nom de contrainte en double');
-        foreach ($new as $n) $this->assertArrayNotHasKey($n, $old, "Nom déjà utilisé avant 006 : {$n}");
+        foreach ($new as $n) $this->assertArrayNotHasKey($n, $old, "Nom déjà utilisé avant 007 : {$n}");
     }
 
     public function testClubBackfillCoversEveryUserAndTable(): void
     {
-        $sql = (string)file_get_contents(self::DIR . '/006_clubs.sql');
+        $sql = (string)file_get_contents(self::DIR . '/007_clubs.sql');
         foreach (['divers', 'sites', 'dives'] as $t) {
             $this->assertMatchesRegularExpression("/UPDATE {$t} \\w+ JOIN clubs c ON c\\.auto_created_for = \\w+\\.user_id/", $sql, $t);
             $this->assertStringContainsString("ALTER TABLE {$t} MODIFY user_id INT UNSIGNED NULL", $sql);
@@ -138,7 +151,7 @@ final class MigratorTest extends TestCase
 
     public function testConsolidationMigrationIsIdempotentDdl(): void
     {
-        $stmts = \Migrator::splitStatements((string)file_get_contents(self::DIR . '/003_schema_consolidation.sql'));
+        $stmts = \Migrator::splitStatements((string)file_get_contents(self::DIR . '/004_schema_consolidation.sql'));
         $this->assertNotEmpty($stmts);
         foreach ($stmts as $stmt) {
             $this->assertMatchesRegularExpression(
@@ -151,7 +164,7 @@ final class MigratorTest extends TestCase
 
     public function testForeignKeyMigrationGuardsEveryConstraint(): void
     {
-        $stmts = \Migrator::splitStatements((string)file_get_contents(self::DIR . '/004_foreign_keys.sql'));
+        $stmts = \Migrator::splitStatements((string)file_get_contents(self::DIR . '/005_foreign_keys.sql'));
         $alterFk = array_filter($stmts, fn(string $s): bool => strpos($s, 'ADD CONSTRAINT') !== false);
         // Chaque ADD CONSTRAINT est dans un IF(@fk_missing, …) exécuté via PREPARE.
         foreach ($alterFk as $s) {
@@ -163,13 +176,13 @@ final class MigratorTest extends TestCase
     }
 
     /**
-     * Migration 010 : index unique (club_id, client_uuid) à la place de
+     * Migration 011 : index unique (club_id, client_uuid) à la place de
      * (user_id, client_uuid), doublons existants neutralisés avant, colonne
      * participants_at. Chaque instruction est rejouable.
      */
     public function testClientUuidPerClubMigrationIsIdempotent(): void
     {
-        $sql   = (string)file_get_contents(self::DIR . '/010_dives_client_uuid_club.sql');
+        $sql   = (string)file_get_contents(self::DIR . '/011_dives_client_uuid_club.sql');
         $stmts = \Migrator::splitStatements($sql);
         $allowed = '/^(ALTER TABLE \\w+ ADD COLUMN IF NOT EXISTS'
             . '|CREATE (UNIQUE )?INDEX IF NOT EXISTS'

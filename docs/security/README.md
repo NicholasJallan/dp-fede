@@ -52,7 +52,7 @@ Documentation et procédures sécurité du projet.
 │ MariaDB                                                       │
 │  - users.email UNIQUE — pas de doublons via Google OAuth     │
 │  - sessions FK → users ON DELETE CASCADE                     │
-│  - Tous les FK avec ON DELETE CASCADE (migration 004)        │
+│  - Tous les FK avec ON DELETE CASCADE (migration 005)        │
 │  - Schéma migré au déploiement (bin/migrate.php), jamais     │
 │    pendant une requête HTTP                                  │
 └──────────────────────────────────────────────────────────────┘

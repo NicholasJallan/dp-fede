@@ -1,4 +1,4 @@
--- Migration 004 — Clés étrangères manquantes + nettoyage des orphelins.
+-- Migration 005 — Clés étrangères manquantes + nettoyage des orphelins.
 --
 -- Pourquoi : `dives.user_id` n'avait pas de FK vers `users` (et était en INT
 -- signé alors que users.id est INT UNSIGNED). La suppression d'un compte

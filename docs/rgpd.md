@@ -36,7 +36,7 @@ logiciels).
   (`google_sub`), rôle applicatif, dates de création, de dernière connexion et
   de dernière activité ; adhésions aux clubs (`club_members` : club, rôle,
   date) et club courant. Les anciennes colonnes `users.club_*` (nom, numéro,
-  SIRET, type, président) ont été reprises dans `clubs` (migration 006) et ne
+  SIRET, type, président) ont été reprises dans `clubs` (migration 007) et ne
   sont plus modifiées.
 - **Base légale** : exécution du service demandé par l'utilisateur (art. 6.1.b).
 - **Durée** : tant que le compte est utilisé. Suppression immédiate à la demande

@@ -1,4 +1,4 @@
--- Migration 009 — Suppression d'un club avec conservation légale (A322-72).
+-- Migration 010 — Suppression d'un club avec conservation légale (A322-72).
 --
 -- La fiche de sécurité doit être conservée un an par l'établissement
 -- (Code du sport, A322-72) : exception au droit à l'effacement (RGPD,

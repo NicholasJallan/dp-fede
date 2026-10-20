@@ -1,7 +1,7 @@
 # Déploiement du socle club (phase 5)
 
 Complète [README.md](README.md). À faire **une fois**, avant ou pendant le
-premier `deploy/deploy-backend.sh` qui embarque les migrations 006 à 008.
+premier `deploy/deploy-backend.sh` qui embarque les migrations 007 à 011.
 
 ## 1. Répertoire d'archivage des fiches (A322-72)
 
@@ -44,10 +44,10 @@ perdre les fiches que le club doit conserver un an.
 
 | Version | Contenu |
 |---|---|
-| 006 | `clubs`, `club_members`, `club_invitations`, `users.current_club_id`, `club_id` sur divers/sites/dives ; **reprise** : un club par utilisateur (depuis `users.club_*`), l'utilisateur responsable, toutes ses lignes rattachées ; `user_id` devient l'auteur (FK `ON DELETE SET NULL`) |
-| 007 | divers : `source`, `external_id` (unique par club et source), `licence_fin`, `representant_legal`, `autorisation_parentale_saison` |
-| 008 | `dives.documents_status`, `dive_documents`, `dive_participants` |
-| 009 | `clubs.deleted_at`, `clubs.retention_until` : suppression d'un club avec conservation légale des fiches (A322-72) |
+| 007 | `clubs`, `club_members`, `club_invitations`, `users.current_club_id`, `club_id` sur divers/sites/dives ; **reprise** : un club par utilisateur (depuis `users.club_*`), l'utilisateur responsable, toutes ses lignes rattachées ; `user_id` devient l'auteur (FK `ON DELETE SET NULL`) |
+| 008 | divers : `source`, `external_id` (unique par club et source), `licence_fin`, `representant_legal`, `autorisation_parentale_saison` |
+| 009 | `dives.documents_status`, `dive_documents`, `dive_participants` |
+| 010 | `clubs.deleted_at`, `clubs.retention_until` : suppression d'un club avec conservation légale des fiches (A322-72) |
 
 Les quatre fichiers sont idempotents (rejouables après un échec partiel).
 Vérifications après déploiement :

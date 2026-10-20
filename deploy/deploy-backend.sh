@@ -150,7 +150,7 @@ sudo -u www-data env COMPOSER_HOME=/tmp/dp-fede-composer \
 
 if [[ "$SKIP_BACKUP" == "1" ]]; then
   say "Sauvegarde sautée (--skip-backup)"
-elif [[ -x "$BACKUP_CMD" ]]; then
+elif sudo test -x "$BACKUP_CMD"; then  # mode 750 root : invisible pour pi sans sudo
   say "Sauvegarde MariaDB avant migration"
   sudo "$BACKUP_CMD"
 else

@@ -9,6 +9,7 @@
 #   /var/log/dp-fede-php.log     erreurs PHP du pool php8.5-fpm dp-fede
 #   /var/log/dp-fede-purge.log   sortie de bin/purge.php (cron)
 #   /var/log/dp-fede-backup.log  sortie de dp-fede-backup (cron)
+#   /var/log/dp-fede-documents.log reprise des PDF d'archive (cron)
 #
 # Conservation : 12 semaines (adresses IP = données personnelles ; durée
 # documentée dans docs/rgpd.md). PHP ouvre le fichier à chaque écriture

@@ -37,7 +37,7 @@ if ($method === 'GET' && $path === '/api/users/stats') {
           (SELECT COUNT(*) FROM dives  v WHERE v.user_id=u.id AND v.deleted_at IS NULL) AS nb_fiches
         FROM users u
         LEFT JOIN clubs c ON c.id = u.current_club_id
-        WHERE u.kind = 'person'
+        WHERE u.kind = "person"
         ORDER BY u.created_at DESC
     ');
     Json::ok($rows);

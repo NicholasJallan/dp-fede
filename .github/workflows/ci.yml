@@ -48,5 +48,7 @@ jobs:
           extensions: mbstring, gd, pdo_mysql, curl, openssl, xml, intl, apcu
           coverage: none
       - run: composer install --no-interaction --no-progress
+      - name: Syntaxe de tous les fichiers PHP (routes et templates non couverts par PHPUnit)
+        run: find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l > /dev/null
       - run: composer test
       - run: composer audit

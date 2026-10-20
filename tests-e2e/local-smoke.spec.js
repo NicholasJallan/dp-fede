@@ -153,15 +153,17 @@ test.describe('build local — parcours en ligne', () => {
     await expect(cadran.locator('.cadran-paliers')).toHaveText('Paliers : 3 m 3 min · confort 3 m 2 min');
     await cadran.getByLabel('Pression de sortie de Léa DURAND (bar)').fill('80');
 
-    // ── Archivage : Google indisponible en test → archivage sans Drive, confirmé par le serveur
+    // ── Archivage : jamais bloqué par Google (indisponible en test) — le
+    // serveur archive les PDF, la copie Drive échoue sans gravité.
     await nextBtn(page).click();
     await page
       .getByRole('dialog', { name: /Figer et archiver/ })
       .getByRole('button', { name: 'Figer et archiver' })
       .click();
     await expect(heading(page)).toHaveText('Archiver la plongée');
-    await page.getByRole('button', { name: 'Archiver sans Drive' }).click();
     await expect(page.locator('.notice.ok')).toContainText('confirmée par le serveur', { timeout: 15_000 });
+    await expect(page.getByRole('heading', { name: 'Documents archivés' })).toBeVisible();
+    await expect(page.locator('.notice', { hasText: 'Copie Google Drive non effectuée' })).toContainText('Connexion Google indisponible');
     const archived = state.dives.find((d) => d.site_nom === 'Carrière du Test' && d.status === 'archived');
     expect(archived).toBeTruthy();
     // Paliers réalisés transmis au serveur (render_state → fiche PDF).
@@ -205,7 +207,6 @@ test.describe('build local — parcours en ligne', () => {
     await nextBtn(page).click();
     await nextBtn(page).click();
     await page.getByRole('button', { name: 'Figer et archiver' }).click();
-    await page.getByRole('button', { name: 'Archiver sans Drive' }).click();
     const notice = page.locator('.notice.err');
     await expect(notice).toContainText('Archivage refusé par le serveur', { timeout: 15_000 });
     await expect(notice).toContainText('heure de sortie manquante');
@@ -215,6 +216,56 @@ test.describe('build local — parcours en ligne', () => {
     state.rejectArchive = false;
     await notice.getByRole('button', { name: 'Réessayer' }).click();
     await expect(page.locator('.notice.ok')).toContainText('confirmée par le serveur', { timeout: 15_000 });
+  });
+
+  test('archivage sans Google Drive : aucune demande Google, PDF archivés par le serveur', async ({ page, context }) => {
+    await context.addInitScript(() => localStorage.setItem('dp-drive-export', 'off'));
+    const google = [];
+    page.on('request', (r) => { if (/google(apis)?\.com/.test(r.url())) google.push(r.url()); });
+    await openHome(page);
+    await page.getByRole('button', { name: /Nouvelle plongée/ }).click();
+    await expect(heading(page)).toHaveText('Caractériser la plongée à venir');
+    await page.locator('.topbar-home').click();
+    await diveRow(page, 'Lac de Test')
+      .getByRole('button', { name: /Démarrer/ })
+      .click();
+    await page.getByRole('checkbox', { name: /Décision finale du DP/ }).click();
+    await nextBtn(page).click();
+    await nextBtn(page).click();
+    await page.getByRole('button', { name: 'Figer et archiver' }).click();
+    await expect(page.locator('.notice.ok')).toContainText('confirmée par le serveur', { timeout: 15_000 });
+    await expect(page.getByRole('checkbox', { name: /copie dans mon Google Drive/ })).not.toBeChecked();
+    await expect(page.locator('.notice', { hasText: 'Copie Google Drive' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Documents archivés' })).toBeVisible();
+    await expect(page.locator('.doc-status').first()).toContainText('PDF archivés par le club');
+    await shot(page, 'archive-sans-drive');
+
+    await page.locator('.topbar-home').click();
+    await expect(page.getByRole('button', { name: /Nouvelle plongée/ })).toBeVisible();
+    await expect(page.locator('.notice', { hasText: 'sans copie Google Drive' })).toHaveCount(0);
+    await expect(page.getByText('Copie Drive à faire')).toHaveCount(0);
+    // Le script GIS (connexion) est chargé de toute façon : aucune demande de
+    // jeton OAuth ni appel Drive.
+    expect(google.filter((u) => /oauth2|googleapis\.com\/(upload\/)?drive/.test(u))).toEqual([]);
+  });
+
+  test('copie Drive en attente : bandeau d\'information, « Ne plus proposer » le retire', async ({ page }) => {
+    await openHome(page);
+    await diveRow(page, 'Lac de Test')
+      .getByRole('button', { name: /Démarrer/ })
+      .click();
+    await page.getByRole('checkbox', { name: /Décision finale du DP/ }).click();
+    await nextBtn(page).click();
+    await nextBtn(page).click();
+    await page.getByRole('button', { name: 'Figer et archiver' }).click();
+    await expect(page.locator('.notice.ok')).toContainText('confirmée par le serveur', { timeout: 15_000 });
+    await page.locator('.topbar-home').click();
+    const banner = page.locator('.notice', { hasText: 'sans copie Google Drive' });
+    await expect(banner).toBeVisible();
+    await expect(banner).not.toHaveClass(/\bwarn\b|\berr\b/);
+    await banner.getByRole('button', { name: 'Ne plus proposer sur cet appareil' }).click();
+    await expect(banner).toHaveCount(0);
+    expect(await page.evaluate(() => localStorage.getItem('dp-drive-export'))).toBe('off');
   });
 
   test('bascule Soleil / Nuit mémorisée', async ({ page }) => {

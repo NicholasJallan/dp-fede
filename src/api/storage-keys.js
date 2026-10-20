@@ -22,6 +22,9 @@ export const STORAGE_KEYS = Object.freeze({
   CLUB_SNAPSHOT: 'dp-club',
   // Jeton d'invitation lu dans #invitation=… (sessionStorage, src/club/invitation.js)
   INVITATION:  'dp-invitation',
+  // Préférence de l'appareil : copie des PDF archivés dans Google Drive
+  // ('off' = jamais proposée ; absent = activée). src/api/drive-preference.js
+  DRIVE_EXPORT: 'dp-drive-export',
 });
 
 // Cookies (non localStorage mais regroupés ici pour cohérence)

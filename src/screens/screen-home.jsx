@@ -13,6 +13,7 @@ import { finalizePendingDrive } from './screen-archive.jsx';
 import { DiveRow, DiveListSkeleton, useNow } from './home-parts.jsx';
 import { api } from '../api/api.js';
 import { getCachedToken, getDriveToken, isGisAvailable } from '../api/google-drive.js';
+import { useDriveExport } from '../api/drive-preference.js';
 import { offlineStore } from '../offline/offline-store.js';
 import { useClub } from '../club/club-context.jsx';
 import { useClubAlerts } from '../club/use-club-alerts.js';
@@ -80,18 +81,19 @@ function ResumeCard({ dives, onResume }) {
   );
 }
 
-function PendingDriveNotice({ count, online, finalizing, message, onFinalize }) {
+function PendingDriveNotice({ count, online, finalizing, message, onFinalize, onDisable }) {
   return (
-    <Notice tone="warn" live
-      title={`${count} plongée${count > 1 ? 's' : ''} archivée${count > 1 ? 's' : ''} sans dépôt Google Drive`}
-      actions={
+    <Notice tone="info" live
+      title={`${count} plongée${count > 1 ? 's' : ''} archivée${count > 1 ? 's' : ''} sans copie Google Drive`}
+      actions={<>
         <button type="button" className="btn primary" onClick={onFinalize} disabled={!online || finalizing}>
-          {finalizing ? <><span className="spin"><Icon.Refresh /></span>Dépôt en cours…</> : 'Déposer sur Google Drive'}
+          {finalizing ? <><span className="spin"><Icon.Refresh /></span>Dépôt en cours…</> : 'Déposer une copie sur Google Drive'}
         </button>
-      }>
+        <button type="button" className="btn ghost" onClick={onDisable}>Ne plus proposer sur cet appareil</button>
+      </>}>
       <p>{online
-        ? 'Elles ont été archivées hors ligne. La fiche PDF et le dépôt peuvent maintenant être produits.'
-        : 'Le dépôt reprendra au retour du réseau.'}</p>
+        ? 'Les PDF sont archivés par le club ; la copie dans votre Google Drive est facultative.'
+        : 'La copie reprendra au retour du réseau.'}</p>
       {message && <p className="num small">{message}</p>}
     </Notice>
   );
@@ -111,11 +113,12 @@ function DiveSection({ id, title, count, loading, empty, children }) {
   );
 }
 
-// Autorisation Drive demandée au clic « Nouvelle plongée » (jamais au chargement).
-function useDriveAuth(online, onNew) {
+// Autorisation Drive demandée au clic « Nouvelle plongée » (jamais au
+// chargement), seulement si la copie Drive est activée sur l'appareil.
+function useDriveAuth(online, onNew, driveEnabled) {
   const [driveAuth, setDriveAuth] = useState(() => (getCachedToken && getCachedToken()) ? 'ok' : 'idle');
   const handleNew = useCallback(async () => {
-    if (!online || !isGisAvailable || !isGisAvailable()) { onNew(); return; }
+    if (!driveEnabled || !online || !isGisAvailable || !isGisAvailable()) { onNew(); return; }
     if (getCachedToken && getCachedToken()) { setDriveAuth('ok'); onNew(); return; }
     setDriveAuth('pending-explicit');
     try {
@@ -127,7 +130,7 @@ function useDriveAuth(online, onNew) {
     } finally {
       onNew();
     }
-  }, [online, onNew]);
+  }, [online, onNew, driveEnabled]);
   return [driveAuth, handleNew];
 }
 
@@ -185,7 +188,8 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
   const canWrite = club.can('dives.write');
   const { showToast } = useToasts();
   const { dives, loadError, loadDives } = useDives();
-  const [driveAuth, handleNew] = useDriveAuth(online, onNew);
+  const [driveEnabled, setDriveEnabled] = useDriveExport();
+  const [driveAuth, handleNew] = useDriveAuth(online, onNew, driveEnabled);
   const drive = usePendingDrive(user, showToast, loadDives);
   const [busyId, setBusyId] = useState(null);
   const [toDelete, setToDelete] = useState(null);
@@ -229,8 +233,9 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
 
       <AlertsBanner data={alerts.data} onOpen={() => onNavigate('admin-divers')} />
 
-      {drive.pendingDrive.length > 0 && (
+      {driveEnabled && drive.pendingDrive.length > 0 && (
         <PendingDriveNotice count={drive.pendingDrive.length} online={online} finalizing={drive.finalizing}
+          onDisable={() => setDriveEnabled(false)}
           message={drive.message} onFinalize={drive.finalizeAll} />
       )}
 

@@ -285,6 +285,8 @@ function diveRoute(method, path, search, body, state) {
   if (method === 'PATCH') {
     if (state.rejectArchive && body.status === 'archived')
       return fail(422, 'Palanquée P1 incomplète : heure de sortie manquante.');
+    // Archivage : le serveur génère et conserve les PDF (A322-72).
+    if (body.status === 'archived' && dive.status !== 'archived') body = { ...body, documents_status: 'ok' };
     Object.assign(dive, body);
     return ok({ id: dive.id });
   }

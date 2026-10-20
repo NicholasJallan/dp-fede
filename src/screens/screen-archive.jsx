@@ -1,21 +1,27 @@
-// DP Assistant — Étape 5 : archiver la plongée (PDF serveur + Google Drive).
+// DP Assistant — Étape 5 : archiver la plongée.
 //
-// « Archivée » n'est affiché que lorsque le serveur a confirmé le passage à
-// status 'archived' (cf. useArchiveConfirmation). Sinon : « en attente de
-// synchronisation », ou refus du serveur avec son motif et Réessayer.
-// Le dépôt Drive n'est pas un kind d'outbox : en cas d'échec, il est relancé
-// depuis l'accueil (finalizePendingDrive).
+// L'archivage ne dépend jamais de Google Drive : la plongée passe en
+// « archived » par l'outbox (hors ligne compris) et le SERVEUR génère et
+// conserve la fiche de sécurité et la check-list en PDF (A322-72, un an).
+// « Archivée » n'est affiché qu'après confirmation du serveur
+// (useArchiveConfirmation) ; sinon « en attente de synchronisation », ou
+// refus avec son motif et Réessayer.
+// La copie dans Google Drive est facultative (préférence de l'appareil,
+// src/api/drive-preference.js) et faite après la confirmation ; un échec
+// ne remet jamais l'archive en cause (reprise depuis ici ou l'accueil).
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useToasts } from '../components/toast.jsx';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useOnline } from '../offline/use-online.jsx';
+import { offlineStore } from '../offline/offline-store.js';
 import { Notice } from '../components/ui.jsx';
-import { Icon } from '../components/icons.jsx';
+import { Icon, StatusIcon } from '../components/icons.jsx';
 import { formatDateTime } from '../components/format.js';
 import { api } from '../api/api.js';
 import { getDriveToken, isGisAvailable } from '../api/google-drive.js';
 import { driveGetOrCreateFolder, driveUploadFile } from '../api/drive-upload.js';
+import { useDriveExport } from '../api/drive-preference.js';
 import { useArchiveConfirmation } from './archive/use-archive-confirmation.js';
+import { DiveDocuments } from './archives/dive-documents.jsx';
 
 // Noms de fichiers : date-heure en tête pour un tri naturel dans Drive.
 function buildFilename(answers, type, siteNom) {
@@ -38,7 +44,7 @@ function enrichPalanquees(palanquees, divers) {
   }));
 }
 
-function archivePayload(props, extra = {}) {
+function archivePayload(props) {
   const { answers, palanquees, divers, pressions, realises, heuresDebut, heuresFin, checked, comments } = props;
   return {
     status: 'archived',
@@ -51,49 +57,18 @@ function archivePayload(props, extra = {}) {
     answers,
     palanquees: enrichPalanquees(palanquees, divers),
     render_state: { pressions, realises, heuresDebut, heuresFin, checked, comments },
-    ...extra,
   };
 }
 
-const STEPS = [
-  { id: 'requesting', label: 'Autorisation Google Drive' },
-  { id: 'generating', label: 'Génération des PDF (fiche et check-list)' },
-  { id: 'uploading',  label: 'Envoi vers Google Drive' },
-  { id: 'saving',     label: 'Enregistrement de l\'archive' },
-];
-
-function ProgressSteps({ status }) {
-  const current = STEPS.findIndex(s => s.id === status);
-  if (current < 0) return null;
-  return (
-    <ol className="progress-steps" aria-label="Avancement de l'archivage">
-      {STEPS.map((s, i) => (
-        <li key={s.id} className={i < current ? 'is-done' : i === current ? 'is-current' : ''}
-          aria-current={i === current ? 'step' : undefined}>
-          <span className="num">{i < current ? <Icon.Check /> : i + 1}</span>{s.label}
-          {i === current && <span className="spin" aria-hidden="true"><Icon.Refresh /></span>}
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-function ConfirmationNotice({ conf, driveLinks, onRearchive, onStartNew }) {
+function ConfirmationNotice({ conf, onRearchive, onStartNew }) {
   const newDive = <button type="button" className="btn primary" onClick={onStartNew}><Icon.Plus />Nouvelle plongée</button>;
   switch (conf.state) {
-    case 'confirmed': {
-      const fiche = driveLinks.fiche || conf.driveLink;
+    case 'confirmed':
       return (
-        <Notice tone="ok" live title="Plongée archivée, confirmée par le serveur"
-          actions={<>
-            {fiche && <a className="btn" href={fiche} target="_blank" rel="noopener noreferrer"><Icon.External />Fiche sur Drive</a>}
-            {driveLinks.checklist && <a className="btn" href={driveLinks.checklist} target="_blank" rel="noopener noreferrer"><Icon.External />Check-list sur Drive</a>}
-            {newDive}
-          </>}>
-          <p>{fiche ? 'La fiche et la check-list sont déposées dans le dossier dp-fede.' : 'Le dépôt Google Drive reste à faire depuis l\'accueil.'}</p>
+        <Notice tone="ok" live title="Plongée archivée, confirmée par le serveur" actions={newDive}>
+          <p>La fiche de sécurité et la check-list sont archivées en PDF par le club (conservation d'un an, art. A322-72).</p>
         </Notice>
       );
-    }
     case 'review':
       return (
         <Notice tone="err" live title="Archivage refusé par le serveur"
@@ -112,7 +87,7 @@ function ConfirmationNotice({ conf, driveLinks, onRearchive, onStartNew }) {
     case 'offline':
       return (
         <Notice tone="warn" live title="Hors ligne : archivage en attente de synchronisation" actions={newDive}>
-          <p>L'archive est enregistrée sur cet appareil. Elle sera envoyée au retour du réseau ; la fiche PDF et le dépôt Drive se font ensuite depuis l'accueil.</p>
+          <p>L'archive est enregistrée sur cet appareil et partira au retour du réseau ; le serveur produira alors les PDF.</p>
         </Notice>
       );
     default:
@@ -125,15 +100,13 @@ function ConfirmationNotice({ conf, driveLinks, onRearchive, onStartNew }) {
   }
 }
 
+// Archivage (outbox) : jamais bloqué par Google, fonctionne hors ligne.
 function useArchiveFlow(props) {
   const { answers, diveId, onArchiveDone } = props;
-  const { showToast } = useToasts();
   const [status, setStatus] = useState('idle');
-  const [driveLinks, setDriveLinks] = useState({ fiche: '', checklist: '' });
   const [error, setError] = useState('');
-
-  const saveLocal = useCallback(async () => {
-    setError('');
+  const archive = useCallback(async () => {
+    setStatus('saving'); setError('');
     try {
       if (diveId) await api.dives.update(diveId, archivePayload(props));
       else await api.dives.create({ ...archivePayload(props), drive_link: '', date_plongee: (answers.date || '').slice(0, 10) });
@@ -144,55 +117,7 @@ function useArchiveFlow(props) {
       setStatus('error');
     }
   }, [props, diveId, answers.date, onArchiveDone]);
-
-  const withToken = async (token) => {
-    try {
-      // Le serveur doit avoir l'état à jour avant de rendre le PDF : un échec
-      // arrête l'archivage (pas de PDF réglementaire incomplet).
-      const { palanquees, pressions, realises, heuresDebut, heuresFin, checked, comments } = props;
-      if (diveId) await api.dives.pushNow(diveId, { answers, palanquees, render_state: { pressions, realises, heuresDebut, heuresFin, checked, comments } });
-      setStatus('generating');
-      const fichePdf = await api.pdf.blob(diveId, 'fiche');
-      const checklistPdf = await api.pdf.blob(diveId, 'checklist');
-      setStatus('uploading');
-      let ficheFile, clFile;
-      try {
-        const folderId = await driveGetOrCreateFolder(token, 'dp-fede');
-        ficheFile = await driveUploadFile(token, fichePdf, buildFilename(answers, 'fiche-securite'), folderId);
-        clFile = await driveUploadFile(token, checklistPdf, buildFilename(answers, 'checklist'), folderId);
-      } catch {
-        showToast({ tone: 'warn', title: 'Google Drive inaccessible', body: 'Archive enregistrée sans dépôt. Relancez le dépôt depuis l\'accueil.' });
-        await saveLocal();
-        return;
-      }
-      setStatus('saving');
-      await api.dives.update(diveId, archivePayload(props, { drive_link: ficheFile.webViewLink || '' }));
-      setDriveLinks({ fiche: ficheFile.webViewLink || '', checklist: clFile.webViewLink || '' });
-      setStatus('done');
-      onArchiveDone?.();
-    } catch (err) {
-      setError(err.message);
-      setStatus('error');
-    }
-  };
-
-  const archiveWithDrive = async () => {
-    if (!diveId) { await saveLocal(); return; }
-    if (!isGisAvailable || !isGisAvailable()) {
-      setError('Connexion Google indisponible. Rechargez la page ou archivez sans dépôt Drive.');
-      setStatus('error');
-      return;
-    }
-    setStatus('requesting'); setError('');
-    try {
-      withToken(await getDriveToken({ explicit: false, timeoutMs: 15000 }));
-    } catch (err) {
-      setError(err.message);
-      setStatus('error');
-    }
-  };
-
-  return { status, error, driveLinks, saveLocal, archiveWithDrive };
+  return { status, error, archive };
 }
 
 // Plongée déjà archivée avant l'arrivée sur l'écran (ouverte depuis l'historique) ?
@@ -213,19 +138,83 @@ function useAlreadyArchived(diveId) {
   return state;
 }
 
+// Copie Drive d'une plongée archivée (confirmée par le serveur) : automatique
+// une fois si la préférence est active, sinon à la demande.
+function useDriveCopy({ diveId, confirmed, existingLink, enabled, online }) {
+  const [copy, setCopy] = useState({ status: 'idle', step: '', link: '', error: '' });
+  const run = useCallback(async () => {
+    setCopy({ status: 'running', step: 'préparation', link: '', error: '' });
+    try {
+      const record = await offlineStore.get('dives', diveId);
+      if (!record) throw new Error('Archive introuvable sur cet appareil : déposez-la depuis l\'historique.');
+      const link = await finalizePendingDrive(record, [], null, (step) => setCopy(c => ({ ...c, step })));
+      setCopy({ status: 'done', step: '', link, error: '' });
+    } catch (err) {
+      setCopy({ status: 'error', step: '', link: '', error: err.message });
+    }
+  }, [diveId]);
+  const tried = useRef(false);
+  useEffect(() => {
+    if (!confirmed || existingLink || !enabled || !online || tried.current) return;
+    tried.current = true;
+    run();
+  }, [confirmed, existingLink, enabled, online, run]);
+  return { ...copy, link: copy.link || existingLink || '', run };
+}
+
+function DriveCopyCard({ copy, enabled, setEnabled, confirmed, online }) {
+  return (
+    <section className="card" aria-labelledby="archive-drive">
+      <div className="card-head"><h2 id="archive-drive">Copie dans Google Drive</h2><span className="hint">Facultatif</span></div>
+      <div className="card-body stack">
+        <label className={`qualif-toggle ${enabled ? 'on' : ''}`}>
+          <input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} />
+          Déposer automatiquement une copie dans mon Google Drive (dossier dp-fede, sur cet appareil)
+        </label>
+        {copy.link && (
+          <p className="doc-status" role="status"><StatusIcon tone="ok" />Copie déposée dans Google Drive.
+            {' '}<a className="btn" href={copy.link} target="_blank" rel="noopener noreferrer"><Icon.External />Ouvrir la fiche</a></p>
+        )}
+        {copy.status === 'running' && (
+          <p className="doc-status" role="status"><span className="spin" aria-hidden="true"><Icon.Refresh /></span>Copie en cours : {copy.step}…</p>
+        )}
+        {copy.status === 'error' && (
+          <Notice tone="info" live title="Copie Google Drive non effectuée"
+            actions={<button type="button" className="btn" onClick={copy.run} disabled={!online}><Icon.Refresh />Réessayer la copie</button>}>
+            <p>{copy.error}</p>
+            <p className="small">L'archive du club n'est pas concernée. La copie peut aussi être faite plus tard depuis l'accueil.</p>
+          </Notice>
+        )}
+        {!copy.link && copy.status === 'idle' && (
+          <div className="row">
+            <button type="button" className="btn" onClick={copy.run} disabled={!confirmed || !online}>
+              <Icon.Upload />Déposer une copie maintenant
+            </button>
+            {!confirmed && <span className="small muted">Disponible une fois l'archivage confirmé par le serveur.</span>}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function ScreenArchive(props) {
   const { answers, palanquees, onStartNew, diveId } = props;
   const online = useOnline();
   const flow = useArchiveFlow(props);
   const already = useAlreadyArchived(diveId);
-  const recorded = already.archived || flow.status === 'queued' || flow.status === 'done';
+  const recorded = already.archived || flow.status === 'queued';
   const conf = useArchiveConfirmation(diveId, recorded);
+  const confirmed = conf.state === 'confirmed';
+  const [driveEnabled, setDriveEnabled] = useDriveExport();
+  const copy = useDriveCopy({ diveId, confirmed, existingLink: conf.driveLink, enabled: driveEnabled, online });
 
-  // Archivage automatique à l'arrivée et au retour en ligne.
+  // Archivage automatique à l'arrivée (l'étape 4 a demandé confirmation),
+  // en ligne comme hors ligne : l'outbox enverra au retour du réseau.
   useEffect(() => {
     if (!already.checked || already.archived) return;
-    if (online && (flow.status === 'idle' || flow.status === 'error')) flow.archiveWithDrive();
-  }, [already.checked, online]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (flow.status === 'idle') flow.archive();
+  }, [already.checked]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const plongeurs = palanquees.reduce((n, p) => n + (p.membres || []).length, 0);
 
@@ -234,33 +223,26 @@ function ScreenArchive(props) {
       <div className="page-head">
         <p className="step-tag"><span className="num">5</span>Archivage</p>
         <h1>Archiver la plongée</h1>
-        <p>La fiche de sécurité et la check-list sont générées en PDF puis déposées dans votre Google Drive (dossier <code>dp-fede</code>).</p>
+        <p>La fiche de sécurité et la check-list sont archivées en PDF par le serveur du club et conservées un an. Une copie dans votre Google Drive est possible en complément.</p>
       </div>
 
       <section className="card" aria-labelledby="archive-state">
         <div className="card-head"><h2 id="archive-state">État de l'archivage</h2></div>
         <div className="card-body stack">
-          <ProgressSteps status={flow.status} />
+          {flow.status === 'saving' && <p className="doc-status" role="status"><span className="spin" aria-hidden="true"><Icon.Refresh /></span>Enregistrement de l'archive…</p>}
           {flow.status === 'error' && (
             <Notice tone="warn" live title="Archivage interrompu"
-              actions={<>
-                <button type="button" className="btn primary" onClick={flow.archiveWithDrive} disabled={!online}><Icon.Refresh />Réessayer avec Drive</button>
-                <button type="button" className="btn" onClick={flow.saveLocal}>Archiver sans Drive</button>
-              </>}>
+              actions={<button type="button" className="btn primary" onClick={flow.archive}><Icon.Refresh />Réessayer</button>}>
               <p>{flow.error}</p>
             </Notice>
           )}
-          {!online && flow.status === 'idle' && !already.archived && (
-            <Notice tone="warn" title="Hors ligne"
-              actions={<button type="button" className="btn primary" onClick={flow.saveLocal}>Archiver sur cet appareil</button>}>
-              <p>Le PDF et le dépôt Drive demandent une connexion. L'archive sera envoyée automatiquement au retour du réseau.</p>
-            </Notice>
-          )}
-          {recorded && (
-            <ConfirmationNotice conf={conf} driveLinks={flow.driveLinks} onRearchive={flow.saveLocal} onStartNew={onStartNew} />
-          )}
+          {recorded && <ConfirmationNotice conf={conf} onRearchive={flow.archive} onStartNew={onStartNew} />}
         </div>
       </section>
+
+      {confirmed && <DiveDocuments dive={{ id: diveId, client_uuid: diveId, documents_status: 'pending' }} />}
+
+      <DriveCopyCard copy={copy} enabled={driveEnabled} setEnabled={setDriveEnabled} confirmed={confirmed} online={online} />
 
       <section className="card" aria-labelledby="archive-files">
         <div className="card-head"><h2 id="archive-files">Contenu de l'archive</h2></div>

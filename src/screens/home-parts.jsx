@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { StatusIcon } from '../components/icons.jsx';
 import { formatDayMonth, formatTime } from '../components/format.js';
+import { useDriveExport } from '../api/drive-preference.js';
 
 /** Heure courante rafraîchie toutes les `intervalMs` (horloge, chronomètres). */
 export function useNow(intervalMs = 1000, active = true) {
@@ -21,9 +22,11 @@ function plural(n, word) {
 }
 
 function SyncTags({ dive, archived }) {
+  const [driveEnabled] = useDriveExport();
   const tags = [];
   if (dive._pending) tags.push({ tone: 'warn', text: 'En attente d\'envoi' });
-  if (archived && dive.synced && !dive.drive_synced && !dive.drive_link) tags.push({ tone: 'warn', text: 'Dépôt Drive à faire' });
+  // Copie Drive facultative (le serveur archive les PDF) : simple information.
+  if (driveEnabled && archived && dive.synced && !dive.drive_synced && !dive.drive_link) tags.push({ tone: 'info', text: 'Copie Drive à faire' });
   if (tags.length === 0) return null;
   return (
     <div className="dive-row-tags">

@@ -9,6 +9,7 @@ import { DiveListSkeleton } from './home-parts.jsx';
 import { sortMembresForFiche } from '../domain/index.js';
 import { api } from '../api/api.js';
 import { DiveDocuments, documentStatus } from './archives/dive-documents.jsx';
+import { useDriveExport } from '../api/drive-preference.js';
 
 const parse = (v, fallback) => (typeof v === 'string' ? JSON.parse(v) : v) || fallback;
 
@@ -86,6 +87,7 @@ function ArchiveDetail({ item, onBack }) {
 const DOC_SHORT = { pending: 'PDF en cours', ok: 'PDF archivés', error: 'PDF en erreur' };
 
 function ArchiveState({ row, loading }) {
+  const [driveEnabled] = useDriveExport();
   if (loading) return <span className="state"><span className="spin"><Icon.Refresh /></span>Ouverture…</span>;
   if (row._pending) return <span className="state text-warn"><StatusIcon tone="warn" />En attente d'envoi</span>;
   const doc = DOC_SHORT[row.documents_status];
@@ -93,7 +95,7 @@ function ArchiveState({ row, loading }) {
   return (
     <span className="state">
       {doc && <span className={docTone === 'ok' ? 'text-ok' : docTone === 'warn' ? 'text-warn' : ''}><StatusIcon tone={docTone} /> {doc}</span>}
-      {row.synced && !row.drive_synced && !row.drive_link && <span className="text-warn"><StatusIcon tone="warn" /> Dépôt Drive à faire</span>}
+      {driveEnabled && row.synced && !row.drive_synced && !row.drive_link && <span><StatusIcon tone="info" /> Copie Drive à faire</span>}
       {row.drive_link && <span className="text-ok"><StatusIcon tone="ok" /> Sur Drive</span>}
     </span>
   );

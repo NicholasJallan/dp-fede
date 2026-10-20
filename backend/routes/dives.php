@@ -483,12 +483,10 @@ function archivedDiveOrAbort(string $idOrUuid, string $clubId, bool $mustBeArchi
 // checked, comments } — refuse les autres types et les charges > 512 Ko.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const RENDER_STATE_MAX_BYTES = 524288;
-
 /** @param mixed $value */
 function renderStateJsonOrAbort($value): string {
     try {
-        return Validate::encodeJsonObject($value, RENDER_STATE_MAX_BYTES, 'render_state');
+        return Validate::encodeJsonObject($value, DivePolicy::RENDER_STATE_MAX_BYTES, 'render_state');
     } catch (InvalidArgumentException $e) {
         Json::abort(422, $e->getMessage());
     }

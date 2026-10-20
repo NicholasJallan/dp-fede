@@ -20,6 +20,9 @@ class DivePolicy
     /** Une génération 'pending' plus ancienne est considérée abandonnée (cf. bin/documents.php --retry). */
     public const STALE_PENDING_MINUTES = 15;
 
+    /** Taille maximale du render_state JSON d'une plongée (512 Ko). */
+    public const RENDER_STATE_MAX_BYTES = 524288;
+
     public const ARCHIVED_MESSAGE = 'Plongée archivée : la fiche de sécurité et son état d\'exécution ne sont plus modifiables (art. A322-72 du Code du sport)';
 
     // ── Plongée archivée ───────────────────────────────────────────────────

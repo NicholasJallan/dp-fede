@@ -46,6 +46,8 @@ export {
   hasGasQual,
   derivePalMode,
   isBassinDerogation,
+  palGas,
+  withDecoO2,
 } from './pal-helpers.js';
 
 // ── Règles transverses ──────────────────────────────────────────────────
@@ -334,18 +336,20 @@ function checkNitroxQuals(ctx, add) {
       memberId(ctx.encadrant),
     ]);
   }
-  // Au trimix, le nitrox déclaré est un gaz de décompression, non respiré au fond.
-  if (!ctx.gas.trimix) checkPpO2(ctx, add);
+  // Seul le gaz fond est soumis à la MOD : pas le nitrox de décompression
+  // (Nx > 40 % avec un autre gaz, ou nitrox au trimix).
+  if (ctx.gas.bottomNitrox) checkPpO2(ctx, add);
 }
 
-/** A322-92 : PpO₂ ≤ 1,6 bar ⇒ profondeur maximale d'utilisation du mélange. */
+/** A322-92 : PpO₂ ≤ 1,6 bar ⇒ profondeur maximale d'utilisation du gaz fond. */
 function checkPpO2(ctx, add) {
   const o2 = Number(ctx.pal.o2);
-  if (!(o2 > 21 && o2 <= 100)) {
+  // Un O₂ > 40 % avec un Nx ≤ 40 % au fond est celui du gaz de déco.
+  if (!(o2 > 21 && o2 <= ctx.gas.bottomO2Max)) {
     add(
       'warn',
       'O2_UNKNOWN',
-      "Nitrox : renseigner le % d'O₂ pour contrôler la profondeur maximale d'utilisation.",
+      "Nitrox : renseigner le % d'O₂ du gaz fond pour contrôler la profondeur maximale d'utilisation.",
       'A322-92',
     );
     return;

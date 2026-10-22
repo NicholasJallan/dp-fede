@@ -462,3 +462,78 @@
     }
   }
 }
+
+/* Saisie rapide de la date de naissance : un champ en gros chiffres, l'âge en retour immédiat */
+.birthdate-who {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-md);
+}
+.birthdate-form {
+  display: grid;
+  gap: var(--sp-2);
+}
+.birthdate-form label {
+  font-weight: 700;
+}
+.birthdate-input {
+  width: 100%;
+  min-height: var(--touch-xl);
+  padding: 0 var(--sp-4);
+  border: 2px solid var(--c-line);
+  border-radius: var(--r-1);
+  background: var(--c-surface);
+  color: var(--c-ink);
+  font-family: var(--font-num);
+  font-size: var(--fs-xl);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+.birthdate-input::placeholder {
+  color: var(--c-ink-3);
+  letter-spacing: 0.04em;
+}
+.birthdate-input:focus {
+  outline: 3px solid var(--c-focus);
+  outline-offset: 0;
+  border-color: var(--c-focus);
+}
+.birthdate-input[aria-invalid='true'] {
+  border-color: var(--c-stop);
+}
+.dialog-body .birthdate-feedback {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 2em;
+  font-size: var(--fs-sm);
+  color: var(--c-ink-3);
+}
+.dialog-body .birthdate-feedback.is-ok {
+  color: var(--c-ok);
+}
+.dialog-body .birthdate-feedback.is-warn {
+  color: var(--c-warn);
+  font-weight: 700;
+}
+.dialog-body .birthdate-feedback.is-err {
+  color: var(--c-stop);
+  font-weight: 700;
+}
+.birthdate-age {
+  font-family: var(--font-num);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+.dialog-body .birthdate-why {
+  font-size: var(--fs-xs);
+  color: var(--c-ink-3);
+}
+
+/* Action rapide sous une règle (ex. saisir la date de naissance manquante) */
+.issue .issue-action {
+  grid-column: 2;
+  justify-self: start;
+}

@@ -25,6 +25,7 @@ export { sortMembresForFiche } from './fiche.js';
 export { PALIER_DEPTHS, initialPaliers, paliersDone, paliersTotal, formatPaliers } from './paliers.js';
 export { getEmergencyInfo } from './emergency.js';
 export { computePalHardLimit, clampProfMax } from './depth-clamp.js';
+export { minDtr, dtrForProf } from './dtr.js';
 export {
   validatePal,
   derivePalMode,
@@ -34,5 +35,7 @@ export {
   diverFullName,
   isBassinDerogation,
   hasGasQual,
+  palGas,
+  withDecoO2,
   ENS_LEVELS,
 } from './pal-rules.js';

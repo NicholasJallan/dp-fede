@@ -99,8 +99,17 @@ $gpsLabel = (isset($coords['lat']) && $coords['lat'] !== null)
 
 // Palanquée mélange
 $palMelange = function (array $p) use ($h): string {
-    $arr = $p['melanges'] ?? [];
-    return $arr ? implode(' · ', array_map($h, $arr)) : 'Air';
+    $arr   = $p['melanges'] ?? [];
+    $label = $arr ? implode(' · ', array_map($h, $arr)) : 'Air';
+    $o2    = is_numeric($p['o2'] ?? null) ? (float)$p['o2'] : null;
+    $deco  = is_numeric($p['o2_deco'] ?? null) ? (float)$p['o2_deco'] : null;
+    // Ancienne saisie à champ unique : O₂ > 40 % avec un autre gaz = gaz de déco (miroir de withDecoO2).
+    $decoNitrox = in_array('Nx > 40%', $arr, true)
+        && (in_array('Air', $arr, true) || in_array('Nx ≤ 40%', $arr, true) || in_array('Tx', $arr, true));
+    if ($decoNitrox && $deco === null && $o2 !== null && $o2 > 40) { $deco = $o2; $o2 = null; }
+    if ($o2 !== null)   $label .= ' · O₂ ' . $h((string)$o2) . ' %';
+    if ($deco !== null) $label .= ' · déco O₂ ' . $h((string)$deco) . ' %';
+    return $label;
 };
 
 // Type de palanquée écrit sous P1, P2… (miroir de TYPE_SHORT, fiche-document.jsx) :

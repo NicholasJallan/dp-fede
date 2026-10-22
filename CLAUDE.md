@@ -217,7 +217,7 @@ pas la modifier à la main. `PRECACHE_URLS` liste l'app shell : `/`,
 Lancer : `npm test` (utilise `node --test`, Node 20+ requis, zéro dépendance NPM).
 Les tests sont des modules ES (`tests/package.json` → `"type": "module"`) qui
 importent directement `src/domain/*` et les fabriques de `src/offline/*`.
-Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **391 tests JS**, 407 PHPUnit, 42 e2e locaux
+Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **410 tests JS**, 414 PHPUnit, 45 e2e locaux
 (métier FFESSM/Code du Sport + offline : outbox, offline-store, sync, dive-lifecycle, home-buckets + contextualisation check-list par milieu
 
 - socle club : `sync-club.test.js` (X-DP-Club, périmètre club du store), `club-logic.test.js` (droits, alertes, rapport d'import, suppressions)
@@ -242,7 +242,7 @@ Modules purs dans `src/domain/` (ré-exportés par `src/domain/index.js`) :
 - `getPalType(membres)` (`aptitudes.js`) — type de palanquée : 'bapteme'/'formation'/'guidee'/'exploration'
 - `getAvailableMelanges(dp)` (`aptitudes.js`) — mélanges autorisés selon les qualifications du DP
 - `sortMembresForFiche(membres)` (`fiche.js`) — tri canonique des membres pour la fiche (encadrant → GP → … ; 2ᵉ GP en serre-file)
-- `validatePal` (`pal-rules.js`, règles) ; `derivePalMode`, `isBassinDerogation`, `hasGasQual`, contexte de palanquée (`pal-helpers.js`, ré-exportés par `pal-rules.js`) ; `computePalHardLimit`, `clampProfMax` (`depth-clamp.js`)
+- `validatePal` (`pal-rules.js`, règles) ; `derivePalMode`, `isBassinDerogation`, `hasGasQual`, `palGas` (rôle fond / déco des mélanges : Nx > 40 % avec un autre gaz = déco, sans MOD), `withDecoO2`, contexte de palanquée (`pal-helpers.js`, ré-exportés par `pal-rules.js`) ; `computePalHardLimit`, `clampProfMax` (`depth-clamp.js`) ; `minDtr`, `dtrForProf` (`dtr.js`, DTR prévue ≥ 1 min / 10 m)
 - Graphe d'import sans cycle : `pal-helpers` ← `aptitudes` ← `pal-rules` (garder `pal-helpers.js` indépendant d'`aptitudes.js`).
 
 ## Règles de dérivation automatique (ne pas re-questionner l'utilisateur)

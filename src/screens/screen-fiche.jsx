@@ -10,7 +10,7 @@ import { useToasts } from '../components/toast.jsx';
 import { Alert, CdsLink } from '../components/components.jsx';
 import { ConfirmDialog } from '../components/dialog.jsx';
 import { Icon } from '../components/icons.jsx';
-import { initialPaliers, isBassinDerogation } from '../domain/index.js';
+import { initialPaliers, isBassinDerogation, minDtr } from '../domain/index.js';
 import { api } from '../api/api.js';
 import { exitProgress } from '../app/derive.js';
 import { Cadran, ExecSummary, pressureKey } from './fiche/execution-board.jsx';
@@ -50,8 +50,8 @@ function useDiveTracking({
     const endTime = nowHHMM();
     const debut = heuresDebut[pal.id];
     const elapsed = debut ? diffMinutes(debut, endTime) : null;
-    // DTR prévue saisie par le DP (jamais calculée d'office) ; bornée à la durée réelle.
-    const dtrPrevue = pal.dtr ?? null;
+    // DTR prévue (minimum 1 min / 10 m si non saisie) ; bornée à la durée réelle.
+    const dtrPrevue = pal.dtr ?? (pal.profMax > 0 ? minDtr(pal.profMax) : null);
     const dtr = dtrPrevue !== null && elapsed !== null && dtrPrevue > elapsed ? elapsed : dtrPrevue;
     const previous = realises[pal.id];
     setFinForm({

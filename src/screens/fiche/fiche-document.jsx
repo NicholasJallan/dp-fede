@@ -10,6 +10,7 @@ import {
   REGLEMENTATION,
   STRUCTURE_LABELS,
   sortMembresForFiche,
+  withDecoO2,
 } from '../../domain/index.js';
 import { pressureKey } from './execution-board.jsx';
 
@@ -46,6 +47,7 @@ function PrevuReal({ prevu, real, unit, extra }) {
 
 function PalRows({ p, pi, diversById, heuresDebut, heuresFin, realises, pressions }) {
   const sorted = sortMembresForFiche(p.membres || []);
+  const gas = withDecoO2(p);
   const real = realises[p.id];
   const debut = heuresDebut[p.id],
     fin = heuresFin[p.id];
@@ -80,7 +82,8 @@ function PalRows({ p, pi, diversById, heuresDebut, heuresFin, realises, pression
               <>
                 <td rowSpan={rows}>
                   {(p.melanges || []).join(', ') || 'Air'}
-                  {p.o2 ? ` ${p.o2} %` : ''}
+                  {gas.o2 ? ` · O₂ ${gas.o2} %` : ''}
+                  {gas.o2_deco ? ` · déco O₂ ${gas.o2_deco} %` : ''}
                   {p.shot_line && (
                     <>
                       <br />

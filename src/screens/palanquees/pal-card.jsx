@@ -8,7 +8,7 @@
 import React, { useEffect, useId } from 'react';
 import { CdsLink, Pill, diverFullName } from '../../components/components.jsx';
 import { Icon, StatusIcon } from '../../components/icons.jsx';
-import { derivePalMode, getDiverAptitudes, parseCdsRefs } from '../../domain/index.js';
+import { derivePalMode, getDiverAptitudes, minDtr, palGas, parseCdsRefs } from '../../domain/index.js';
 
 const ENS_ROLES = ['E1', 'E2', 'E3', 'E4'];
 const TYPE_LABELS = { exploration: 'Exploration', guidee: 'Guidée', formation: 'Formation', bapteme: 'Baptême' };
@@ -32,7 +32,7 @@ export function IssueRef({ refText }) {
 
 const ISSUE_TAG = { err: 'Bloquant', warn: 'Alerte', ok: 'Conforme' };
 
-function IssueList({ issues }) {
+function IssueList({ issues, onBirthdate }) {
   return (
     <ul className="issue-list" aria-label="Règles appliquées">
       {issues.map((v, i) => (
@@ -43,6 +43,11 @@ function IssueList({ issues }) {
             {v.text}
           </span>
           <IssueRef refText={v.ref} />
+          {v.code === 'AGE_UNKNOWN' && onBirthdate && v.ids?.[0] && (
+            <button type="button" className="btn issue-action" onClick={() => onBirthdate(v.ids[0])}>
+              Saisir la date de naissance
+            </button>
+          )}
         </li>
       ))}
     </ul>
@@ -89,7 +94,7 @@ function PalModeToggle({ pal, onChange }) {
   );
 }
 
-function NumParam({ label, unit, value, onChange, placeholder, missing, hint, min, max }) {
+function NumParam({ label, unit, value, onChange, placeholder, missing, alert, hint, min, max }) {
   const id = useId();
   const hintId = `${id}-hint`;
   return (
@@ -104,16 +109,17 @@ function NumParam({ label, unit, value, onChange, placeholder, missing, hint, mi
           max={max}
           value={value ?? ''}
           placeholder={placeholder}
-          aria-describedby={hint || missing ? hintId : undefined}
+          aria-describedby={hint || missing || alert ? hintId : undefined}
           onChange={(e) => onChange(e.target.value === '' ? null : parseFloat(e.target.value))}
         />
         <span className="unit" aria-hidden="true">
           {unit}
         </span>
       </div>
-      {missing ? (
+      {missing || alert ? (
         <span className="hint warn" id={hintId}>
-          <StatusIcon tone="warn" />À saisir
+          <StatusIcon tone="warn" />
+          {missing ? 'À saisir' : alert}
         </span>
       ) : (
         hint && (
@@ -126,7 +132,9 @@ function NumParam({ label, unit, value, onChange, placeholder, missing, hint, mi
   );
 }
 
-function PalParams({ pal, hardLimit, hasNitrox, onProf, onField }) {
+function PalParams({ pal, hardLimit, onProf, onField }) {
+  const gas = palGas(pal.melanges);
+  const dtrMin = minDtr(pal.profMax);
   return (
     <div className="pal-params">
       <NumParam
@@ -145,18 +153,33 @@ function PalParams({ pal, hardLimit, hasNitrox, onProf, onField }) {
         min={0}
         placeholder="à saisir"
         missing={pal.dtr == null}
+        alert={pal.dtr != null && pal.dtr < dtrMin ? `Minimum ${dtrMin} min (1 min / 10 m)` : undefined}
+        hint={`Min. ${dtrMin} min (1 min / 10 m)`}
         onChange={(v) => onField('dtr', v)}
       />
-      {hasNitrox && (
+      {gas.bottomNitrox && (
         <NumParam
-          label="O₂ du nitrox"
+          label={gas.decoNitrox ? 'O₂ du gaz fond' : 'O₂ du nitrox'}
           unit="%"
           value={pal.o2}
           min={22}
-          max={100}
+          max={gas.bottomO2Max}
           placeholder="à saisir"
           missing={pal.o2 == null}
+          hint="Contrôle de la MOD (PpO₂ 1,6 bar)"
           onChange={(v) => onField('o2', v)}
+        />
+      )}
+      {gas.decoNitrox && (
+        <NumParam
+          label="O₂ du gaz de déco"
+          unit="%"
+          value={pal.o2_deco}
+          min={41}
+          max={100}
+          placeholder="ex. 80"
+          hint="Gaz de déco : pas de MOD au fond"
+          onChange={(v) => onField('o2_deco', v)}
         />
       )}
     </div>
@@ -274,8 +297,6 @@ export function PalCard({ pal, index, ctx }) {
   const flaggedNames = pal.membres
     .filter((m) => flagged.has(m._bapteme ? m.id : m.diverId))
     .map((m) => memberName(m, diversById));
-  const melanges = pal.melanges || [];
-  const hasNitrox = melanges.includes('Nx ≤ 40%') || melanges.includes('Nx > 40%');
   const titleId = `pal-${pal.id}-title`;
 
   return (
@@ -298,13 +319,7 @@ export function PalCard({ pal, index, ctx }) {
       {blocking.length > 0 && <PalAlarm blocking={blocking} flaggedNames={flaggedNames} />}
       <div className="pal-body">
         <PalModeToggle pal={pal} onChange={actions.setMode} />
-        <PalParams
-          pal={pal}
-          hardLimit={hardLimit}
-          hasNitrox={hasNitrox}
-          onProf={actions.setProf}
-          onField={actions.setField}
-        />
+        <PalParams pal={pal} hardLimit={hardLimit} onProf={actions.setProf} onField={actions.setField} />
         <PalOptions
           pal={pal}
           palType={palType}
@@ -328,7 +343,7 @@ export function PalCard({ pal, index, ctx }) {
             />
           ))}
         </div>
-        <IssueList issues={issues} />
+        <IssueList issues={issues} onBirthdate={actions.editBirthdate} />
       </div>
     </article>
   );

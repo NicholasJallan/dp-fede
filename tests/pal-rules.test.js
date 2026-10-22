@@ -97,3 +97,28 @@ describe('hasGasQual — hiérarchie PN < PN-C < PTH-40 < PTH-70 < PTH-120', () 
     assert.ok(!hasGasQual(null, 'PN'));
   });
 });
+
+describe('withDecoO2 — ancienne saisie : O₂ du gaz de déco dans le champ unique', () => {
+  const { withDecoO2 } = win;
+
+  test('Air + Nx > 40 %, O₂ 100 % → reporté en gaz de déco', () => {
+    const pal = withDecoO2({ melanges: ['Air', 'Nx > 40%'], o2: 100 });
+    assert.equal(pal.o2, undefined);
+    assert.equal(pal.o2_deco, 100);
+  });
+
+  test('Nx ≤ 40 % + Nx > 40 %, O₂ 80 % → déco, gaz fond à saisir', () => {
+    const pal = withDecoO2({ melanges: ['Nx ≤ 40%', 'Nx > 40%'], o2: 80 });
+    assert.equal(pal.o2, undefined);
+    assert.equal(pal.o2_deco, 80);
+  });
+
+  test('inchangé : gaz fond ≤ 40 %, Nx > 40 % seul, ou O₂ déco déjà saisi', () => {
+    const fond = { melanges: ['Nx ≤ 40%', 'Nx > 40%'], o2: 32 };
+    const seul = { melanges: ['Nx > 40%'], o2: 50 };
+    const deja = { melanges: ['Air', 'Nx > 40%'], o2: 80, o2_deco: 50 };
+    assert.equal(withDecoO2(fond), fond);
+    assert.equal(withDecoO2(seul), seul);
+    assert.equal(withDecoO2(deja), deja);
+  });
+});

@@ -125,17 +125,44 @@ export function derivePalMode(pal) {
   return apts.some((a) => ENS_LEVELS.includes(a)) ? 'enseignement' : 'exploration';
 }
 
-function gasOf(pal) {
-  const list = pal.melanges || [];
-  const nitrox = list.includes('Nx ≤ 40%') || list.includes('Nx > 40%');
+/**
+ * Rôle des mélanges d'une palanquée. Un Nx > 40 % déclaré avec un autre gaz
+ * (air, Nx ≤ 40 %, trimix) est un gaz de décompression : seul le gaz fond
+ * (`pal.o2`) est soumis à la profondeur maximale d'utilisation.
+ * @param {string[] | undefined} melanges
+ */
+export function palGas(melanges) {
+  const list = melanges || [];
+  const nx40 = list.includes('Nx ≤ 40%');
+  const nx40plus = list.includes('Nx > 40%');
   const trimix = list.includes('Tx');
+  const decoNitrox = nx40plus && (list.includes('Air') || nx40 || trimix);
   return {
     list,
-    nitrox,
+    nitrox: nx40 || nx40plus,
     trimix,
-    nx40plus: list.includes('Nx > 40%'),
+    nx40plus,
     air: list.includes('Air') || list.length === 0,
+    // Au trimix, le nitrox déclaré est un gaz de décompression.
+    bottomNitrox: !trimix && (nx40 || (nx40plus && !decoNitrox)),
+    // O₂ maximal du nitrox fond : ≤ 40 % sauf Nx > 40 % respiré au fond.
+    bottomO2Max: nx40plus && !decoNitrox ? 100 : 40,
+    decoNitrox,
   };
+}
+
+const gasOf = (pal) => palGas(pal.melanges);
+
+/**
+ * Ancienne saisie à champ O₂ unique : un O₂ > 40 % avec un autre gaz fond
+ * était celui du gaz de déco — reporté dans `o2_deco`.
+ * @param {{ melanges?: string[], o2?: number | null, o2_deco?: number | null }} pal
+ */
+export function withDecoO2(pal) {
+  const o2 = Number(pal.o2);
+  if (!palGas(pal.melanges).decoNitrox || pal.o2_deco != null || !(o2 > 40)) return pal;
+  const { o2: _legacy, ...rest } = pal;
+  return { ...rest, o2_deco: o2 };
 }
 
 /** A322-98 : piscine ou fosse dont la profondeur n'excède pas 6 m. */

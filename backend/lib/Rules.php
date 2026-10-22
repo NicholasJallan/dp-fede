@@ -466,13 +466,21 @@ class Rules
 
     private static function gasOf(array $pal): array
     {
-        $list = self::listOf($pal['melanges'] ?? null);
+        $list     = self::listOf($pal['melanges'] ?? null);
+        $nx40     = in_array('Nx ≤ 40%', $list, true);
+        $nx40plus = in_array('Nx > 40%', $list, true);
+        $trimix   = in_array('Tx', $list, true);
+        // Nx > 40 % avec un autre gaz = gaz de décompression (pas de MOD).
+        $decoNitrox = $nx40plus && (in_array('Air', $list, true) || $nx40 || $trimix);
         return [
-            'list'     => $list,
-            'nitrox'   => in_array('Nx ≤ 40%', $list, true) || in_array('Nx > 40%', $list, true),
-            'trimix'   => in_array('Tx', $list, true),
-            'nx40plus' => in_array('Nx > 40%', $list, true),
-            'air'      => in_array('Air', $list, true) || count($list) === 0,
+            'list'         => $list,
+            'nitrox'       => $nx40 || $nx40plus,
+            'trimix'       => $trimix,
+            'nx40plus'     => $nx40plus,
+            'air'          => in_array('Air', $list, true) || count($list) === 0,
+            'bottomNitrox' => !$trimix && ($nx40 || ($nx40plus && !$decoNitrox)),
+            'bottomO2Max'  => $nx40plus && !$decoNitrox ? 100 : 40,
+            'decoNitrox'   => $decoNitrox,
         ];
     }
 
@@ -726,16 +734,18 @@ class Rules
         if ($enc !== null && !self::hasGasQual($enc['diver'] ?? null, 'PN-C')) {
             $add('err', 'NX_ENCADRANT', self::memberName($enc) . ' : encadrant au nitrox → PN-C requis.', 'A322-74', [self::memberId($enc)]);
         }
-        // Au trimix, le nitrox déclaré est un gaz de décompression, non respiré au fond.
-        if (!$ctx['gas']['trimix']) self::checkPpO2($ctx, $add);
+        // Seul le gaz fond est soumis à la MOD : pas le nitrox de décompression
+        // (Nx > 40 % avec un autre gaz, ou nitrox au trimix).
+        if ($ctx['gas']['bottomNitrox']) self::checkPpO2($ctx, $add);
     }
 
-    /** A322-92 : PpO₂ ≤ 1,6 bar ⇒ profondeur maximale d'utilisation du mélange. */
+    /** A322-92 : PpO₂ ≤ 1,6 bar ⇒ profondeur maximale d'utilisation du gaz fond. */
     private static function checkPpO2(array $ctx, callable $add): void
     {
         $o2 = self::num($ctx['pal']['o2'] ?? null);
-        if (!($o2 > 21 && $o2 <= 100)) {
-            $add('warn', 'O2_UNKNOWN', 'Nitrox : renseigner le % d\'O₂ pour contrôler la profondeur maximale d\'utilisation.', 'A322-92');
+        // Un O₂ > 40 % avec un Nx ≤ 40 % au fond est celui du gaz de déco.
+        if (!($o2 > 21 && $o2 <= $ctx['gas']['bottomO2Max'])) {
+            $add('warn', 'O2_UNKNOWN', 'Nitrox : renseigner le % d\'O₂ du gaz fond pour contrôler la profondeur maximale d\'utilisation.', 'A322-92');
             return;
         }
         $mod = (int)floor((self::LIMIT_PPO2_MAX / ($o2 / 100) - 1) * 10 + 1e-9);

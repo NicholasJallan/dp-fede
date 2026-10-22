@@ -15,17 +15,22 @@ import {
   clampProfMax,
   computePalHardLimit,
   derivePalMode,
+  dtrForProf,
   getAvailableMelanges,
   getDiverAptitudes,
   getDpMaxDepth,
   getMaxEnsLevel,
   getPalType,
   isBassinDerogation,
+  minDtr,
   sortMembresForFiche,
   validatePal,
+  withDecoO2,
 } from '../domain/index.js';
 import { PalCard } from './palanquees/pal-card.jsx';
 import { DiverPool } from './palanquees/diver-pool.jsx';
+import { BirthdateDialog } from './palanquees/birthdate-dialog.jsx';
+import { useBirthdatePrompt } from './palanquees/use-birthdate-prompt.js';
 
 // Contexte d'aptitudes d'une palanquée : enseignant présent + mode (le bonus
 // de formation n'existe qu'en enseignement).
@@ -56,6 +61,12 @@ function ageAt(birthIso, whenIso) {
   let age = w.getFullYear() - b.getFullYear();
   if (w.getMonth() < b.getMonth() || (w.getMonth() === b.getMonth() && w.getDate() < b.getDate())) age -= 1;
   return age;
+}
+
+// DTR prévue suivant un éventuel changement de profondeur (prev → next).
+function withDtrFor(prev, next) {
+  if (next.profMax === prev.profMax) return next;
+  return { ...next, dtr: dtrForProf(next.dtr, prev.profMax, next.profMax) };
 }
 
 const nextPalId = (pals) => 'p' + (Math.max(0, ...pals.map((p) => parseInt(p.id.slice(1), 10) || 0)) + 1);
@@ -125,7 +136,9 @@ function usePalanqueeMutations({ setPalanquees, diversById, dpDiver, siteMax, de
     const prenom = enc && !enc._bapteme ? diversById[enc.diverId]?.prenom || null : null;
     return `Palanquée ${index + 1}${prenom ? ` ${prenom}` : ''}`;
   };
-  const mapPal = (palId, fn) => setPalanquees((prev) => prev.map((p, i) => (p.id === palId ? fn(p, i) : p)));
+  // Toute mutation qui change la profondeur ajuste la DTR prévue (minimum 1 min / 10 m).
+  const mapPal = (palId, fn) =>
+    setPalanquees((prev) => prev.map((p, i) => (p.id === palId ? withDtrFor(p, fn(p, i)) : p)));
   const autoAptitude = (d, pal) => {
     const apts = d ? getDiverAptitudes(d, false, palContextOf(pal)) : [];
     return apts.length === 1 ? apts[0] : '';
@@ -138,7 +151,7 @@ function usePalanqueeMutations({ setPalanquees, diversById, dpDiver, siteMax, de
     membres,
     profMax,
     duree: 35,
-    dtr: null,
+    dtr: minDtr(profMax),
     melanges: ['Air'],
     no_deco: !answers.paliers,
     shot_line: !!answers.shot_line,
@@ -233,7 +246,7 @@ function usePalanqueeMutations({ setPalanquees, diversById, dpDiver, siteMax, de
               membres: [member],
               profMax: 6,
               duree: 20,
-              dtr: null,
+              dtr: minDtr(6),
               melanges: ['Air'],
               no_deco: true,
               shot_line: false,
@@ -265,10 +278,20 @@ function useAutoClamp({ setPalanquees, allowedMelangeValues, dpDiver, siteMax })
     setPalanquees((prev) =>
       prev.map((p) => {
         const hardLimit = hardLimitFor(p, p.membres || [], dpDiver, siteMax);
-        return !Number.isFinite(hardLimit) || p.profMax <= hardLimit ? p : { ...p, profMax: hardLimit };
+        return !Number.isFinite(hardLimit) || p.profMax <= hardLimit ? p : withDtrFor(p, { ...p, profMax: hardLimit });
       }),
     );
   }, [dpDiver, siteMax]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Palanquées saisies avec une version antérieure : DTR minimum proposée et
+  // O₂ du gaz de déco sorti du champ « gaz fond ».
+  useEffect(() => {
+    const upgrade = (p) => {
+      const next = withDecoO2(p);
+      return next.dtr == null && next.profMax > 0 ? { ...next, dtr: minDtr(next.profMax) } : next;
+    };
+    setPalanquees((prev) => (prev.some((p) => upgrade(p) !== p) ? prev.map(upgrade) : prev));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answers, setAnswer }) {
@@ -299,6 +322,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
     answers,
     defaultMode: isExplorationOnly ? 'exploration' : undefined,
   });
+  const birthdate = useBirthdatePrompt({ diversById, setDivers });
 
   const blockedCount = palanquees.filter((p) =>
     validatePal(p, diversById, answers, dpDiver).some((i) => i.tone === 'err'),
@@ -333,8 +357,14 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
             divers={divers}
             assignedIds={assignedIds}
             palanquees={palanquees}
-            onAdd={mut.addToPal}
-            onAddNew={mut.addPalWithDiver}
+            onAdd={(palId, diverId) => {
+              mut.addToPal(palId, diverId);
+              birthdate.promptIfMissing(diverId);
+            }}
+            onAddNew={(diverId) => {
+              mut.addPalWithDiver(diverId);
+              birthdate.promptIfMissing(diverId);
+            }}
             onCreate={() => setShowQuickDiver(true)}
           />
 
@@ -367,6 +397,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
                     setAptitude: (diverId, apt) => mut.setAptitude(p.id, diverId, apt),
                     removeMember: (id) => mut.removeFromPal(p.id, id),
                     remove: () => mut.removePal(p.id),
+                    editBirthdate: birthdate.open,
                   },
                 }}
               />
@@ -395,6 +426,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
           baptemeOnSave={mut.addBapteme}
         />
       )}
+      {birthdate.diver && <BirthdateDialog diver={birthdate.diver} onSave={birthdate.save} onClose={birthdate.close} />}
     </div>
   );
 }

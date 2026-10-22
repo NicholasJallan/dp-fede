@@ -300,6 +300,64 @@ test.describe('build local — parcours en ligne', () => {
     await expect(page.getByRole('button', { name: /Nouvelle plongée/ })).toBeVisible();
   });
 
+  test('date de naissance manquante : saisie rapide dès l’ajout en palanquée', async ({ page }) => {
+    const errors = trackErrors(page);
+    await openHome(page);
+    await page.getByRole('button', { name: /Nouvelle plongée/ }).click();
+    await page.getByLabel('Directeur de Plongée').selectOption('d-dp');
+    await page.getByLabel('Site de plongée').selectOption('s-2');
+    await nextBtn(page).click();
+
+    // Plongeur avec date : pas de popup.
+    await page.getByLabel('Ajouter Hugo BERNARD à une palanquée').selectOption('__new__');
+    await expect(page.locator('.pal')).toHaveCount(1);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    // Plongeur sans date : popup immédiate, focus sur le champ.
+    await page.getByLabel('Ajouter Zoé PETIT à une palanquée').selectOption({ index: 1 });
+    const dlg = page.getByRole('dialog', { name: 'Date de naissance manquante' });
+    await expect(dlg).toBeVisible();
+    await expect(dlg).toContainText('Zoé PETIT');
+    const input = dlg.getByLabel('Né(e) le');
+    await expect(input).toBeFocused();
+    expect(
+      await new AxeBuilder({ page })
+        .include('.dialog')
+        .analyze()
+        .then((r) => r.violations),
+    ).toEqual([]);
+
+    await input.pressSequentially('1203199');
+    await expect(dlg.getByRole('button', { name: 'Enregistrer' })).toBeDisabled();
+    await input.pressSequentially('0');
+    await expect(input).toHaveValue('12/03/1990');
+    await expect(dlg).toContainText('ans');
+    await input.press('Enter');
+    await expect(dlg).toBeHidden();
+
+    // Fiche complète renvoyée (PUT réécrit la fiche) avec la date ISO.
+    await expect.poll(() => state.diverUpdates.length).toBe(1);
+    expect(state.diverUpdates[0]).toMatchObject({
+      id: 'd-n1',
+      nom: 'PETIT',
+      date_naissance: '1990-03-12',
+      medical: '2026-09-01',
+    });
+    expect(errors).toEqual([]);
+  });
+
+  test('date de naissance manquante : « Plus tard » ferme sans rien enregistrer', async ({ page }) => {
+    await openHome(page);
+    await page.getByRole('button', { name: /Nouvelle plongée/ }).click();
+    await nextBtn(page).click();
+    await page.getByLabel('Ajouter Zoé PETIT à une palanquée').selectOption('__new__');
+    const dlg = page.getByRole('dialog', { name: 'Date de naissance manquante' });
+    await dlg.getByRole('button', { name: 'Plus tard' }).click();
+    await expect(dlg).toBeHidden();
+    await expect(page.locator('.pal')).toHaveCount(1);
+    expect(state.diverUpdates).toEqual([]);
+  });
+
   test('bascule Soleil / Nuit mémorisée', async ({ page }) => {
     await openHome(page);
     const toggle = page.locator('.theme-toggle');

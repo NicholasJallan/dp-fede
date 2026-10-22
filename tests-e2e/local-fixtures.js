@@ -49,6 +49,7 @@ const diver = (id, nom, prenom, extra) => ({
   aptitudes_sup: [],
   medical: '2026-09-01',
   licence: `A-29-${id}`,
+  date_naissance: '1990-05-14',
   ...extra,
 });
 
@@ -57,7 +58,8 @@ const DIVERS = [
   diver('d-gp', 'DURAND', 'Léa', { niveau_encadrant: 'N4' }),
   diver('d-n2', 'BERNARD', 'Hugo', { niveau_plongeur: 'N2' }),
   diver('d-n3', 'LEROY', 'Inès', { niveau_plongeur: 'N3' }),
-  diver('d-n1', 'PETIT', 'Zoé', { niveau_plongeur: 'N1' }),
+  // Sans date de naissance : saisie rapide proposée à l'ajout en palanquée.
+  diver('d-n1', 'PETIT', 'Zoé', { niveau_plongeur: 'N1', date_naissance: null }),
   diver('d-e2', 'ROUX', 'Marc', { niveau_encadrant: 'E2' }),
 ];
 
@@ -662,6 +664,10 @@ function apiResponse(method, path, search, body, state) {
     return ok(importReport(dryRun));
   }
   if (path === '/api/divers') return ok(DIVERS);
+  if (method === 'PUT' && path.startsWith('/api/divers/')) {
+    state.diverUpdates.push({ id: path.split('/').pop(), ...body });
+    return ok({ id: path.split('/').pop(), ...body });
+  }
   if (path === '/api/sites') return ok(SITES);
   if (path === '/api/sync/state')
     return ok({ club_id: state.currentClub, club_role: state.role, divers: {}, sites: {}, dives: {} });
@@ -696,6 +702,7 @@ function newState() {
       },
     ],
     imports: [],
+    diverUpdates: [],
     downloads: [],
     deleteConflict: false,
     deleted: false,

@@ -1117,6 +1117,105 @@
       },
       "errors": ["NX_PNC"]
     },
+    {
+      "name": "Air au fond + Nx > 40 % en déco : pas de MOD sur le gaz de déco",
+      "ref": "A322-92",
+      "dp": "e3_pnc",
+      "pal": {
+        "membres": [
+          ["n4_pnc", "GP"],
+          ["n2_pnc", "PE40"],
+          ["n2_pnc#2", "PE40"]
+        ],
+        "profMax": 40,
+        "melanges": ["Air", "Nx > 40%"],
+        "o2_deco": 80
+      },
+      "errors": []
+    },
+    {
+      "name": "Nx 32 % au fond + Nx 80 % en déco à 40 m : MOD du gaz fond seulement",
+      "ref": "A322-92",
+      "dp": "e3_pnc",
+      "pal": {
+        "membres": [
+          ["n4_pnc", "GP"],
+          ["n2_pnc", "PE40"],
+          ["n2_pnc#2", "PE40"]
+        ],
+        "profMax": 40,
+        "melanges": ["Nx ≤ 40%", "Nx > 40%"],
+        "o2": 32,
+        "o2_deco": 80
+      },
+      "errors": []
+    },
+    {
+      "name": "Nx 36 % au fond + Nx 80 % en déco à 40 m : MOD du gaz fond dépassée",
+      "ref": "A322-92",
+      "dp": "e3_pnc",
+      "pal": {
+        "membres": [
+          ["n4_pnc", "GP"],
+          ["n2_pnc", "PE40"],
+          ["n2_pnc#2", "PE40"]
+        ],
+        "profMax": 40,
+        "melanges": ["Nx ≤ 40%", "Nx > 40%"],
+        "o2": 36,
+        "o2_deco": 80
+      },
+      "errors": ["PPO2_MAX"]
+    },
+    {
+      "name": "Air + Nx > 40 %, O₂ 80 % saisi : gaz de déco, pas de MOD à 40 m",
+      "ref": "A322-92",
+      "dp": "e3_pnc",
+      "pal": {
+        "membres": [
+          ["n4_pnc", "GP"],
+          ["n2_pnc", "PE40"],
+          ["n2_pnc#2", "PE40"]
+        ],
+        "profMax": 40,
+        "melanges": ["Air", "Nx > 40%"],
+        "o2": 80
+      },
+      "errors": []
+    },
+    {
+      "name": "Nx ≤ 40 % + Nx > 40 %, seul l'O₂ 80 % saisi : gaz fond inconnu",
+      "ref": "A322-92",
+      "dp": "e3_pnc",
+      "pal": {
+        "membres": [
+          ["n4_pnc", "GP"],
+          ["n2_pnc", "PE40"],
+          ["n2_pnc#2", "PE40"]
+        ],
+        "profMax": 40,
+        "melanges": ["Nx ≤ 40%", "Nx > 40%"],
+        "o2": 80
+      },
+      "errors": [],
+      "warnings": ["O2_UNKNOWN"]
+    },
+    {
+      "name": "Nx > 40 % seul (gaz fond) : MOD contrôlée",
+      "ref": "A322-92",
+      "dp": "e3_pnc",
+      "pal": {
+        "membres": [
+          ["n4_pnc", "GP"],
+          ["n2_pnc", "PE40"],
+          ["n2_pnc#2", "PE40"]
+        ],
+        "profMax": 25,
+        "melanges": ["Nx > 40%"],
+        "o2": 50
+      },
+      "errors": ["PPO2_MAX"]
+    },
 
     {
       "name": "Trimix autonome à 70 m : PA-60 + PTH-70",

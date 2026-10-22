@@ -5,7 +5,7 @@
 import React from 'react';
 import { diverFullName } from '../../components/format.js';
 import { Icon, StatusIcon } from '../../components/icons.jsx';
-import { formatPaliers, sortMembresForFiche } from '../../domain/index.js';
+import { formatPaliers, getPalType, PAL_TYPE_LABELS, sortMembresForFiche } from '../../domain/index.js';
 import { useNow } from '../home-parts.jsx';
 import { elapsedSeconds, formatChrono } from './time.js';
 
@@ -132,11 +132,17 @@ export function Cadran({ pal, index, diversById, debut, fin, real, pressions, on
   const over = !!debut && !fin && Number(pal.duree) > 0 && elapsedSeconds(debut, now) > Number(pal.duree) * 60;
   const st = stateOf(debut, fin, over);
   const titleId = `cadran-${pal.id}`;
+  // Teinte du type (PA / PE / formation), comme les cartes de l'écran Palanquées.
+  const palType = membres.length > 0 ? getPalType(membres, pal.mode) : null;
   return (
-    <article className={`cadran ${st.cls}`} aria-labelledby={titleId}>
+    <article
+      className={['cadran', st.cls, palType && `kind-${palType}`].filter(Boolean).join(' ')}
+      aria-labelledby={titleId}
+    >
       <header className="cadran-head">
         <span className="cadran-id">P{index + 1}</span>
         <h2 id={titleId}>{pal.nom || `Palanquée ${index + 1}`}</h2>
+        {palType && <span className="cadran-type">{PAL_TYPE_LABELS[palType]}</span>}
         <span className="cadran-state">
           <StatusIcon tone={st.tone} />
           {st.label}

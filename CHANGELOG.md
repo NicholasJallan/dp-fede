@@ -9,6 +9,7 @@ Dates en ISO 8601.
 
 - Nx > 40 % déclaré avec un autre gaz (air, Nx ≤ 40 %, trimix) = gaz de décompression : plus de contrôle de MOD (A322-92) sur ce gaz, seul le gaz fond est contrôlé (JS et PHP, `palGas`) ; champs « O₂ du gaz fond » / « O₂ du gaz de déco » (`o2` / `o2_deco`), affichés sur la fiche et le PDF ; anciennes saisies (O₂ > 40 % dans le champ unique) reportées en déco (`withDecoO2`).
 - DTR prévue proposée de nouveau par défaut : 1 min par tranche de 10 m entamée au minimum (`src/domain/dtr.js`), suit la profondeur tant que le DP ne l'a pas relevée.
+- Code couleur par type de palanquée rétabli (PA autonomie sarcelle, PE guidée indigo, formation / baptême violet ; jamais rouge ni ambre, réservés aux blocages et alertes ; variantes Nuit) : cartes de l'écran Palanquées, cadrans d'exécution et rappel PA / PE / GP de l'accueil (légende). Jetons `--c-pa` / `--c-pe` / `--c-form`, classes `kind-*` ; fiche imprimée et PDF inchangés (noir et blanc).
 - Date de naissance manquante : saisie rapide en popup dès l'ajout du plongeur en palanquée, ou depuis l'alerte (champ JJ/MM/AAAA au clavier numérique, âge affiché en direct).
 
 ### Intégration de la branche de production (juin → 5 septembre 2026)

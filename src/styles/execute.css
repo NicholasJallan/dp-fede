@@ -43,6 +43,22 @@
   background: var(--c-surface);
   overflow: hidden;
 }
+/* Type de palanquée (jetons --kind-*, tokens.css) : fond teinté et liseré
+   gauche, comme sur l'écran Palanquées. Le dépassement (ambre) prime. */
+.cadran[class*='kind-'] {
+  background: var(--kind-tint);
+  border-left: 8px solid var(--kind-edge);
+}
+.cadran-type {
+  padding: 2px var(--sp-2);
+  border-radius: var(--r-1);
+  border: 1px solid var(--kind-edge);
+  background: var(--kind-tint);
+  color: var(--kind-edge);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
 .cadran.is-overtime {
   border-color: var(--c-warn);
   box-shadow: inset 0 0 0 2px var(--c-warn);

@@ -356,6 +356,47 @@
   font-size: var(--fs-xl);
   line-height: 1;
 }
+/* Familles d'aptitudes aux couleurs des palanquées (jetons --c-pa / --c-pe / --c-form) */
+
+.splash-card[class*='kind-'] {
+  background: var(--kind-tint);
+  border-color: color-mix(in srgb, var(--kind-edge) 35%, var(--c-line));
+  border-left: 6px solid var(--kind-edge);
+}
+.splash-card[class*='kind-'] .splash-card-badge {
+  color: var(--kind-edge);
+}
+.splash-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-4);
+  font-size: var(--fs-sm);
+}
+.splash-legend-title {
+  font-weight: 700;
+}
+.splash-legend ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.splash-legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.splash-legend .swatch {
+  width: 1.5em;
+  height: 1em;
+  border-radius: 3px;
+  background: var(--kind-tint);
+  border: 1px solid var(--kind-edge);
+  border-left: 5px solid var(--kind-edge);
+}
 .splash-card-title {
   font-weight: 700;
 }

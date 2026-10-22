@@ -481,7 +481,12 @@ test.describe('build local — captures', () => {
         state.realFonts = true;
         await page.setViewportSize({ width, height: width < 768 ? 720 : 900 });
         await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
-        await openHome(page);
+        // Rappel PA / PE / GP aux couleurs des palanquées.
+        await page.goto('/');
+        const splash = page.getByRole('dialog', { name: /Bonjour/ });
+        await expect(splash.locator('.splash-legend')).toBeVisible();
+        await shot(page, `rappel-${width}-${theme}`);
+        await splash.getByRole('button', { name: 'Commencer' }).click();
         await expect(page.locator('.dive-row').first()).toBeVisible();
         await noHorizontalOverflow(page);
         await shot(page, `accueil-${width}-${theme}`);

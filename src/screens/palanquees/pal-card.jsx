@@ -8,10 +8,9 @@
 import React, { useEffect, useId } from 'react';
 import { CdsLink, Pill, diverFullName } from '../../components/components.jsx';
 import { Icon, StatusIcon } from '../../components/icons.jsx';
-import { derivePalMode, getDiverAptitudes, minDtr, palGas, parseCdsRefs } from '../../domain/index.js';
+import { derivePalMode, getDiverAptitudes, minDtr, PAL_TYPE_LABELS, palGas, parseCdsRefs } from '../../domain/index.js';
 
 const ENS_ROLES = ['E1', 'E2', 'E3', 'E4'];
-const TYPE_LABELS = { exploration: 'Exploration', guidee: 'Guidée', formation: 'Formation', bapteme: 'Baptême' };
 
 function memberName(m, diversById) {
   if (m._bapteme) return `${m.prenom || ''} ${(m.nom || '').toUpperCase()}`.trim();
@@ -300,7 +299,12 @@ export function PalCard({ pal, index, ctx }) {
   const titleId = `pal-${pal.id}-title`;
 
   return (
-    <article className={`pal ${blocking.length ? 'is-blocked' : ''}`} aria-labelledby={titleId}>
+    <article
+      className={['pal', pal.membres.length > 0 && `kind-${palType}`, blocking.length > 0 && 'is-blocked']
+        .filter(Boolean)
+        .join(' ')}
+      aria-labelledby={titleId}
+    >
       <div className="pal-head">
         <span className="pal-num" id={titleId}>
           P{index + 1}
@@ -311,7 +315,7 @@ export function PalCard({ pal, index, ctx }) {
           aria-label={`Nom de la palanquée ${index + 1}`}
           onChange={(e) => actions.setField('nom', e.target.value)}
         />
-        <span className="pal-type">{TYPE_LABELS[palType] || palType}</span>
+        <span className="pal-type">{PAL_TYPE_LABELS[palType] || palType}</span>
         <button type="button" className="btn ghost icon" aria-label={`Supprimer ${pal.nom}`} onClick={actions.remove}>
           <Icon.Trash />
         </button>

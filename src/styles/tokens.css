@@ -50,6 +50,15 @@
   --c-scrim: rgba(2, 11, 19, 0.64);
   --c-skeleton: #e3eaf0;
 
+  /* Types de palanquée (fond de carte, rappel d'accueil) : teintes hors
+     rouge / ambre / vert, réservés aux états bloquant / alerte / conforme. */
+  --c-pa: #0b6f66; /* sarcelle — PA, autonomie */
+  --c-pa-tint: #e2f4f1;
+  --c-pe: #3f4bb0; /* indigo — PE, exploration guidée */
+  --c-pe-tint: #eceefb;
+  --c-form: #7a3fae; /* violet — formation et baptême */
+  --c-form-tint: #f3ebfa;
+
   /* ── Typographie ───────────────────────────────────────────────── */
   --font-text: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-num: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
@@ -136,6 +145,12 @@
     --c-focus: #86cdf5;
     --c-scrim: rgba(0, 0, 0, 0.72);
     --c-skeleton: #10283d;
+    --c-pa: #4fd1c0;
+    --c-pa-tint: #08262a;
+    --c-pe: #a3aeff;
+    --c-pe-tint: #121a40;
+    --c-form: #cfa4f5;
+    --c-form-tint: #211235;
     --shadow-float: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px #24425b;
     --shadow-bar: 0 -4px 16px rgba(0, 0, 0, 0.5);
   }
@@ -173,6 +188,12 @@
   --c-focus: #86cdf5;
   --c-scrim: rgba(0, 0, 0, 0.72);
   --c-skeleton: #10283d;
+  --c-pa: #4fd1c0;
+  --c-pa-tint: #08262a;
+  --c-pe: #a3aeff;
+  --c-pe-tint: #121a40;
+  --c-form: #cfa4f5;
+  --c-form-tint: #211235;
   --shadow-float: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px #24425b;
   --shadow-bar: 0 -4px 16px rgba(0, 0, 0, 0.5);
 }
@@ -186,4 +207,23 @@
   :root {
     --topbar-h: 52px;
   }
+}
+
+/* Type de palanquée → teinte (cartes Palanquées, cadrans d'exécution, rappel
+   d'accueil). Classes kind-<getPalType()> ou familles kind-pa / -pe / -form. */
+.kind-exploration,
+.kind-pa {
+  --kind-edge: var(--c-pa);
+  --kind-tint: var(--c-pa-tint);
+}
+.kind-guidee,
+.kind-pe {
+  --kind-edge: var(--c-pe);
+  --kind-tint: var(--c-pe-tint);
+}
+.kind-formation,
+.kind-bapteme,
+.kind-form {
+  --kind-edge: var(--c-form);
+  --kind-tint: var(--c-form-tint);
 }

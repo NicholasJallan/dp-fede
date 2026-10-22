@@ -160,6 +160,23 @@
   background: var(--c-surface);
   overflow: hidden;
 }
+/* Type de palanquée : fond teinté, liseré gauche et étiquette de même famille
+   (PA sarcelle, PE indigo, formation / baptême violet). Le rouge reste
+   réservé au blocage, déclaré après pour primer. */
+.pal[class*='kind-'] {
+  background: var(--kind-tint);
+  border-color: color-mix(in srgb, var(--kind-edge) 35%, var(--c-line));
+  border-left: 8px solid var(--kind-edge);
+}
+.pal[class*='kind-'] .pal-head {
+  background: color-mix(in srgb, var(--kind-edge) 12%, var(--kind-tint));
+  border-bottom-color: color-mix(in srgb, var(--kind-edge) 35%, var(--c-line));
+}
+.pal[class*='kind-'] .pal-type {
+  color: var(--kind-edge);
+  border-color: var(--kind-edge);
+  background: var(--c-surface);
+}
 .pal.is-blocked {
   border: 3px solid var(--c-stop);
 }

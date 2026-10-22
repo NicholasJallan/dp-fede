@@ -24,3 +24,11 @@ export const STRUCTURE_LABELS = {
   csa: "Convention de Section d'Activité (CSA)",
   autre: 'Autre',
 };
+
+/** Libellé d'un type de palanquée (getPalType) : famille d'aptitudes en tête. */
+export const PAL_TYPE_LABELS = {
+  exploration: 'PA · Autonomie',
+  guidee: 'PE · Guidée',
+  formation: 'Formation',
+  bapteme: 'Baptême',
+};

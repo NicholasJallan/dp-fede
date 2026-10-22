@@ -16,7 +16,7 @@ export {
   getAvailableMelanges,
 } from './aptitudes.js';
 export { CDS_ARTICLES, parseCdsRefs } from './cds-articles.js';
-export { LEVELS, STRUCTURE_LABELS } from './levels.js';
+export { LEVELS, PAL_TYPE_LABELS, STRUCTURE_LABELS } from './levels.js';
 export { QUESTIONS } from './questions.js';
 export { CHECKLIST_RULES } from './checklist.js';
 export { matchCondition } from './conditions.js';

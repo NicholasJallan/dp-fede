@@ -25,7 +25,7 @@ return [
     // Les options CLI (--soft-deleted-days=…, etc.) priment sur ces valeurs.
     'retention' => [
         'soft_deleted_days'       => 180, // lignes supprimées par l'utilisateur ; 0 = jamais purgées
-        'archived_dives_years'    => 0,   // plongées archivées ; 0 = désactivé, sinon ≥ 1 (A322-72)
+        'archived_dives_years'    => 5,   // plongées archivées : 5 ans (décision du 25/10/2026) ; 0 = désactivé ; A322-72 : 1 an minimum
         'inactive_accounts_years' => 0,   // comptes inactifs ; 0 = désactivé, sinon ≥ 2
     ],
 ];

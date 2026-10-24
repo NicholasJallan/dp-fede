@@ -952,10 +952,10 @@ Cocher les tâches au fil de l'eau :
 - [x] M11 — firebase/php-jwt v7.1.0 (advisory v6 → v7 sans advisory)
 - [x] H1 — esbuild + production builds
 - [x] H2.A — JSDoc minimal
-- [ ] H2.B — Vraie migration TS
+- [ ] H2.B — Vraie migration TS (étape faite le 25/10/2026 : `npm run typecheck` en CI sur les fichiers `// @ts-check`)
 - [x] C1.2 — PDF rendu côté serveur (mPDF, templates PHP)
 - [x] M2 — Validation métier backend (Rules.php + RulesTest.php)
 - [x] C2 — Sortir wkhtmltopdf → mPDF PHP pur
 - [x] H3 — Migrations versionnées (Migrator.php)
 - [x] H4 — Séparer `render_state` (table dive_runtime_state)
-- [ ] H7 — CDN locaux
+- [x] H7 — CDN locaux (polices auto-hébergées, revue du 25/10/2026)

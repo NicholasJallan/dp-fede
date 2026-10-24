@@ -274,8 +274,16 @@ class ClubRetention
             [$now->format('Y-m-d')]
         ), 'id');
         if ($dry) return count($ids);
-        foreach ($ids as $id) Club::deleteClub((string)$id);
-        return count($ids);
+        $done = 0;
+        foreach ($ids as $id) {
+            try {
+                Club::deleteClub((string)$id);
+                $done++;
+            } catch (\Throwable $e) {
+                Retention::logItemFailure('club', (string)$id, $e);
+            }
+        }
+        return $done;
     }
 
     /** Fragment « AND col NOT IN (?,…) » (vide si la liste est vide). */

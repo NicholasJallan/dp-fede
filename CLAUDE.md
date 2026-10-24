@@ -218,7 +218,7 @@ pas la modifier à la main. `PRECACHE_URLS` liste l'app shell : `/`,
 Lancer : `npm test` (utilise `node --test`, Node 20+ requis, zéro dépendance NPM). Contrôles statiques, aussi en CI : `npm run typecheck` (TypeScript, seuls les fichiers `// @ts-check`, types JSDoc de `src/domain/types.js`) et `cd backend && composer phpstan` (PHPStan niveau 5 sur `lib/`, `bin/`, `index.php` ; les `routes/` sont des fichiers inclus, hors analyse). PHPUnit 13.
 Les tests sont des modules ES (`tests/package.json` → `"type": "module"`) qui
 importent directement `src/domain/*` et les fabriques de `src/offline/*`.
-Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **567 tests JS**, 541 PHPUnit, 45 e2e locaux
+Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **567 tests JS**, 544 PHPUnit, 45 e2e locaux
 (métier FFESSM/Code du Sport + offline : outbox, offline-store, sync, dive-lifecycle, home-buckets + contextualisation check-list par milieu
 
 - socle club : `sync-club.test.js` (X-DP-Club, périmètre club du store), `club-logic.test.js` (droits, alertes, rapport d'import, suppressions)

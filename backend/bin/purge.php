@@ -11,7 +11,7 @@ declare(strict_types=1);
  *                        [--inactive-accounts-years=N]  défaut 0 = off, N ≥ 2
  *
  * Les valeurs par défaut peuvent être fixées dans /etc/dp-fede/config.php :
- *   'retention' => ['soft_deleted_days' => 180, 'archived_dives_years' => 0,
+ *   'retention' => ['soft_deleted_days' => 180, 'archived_dives_years' => 5,
  *                   'inactive_accounts_years' => 0],
  * Les options CLI priment sur la config.
  *

@@ -114,10 +114,10 @@ logiciels).
   **calculée par le serveur** : la plus tardive de `closed_at` (heure du
   serveur au passage en `archived`, la valeur envoyée par le client est
   ignorée) et `created_at`. La date de plongée saisie par le client
-  n'intervient pas : un client ne peut pas raccourcir la conservation. Au-delà : purge optionnelle des
-  plongées archivées de plus de N années (N ≥ 1). Recommandation : N = 5 si la
-  structure veut couvrir la prescription civile de droit commun (5 ans) en cas
-  d'accident ; à décider par le responsable de traitement. La purge supprime
+  n'intervient pas : un client ne peut pas raccourcir la conservation. Au-delà : purge des
+  plongées archivées de plus de N années, **N = 5 par défaut** (décision du
+  25/10/2026 : couvre la prescription civile de droit commun de 5 ans en cas
+  d'accident ; `archived_dives_years`, 0 = jamais). La purge supprime
   aussi les participants, les lignes `dive_documents` **et les fichiers PDF**.
   Les PDF ne figurent pas dans la sauvegarde MariaDB : les inclure dans la
   sauvegarde distante (cf. [deploy/club-socle.md](deploy/club-socle.md)).
@@ -212,7 +212,7 @@ actions « à revoir » destinées à un club quitté sont retirées automatique
 | Clubs supprimés dont la conservation légale est échue (fiches, PDF, plongeurs et sites conservés)                           | Toujours       | —                                                                 |
 | Invitations utilisées, annulées ou expirées depuis plus de 30 jours                                                         | Toujours       | —                                                                 |
 | Plongeurs, sites, plongées supprimés (soft-delete)                                                                          | 180 jours      | `soft_deleted_days` / `--soft-deleted-days=N` (0 = jamais)        |
-| Plongées archivées anciennes (+ participants, PDF archivés) — âge calculé sur les dates serveur (`closed_at`, `created_at`) | **Désactivée** | `archived_dives_years` / `--archived-dives-years=N` (N ≥ 1)       |
+| Plongées archivées anciennes (+ participants, PDF archivés) — âge calculé sur les dates serveur (`closed_at`, `created_at`) | **5 ans**      | `archived_dives_years` / `--archived-dives-years=N` (0 = jamais)  |
 | Comptes inactifs (hors seul responsable d'un club partagé)                                                                  | **Désactivée** | `inactive_accounts_years` / `--inactive-accounts-years=N` (N ≥ 2) |
 
 Toujours tester un changement avec `--dry-run` :

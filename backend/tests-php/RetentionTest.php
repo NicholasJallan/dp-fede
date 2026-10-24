@@ -15,8 +15,20 @@ final class RetentionTest extends TestCase
         $this->assertSame([], $r['errors']);
         $this->assertFalse($r['options']['dry_run']);
         $this->assertSame(180, $r['options']['soft_deleted_days']);
-        $this->assertSame(0, $r['options']['archived_dives_years']);
+        // Décision utilisateur : 5 ans par défaut pour les plongées archivées (A322-72 / RGPD)
+        $this->assertSame(5, $r['options']['archived_dives_years']);
         $this->assertSame(0, $r['options']['inactive_accounts_years']);
+    }
+
+    public function testExplicitZeroDisablesArchivedDivesPurge(): void
+    {
+        $r = \Retention::parseOptions([], ['archived_dives_years' => 0]);
+        $this->assertSame([], $r['errors']);
+        $this->assertSame(0, $r['options']['archived_dives_years']);
+
+        $cli = \Retention::parseOptions(['--archived-dives-years=0'], []);
+        $this->assertSame([], $cli['errors']);
+        $this->assertSame(0, $cli['options']['archived_dives_years']);
     }
 
     public function testConfigValuesApply(): void

@@ -30,6 +30,8 @@ declare(strict_types=1);
 class Retention
 {
     public const DEFAULT_SOFT_DELETED_DAYS = 180;
+    /** Décision du 25/10/2026 : prescription civile de droit commun (5 ans) ; A322-72 : 1 an minimum. */
+    public const DEFAULT_ARCHIVED_DIVES_YEARS = 5;
     public const MIN_INACTIVE_ACCOUNT_YEARS = 2;
     /** A322-72 : une plongée de moins d'un an protège le compte de la purge. */
     private const RECENT_DIVE_GUARD_YEARS = 1;
@@ -51,7 +53,7 @@ class Retention
             'dry_run'                 => false,
             'help'                    => false,
             'soft_deleted_days'       => self::DEFAULT_SOFT_DELETED_DAYS,
-            'archived_dives_years'    => 0,
+            'archived_dives_years'    => self::DEFAULT_ARCHIVED_DIVES_YEARS,
             'inactive_accounts_years' => 0,
         ];
         $errors = [];
@@ -220,9 +222,24 @@ class Retention
         // ne doit pas se retrouver sans responsable).
         $ids = array_values(array_filter($ids, static fn(array $row): bool => !Account::clubBlockers((int)$row['id'])));
         if ($dry) return count($ids);
+        $done = 0;
         foreach ($ids as $row) {
-            Account::deleteUserData((int)$row['id']);
+            // Un compte en échec (verrou, contrainte) n'arrête pas la purge des
+            // autres : journalisé, repris au passage suivant du cron.
+            try {
+                Account::deleteUserData((int)$row['id']);
+                $done++;
+            } catch (\Throwable $e) {
+                self::logItemFailure('account', (int)$row['id'], $e);
+            }
         }
-        return count($ids);
+        return $done;
+    }
+
+    /** Élément de purge en échec : journalisé (détail dans le journal PHP), la purge continue. */
+    public static function logItemFailure(string $kind, int|string $id, \Throwable $e): void
+    {
+        error_log("[dp-fede] purge {$kind} {$id} : " . get_class($e) . ': ' . $e->getMessage());
+        Log::action('purge.item_failed', ['kind' => $kind, 'id' => $id]);
     }
 }

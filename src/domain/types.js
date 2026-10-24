@@ -19,6 +19,10 @@
  * @property {string[]} [aptitudes_sup]
  * @property {boolean} [rifap]
  * @property {boolean} [tiv]
+ * @property {string[]} [nitrox]   'PN' | 'PN-C'
+ * @property {string[]} [trimix]   'PTH-40' | 'PTH-70' | 'PTH-120'
+ * @property {string[]} [recycleurs]
+ * @property {string} [date_naissance]  AAAA-MM-JJ
  * @property {string} [diplome_pro]   code de DIPLOMES_PRO (encadrement.js)
  * @property {NiveauEncadrant} [niveau_encadrant_annuaire]  niveau saisi, quand diverForCadre l'a remplacé
  * @property {boolean} [dp_diplome_pro_requis]  enseignant sans diplôme pro en SCA : pas DP (diverForCadre)
@@ -47,8 +51,11 @@
 
 /**
  * @typedef {Object} PalMembre
- * @property {string} id  diver id
+ * @property {string} [diverId]  id du plongeur de l'annuaire (absent pour un baptême saisi)
  * @property {Aptitude} aptitude
+ * @property {boolean} [_bapteme]  baptisé saisi à la volée (nom, prénom), hors annuaire
+ * @property {string} [nom]
+ * @property {string} [prenom]
  */
 
 /**
@@ -60,7 +67,10 @@
  * @property {number} duree    durée en minutes
  * @property {number} dtr      DTR sans déco en minutes
  * @property {boolean} [no_deco]
- * @property {string} [melange]
+ * @property {string[]} [melanges]  'Air' | 'Nx ≤ 40%' | 'Nx > 40%' | 'Tx' | 'O2'
+ * @property {'enseignement'|'exploration'} [mode]
+ * @property {number|string} [o2]       % d'O₂ du gaz fond (nitrox)
+ * @property {number|string} [o2_deco]  % d'O₂ du gaz de déco
  */
 
 /**

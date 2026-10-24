@@ -20,6 +20,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
+      - run: npm run typecheck
       - run: npm run format:check
       - run: npm test
       - run: npm run build
@@ -57,4 +58,5 @@ jobs:
       - name: Syntaxe de tous les fichiers PHP (routes et templates non couverts par PHPUnit)
         run: find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l > /dev/null
       - run: composer test
+      - run: composer phpstan
       - run: composer audit

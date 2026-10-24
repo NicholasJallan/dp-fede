@@ -22,7 +22,7 @@ if (is_file(__DIR__ . '/vendor/autoload.php')) {
 // Load libs
 foreach (['Config','Json','Db','Auth','Csrf','Validate','SyncHelpers','RateLimit','Log','Account',
           'Club','ClubInvitation','ClubAlerts','ClubStats','Encadrement','LevelMapper','DiverImport','DiverImportPlan',
-          'DivePdf','DivePolicy','DiveStore','DiveDates','DiveRefusal','DiveService','DiverValidation','DiveArchive','ClubRetention','LegacyWorkspaces'] as $cls) {
+          'DivePdf','DivePolicy','DiveStore','DiveDates','DiveRefusal','DiveStatus','DiveService','DiverValidation','DiveArchive','ClubRetention','LegacyWorkspaces'] as $cls) {
     require_once __DIR__ . "/lib/{$cls}.php";
 }
 
@@ -93,7 +93,6 @@ if (in_array($method, $writeMethods, true)) {
 }
 
 // Router — load matching route file
-$routed = false;
 foreach (['auth','account','club','divers','sites','users','dives','sync','pdf','proxy','csp','legacy'] as $r) {
     $file = __DIR__ . "/routes/{$r}.php";
     require $file;

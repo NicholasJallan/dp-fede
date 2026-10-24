@@ -18,6 +18,7 @@ Dates en ISO 8601.
 - Hors ligne / réseau faible : délai maximal sur les requêtes (20 s, 90 s pour PDF / CSV, 60 s pour Drive) — un cycle de synchro ne reste plus bloqué ni un item « en cours » ; l'accueil et les archives gardent leur liste si un rafraîchissement échoue ; copie Drive idempotente (un nouvel essai ne crée plus de doublon de fiche).
 - Archivage refusé par le serveur : bouton « Revenir à la plongée pour corriger » (`api.dives.cancelArchive` retire le statut `archived` de la file, sinon la première sauvegarde automatique aurait archivé sans nouvelle confirmation).
 - Polices auto-hébergées (`public/fonts/`, SIL OFL) : plus de requête vers Google Fonts pour l'application (RGPD), polices disponibles hors ligne.
+- Outillage : `npm run typecheck` (TypeScript 7, fichiers `// @ts-check` : `src/domain/types.js` remis à jour — `melanges`, `nitrox` / `trimix`, `diverId`) et `composer phpstan` (PHPStan 2, niveau 5, `lib/` et `bin/`) en CI ; PHPUnit 13 ; `Json::ok` / `Json::abort` typés `never` ; enum `DiveStatus`. Refactorisation : profil, sites et fiche plongeur découpés, un seul composant `Field`.
 - Neuf règles sans aucun test couvertes par des cas partagés JS / PHP (`TX_PUBLIC`, `TX_ENCADRANT`, `EXTRA_NX`, `EXTRA_NOT_GP`, `GAS_NONE`, `BASSIN_BAPTEME`, `BASSIN_EFFECTIF`, `AUTO_ENCADREMENT`, `MEDICAL_MISSING`).
 
 ### Palanquées : gaz de déco, DTR, date de naissance (22/10/2026)

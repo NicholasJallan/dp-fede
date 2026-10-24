@@ -137,7 +137,7 @@ class ClubRetention
         $until = null;
         $clubs = 0;
         foreach ($retained as $r) {
-            if (($r['count'] ?? 0) < 1) continue;
+            if ($r['count'] < 1) continue;
             $count += (int)$r['count'];
             $clubs++;
             if ($until === null || (string)$r['until'] > $until) $until = (string)$r['until'];

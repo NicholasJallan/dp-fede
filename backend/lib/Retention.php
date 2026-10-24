@@ -30,7 +30,6 @@ declare(strict_types=1);
 class Retention
 {
     public const DEFAULT_SOFT_DELETED_DAYS = 180;
-    public const MIN_ARCHIVED_DIVES_YEARS  = 1;
     public const MIN_INACTIVE_ACCOUNT_YEARS = 2;
     /** A322-72 : une plongée de moins d'un an protège le compte de la purge. */
     private const RECENT_DIVE_GUARD_YEARS = 1;
@@ -87,9 +86,8 @@ class Retention
             $errors[] = "option inconnue : {$arg}";
         }
 
-        if ($opts['archived_dives_years'] > 0 && $opts['archived_dives_years'] < self::MIN_ARCHIVED_DIVES_YEARS) {
-            $errors[] = 'archived_dives_years : minimum ' . self::MIN_ARCHIVED_DIVES_YEARS . ' an (A322-72)';
-        }
+        // archived_dives_years : la durée se compte en années entières, toute
+        // valeur > 0 respecte donc le minimum d'un an (A322-72).
         if ($opts['inactive_accounts_years'] > 0 && $opts['inactive_accounts_years'] < self::MIN_INACTIVE_ACCOUNT_YEARS) {
             $errors[] = 'inactive_accounts_years : minimum ' . self::MIN_INACTIVE_ACCOUNT_YEARS . ' ans';
         }

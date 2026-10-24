@@ -12,8 +12,6 @@ declare(strict_types=1);
  */
 final class DiveService
 {
-    public const array STATUSES = ['prepared', 'in_progress', 'archived'];
-
     /**
      * Palanquées et réponses à valider (règles dures) pour cette transition,
      * ou null. Vers 'archived' : toujours, sur l'état fusionné (corps, sinon
@@ -106,7 +104,7 @@ final class DiveService
     {
         $clientUuid = isset($body['client_uuid']) && SyncHelpers::isValidUuid((string)$body['client_uuid'])
             ? (string)$body['client_uuid'] : null;
-        $status = in_array($body['status'] ?? null, self::STATUSES, true) ? (string)$body['status'] : 'prepared';
+        $status = (DiveStatus::fromInput($body['status'] ?? null) ?? DiveStatus::Prepared)->value;
         $date   = DiveDates::toMysql(self::str($body, 'date_plongee'));
 
         // Plongée créée en cours ou archivée (synchro hors-ligne d'une session
@@ -162,7 +160,7 @@ final class DiveService
      */
     public static function patch(string $clubId, string $idOrUuid, array $body, ?callable $onArchived = null): array
     {
-        $newStatus = in_array($body['status'] ?? null, self::STATUSES, true) ? (string)$body['status'] : null;
+        $newStatus = DiveStatus::fromInput($body['status'] ?? null)?->value;
 
         $id = Db::transaction(static function (PDO $pdo) use ($clubId, $idOrUuid, $body, $newStatus): array {
             $st = $pdo->prepare(

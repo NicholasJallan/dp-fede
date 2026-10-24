@@ -113,10 +113,11 @@ export function createSync({ store, outbox, getNetStatus, timeoutMs = REQUEST_TI
     const json = await res.json().catch(() => ({ ok: false, error: 'invalid json' }));
     if (!res.ok || !json.ok) {
       notifyIfAuthExpired(res.status, path);
-      const err = new Error(json.error || `HTTP ${res.status}`);
-      err.status = res.status;
-      err.code = json.code;
-      err.responseBody = json;
+      const err = Object.assign(new Error(json.error || `HTTP ${res.status}`), {
+        status: res.status,
+        code: json.code,
+        responseBody: json,
+      });
       // Club quitté ou retiré : l'app resynchronise son club courant.
       if (res.status === 403 && json.code === 'CLUB_NOT_MEMBER') {
         window.dispatchEvent(new CustomEvent('dp:clubNotMember', { detail: { clubId: clubId || null } }));
@@ -449,20 +450,20 @@ export function createSync({ store, outbox, getNetStatus, timeoutMs = REQUEST_TI
   function start() {
     window.addEventListener('online', () => trigger('navigator-online'));
     window.addEventListener('dp:netchange', (e) => {
-      if (e.detail.online) trigger('net-ping-ok');
+      if (/** @type {CustomEvent} */ (e).detail.online) trigger('net-ping-ok');
     });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') trigger('visible');
     });
     window.addEventListener('dp:outboxChanged', () => trigger('outbox-changed'));
     window.addEventListener('dp:sw', (e) => {
-      if (e.detail?.type === 'SYNC_TRIGGER') trigger('background-sync');
+      if (/** @type {CustomEvent} */ (e).detail?.type === 'SYNC_TRIGGER') trigger('background-sync');
     });
 
     // Background Sync API si supportée (Chrome Android principalement).
     if ('serviceWorker' in navigator && 'SyncManager' in window) {
       navigator.serviceWorker.ready
-        .then((reg) => reg.sync.register('dp-outbox'))
+        .then((reg) => /** @type {any} */ (reg).sync.register('dp-outbox')) // Background Sync : hors lib DOM
         .catch(() => {
           /* unsupported ou refusé */
         });

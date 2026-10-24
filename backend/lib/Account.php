@@ -44,7 +44,7 @@ class Account
     public static function clubBlockerMessage(array $clubBlockers): string
     {
         $names = implode(', ', array_map(
-            static fn(array $c): string => '« ' . (($c['nom'] ?? '') !== '' ? $c['nom'] : 'club sans nom') . ' »',
+            static fn(array $c): string => '« ' . ($c['nom'] !== '' ? $c['nom'] : 'club sans nom') . ' »',
             $clubBlockers
         ));
         return "Vous êtes le seul responsable du club {$names}, qui compte d'autres membres : "

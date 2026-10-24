@@ -85,13 +85,14 @@ final class LegacyWorkspaces
      *   workspaces: list<array{id:int, name:string, data_user_id:int, created_by:?int, archived:bool}>,
      *   members: list<array{workspace_id:int, user_id:int, role:string}>,
      *   sessions: list<array{user_id:int, expires_at:int, workspace_id:?int}>,
-     *   rows: array<string, list<array{user_id:?int, created_by:?int, client_uuid?:?string}>>
+     *   rows: array<string, list<array{id?:string, user_id:?int, created_by:?int, client_uuid?:?string}>>
      * } $s
      * @return array{
      *   clubs: array<string, array{members: array<int,string>}>,
      *   current: array<int,string>,
      *   rows: array<string, array<string,int>>,
-     *   warnings: list<string>
+     *   warnings: list<string>,
+     *   blocking: list<string>
      * }
      */
     public static function plan(array $s): array

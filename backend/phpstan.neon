@@ -1,0 +1,15 @@
+# Analyse statique (composer phpstan, lancée en CI). Les routes/ sont des
+# fichiers inclus par index.php ($method, $path, $user… viennent de son
+# contexte) : hors analyse, couvertes par php -l et les tests des services.
+parameters:
+    level: 5
+    paths:
+        - lib
+        - bin
+        - index.php
+    ignoreErrors:
+        # Scripts CLI : $argv est fourni par PHP.
+        -
+            identifier: variable.undefined
+            message: '#Variable \$argv might not be defined#'
+            path: bin/*

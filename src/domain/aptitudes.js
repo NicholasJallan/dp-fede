@@ -62,9 +62,9 @@ export function getDpMaxDepth(palType, dp) {
  * évoluer dans l'espace supérieur à ses aptitudes si l'enseignant présent a
  * la compétence requise (E3 : 0-40 m, E4 : 0-60 m). Uniquement en
  * enseignement — jamais en exploration.
- * @param {Diver|null} diver
- * @param {NiveauEncadrant|null} maxEnsLevel  niveau max enseignant dans la palanquée
- * @param {'enseignement'|'exploration'} [mode]
+ * @param {Partial<Diver>|null} diver
+ * @param {string|null} maxEnsLevel  niveau max enseignant dans la palanquée (E1 → E4)
+ * @param {string} [mode]  'enseignement' | 'exploration'
  * @returns {string[]}
  */
 export function getFormationBonusAptitudes(diver, maxEnsLevel, mode) {
@@ -82,9 +82,9 @@ export function getFormationBonusAptitudes(diver, maxEnsLevel, mode) {
  * Aptitudes disponibles pour un plongeur sur une plongée donnée.
  * Retourne la liste ordonnée des prérogatives qu'il peut avoir dans une palanquée.
  *
- * @param {object}   diver          { niveau_plongeur?, niveau_encadrant?, trimix?, aptitudes_sup? }
+ * @param {Partial<import('./types.js').Diver>} diver  { niveau_plongeur?, niveau_encadrant?, trimix?, aptitudes_sup? }
  * @param {boolean=} isExploration  true si la session DP est en exploration pure (N5)
- * @param {{maxEnsLevel?:string}=} palContext Étend les aptitudes en formation si la palanquée contient un E1→E4
+ * @param {{maxEnsLevel?: string, mode?: string}=} palContext Étend les aptitudes en formation si la palanquée contient un E1→E4 (mode : celui de la palanquée)
  * @returns {string[]} Aptitudes triées dans l'ordre canonique
  */
 export function getDiverAptitudes(diver, isExploration, palContext) {
@@ -223,7 +223,7 @@ export function aptitudeMaxDepth(aptitude) {
  *   exploration : exploration en autonomie
  *
  * @param {Array<{aptitude?:string}>} membres
- * @param {'enseignement'|'exploration'} [mode]  choix du DP (pal.mode)
+ * @param {string} [mode]  'enseignement' | 'exploration'  choix du DP (pal.mode)
  * @returns {'bapteme'|'formation'|'guidee'|'exploration'}
  */
 export function getPalType(membres, mode) {

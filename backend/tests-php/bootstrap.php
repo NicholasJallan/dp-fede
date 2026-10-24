@@ -2,27 +2,13 @@
 declare(strict_types=1);
 
 // Bootstrap PHPUnit — charge tous les libs du backend dans l'ordre attendu
-// par index.php. On stub Config en mémoire pour ne pas dépendre de
-// /etc/dp-fede/config.php (qui n'existe que sur le Pi).
+// par index.php. Config est le vrai lib/Config.php (autoload Composer) : un
+// test qui en a besoin fixe sa configuration par réflexion
+// (`(new \ReflectionProperty(\Config::class, 'cfg'))->setValue(null, [...])`,
+// cf. DiveArchiveDbTest), sinon /etc/dp-fede/config.php est lu.
 
 require_once __DIR__ . '/../lib/Json.php';
-
-// Stub minimal de Config — réimplémente la même API publique.
-if (!class_exists('Config')) {
-    class Config {
-        private static array $store = [
-            'app'    => ['domain' => 'dp-fede.bullesenvalais.ch'],
-            'db'     => ['host' => '127.0.0.1', 'name' => 'dp_fede_test', 'user' => 'test', 'pass' => 'test'],
-            'google' => ['client_id' => 'test-client-id.apps.googleusercontent.com'],
-        ];
-        public static function get(string $section): array {
-            return self::$store[$section] ?? [];
-        }
-        public static function set(string $section, array $values): void {
-            self::$store[$section] = $values;
-        }
-    }
-}
+require_once __DIR__ . '/../lib/Config.php';
 
 // Charge les autres libs.
 require_once __DIR__ . '/../lib/Validate.php';
@@ -54,6 +40,7 @@ require_once __DIR__ . '/../lib/DivePolicy.php';
 require_once __DIR__ . '/../lib/DiveStore.php';
 require_once __DIR__ . '/../lib/DiveDates.php';
 require_once __DIR__ . '/../lib/DiveRefusal.php';
+require_once __DIR__ . '/../lib/DiveStatus.php';
 require_once __DIR__ . '/../lib/DiveService.php';
 require_once __DIR__ . '/../lib/DiveArchive.php';
 require_once __DIR__ . '/../lib/ClubRetention.php';
@@ -66,13 +53,3 @@ $method = 'GET';
 $path   = '/__bootstrap__';
 require_once __DIR__ . '/../routes/dives.php';
 
-// Stub pour éviter que Json::abort termine le process en plein test.
-if (!class_exists('JsonAbortedException')) {
-    class JsonAbortedException extends RuntimeException {
-        public int $httpStatus;
-        public function __construct(int $status, string $message) {
-            parent::__construct($message);
-            $this->httpStatus = $status;
-        }
-    }
-}

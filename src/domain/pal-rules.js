@@ -675,7 +675,7 @@ const PAL_TYPE_LABELS = {
 /**
  * Validation complète d'une palanquée.
  *
- * @param {object} pal         { membres, profMax, melanges, mode?, o2? }
+ * @param {Partial<import('./types.js').Palanquee>} pal  { membres, profMax, melanges, mode?, o2? }
  * @param {object} diversById  { diverId -> plongeur }
  * @param {object} answers     { milieu, date, dp_qual, site_prof_max, ... }
  * @param {object|null} dp     plongeur DP { niveau_encadrant, nitrox, trimix }

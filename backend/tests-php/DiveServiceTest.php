@@ -533,4 +533,120 @@ final class DiveServiceTest extends TestCase
             throw $e;
         }
     }
+
+    public function testPatchLogsUnknownDiversWhenDiverIdMissingFromClub(): void
+    {
+        $logged = [];
+        \Log::capture(function (string $kind, ?array $ctx) use (&$logged): void {
+            $logged[] = ['kind' => $kind, 'ctx' => $ctx];
+        });
+
+        try {
+            // Palanquée avec 3 membres : 2 connus en base (pour éviter PAL_SOLO quand le 3e est ignoré) et 1 fantôme
+            $palanquees = [[
+                'id' => 'p1',
+                'profMax' => 20,
+                'membres' => [
+                    ['diverId' => 'd1', 'aptitude' => 'PA20'],
+                    ['diverId' => 'd2', 'aptitude' => 'PA20'],
+                    ['diverId' => 'diver-ghost', 'aptitude' => 'PA20'],
+                ],
+            ]];
+            $stored = [
+                'id'         => 'd1',
+                'status'     => 'prepared',
+                'answers'    => json_encode(['date' => '2026-10-25T10:00']),
+                'palanquees' => json_encode($palanquees),
+            ];
+
+            $this->pdo->respond('/FOR UPDATE/', [$stored]);
+            $this->pdo->respond('/FROM clubs/', [['structure_type' => 'club']]);
+            // Réponse FROM divers ne contenant QUE d1 et d2 (diver-ghost absent)
+            $this->pdo->respond('/FROM divers\s+WHERE/i', [
+                [
+                    'id' => 'd1', 'nom' => 'Un', 'prenom' => 'A',
+                    'niveau_plongeur' => 'N2', 'niveau_encadrant' => null,
+                    'aptitudes_sup' => '[]', 'qualifs' => '[]',
+                    'medical' => '2026-01-01', 'date_naissance' => '1990-01-01',
+                ],
+                [
+                    'id' => 'd2', 'nom' => 'Deux', 'prenom' => 'B',
+                    'niveau_plongeur' => 'N2', 'niveau_encadrant' => null,
+                    'aptitudes_sup' => '[]', 'qualifs' => '[]',
+                    'medical' => '2026-01-01', 'date_naissance' => '1990-01-01',
+                ],
+            ]);
+            $this->pdo->respond('/SELECT .* FROM dives WHERE/i', [[
+                'id'               => 'd1',
+                'status'           => 'archived',
+                'drive_link'       => null,
+                'documents_status' => 'pending',
+            ]]);
+
+            \DiveService::patch(self::CLUB, 'd1', ['status' => 'archived'], fn() => null);
+
+            // Vérifie qu'une entrée 'dive.unknown_divers' a été enregistrée avec count => 1
+            $unknownEntries = array_filter($logged, fn($e) => $e['kind'] === 'dive.unknown_divers');
+            $this->assertCount(1, $unknownEntries);
+            $entry = reset($unknownEntries);
+            $this->assertSame(['club_id' => self::CLUB, 'count' => 1], $entry['ctx']);
+        } finally {
+            \Log::capture(null);
+        }
+    }
+
+    public function testPatchDoesNotLogUnknownDiversWhenAllDiverIdsKnown(): void
+    {
+        $logged = [];
+        \Log::capture(function (string $kind, ?array $ctx) use (&$logged): void {
+            $logged[] = ['kind' => $kind, 'ctx' => $ctx];
+        });
+
+        try {
+            $palanquees = [[
+                'id' => 'p1',
+                'profMax' => 20,
+                'membres' => [
+                    ['diverId' => 'd1', 'aptitude' => 'PA20'],
+                    ['diverId' => 'd2', 'aptitude' => 'PA20'],
+                ],
+            ]];
+            $stored = [
+                'id'         => 'd1',
+                'status'     => 'prepared',
+                'answers'    => json_encode(['date' => '2026-10-25T10:00']),
+                'palanquees' => json_encode($palanquees),
+            ];
+
+            $this->pdo->respond('/FOR UPDATE/', [$stored]);
+            $this->pdo->respond('/FROM clubs/', [['structure_type' => 'club']]);
+            $this->pdo->respond('/FROM divers\s+WHERE/i', [
+                [
+                    'id' => 'd1', 'nom' => 'Un', 'prenom' => 'A',
+                    'niveau_plongeur' => 'N2', 'niveau_encadrant' => null,
+                    'aptitudes_sup' => '[]', 'qualifs' => '[]',
+                    'medical' => '2026-01-01', 'date_naissance' => '1990-01-01',
+                ],
+                [
+                    'id' => 'd2', 'nom' => 'Deux', 'prenom' => 'B',
+                    'niveau_plongeur' => 'N2', 'niveau_encadrant' => null,
+                    'aptitudes_sup' => '[]', 'qualifs' => '[]',
+                    'medical' => '2026-01-01', 'date_naissance' => '1990-01-01',
+                ],
+            ]);
+            $this->pdo->respond('/SELECT .* FROM dives WHERE/i', [[
+                'id'               => 'd1',
+                'status'           => 'archived',
+                'drive_link'       => null,
+                'documents_status' => 'pending',
+            ]]);
+
+            \DiveService::patch(self::CLUB, 'd1', ['status' => 'archived'], fn() => null);
+
+            $unknownEntries = array_filter($logged, fn($e) => $e['kind'] === 'dive.unknown_divers');
+            $this->assertEmpty($unknownEntries);
+        } finally {
+            \Log::capture(null);
+        }
+    }
 }

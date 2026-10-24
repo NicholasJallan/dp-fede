@@ -118,4 +118,62 @@ class ValidateTest extends TestCase
         $this->assertSame('', $v->str('president_nom', null));
         $this->assertSame('x', $v->str('absent', 'x'));
     }
+
+    public function testRequiredHandlesArrayWithoutWarningOrTypeError(): void
+    {
+        $v = (new \Validate(['field' => ['bad']]))->required('field', 'Champ');
+        $errors = $this->errors($v);
+        $this->assertNotEmpty($errors);
+        $this->assertStringContainsString('Champ', $errors[0]);
+    }
+
+    public function testMaxLenHandlesArrayWithoutWarningOrTypeError(): void
+    {
+        $v = (new \Validate(['field' => ['bad']]))->maxLen('field', 50, 'Champ');
+        $errors = $this->errors($v);
+        $this->assertNotEmpty($errors);
+        $this->assertStringContainsString('Champ', $errors[0]);
+    }
+
+    public function testDateHandlesArrayWithoutWarningOrTypeError(): void
+    {
+        $v = (new \Validate(['field' => ['bad']]))->date('field', 'Date');
+        $errors = $this->errors($v);
+        $this->assertNotEmpty($errors);
+        $this->assertStringContainsString('Date', $errors[0]);
+    }
+
+    public function testCoordinatesAcceptsValidFloatsAndNumericStrings(): void
+    {
+        $this->assertSame([43.48, -1.56], \Validate::coordinates(43.48, -1.56));
+        $this->assertSame([43.48, -1.56], \Validate::coordinates('43.48', '-1.56'));
+        $this->assertSame([0.0, 0.0], \Validate::coordinates(0, 0));
+        $this->assertSame([0.0, 0.0], \Validate::coordinates('0', '0'));
+        $this->assertSame([-90.0, -180.0], \Validate::coordinates(-90, -180));
+        $this->assertSame([90.0, 180.0], \Validate::coordinates('90', '180'));
+    }
+
+    #[DataProvider('invalidCoordinates')]
+    public function testCoordinatesRejectsInvalidValues(mixed $lat, mixed $lng): void
+    {
+        $this->assertNull(\Validate::coordinates($lat, $lng));
+    }
+
+    public static function invalidCoordinates(): array
+    {
+        return [
+            'lat out of bounds high' => [90.1, 0],
+            'lat out of bounds low'  => [-90.1, 0],
+            'lng out of bounds high' => [0, 180.1],
+            'lng out of bounds low'  => [0, -180.1],
+            'lat non-numeric string' => ['abc', 0],
+            'lng non-numeric string' => [0, 'xyz'],
+            'lat null'               => [null, 0],
+            'lng null'               => [0, null],
+            'lat empty string'       => ['', 0],
+            'lng empty string'       => [0, ''],
+            'lat array'              => [[43.5], 0],
+            'lng array'              => [0, [-1.5]],
+        ];
+    }
 }

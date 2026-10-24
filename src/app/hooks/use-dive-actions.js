@@ -1,7 +1,7 @@
 // DP Assistant — Actions sur les plongées depuis le shell : ouvrir, créer,
 // démarrer (contrôle ±4 h), supprimer, cloner, terminer la préparation.
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { api } from '../../api/api.js';
 import { offlineStore } from '../../offline/offline-store.js';
 import { randomUUID } from '../../offline/uuid.js';
@@ -98,39 +98,52 @@ function useLoadDive({ session, flushSave, refreshDiversAndSites, showToast, set
   );
 }
 
-function useStartPreparation({ session, flushSave, refreshDiversAndSites, setScreen, setDiveMode }) {
+function useStartPreparation({ session, flushSave, refreshDiversAndSites, setScreen, setDiveMode, showToast }) {
   const { currentDiveId, resetDiveState, setAnswers, setPalanquees, setCurrentDiveId } = session;
+  // Double appui sur « Nouvelle plongée » : une seule création (sinon une
+  // plongée « prepared » orpheline en plus).
+  const busy = useRef(false);
   return useCallback(
     async (prefill = null, overrideDate = null) => {
-      if (currentDiveId) flushSave(currentDiveId);
+      if (busy.current) return false;
+      busy.current = true;
+      try {
+        if (currentDiveId) flushSave(currentDiveId);
 
-      const client_uuid = randomUUID();
-      const newDate = overrideDate || nextFullHourInputValue();
-      const initialAnswers = buildInitialAnswers(prefill, newDate);
-      const initialPals = prefill ? prefill.palanquees : [];
+        const client_uuid = randomUUID();
+        const newDate = overrideDate || nextFullHourInputValue();
+        const initialAnswers = buildInitialAnswers(prefill, newDate);
+        const initialPals = prefill ? prefill.palanquees : [];
 
-      await api.dives.create({
-        client_uuid,
-        status: 'prepared',
-        site_nom: initialAnswers.site_nom || '',
-        date_plongee: newDate,
-        planned_at: newDate,
-        dp_nom: initialAnswers.dp_nom || '',
-        dp_qual: initialAnswers.dp_qual || '',
-        activite: '',
-        answers: initialAnswers,
-        palanquees: initialPals,
-        render_state: {},
-      });
+        await api.dives.create({
+          client_uuid,
+          status: 'prepared',
+          site_nom: initialAnswers.site_nom || '',
+          date_plongee: newDate,
+          planned_at: newDate,
+          dp_nom: initialAnswers.dp_nom || '',
+          dp_qual: initialAnswers.dp_qual || '',
+          activite: '',
+          answers: initialAnswers,
+          palanquees: initialPals,
+          render_state: {},
+        });
 
-      resetDiveState();
-      setAnswers(initialAnswers);
-      setPalanquees(initialPals);
-      setCurrentDiveId(client_uuid);
-      setDiveMode('prepare');
-      refreshDiversAndSites();
-      setScreen('profil');
-      scrollTop();
+        resetDiveState();
+        setAnswers(initialAnswers);
+        setPalanquees(initialPals);
+        setCurrentDiveId(client_uuid);
+        setDiveMode('prepare');
+        refreshDiversAndSites();
+        setScreen('profil');
+        scrollTop();
+        return true;
+      } catch (err) {
+        showToast({ tone: 'err', title: 'Création de la plongée impossible', body: err.message });
+        return false;
+      } finally {
+        busy.current = false;
+      }
     },
     [
       currentDiveId,
@@ -142,6 +155,7 @@ function useStartPreparation({ session, flushSave, refreshDiversAndSites, setScr
       setCurrentDiveId,
       setDiveMode,
       setScreen,
+      showToast,
     ],
   );
 }

@@ -61,12 +61,26 @@ class Csrf {
      */
     public static function verifyForLogout(): void {
         if (self::isValid()) return;
-        $domain = (string)(Config::get('app')['domain'] ?? '');
-        $origin  = isset($_SERVER['HTTP_ORIGIN'])  ? (string)$_SERVER['HTTP_ORIGIN']  : null;
-        $referer = isset($_SERVER['HTTP_REFERER']) ? (string)$_SERVER['HTTP_REFERER'] : null;
-        if (!self::isTrustedOrigin($origin, $referer, $domain)) {
+        self::verifyOrigin();
+    }
+
+    /**
+     * Requête émise depuis l'application elle-même (Origin, à défaut Referer).
+     * Seule protection possible de POST /api/auth/google (pas encore de
+     * session ni de jeton CSRF) contre le login CSRF : un formulaire tiers
+     * qui connecterait la victime au compte de l'attaquant.
+     */
+    public static function verifyOrigin(): void {
+        if (!self::requestOriginTrusted()) {
             Json::abort(403, 'Origine de la requête non autorisée', 'ORIGIN_FORBIDDEN');
         }
+    }
+
+    public static function requestOriginTrusted(): bool {
+        $domain  = (string)(Config::get('app')['domain'] ?? '');
+        $origin  = isset($_SERVER['HTTP_ORIGIN'])  ? (string)$_SERVER['HTTP_ORIGIN']  : null;
+        $referer = isset($_SERVER['HTTP_REFERER']) ? (string)$_SERVER['HTTP_REFERER'] : null;
+        return self::isTrustedOrigin($origin, $referer, $domain);
     }
 
     /**

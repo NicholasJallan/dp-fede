@@ -1,8 +1,6 @@
 <?php
 declare(strict_types=1);
 
-$NIVEAUX_PLONGEUR  = ['N1','N2','N3'];
-$NIVEAUX_ENCADRANT = ['N4','N5','E1','E2','E3','E4'];
 $DIPLOMES_PRO      = array_keys(Encadrement::DIPLOMES_PRO);
 $RECYCLEURS_OK     = ['Revo','AP','Triton','JJccr','Xccr','Megalodon','Shark','Submatix','Autre'];
 
@@ -126,22 +124,9 @@ function diverInClubOrAbort(string $clubId, string $diverId): array {
 }
 
 function validateDiverBody(array $body): Validate {
-    $v = new Validate($body);
-    $v->required('nom', 'Nom')
-      ->maxLen('nom', 100, 'Nom')
-      ->maxLen('prenom', 100, 'Prénom')
-      ->maxLen('licence', 50, 'Numéro de licence')
-      ->required('medical', 'Date du certificat médical')
-      ->date('medical', 'Date du certificat médical')
-      ->date('date_naissance', 'Date de naissance')
-      ->date('licence_fin', 'Date de fin de licence')
-      ->maxLen('representant_legal', 200, 'Représentant légal')
-      ->abortIfErrors();
-    $season = $v->nullable('autorisation_parentale_saison');
-    if ($season !== null && !ClubAlerts::isValidSeason($season)) {
-        Json::abort(422, 'Saison d\'autorisation parentale invalide (format AAAA-AAAA, ex. 2026-2027)');
-    }
-    return $v;
+    $errors = DiverValidation::errors($body);
+    if ($errors) Json::abort(422, implode('; ', $errors));
+    return new Validate($body);
 }
 
 /** Colonnes historiques de la fiche, toujours écrites (POST / PUT). */

@@ -346,13 +346,21 @@ function AppInner() {
   return <AppShell ctl={ctl} />;
 }
 
+// Une autre identité (déconnexion, compte supprimé puis autre compte) remonte
+// toute l'application : aucun état de l'ancien compte (annuaire, plongée
+// ouverte) ne survit dans l'onglet.
+function AppForUser() {
+  const { user } = useAuth();
+  return <AppInner key={user?.id ?? 'anonyme'} />;
+}
+
 export function App() {
   return (
     <ErrorBoundary>
       <ToastProvider>
         <AuthProvider>
           <ClubProvider>
-            <AppInner />
+            <AppForUser />
           </ClubProvider>
         </AuthProvider>
       </ToastProvider>

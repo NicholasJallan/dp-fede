@@ -235,6 +235,13 @@ function AuthProvider({ children }) {
       prefetchUserData();
     } catch (err) {
       console.error('Google auth error:', err);
+      setLoginNotice({
+        tone: 'err',
+        title: 'Connexion refusée',
+        message: err?.status
+          ? `Le serveur a refusé la connexion (${err.message || err.status}). Réessayez ou contactez le responsable du club.`
+          : 'Serveur injoignable : vérifiez la connexion internet puis réessayez.',
+      });
     }
   }, []);
 

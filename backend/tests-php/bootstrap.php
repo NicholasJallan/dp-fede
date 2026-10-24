@@ -44,6 +44,7 @@ require_once __DIR__ . '/../lib/ChecklistRules.php';
 require_once __DIR__ . '/../lib/Club.php';
 require_once __DIR__ . '/../lib/ClubInvitation.php';
 require_once __DIR__ . '/../lib/ClubAlerts.php';
+require_once __DIR__ . '/../lib/DiverValidation.php';
 require_once __DIR__ . '/../lib/ClubStats.php';
 require_once __DIR__ . '/../lib/LevelMapper.php';
 require_once __DIR__ . '/../lib/DiverImport.php';

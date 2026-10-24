@@ -73,6 +73,11 @@ final class DiveService
                 $row['aptitudes_sup'] = json_decode($row['aptitudes_sup'] ?? '[]', true) ?? [];
                 $diversById[$row['id']] = $row;
             }
+            // Plongeur supprimé de l'annuaire ou créé hors ligne et pas encore
+            // synchronisé : pas de refus (la fiche doit pouvoir être archivée,
+            // A322-72), mais il échappe à la validation → journalisé.
+            $unknown = count(array_diff($ids, array_keys($diversById)));
+            if ($unknown > 0) Log::action('dive.unknown_divers', ['club_id' => $clubId, 'count' => $unknown]);
         }
 
         $dp = null;

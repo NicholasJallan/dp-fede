@@ -3,8 +3,9 @@ declare(strict_types=1);
 
 // POST /api/auth/google — échange un Google ID token contre une session
 if ($method === 'POST' && $path === '/api/auth/google') {
+    Csrf::verifyOrigin();
     $body    = Json::body();
-    $idToken = trim($body['credential'] ?? '');
+    $idToken = is_string($body['credential'] ?? null) ? trim($body['credential']) : '';
     if (!$idToken) Json::abort(400, 'Jeton manquant');
 
     $payload = Auth::verifyGoogleToken($idToken);

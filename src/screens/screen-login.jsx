@@ -14,7 +14,7 @@ import { hasLocalData } from '../auth/local-data.js';
 // fiches de sécurité conservées (art. A322-72), s'il y en a.
 function SessionNotice({ notice }) {
   return (
-    <Notice tone="ok" title={notice.title} live>
+    <Notice tone={notice.tone || 'ok'} title={notice.title} live>
       <p>{notice.message}</p>
       {notice.retained && <RetainedFacts retained={notice.retained} />}
     </Notice>
@@ -43,6 +43,7 @@ function ScreenLogin() {
   const btnRef = useRef(null);
   const online = useOnline();
   const leftover = useLeftoverData();
+  const [configError, setConfigError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,7 +57,11 @@ function ScreenLogin() {
         return;
       }
       const clientId = window.GOOGLE_CLIENT_ID;
-      if (!clientId || clientId === 'GOOGLE_CLIENT_ID_PLACEHOLDER') return;
+      if (!clientId || clientId === 'GOOGLE_CLIENT_ID_PLACEHOLDER') {
+        console.error('[auth] GOOGLE_CLIENT_ID absent : bouton de connexion non affiché');
+        setConfigError(true);
+        return;
+      }
       google.accounts.id.initialize({ client_id: clientId, callback: handleGoogleCredential, auto_select: false });
       if (btnRef.current) {
         google.accounts.id.renderButton(btnRef.current, {
@@ -95,6 +100,11 @@ function ScreenLogin() {
           </Notice>
         )}
         <div className="login-btn-wrap" ref={btnRef}></div>
+        {configError && (
+          <Notice tone="err" title="Connexion indisponible">
+            Le service de connexion Google n'est pas configuré sur ce serveur. Prévenez l'administrateur.
+          </Notice>
+        )}
         {!online && (
           <Notice tone="warn" title="Hors ligne">
             La première connexion demande internet. Si vous vous êtes connecté récemment sur cet appareil, rechargez la

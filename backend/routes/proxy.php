@@ -6,13 +6,13 @@ declare(strict_types=1);
 if ($method === 'GET' && $path === '/api/proxy/maree') {
     Auth::require();
 
-    $lat  = filter_var($_GET['lat']  ?? '', FILTER_VALIDATE_FLOAT);
-    $lng  = filter_var($_GET['lng']  ?? '', FILTER_VALIDATE_FLOAT);
-    $date = $_GET['date'] ?? '';
+    $coords = Validate::coordinates($_GET['lat'] ?? null, $_GET['lng'] ?? null);
+    $date   = is_string($_GET['date'] ?? null) ? $_GET['date'] : '';
 
-    if ($lat === false || $lat === 0.0 || $lng === false || $lng === 0.0) {
+    if ($coords === null) {
         Json::abort(400, 'Coordonnées GPS manquantes ou invalides');
     }
+    [$lat, $lng] = $coords;
     if (!$date) {
         Json::abort(400, 'Date manquante');
     }
@@ -43,7 +43,9 @@ if ($method === 'GET' && $path === '/api/proxy/maree') {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 10,
+            // Pool FPM de 4 workers : un SHOM lent ne doit pas les bloquer.
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_TIMEOUT        => 5,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_USERAGENT      => 'DP-Assistant/1.0',
             CURLOPT_HTTPHEADER     => [
@@ -54,7 +56,6 @@ if ($method === 'GET' && $path === '/api/proxy/maree') {
         $body    = curl_exec($ch);
         $code    = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlErr = curl_error($ch);
-        curl_close($ch);
 
         if ($body === false || $curlErr) {
             throw new RuntimeException("Erreur réseau SHOM : {$curlErr}");
@@ -100,7 +101,7 @@ if ($method === 'GET' && $path === '/api/proxy/maree') {
         foreach ($harbors as $f) {
             $props = $f['properties'] ?? [];
             // Ignorer ports sans données de marée (nota=6) ou sans décalage UTC
-            if (($props['nota'] ?? 0) === 6 || $props['ut'] === null) {
+            if (($props['nota'] ?? 0) === 6 || ($props['ut'] ?? null) === null) {
                 continue;
             }
             $pLat = (float) ($props['lat'] ?? 0);
@@ -114,7 +115,7 @@ if ($method === 'GET' && $path === '/api/proxy/maree') {
             }
         }
         if ($best === null) {
-            throw new RuntimeException('Aucun port de référence SHOM trouvé à proximité');
+            throw new DomainException('Aucun port de référence SHOM trouvé à proximité');
         }
 
         $harborCode = (string) $best['cst'];
@@ -134,7 +135,7 @@ if ($method === 'GET' && $path === '/api/proxy/maree') {
         // La clé est la date YYYY-MM-DD
         $dayTides = $tidesData[$diveDayStr] ?? null;
         if (!is_array($dayTides) || empty($dayTides)) {
-            throw new RuntimeException("Aucune marée trouvée pour le {$diveDayStr}");
+            throw new DomainException("Aucune marée trouvée pour le {$diveDayStr}");
         }
 
         // 4. Formater en "PM 05h10 coef 70 (6.2m) · BM 11h31 (1.9m)"
@@ -161,7 +162,7 @@ if ($method === 'GET' && $path === '/api/proxy/maree') {
         }
 
         if (empty($parts)) {
-            throw new RuntimeException("Aucune marée valide pour le {$diveDayStr}");
+            throw new DomainException("Aucune marée valide pour le {$diveDayStr}");
         }
 
         Json::ok([
@@ -170,7 +171,12 @@ if ($method === 'GET' && $path === '/api/proxy/maree') {
             'tides'  => implode(' · ', $parts),
         ]);
 
-    } catch (RuntimeException $e) {
+    } catch (DomainException $e) {
+        // Pas de donnée de marée pour ce lieu / ce jour : message utile au DP.
         Json::abort(502, $e->getMessage());
+    } catch (RuntimeException $e) {
+        // Détail (hôte, erreur curl) dans le journal seulement.
+        error_log('[dp-fede] proxy SHOM : ' . $e->getMessage());
+        Json::abort(502, 'Service des marées (SHOM) indisponible : réessayez plus tard ou saisissez les horaires.');
     }
 }

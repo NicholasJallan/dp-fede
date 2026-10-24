@@ -21,12 +21,36 @@ final class CsrfTest extends TestCase
     {
         $_COOKIE = [];
         $_SERVER['HTTP_X_CSRF_TOKEN'] = '';
+        (new \ReflectionProperty(\Config::class, 'cfg'))->setValue(null, ['app' => ['domain' => 'dp-fede.bullesenvalais.ch']]);
     }
 
     protected function tearDown(): void
     {
         $_COOKIE = [];
-        unset($_SERVER['HTTP_X_CSRF_TOKEN']);
+        unset($_SERVER['HTTP_X_CSRF_TOKEN'], $_SERVER['HTTP_ORIGIN'], $_SERVER['HTTP_REFERER']);
+        (new \ReflectionProperty(\Config::class, 'cfg'))->setValue(null, null);
+    }
+
+    public function testRequestOriginTrustedWithOrigin(): void
+    {
+        $_SERVER['HTTP_ORIGIN'] = 'https://dp-fede.bullesenvalais.ch';
+        $this->assertTrue(\Csrf::requestOriginTrusted());
+
+        $_SERVER['HTTP_ORIGIN'] = 'https://evil.example';
+        $this->assertFalse(\Csrf::requestOriginTrusted());
+    }
+
+    public function testRequestOriginTrustedFallsBackToReferer(): void
+    {
+        unset($_SERVER['HTTP_ORIGIN']);
+        $_SERVER['HTTP_REFERER'] = 'https://dp-fede.bullesenvalais.ch/app';
+        $this->assertTrue(\Csrf::requestOriginTrusted());
+    }
+
+    public function testRequestOriginTrustedWithoutOriginNorReferer(): void
+    {
+        unset($_SERVER['HTTP_ORIGIN'], $_SERVER['HTTP_REFERER']);
+        $this->assertFalse(\Csrf::requestOriginTrusted());
     }
 
     /**

@@ -1,7 +1,7 @@
 // @ts-check
 // DP Assistant — Check-list opérationnelle (étape 3), items conditionnels.
 
-import { isMilieuNaturel } from './milieu.js';
+import { isMilieuNaturel, reglesMilieuNaturel } from './milieu.js';
 
 // =========================================================================
 // CHECK-LIST RULES (2 phases, items conditionnels)
@@ -103,7 +103,7 @@ export const CHECKLIST_RULES = [
         text: 'Jeu de tables de décompression',
         ref: 'CdS A322-78',
         tags: ['materiel'],
-        when: (a) => isMilieuNaturel(a.milieu),
+        when: reglesMilieuNaturel,
       },
       {
         id: 'p1_doc_plongeurs',
@@ -173,7 +173,7 @@ export const CHECKLIST_RULES = [
         text: "Équipement vérifié : manomètre et gilet pour tous ; au-delà de 20 m en encadré et pour les autonomes, source d'air de secours sans partage d'embout et moyens de contrôle ; encadrants : 2 sorties et 2 détendeurs",
         ref: 'CdS A322-80',
         tags: ['materiel'],
-        when: (a) => isMilieuNaturel(a.milieu),
+        when: reglesMilieuNaturel,
       },
       {
         id: 'p2_rappel',
@@ -216,7 +216,7 @@ export const CHECKLIST_RULES = [
         text: "Chaque palanquée dispose d'un parachute de palier",
         ref: 'CdS A322-80',
         tags: ['materiel'],
-        when: (a) => isMilieuNaturel(a.milieu),
+        when: reglesMilieuNaturel,
       },
       {
         id: 'p2_parachute_indiv',

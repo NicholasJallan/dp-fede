@@ -96,6 +96,13 @@ describe('getAvailableMelanges', () => {
     assert.equal(opts.find((o) => o.value === 'Tx').allowed, false);
   });
 
+  test('DP E4 PTH-120 sans PN-C coché → nitrox autorisé (rang, comme validatePal)', () => {
+    const dp = { niveau_encadrant: 'E4', nitrox: [], trimix: ['PTH-120'] };
+    const opts = getAvailableMelanges(dp);
+    assert.equal(opts.find((o) => o.value === 'Nx ≤ 40%').allowed, true);
+    assert.equal(opts.find((o) => o.value === 'Tx').allowed, true);
+  });
+
   test('DP E3 + PN-C → Nx ≤ 40% et Nx > 40% autorisés', () => {
     const dp = { niveau_encadrant: 'E3', nitrox: ['PN-C'], trimix: [] };
     const opts = getAvailableMelanges(dp);

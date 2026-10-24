@@ -354,6 +354,10 @@ class Rules
             $add('err', 'APT_MISSING', count($sans) . ' membre(s) sans aptitude sélectionnée — veuillez compléter avant de continuer.', null, self::ids($sans));
             return $issues;
         }
+        if (!(self::num($pal['profMax'] ?? null) > 0)) {
+            $add('err', 'PROF_MISSING', 'Profondeur maximale prévue non renseignée : l\'espace d\'évolution ne peut pas être contrôlé.', 'A322-72');
+            return $issues;
+        }
         if (count(self::listOf($pal['melanges'] ?? null)) === 0) {
             $add('warn', 'GAS_NONE', 'Aucun mélange respiratoire sélectionné : la palanquée est considérée à l\'air.');
         }
@@ -560,14 +564,16 @@ class Rules
 
     /**
      * Effectif encadré hors plongeur supplémentaire : un GP / P4 inscrit avec
-     * une aptitude PE peut tenir le rôle du (*) s'il n'y a pas déjà d'extra.
+     * une aptitude PE (+ PN-C au nitrox) peut tenir le rôle du (*) s'il n'y a
+     * pas déjà d'extra.
      */
     private static function effectifEncadres(array $ctx, array $row): int
     {
         $n = count($ctx['encadres']);
         if (!empty($row['extra']) && count($ctx['extras']) === 0 && $n > $row['max']) {
             foreach ($ctx['encadres'] as $m) {
-                if (self::isGpQualified($m)) return $n - 1;
+                // Au nitrox, le (*) doit aussi justifier PN-C (III-17 b/c).
+                if (self::isGpQualified($m) && (!$ctx['gas']['nitrox'] || self::hasGasQual($m['diver'] ?? null, 'PN-C'))) return $n - 1;
             }
         }
         return $n;
@@ -743,6 +749,10 @@ class Rules
     private static function checkPpO2(array $ctx, callable $add): void
     {
         $o2 = self::num($ctx['pal']['o2'] ?? null);
+        if ($o2 >= 100) {
+            $add('err', 'O2_PUR_FOND', 'Oxygène pur : utilisable en recycleur ou en décompression, pas comme gaz fond en circuit ouvert.', 'A322-90');
+            return;
+        }
         // Un O₂ > 40 % avec un Nx ≤ 40 % au fond est celui du gaz de déco.
         if (!($o2 > 21 && $o2 <= $ctx['gas']['bottomO2Max'])) {
             $add('warn', 'O2_UNKNOWN', 'Nitrox : renseigner le % d\'O₂ du gaz fond pour contrôler la profondeur maximale d\'utilisation.', 'A322-92');
@@ -902,8 +912,12 @@ class Rules
         $level = self::str($ctx['dp']['niveau_encadrant'] ?? null);
         if ($level === '') $level = self::str($ctx['answers']['dp_qual'] ?? null);
         $q = self::DP_QUALIF[$level] ?? null;
+        if ($level === '') {
+            $add('warn', 'DP_MISSING', 'Directeur de plongée non désigné.', 'A322-72');
+            return;
+        }
         if ($q === null) {
-            $add('warn', 'DP_MISSING', 'Directeur de plongée non désigné ou non qualifié.', 'A322-72');
+            $add('err', 'DP_NOT_QUALIFIED', "Le directeur de plongée ({$level}) n'a pas de qualification de l'annexe III-15 a.", 'A322-72');
             return;
         }
         if (!empty($ctx['dp']['dp_diplome_pro_requis'])) {

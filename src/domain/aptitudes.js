@@ -3,7 +3,7 @@
 // (Code du sport, annexes III-14 b à III-18 a, art. A322-xx).
 
 import { CDS } from './cds-tables.js';
-import { derivePalMode } from './pal-helpers.js';
+import { derivePalMode, hasGasQual } from './pal-helpers.js';
 
 /** @typedef {import('./types.js').Diver} Diver */
 /** @typedef {import('./types.js').NiveauEncadrant} NiveauEncadrant */
@@ -247,11 +247,10 @@ export function getPalType(membres, mode) {
  * @returns {Array<{value:string, allowed:boolean, reason:string|null}>}
  */
 export function getAvailableMelanges(dp) {
-  const nitrox = dp?.nitrox || [];
-  const trimix = dp?.trimix || [];
   const ne = dp?.niveau_encadrant || '';
-  const hasPNC = nitrox.includes('PN-C');
-  const hasPTH120 = trimix.includes('PTH-120');
+  // Par rang, comme validatePal : PTH-120 suppose PN-C (III-18 a).
+  const hasPNC = !!dp && hasGasQual(dp, 'PN-C');
+  const hasPTH120 = (dp?.trimix || []).includes('PTH-120');
   const canTrimix = hasPTH120 && !!CDS.DP_QUALIF[ne]?.trimix;
   return [
     { value: 'Air', allowed: true, reason: null },

@@ -116,11 +116,14 @@ function checkAirLimit(ctx, add) {
 
 /**
  * Effectif encadré hors plongeur supplémentaire : un GP / P4 inscrit avec
- * une aptitude PE peut tenir le rôle du (*) s'il n'y a pas déjà d'extra.
+ * une aptitude PE (+ PN-C au nitrox) peut tenir le rôle du (*) s'il n'y a pas
+ * déjà d'extra.
  */
 function effectifEncadres(ctx, row) {
   const n = ctx.encadres.length;
-  if (row.extra && ctx.extras.length === 0 && n > row.max && ctx.encadres.some(isGpQualified)) return n - 1;
+  // Au nitrox, le (*) doit aussi justifier PN-C (III-17 b/c).
+  const canBeExtra = (m) => isGpQualified(m) && (!ctx.gas.nitrox || hasGasQual(m.diver, 'PN-C'));
+  if (row.extra && ctx.extras.length === 0 && n > row.max && ctx.encadres.some(canBeExtra)) return n - 1;
   return n;
 }
 
@@ -344,6 +347,15 @@ function checkNitroxQuals(ctx, add) {
 /** A322-92 : PpO₂ ≤ 1,6 bar ⇒ profondeur maximale d'utilisation du gaz fond. */
 function checkPpO2(ctx, add) {
   const o2 = Number(ctx.pal.o2);
+  if (o2 >= 100) {
+    add(
+      'err',
+      'O2_PUR_FOND',
+      'Oxygène pur : utilisable en recycleur ou en décompression, pas comme gaz fond en circuit ouvert.',
+      'A322-90',
+    );
+    return;
+  }
   // Un O₂ > 40 % avec un Nx ≤ 40 % au fond est celui du gaz de déco.
   if (!(o2 > 21 && o2 <= ctx.gas.bottomO2Max)) {
     add(
@@ -531,8 +543,17 @@ function checkBassin(ctx, add) {
 function checkDp(ctx, add) {
   const level = ctx.dp?.niveau_encadrant || ctx.answers.dp_qual || '';
   const q = tables().DP_QUALIF[level];
+  if (!level) {
+    add('warn', 'DP_MISSING', 'Directeur de plongée non désigné.', 'A322-72');
+    return;
+  }
   if (!q) {
-    add('warn', 'DP_MISSING', 'Directeur de plongée non désigné ou non qualifié.', 'A322-72');
+    add(
+      'err',
+      'DP_NOT_QUALIFIED',
+      `Le directeur de plongée (${level}) n'a pas de qualification de l'annexe III-15 a.`,
+      'A322-72',
+    );
     return;
   }
   if (ctx.dp?.dp_diplome_pro_requis) {
@@ -658,6 +679,15 @@ export function validatePal(pal, diversById, answers, dp) {
       `${sans.length} membre(s) sans aptitude sélectionnée — veuillez compléter avant de continuer.`,
       null,
       sans.map(memberId),
+    );
+    return issues;
+  }
+  if (!(Number(pal.profMax) > 0)) {
+    add(
+      'err',
+      'PROF_MISSING',
+      "Profondeur maximale prévue non renseignée : l'espace d'évolution ne peut pas être contrôlé.",
+      'A322-72',
     );
     return issues;
   }

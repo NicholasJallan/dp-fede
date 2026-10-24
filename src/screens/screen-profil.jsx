@@ -15,7 +15,7 @@ import {
 import { Icon, StatusIcon } from '../components/icons.jsx';
 import { DiverQuickAdd } from '../components/diver-form.jsx';
 import { SiteFormModal } from './screen-admin-sites.jsx';
-import { diplomeProLabel, getMilieuType, matchCondition, QUESTIONS, STRUCTURE_LABELS } from '../domain/index.js';
+import { CDS, diplomeProLabel, getMilieuType, matchCondition, QUESTIONS, STRUCTURE_LABELS } from '../domain/index.js';
 import { api } from '../api/api.js';
 
 // ── DPPicker ──────────────────────────────────────────────────────────────
@@ -78,14 +78,14 @@ function DPPicker({ id, value, divers, onChange, setDivers }) {
 function SitePicker({ id, value, sites, setSites, onChange, answers }) {
   const [showAdd, setShowAdd] = useState(false);
 
-  // Filtrage selon qualité DP : E1 → piscine ≤6m, E2 → piscine/fosse ≤20m
+  // Filtrage selon qualité DP : E1 / E2 → piscine ou fosse ≤ 6 m (A322-98)
   const dpQual = answers?.dp_qual || null;
   const filteredSites = useMemo(() => {
     return sites.filter((s) => {
       const milieu = getMilieuType(s.milieu);
       const profMax = s.profondeur_max || 999;
-      if (dpQual === 'E1') return milieu === 'piscine' && profMax <= 6;
-      if (dpQual === 'E2') return (milieu === 'piscine' || milieu === 'fosse') && profMax <= 20;
+      if (dpQual === 'E1' || dpQual === 'E2')
+        return (milieu === 'piscine' || milieu === 'fosse') && profMax <= CDS.LIMITS.BASSIN_DEROGATION_MAX;
       return true; // E3, E4, N5 : tous milieux
     });
   }, [sites, dpQual]);
@@ -116,15 +116,10 @@ function SitePicker({ id, value, sites, setSites, onChange, answers }) {
           <Icon.Plus />
         </button>
       </div>
-      {dpQual === 'E1' && filteredSites.length < sites.length && (
+      {(dpQual === 'E1' || dpQual === 'E2') && filteredSites.length < sites.length && (
         <p className="field-hint warn">
-          Un E1 ne dirige qu'en piscine (6 m au plus) : {sites.length - filteredSites.length} site(s) masqué(s).
-        </p>
-      )}
-      {dpQual === 'E2' && filteredSites.length < sites.length && (
-        <p className="field-hint warn">
-          Un E2 ne dirige qu'en piscine ou fosse (20 m au plus) : {sites.length - filteredSites.length} site(s)
-          masqué(s).
+          Un {dpQual} ne dirige qu'en piscine ou fosse de 6 m au plus (A322-98) : {sites.length - filteredSites.length}{' '}
+          site(s) masqué(s).
         </p>
       )}
 

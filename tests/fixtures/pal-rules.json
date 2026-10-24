@@ -72,6 +72,12 @@
       "medical": "2026-01-01",
       "date_naissance": "1990-01-01"
     },
+    "n4_pn": {
+      "niveau_encadrant": "N4",
+      "nitrox": ["PN"],
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
     "e1": { "niveau_encadrant": "E1", "medical": "2026-01-01", "date_naissance": "1990-01-01" },
     "e1_pnc": {
       "niveau_encadrant": "E1",
@@ -125,6 +131,7 @@
     "e4_pth120": { "niveau_encadrant": "E4", "nitrox": ["PN", "PN-C"], "trimix": ["PTH-40", "PTH-70", "PTH-120"] },
     "n5": { "niveau_encadrant": "N5" },
     "e3_sca_sans_diplome": { "niveau_encadrant": "E3", "dp_diplome_pro_requis": true },
+    "n4_dp": { "niveau_encadrant": "N4" },
     "n5_sca_sans_diplome": { "niveau_encadrant": "N5", "dp_diplome_pro_requis": true }
   },
   "cases": [
@@ -927,6 +934,87 @@
       "errors": ["AIR_60", "TX_ROLE_NO_GAS"]
     },
 
+    {
+      "name": "Nitrox : un GP sans PN-C ne compte pas comme plongeur supplémentaire",
+      "ref": "III-17 c",
+      "dp": "e3_pnc",
+      "pal": {
+        "membres": [
+          ["n4_pnc", "GP"],
+          ["n2_pn", "PE20"],
+          ["n2_pn#2", "PE20"],
+          ["n2_pn#3", "PE20"],
+          ["n2_pn#4", "PE20"],
+          ["n4_pn", "PE20"]
+        ],
+        "profMax": 20,
+        "mode": "exploration",
+        "melanges": ["Nx ≤ 40%"],
+        "o2": 32
+      },
+      "errors": ["EFFECTIF_ENCADRES"]
+    },
+    {
+      "name": "Nitrox : un GP PN-C inscrit en PE tient le rôle de plongeur supplémentaire",
+      "ref": "III-17 c",
+      "dp": "e3_pnc",
+      "pal": {
+        "membres": [
+          ["n4_pnc", "GP"],
+          ["n2_pn", "PE20"],
+          ["n2_pn#2", "PE20"],
+          ["n2_pn#3", "PE20"],
+          ["n2_pn#4", "PE20"],
+          ["n4_pnc#2", "PE20"]
+        ],
+        "profMax": 20,
+        "mode": "exploration",
+        "melanges": ["Nx ≤ 40%"],
+        "o2": 32
+      },
+      "errors": []
+    },
+    {
+      "name": "Oxygène pur en gaz fond",
+      "ref": "A322-90",
+      "dp": "e3_pnc",
+      "pal": {
+        "membres": [
+          ["e3_pnc", "E3"],
+          ["n2_pnc", "PE20"]
+        ],
+        "profMax": 6,
+        "melanges": ["Nx > 40%"],
+        "o2": 100
+      },
+      "errors": ["O2_PUR_FOND"]
+    },
+    {
+      "name": "Profondeur prévue non renseignée",
+      "ref": "A322-72",
+      "dp": "e3",
+      "pal": {
+        "membres": [
+          ["e1", "E1"],
+          ["n2", "PE20"]
+        ],
+        "profMax": 0
+      },
+      "errors": ["PROF_MISSING"]
+    },
+    {
+      "name": "DP désigné sans qualification III-15 a",
+      "ref": "A322-72",
+      "dp": "n4_dp",
+      "pal": {
+        "membres": [
+          ["n4", "GP"],
+          ["n2", "PE20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["DP_NOT_QUALIFIED"]
+    },
     {
       "name": "Nitrox exploration : GP PN-C + PE-40 PN, 32 % à 30 m",
       "ref": "III-17 c",

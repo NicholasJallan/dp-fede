@@ -58,15 +58,17 @@ Chaque issue de validation porte :
 
 ## 2. Limites absolues (A322-73, A322-76, A322-92)
 
-| Règle                                                                                                    | Code         |
-| -------------------------------------------------------------------------------------------------------- | ------------ |
-| Air et nitrox : 60 m maximum. Si de l'air figure avec du trimix, il limite aussi la palanquée (A322-73). | `AIR_60`     |
-| Trimix encadré : 80 m maximum. Trimix autonome : 120 m maximum.                                          | `TX_DEPTH`   |
-| Nitrox : PpO₂ ≤ 1,6 bar, soit une profondeur maximale d'utilisation de `⌊(1,6 / FO₂ − 1) × 10⌋` m.       | `PPO2_MAX`   |
-| Nitrox : % d'O₂ non saisi → avertissement.                                                               | `O2_UNKNOWN` |
-| Au trimix, le nitrox déclaré est un gaz de décompression : pas de contrôle de PpO₂ au fond.              | —            |
-| Une palanquée compte au moins deux plongeurs.                                                            | `PAL_SOLO`   |
-| La profondeur est limitée par l'aptitude la plus restrictive. Le **panachage d'aptitudes est autorisé**. | `APT_DEPTH`  |
+| Règle                                                                                                    | Code           |
+| -------------------------------------------------------------------------------------------------------- | -------------- |
+| Air et nitrox : 60 m maximum. Si de l'air figure avec du trimix, il limite aussi la palanquée (A322-73). | `AIR_60`       |
+| Trimix encadré : 80 m maximum. Trimix autonome : 120 m maximum.                                          | `TX_DEPTH`     |
+| Nitrox : PpO₂ ≤ 1,6 bar, soit une profondeur maximale d'utilisation de `⌊(1,6 / FO₂ − 1) × 10⌋` m.       | `PPO2_MAX`     |
+| Nitrox : % d'O₂ non saisi → avertissement.                                                               | `O2_UNKNOWN`   |
+| Au trimix, le nitrox déclaré est un gaz de décompression : pas de contrôle de PpO₂ au fond.              | —              |
+| Une palanquée compte au moins deux plongeurs.                                                            | `PAL_SOLO`     |
+| Profondeur maximale prévue non renseignée : bloquant (l'espace d'évolution ne peut pas être contrôlé).   | `PROF_MISSING` |
+| Oxygène pur : recycleur ou décompression seulement, jamais gaz fond en circuit ouvert (A322-90).         | `O2_PUR_FOND`  |
+| La profondeur est limitée par l'aptitude la plus restrictive. Le **panachage d'aptitudes est autorisé**. | `APT_DEPTH`    |
 
 ---
 
@@ -162,7 +164,7 @@ Codes :
   | 0-40 m, 0-60 m | PE-40 / PE-60                                                       | **oui**  |
 
 - **Encadrant** : PN-C (`NX_ENCADRANT`) ; en enseignement, E2 minimum même de 0 à 6 m.
-- **Plongeur supplémentaire** : GP ou P4 + PN-C (`EXTRA_NX`).
+- **Plongeur supplémentaire** : GP ou P4 + PN-C (`EXTRA_NX`). Un GP inscrit avec une aptitude PE ne tient ce rôle (hors effectif) que s'il justifie PN-C.
 - **Nx > 40 % d'O₂** : PN-C requis (`NX_PNC`).
   - Pour un élève **déjà PN** en formation PN-C : simple avertissement.
   - Sinon : bloquant.
@@ -243,7 +245,11 @@ ceux-ci sont grisés dans le choix du DP et la plongée est bloquée
 BPJEPS (E2) n'est DP qu'en piscine ou fosse ≤ 6 m. En club, N5 et E1 → E4
 dirigent selon le tableau ci-dessus.
 
-Codes : `DP_QUAL_MILIEU`, `DP_MODE`, `DP_GAS`, `DP_DEPTH`, `DP_MISSING`, `DP_DIPLOME_PRO`.
+DP désigné sans qualification de l'annexe III-15 a : bloquant (`DP_NOT_QUALIFIED`) ;
+DP non désigné : avertissement (`DP_MISSING`). Le choix du site pour un DP E1 ou
+E2 ne propose que les piscines et fosses de 6 m au plus.
+
+Codes : `DP_QUAL_MILIEU`, `DP_MODE`, `DP_GAS`, `DP_DEPTH`, `DP_MISSING`, `DP_NOT_QUALIFIED`, `DP_DIPLOME_PRO`.
 
 ---
 
@@ -274,7 +280,7 @@ Items conditionnels de `CHECKLIST_RULES` (`src/domain/checklist.js`).
   - fiches d'évacuation (annexe III-19) ;
   - bouteille d'air de secours avec détendeur ;
   - tablette immergeable ;
-  - tables de décompression (milieu naturel) ;
+  - tables de décompression (milieu naturel, y compris piscine ou fosse de plus de 6 m) ;
   - VHF en mer au départ d'une embarcation.
 - Identification des blocs nitrox (A322-93).
 - TIV et requalification des blocs.
@@ -283,6 +289,9 @@ Items conditionnels de `CHECKLIST_RULES` (`src/domain/checklist.js`).
 
 - Équipement des plongeurs et des encadrants (A322-80).
 - **Un parachute de palier par palanquée** en milieu naturel (A322-80).
+- Ces trois items suivent `reglesMilieuNaturel` (A322-98) : ils s'affichent aussi
+  pour une piscine ou une fosse de plus de 6 m. La météo et la bouée restent
+  masquées en bassin.
 - Moyen de rappel depuis l'embarcation.
 - Trimix (A322-97) : ligne lestée, copie des planifications, embarcation avec pilote.
 - Recycleurs (A322-94).

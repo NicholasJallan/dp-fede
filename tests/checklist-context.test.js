@@ -9,7 +9,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import win from './setup.js';
-const { QUESTIONS, CHECKLIST_RULES, matchCondition, isMilieuNaturel, REGLEMENTATION } = win;
+const { QUESTIONS, CHECKLIST_RULES, matchCondition, isMilieuNaturel, reglesMilieuNaturel, REGLEMENTATION } = win;
 
 describe('REGLEMENTATION — veille réglementaire', () => {
   test('constante présente avec date ISO et libellés', () => {
@@ -47,6 +47,29 @@ describe('isMilieuNaturel', () => {
   });
   test('défaut (null) → naturel (mer)', () => {
     assert.equal(isMilieuNaturel(null), true);
+  });
+});
+
+describe('reglesMilieuNaturel (A322-98)', () => {
+  test('mer → règles du milieu naturel', () => {
+    assert.equal(reglesMilieuNaturel({ milieu: 'En mer' }), true);
+  });
+  test('fosse > 6 m ou de profondeur inconnue → milieu naturel', () => {
+    assert.equal(reglesMilieuNaturel({ milieu: 'Fosse', site_prof_max: 20 }), true);
+    assert.equal(reglesMilieuNaturel({ milieu: 'Fosse' }), true);
+  });
+  test('piscine ou fosse ≤ 6 m, piscine de profondeur inconnue → bassin', () => {
+    assert.equal(reglesMilieuNaturel({ milieu: 'Fosse', site_prof_max: 6 }), false);
+    assert.equal(reglesMilieuNaturel({ milieu: 'Piscine', site_prof_max: 4 }), false);
+    assert.equal(reglesMilieuNaturel({ milieu: 'Piscine' }), false);
+  });
+  test('fosse de 20 m : tables, équipement et parachute, mais pas la météo', () => {
+    const items = CHECKLIST_RULES.flatMap((p) => p.items);
+    const ids = visibleIds(items, { milieu: 'Fosse', site_prof_max: 20 });
+    for (const id of ['p1_tables', 'p2_equipement', 'p2_parachute']) assert.ok(ids.includes(id), id);
+    assert.ok(!ids.includes('p1_meteo'));
+    const bassin = visibleIds(items, { milieu: 'Piscine', site_prof_max: 4 });
+    for (const id of ['p1_tables', 'p2_equipement', 'p2_parachute']) assert.ok(!bassin.includes(id), id);
   });
 });
 

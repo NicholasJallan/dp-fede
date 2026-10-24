@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace DpFede\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -12,7 +13,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class PdfRenderTest extends TestCase
 {
-    /** @dataProvider values */
+    #[DataProvider('values')]
     public function testHAcceptsAnyScalar($input, string $expected): void
     {
         $this->assertSame($expected, \PdfRender::h($input));
@@ -47,7 +48,7 @@ final class PdfRenderTest extends TestCase
 
     // ── Paliers réalisés (même résumé que le front) ────────────────────────
 
-    /** @dataProvider paliersCases */
+    #[DataProvider('paliersCases')]
     public function testFormatPaliersMatchesTheFrontEnd(?array $real, ?string $expected): void
     {
         $this->assertSame($expected, \PdfRender::formatPaliers($real));

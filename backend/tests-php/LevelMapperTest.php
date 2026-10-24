@@ -3,12 +3,13 @@ declare(strict_types=1);
 
 namespace DpFede\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /** Traduction tolérante des niveaux / qualifications d'un fichier d'import. */
 final class LevelMapperTest extends TestCase
 {
-    /** @dataProvider levels */
+    #[DataProvider('levels')]
     public function testMapLevels(string $niveau, string $encadrant, ?string $np, ?string $ne): void
     {
         $r = \LevelMapper::mapLevels($niveau, $encadrant);

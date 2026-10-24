@@ -3,12 +3,13 @@ declare(strict_types=1);
 
 namespace DpFede\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /** Niveau encadrant selon le cadre — mêmes cas que tests/encadrement.test.js. */
 final class EncadrementTest extends TestCase
 {
-    /** @dataProvider cases */
+    #[DataProvider('cases')]
     public function testLevel(?string $ne, ?string $diplome, ?string $asso, ?string $pro): void
     {
         $this->assertSame($asso, \Encadrement::level($ne, $diplome, false), 'associatif');

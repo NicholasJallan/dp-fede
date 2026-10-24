@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace DpFede\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -51,7 +52,7 @@ final class AuthTest extends TestCase
         $this->assertFalse(\Auth::isSuperAdmin(['role' => 'admin']));
     }
 
-    /** @dataProvider emailVerifiedValues */
+    #[DataProvider('emailVerifiedValues')]
     public function testIsEmailVerified($value, bool $expected): void
     {
         $payload = $value === '__absent__' ? [] : ['email_verified' => $value];

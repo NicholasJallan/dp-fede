@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 require_once __DIR__ . '/../lib/Rules.php';
@@ -29,7 +30,7 @@ class RulesFixturesTest extends TestCase
         return self::$fixtures;
     }
 
-    public function caseProvider(): array
+    public static function caseProvider(): array
     {
         $out = [];
         foreach (self::fixtures()['cases'] as $i => $c) {
@@ -87,7 +88,7 @@ class RulesFixturesTest extends TestCase
         return $codes;
     }
 
-    /** @dataProvider caseProvider */
+    #[DataProvider('caseProvider')]
     public function testCasReglementaire(array $c): void
     {
         [$pal, $diversById, $answers, $dp] = self::buildCase($c);

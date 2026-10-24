@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace DpFede\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -17,7 +18,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class DiveDateHelpersTest extends TestCase
 {
-    /** @dataProvider validIsoDates */
+    #[DataProvider('validIsoDates')]
     public function testParseIso(string $input, string $expectedMysql): void
     {
         $this->assertSame($expectedMysql, \parseDiveDateToMySql($input));

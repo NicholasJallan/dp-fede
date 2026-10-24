@@ -6,14 +6,26 @@
          executionOrder="defects"
          failOnRisky="true"
          failOnWarning="true"
+         failOnNotice="true"
+         failOnDeprecation="true"
+         failOnPhpunitDeprecation="true"
+         displayDetailsOnTestsThatTriggerDeprecations="true"
+         displayDetailsOnTestsThatTriggerNotices="true"
+         displayDetailsOnTestsThatTriggerWarnings="true"
+         displayDetailsOnPhpunitDeprecations="true"
          beStrictAboutOutputDuringTests="true"
          beStrictAboutTestsThatDoNotTestAnything="true">
+    <php>
+        <!-- La CI charge un php.ini « production » (E_DEPRECATED masqué) :
+             on rapporte tout pour que les dépréciations PHP 8.5 fassent échouer. -->
+        <ini name="error_reporting" value="-1"/>
+    </php>
     <testsuites>
         <testsuite name="unit">
             <directory>tests-php</directory>
         </testsuite>
     </testsuites>
-    <coverage>
+    <source>
         <include>
             <directory suffix=".php">lib</directory>
             <directory suffix=".php">routes</directory>
@@ -21,5 +33,5 @@
         <exclude>
             <file>lib/Config.php</file>
         </exclude>
-    </coverage>
+    </source>
 </phpunit>

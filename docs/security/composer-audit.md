@@ -16,7 +16,7 @@ Dépendances transitives (via mPDF) : `setasign/fpdi`, `myclabs/deep-copy`,
 `psr/log`, `psr/http-message`, `mpdf/psr-http-message-shim`,
 `mpdf/psr-log-aware-trait`, `paragonie/random_compat`.
 
-Dev uniquement (jamais installé sur le Pi) : `phpunit/phpunit` ^9.6.
+Dev uniquement (jamais installé sur le Pi) : `phpunit/phpunit` ^12 (attributs `#[DataProvider]`, data providers statiques).
 
 `composer.json` exige `"php": ">=8.5"` et fixe `config.platform.php = 8.5.11`
 (PHP du pool de production) : la résolution correspond à la production,

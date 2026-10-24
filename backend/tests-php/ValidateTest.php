@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class ValidateTest extends TestCase
@@ -76,7 +77,7 @@ class ValidateTest extends TestCase
         $this->assertSame('{"pressions":{"p1-d1":50}}', $json);
     }
 
-    /** @dataProvider nonObjects */
+    #[DataProvider('nonObjects')]
     public function testEncodeJsonObjectRejectsNonArrays($value): void
     {
         $this->expectException(\InvalidArgumentException::class);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace DpFede\Tests;
 
 use DateTimeImmutable;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /** Import plongeurs — lecture CSV, en-têtes FR tolérants, normalisation. */
@@ -158,7 +159,7 @@ final class DiverImportTest extends TestCase
         $this->assertSame('2026-2027', $rec['autorisation_parentale_saison']);
     }
 
-    /** @dataProvider dates */
+    #[DataProvider('dates')]
     public function testParseDate(string $raw, bool $birth, ?string $expected): void
     {
         $this->assertSame($expected, \DiverImport::parseDate($raw, $birth, $this->today));

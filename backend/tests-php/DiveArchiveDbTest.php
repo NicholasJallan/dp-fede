@@ -97,6 +97,7 @@ final class DiveArchiveDbTest extends TestCase
         $this->pdo->respond('/FROM dive_documents/', [$fiche]);   // check-list manquante
         // La génération elle-même échoue ici (aucune plongée renvoyée) : seul
         // le journal de la demande nous intéresse.
+        $this->expectErrorLog(); // échec de génération tracé par error_log()
         \DiveArchive::regenerate($this->dive('error'), new DateTimeImmutable('2026-10-20 12:00:00'));
 
         $entry = array_values(array_filter($this->logged, fn(array $l): bool => $l['kind'] === 'dive.documents_regenerated'))[0] ?? null;

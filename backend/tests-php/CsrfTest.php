@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace DpFede\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\DoesNotPerformAssertions;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -29,15 +31,15 @@ final class CsrfTest extends TestCase
 
     /**
      * Cas nominal : cookie ET header présents et égaux → pas d'exception.
-     * @doesNotPerformAssertions
      */
+    #[DoesNotPerformAssertions]
     public function testVerifyPassesWhenTokensMatch(): void
     {
         $tok = str_repeat('a', 64);
         $_COOKIE['dp_csrf'] = $tok;
         $_SERVER['HTTP_X_CSRF_TOKEN'] = $tok;
         \Csrf::verify();
-        // Si on arrive ici sans exit, c'est OK. Marqué @doesNotPerformAssertions
+        // Si on arrive ici sans exit, c'est OK. Marqué #[DoesNotPerformAssertions]
         // pour ne pas faire échouer phpunit en strict mode.
     }
 
@@ -77,7 +79,7 @@ final class CsrfTest extends TestCase
         $this->assertTrue(\Csrf::isValid());
     }
 
-    /** @dataProvider origins */
+    #[DataProvider('origins')]
     public function testIsTrustedOrigin(?string $origin, ?string $referer, bool $expected): void
     {
         $this->assertSame($expected, \Csrf::isTrustedOrigin($origin, $referer, 'dp-fede.bullesenvalais.ch'));

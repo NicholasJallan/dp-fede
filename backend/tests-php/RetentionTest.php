@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace DpFede\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /** Retention::parseOptions / cutoff — paramétrage de bin/purge.php. */
@@ -45,7 +46,7 @@ final class RetentionTest extends TestCase
         $this->assertCount(1, $r['errors']);
     }
 
-    /** @dataProvider badArgs */
+    #[DataProvider('badArgs')]
     public function testInvalidArgumentsRejected(array $args): void
     {
         $this->assertNotEmpty(\Retention::parseOptions($args, [])['errors']);

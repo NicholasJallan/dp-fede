@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace DpFede\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -21,7 +22,7 @@ final class MigratorTest extends TestCase
         $this->assertSame('004', \Migrator::parseVersion('004_schema_consolidation.sql'));
     }
 
-    /** @dataProvider invalidNames */
+    #[DataProvider('invalidNames')]
     public function testParseVersionRejectsInvalidNames(string $name): void
     {
         $this->assertNull(\Migrator::parseVersion($name));

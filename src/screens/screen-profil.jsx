@@ -15,7 +15,7 @@ import {
 import { Icon, StatusIcon } from '../components/icons.jsx';
 import { DiverQuickAdd } from '../components/diver-form.jsx';
 import { SiteFormModal } from './screen-admin-sites.jsx';
-import { getMilieuType, matchCondition, QUESTIONS, STRUCTURE_LABELS } from '../domain/index.js';
+import { diplomeProLabel, getMilieuType, matchCondition, QUESTIONS, STRUCTURE_LABELS } from '../domain/index.js';
 import { api } from '../api/api.js';
 
 // ── DPPicker ──────────────────────────────────────────────────────────────
@@ -46,7 +46,7 @@ function DPPicker({ id, value, divers, onChange, setDivers }) {
           <option value="">Choisir le directeur de plongée</option>
           {candidates.map((d) => (
             <option key={d.id} value={d.id}>
-              {diverFullName(d)} ({d.niveau_encadrant}){d.diplome_pro ? ` — ${d.diplome_pro}` : ''}
+              {diverFullName(d)} ({d.niveau_encadrant}){d.diplome_pro ? ` — ${diplomeProLabel(d.diplome_pro)}` : ''}
             </option>
           ))}
         </select>
@@ -467,8 +467,14 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
                   <div className="row tight">
                     <b>{diverFullName(selectedDP)}</b>
                     <Pill tone="ink">{dpQual}</Pill>
-                    {selectedDP.diplome_pro && <Pill>{selectedDP.diplome_pro}</Pill>}
+                    {selectedDP.diplome_pro && <Pill>{diplomeProLabel(selectedDP.diplome_pro)}</Pill>}
                   </div>
+                  {selectedDP.niveau_encadrant_annuaire !== undefined && (
+                    <span>
+                      Niveau retenu ({structureLabel || 'cette structure'}) : {dpQual}, d'après le diplôme professionnel
+                      ; niveau encadrant à l'annuaire : {selectedDP.niveau_encadrant_annuaire || 'aucun'}.
+                    </span>
+                  )}
                   {dpN5 && <span>N5 : exploration uniquement, pas d'aptitude E1 à E4 en palanquée.</span>}
                 </div>
               )}

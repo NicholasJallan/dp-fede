@@ -18,6 +18,7 @@ import { SplashScreen } from '../screens/screen-splash.jsx';
 import { useAuthExpired } from './hooks/use-auth-expired.js';
 import { useOutboxItems } from './hooks/use-outbox-items.js';
 import { useDirectory } from './hooks/use-directory.js';
+import { useDiveDivers } from './hooks/use-dive-divers.js';
 import { useDiveSession } from './hooks/use-dive-session.js';
 import { useDiveLifecycle } from './hooks/use-dive-lifecycle.js';
 import { useDiveActions } from './hooks/use-dive-actions.js';
@@ -101,6 +102,7 @@ function useAppController() {
   useLegacyDraftCleanup();
   const [showSplash, setShowSplash] = useSplash(user);
   const directory = useDirectory(user);
+  const diveDivers = useDiveDivers(directory.divers, user);
   const { theme, toggle: toggleTheme } = useTheme();
   useStoragePersist(user);
 
@@ -133,8 +135,8 @@ function useAppController() {
 
   const derived = useMemo(() => computeProfilNotes(session.answers), [session.answers]);
   const blockingPalSummary = useMemo(
-    () => computeBlockingPalSummary(session.palanquees, directory.divers, session.answers),
-    [session.palanquees, directory.divers, session.answers],
+    () => computeBlockingPalSummary(session.palanquees, diveDivers, session.answers),
+    [session.palanquees, diveDivers, session.answers],
   );
   const flags = stepFlags(screen, session.heuresDebut);
   const allPalanqueesFinished = areAllPalanqueesFinished(session.palanquees, session.heuresDebut, session.heuresFin);
@@ -170,6 +172,7 @@ function useAppController() {
     setShowSplash,
     session,
     directory,
+    diveDivers,
     flushSave,
     actions,
     derived,
@@ -294,6 +297,7 @@ function AppShell({ ctl }) {
               screen={screen}
               session={session}
               directory={ctl.directory}
+              diveDivers={ctl.diveDivers}
               derived={ctl.derived}
               diveMode={ctl.diveMode}
               actions={ctl.actions}

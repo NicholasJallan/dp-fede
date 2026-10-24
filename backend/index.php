@@ -21,7 +21,7 @@ if (is_file(__DIR__ . '/vendor/autoload.php')) {
 
 // Load libs
 foreach (['Config','Json','Db','Auth','Csrf','Validate','SyncHelpers','RateLimit','Log','Account',
-          'Club','ClubInvitation','ClubAlerts','ClubStats','LevelMapper','DiverImport','DiverImportPlan',
+          'Club','ClubInvitation','ClubAlerts','ClubStats','Encadrement','LevelMapper','DiverImport','DiverImportPlan',
           'DivePdf','DivePolicy','DiveStore','DiveArchive','ClubRetention','LegacyWorkspaces'] as $cls) {
     require_once __DIR__ . "/lib/{$cls}.php";
 }

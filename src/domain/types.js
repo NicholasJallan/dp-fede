@@ -19,7 +19,8 @@
  * @property {string[]} [aptitudes_sup]
  * @property {boolean} [rifap]
  * @property {boolean} [tiv]
- * @property {string} [diplome_pro]
+ * @property {string} [diplome_pro]   code de DIPLOMES_PRO (encadrement.js)
+ * @property {NiveauEncadrant} [niveau_encadrant_annuaire]  niveau saisi, quand diverForCadre l'a remplacé
  * @property {string} [medical]
  * @property {string} [notes]
  * @property {string} [deleted_at]

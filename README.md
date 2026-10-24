@@ -526,7 +526,7 @@ erDiagram
 
 **Niveaux encadrants reconnus :** `N4` (PA40 guide), `N5` (exploration seule), `E1`→`E4` (moniteurs fédéraux), `GP` (Guide de Palanquée).
 
-**Qualifications reconnues :** `PN` (Plongeur Nitrox), `PN-C` (Nitrox Confirmé), `RIFAP`, `REAN`, `PE-60`, `PADI-OW/AOW/Rescue/DM`, `CMAS-1/2/3`, `BEES1`, `DEJEPS`, `DESJEPS`, `MF1`, `MF2`, `Trimix`, `Recycleur`.
+**Qualifications reconnues :** `PN` (Plongeur Nitrox), `PN-C` (Nitrox Confirmé), `RIFAP`, `REAN`, `PE-60`, `PADI-OW/AOW/Rescue/DM`, `CMAS-1/2/3`, `BEES1`, `BEES2`, `DEJEPS` (E3), `DEJEPS-E4` (avec CC ou avant réforme), `DESJEPS`, `MF1`, `MF2`, `Trimix`, `Recycleur`.
 
 ### Table `sites`
 

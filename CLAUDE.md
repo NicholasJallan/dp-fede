@@ -217,7 +217,7 @@ pas la modifier à la main. `PRECACHE_URLS` liste l'app shell : `/`,
 Lancer : `npm test` (utilise `node --test`, Node 20+ requis, zéro dépendance NPM).
 Les tests sont des modules ES (`tests/package.json` → `"type": "module"`) qui
 importent directement `src/domain/*` et les fabriques de `src/offline/*`.
-Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **410 tests JS**, 414 PHPUnit, 45 e2e locaux
+Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **426 tests JS**, 426 PHPUnit, 45 e2e locaux
 (métier FFESSM/Code du Sport + offline : outbox, offline-store, sync, dive-lifecycle, home-buckets + contextualisation check-list par milieu
 
 - socle club : `sync-club.test.js` (X-DP-Club, périmètre club du store), `club-logic.test.js` (droits, alertes, rapport d'import, suppressions)
@@ -233,6 +233,7 @@ Modules purs dans `src/domain/` (ré-exportés par `src/domain/index.js`) :
 - `APTITUDE_MAP` (`aptitudes.js`) — mapping niveau → aptitudes mandatory/optional
 - `REGLEMENTATION` (`reglementation.js`), `CDS_ARTICLES` / `parseCdsRefs` (`cds-articles.js`), `getEmergencyInfo` (`emergency.js`)
 - `CDS` (`cds-tables.js`) — tableaux des annexes III-15 a à III-18 c
+- `encadrantLevel(diver, cadrePro)`, `diverForCadre`, `isCadrePro(structureType)`, `DIPLOMES_PRO` (`encadrement.js`) — niveau encadrant retenu selon le cadre associatif / commercial
 - `getMilieuType(milieu)` (`milieu.js`) — normalise 'En mer'/'Lac'/'Carrière'/'Piscine'/'Fosse' → 'mer'/'lac'/'piscine'/'fosse'
 - `isMilieuNaturel(milieu)` (`milieu.js`) — vrai en mer/lac/carrière, faux en piscine/fosse ; sert à masquer les questions et items de check-list sans objet en bassin (météo, marée, bouée)
 - `getDiverAptitudes(diver, isExploration, palContext)` (`aptitudes.js`) — aptitudes disponibles pour un plongeur ; `palContext` (optionnel) apporte le bonus formation selon l'enseignant de la palanquée
@@ -261,7 +262,8 @@ Modules purs dans `src/domain/` (ré-exportés par `src/domain/index.js`) :
 
 - **Clé Google Maps** : la balise Maps de `index.html` doit contenir le placeholder `__GOOGLE_MAPS_API_KEY__`, jamais une vraie clé `AIza…`. Une vraie clé qui s'y glisse fuite dans GitHub (Secret Scanning) à la première push. nginx (`sub_filter` côté Pi) injecte la vraie clé au serve — cf. section « Clé Google Maps ». Si le sélecteur de sites n'affiche plus la carte après modif nginx : vérifier que `sub_filter` est bien dans le bloc `location ~* \.(?:html|js|jsx|css)$` de `/etc/nginx/sites-available/dp-fede` (sinon il ne s'applique pas au HTML, qui est servi par ce bloc à cause de l'extension).
 - `buildQualifs()` dans `backend/routes/divers.php` : utiliser `$recs` (variable locale filtrée) et NON `compact('recycleurs')` qui capturerait le paramètre de fonction (liste complète).
-- `DIPLOMES_PRO` = `['BEES1','DEJEPS','DESJEPS','Autre']` — MF1/MF2 sont des brevets fédéraux, pas des diplômes professionnels d'État.
+- `DIPLOMES_PRO` (`src/domain/encadrement.js` ↔ `Encadrement::DIPLOMES_PRO`) : `BEES1` (E3), `BEES2` (E4), `DEJEPS` (libellé « DEJEPS E3 »), `DEJEPS-E4` (DEJEPS + certificat complémentaire, ou obtenu avant la réforme), `DESJEPS` (E4), `Autre`. Le code `DEJEPS` reste celui de l'E3 (données existantes). MF1/MF2/BEPPA sont des brevets fédéraux, pas des diplômes professionnels d'État.
+- **Niveau encadrant selon le cadre** : `niveau_encadrant` = prérogatives fédérales (cadre associatif) ; en structure commerciale (`structure_type = 'sca'`), seul le niveau du diplôme pro compte (`encadrantLevel`, ex. MF1 + BEPPA + DEJEPS sans CC : E4 en club, E3 en SCA). Appliqué à l'ENTRÉE des écrans de plongée (`useDiveDivers` → `diverForCadre`, niveau saisi conservé dans `niveau_encadrant_annuaire`, relu par `diverToForm` avant toute écriture) et côté serveur dans `validatePalanqueesOrAbort` (`Encadrement::applyToRow`). Le domaine (`pal-rules`, `aptitudes`) lit `niveau_encadrant` sans connaître le cadre : ne pas lui passer l'annuaire brut.
 - `getMilieuType()` est case-insensitive (`.toLowerCase()`) pour gérer les valeurs sites ('Lac', 'Carrière') et les anciennes valeurs questions.
 - `validatePal` vit dans `src/domain/pal-rules.js`. Toute modification doit être accompagnée d'un cas dans `tests/fixtures/pal-rules.json` (lu aussi par PHPUnit — ne pas déplacer ce fichier) et passer `tests/pal-rules.test.js`.
 - Plafond de profondeur d'une palanquée : `computePalHardLimit({...})` de `src/domain/depth-clamp.js` (UN seul endroit). Les 4 anciennes duplications ont été supprimées.

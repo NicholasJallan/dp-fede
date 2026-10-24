@@ -210,6 +210,21 @@ Codes : `TX_GP`, `TX_ENCADRANT`, `TX_ENCADRANT_QUAL`, `TX_AIR`, `TX_QUAL`, `TX_P
 
 Le DP doit en outre justifier PN-C au nitrox et PTH-120 au trimix (A322-72).
 
+**Niveau retenu selon le cadre** (`src/domain/encadrement.js`). Le niveau
+encadrant de l'annuaire porte les prérogatives fédérales (MF1 = E3, MF2 /
+BEPPA = E4), valables en club associatif. Le diplôme d'État (III-15 b) donne
+son propre niveau : BEES1 / DEJEPS = E3 ; BEES2 / DESJEPS / DEJEPS complété
+du certificat complémentaire (délivré à la demande par équivalence avec le
+MF2) ou obtenu avant la réforme = E4.
+
+- **Club associatif** : le plus élevé des deux.
+- **Structure commerciale (SCA)** : le niveau du diplôme d'État seul ; sans
+  diplôme d'État qualifiant, le niveau fédéral (l'app ne sait pas si
+  l'encadrant est rémunéré).
+
+Exemple : MF1 + BEPPA + DEJEPS sans CC → E4 en club, E3 en SCA. Ce niveau
+s'applique au DP comme aux encadrants des palanquées.
+
 Codes : `DP_QUAL_MILIEU`, `DP_MODE`, `DP_GAS`, `DP_DEPTH`, `DP_MISSING`.
 
 ---

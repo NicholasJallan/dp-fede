@@ -5,14 +5,13 @@
 import React, { useState, useEffect, useId } from 'react';
 import { Alert } from './ui.jsx';
 import { Dialog } from './dialog.jsx';
-import { APTITUDE_MAP } from '../domain/index.js';
+import { APTITUDE_MAP, CDS, DIPLOMES_PRO, diplomeProLevel } from '../domain/index.js';
 import { api } from '../api/api.js';
 import { isMinor, isSeason, seasonChoices, seasonLabel } from '../club/season.js';
-import { emptyDiver, formToPayload, sourceLabel } from './diver-payload.js';
+import { diplomeProHint, emptyDiver, formToPayload, sourceLabel } from './diver-payload.js';
 
 export const NIVEAUX_PLONGEUR = ['N1', 'N2', 'N3'];
 export const NIVEAUX_ENCADRANT = ['N4', 'N5', 'E1', 'E2', 'E3', 'E4'];
-const DIPLOMES_PRO = ['BEES1', 'DEJEPS', 'DESJEPS', 'Autre'];
 const RECYCLEURS = ['Revo', 'AP', 'Triton', 'JJccr', 'Xccr', 'Megalodon', 'Shark', 'Submatix', 'Autre'];
 const TRIMIX_QUALS = ['PTH-40', 'PTH-70', 'PTH-120'];
 
@@ -41,13 +40,13 @@ export function trimixPrereq(form, qual) {
   return lvl60 ? null : 'PE-60 ou PA-60 requis (N3 minimum)';
 }
 
-// Diplôme pro : DEJEPS → E3 minimum + PN-C ; DESJEPS → E4 + PN-C.
+// Diplôme pro : le niveau encadrant (associatif) vaut au moins celui du
+// diplôme (DEJEPS → E3, DEJEPS + CC / DESJEPS → E4) ; DEJEPS / DESJEPS → PN-C.
 function applyDiplomePro(f, val) {
-  let ne = f.niveau_encadrant;
+  const pro = diplomeProLevel(val);
+  const ne = pro && (CDS.ENS_RANK[pro] || 0) > (CDS.ENS_RANK[f.niveau_encadrant] || 0) ? pro : f.niveau_encadrant;
   const nx = new Set(f.nitrox);
-  if (val === 'DEJEPS' && !['E3', 'E4'].includes(ne)) ne = 'E3';
-  if (val === 'DESJEPS') ne = 'E4';
-  if (val === 'DEJEPS' || val === 'DESJEPS') {
+  if (['DEJEPS', 'DEJEPS-E4', 'DESJEPS'].includes(val)) {
     nx.add('PN');
     nx.add('PN-C');
   }
@@ -251,7 +250,7 @@ export function DiverFormFields({ f }) {
             ))}
           </select>
         </Input>
-        <Input label="Niveau encadrant">
+        <Input label="Niveau encadrant" hint="Cadre associatif : MF1 = E3, MF2 / BEPPA = E4.">
           <select
             className="input"
             value={form.niveau_encadrant}
@@ -306,12 +305,12 @@ export function DiverFormFields({ f }) {
         ))}
       </ChipGroup>
       <div className="grid-2">
-        <Input label="Diplôme professionnel">
+        <Input label="Diplôme professionnel" hint={diplomeProHint(form)}>
           <select className="input" value={form.diplome_pro} onChange={(e) => f.setDiplomePro(e.target.value)}>
             <option value="">Aucun</option>
-            {DIPLOMES_PRO.map((d) => (
-              <option key={d} value={d}>
-                {d}
+            {Object.entries(DIPLOMES_PRO).map(([code, { label }]) => (
+              <option key={code} value={code}>
+                {label}
               </option>
             ))}
           </select>

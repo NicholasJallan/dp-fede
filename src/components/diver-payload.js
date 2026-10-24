@@ -4,6 +4,8 @@
 // Champs club (docs/api-club.md, « Plongeurs : nouveaux champs ») : une clé
 // absente du corps PUT ne modifie pas la valeur stockée, une chaîne vide
 // l'efface. On n'envoie donc une valeur vide que si la fiche lue la portait.
+import { diplomeProLevel } from '../domain/encadrement.js';
+
 export const CLUB_FIELDS = ['licence_fin', 'representant_legal', 'autorisation_parentale_saison'];
 // Provenance : écrite par l'import uniquement, affichée en lecture seule.
 const READ_ONLY_FIELDS = ['source', 'external_id'];
@@ -36,7 +38,9 @@ export function diverToForm(d) {
     prenom: d.prenom || '',
     licence: d.licence || '',
     niveau_plongeur: d.niveau_plongeur || '',
-    niveau_encadrant: d.niveau_encadrant || '',
+    // Vue « cadre de la plongée » (diverForCadre) : on réécrit le niveau saisi.
+    niveau_encadrant:
+      (d.niveau_encadrant_annuaire !== undefined ? d.niveau_encadrant_annuaire : d.niveau_encadrant) || '',
     nitrox: d.nitrox || [],
     trimix: d.trimix || [],
     recycleurs: d.recycleurs || [],
@@ -74,3 +78,15 @@ const SOURCE_LABELS = { vpdive: 'VPDive', csv: 'Import CSV', manuel: 'Saisie man
 
 /** Libellé de la provenance d'une fiche (champ `source`). */
 export const sourceLabel = (source) => SOURCE_LABELS[source] || source || 'Saisie manuelle';
+
+// Aide sous le diplôme pro : niveau retenu selon le cadre de la plongée.
+export function diplomeProHint(form) {
+  const pro = diplomeProLevel(form.diplome_pro);
+  if (!pro) return undefined;
+  const club = form.niveau_encadrant || pro;
+  const cc =
+    form.diplome_pro === 'DEJEPS' && form.niveau_encadrant === 'E4'
+      ? " Titulaire du MF2 : le certificat complémentaire (DEJEPS E4) s'obtient à la demande, par équivalence."
+      : '';
+  return `En club associatif : ${club}. En structure commerciale (SCA) : ${pro}.${cc}`;
+}

@@ -17,6 +17,14 @@ export {
 } from './aptitudes.js';
 export { CDS_ARTICLES, parseCdsRefs } from './cds-articles.js';
 export { LEVELS, PAL_TYPE_LABELS, STRUCTURE_LABELS } from './levels.js';
+export {
+  DIPLOMES_PRO,
+  diplomeProLabel,
+  diplomeProLevel,
+  isCadrePro,
+  encadrantLevel,
+  diverForCadre,
+} from './encadrement.js';
 export { QUESTIONS } from './questions.js';
 export { CHECKLIST_RULES } from './checklist.js';
 export { matchCondition } from './conditions.js';

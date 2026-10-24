@@ -18,9 +18,10 @@ import { ScreenImport } from '../../screens/import/screen-import.jsx';
 import { isSuperAdmin } from '../../auth/super-admin.js';
 import { ADMIN_SCREENS } from '../constants.js';
 
-function DiveStepScreen({ screen, session, directory, derived, diveMode, actions, user }) {
+// divers : annuaire vu dans le cadre de la structure (useDiveDivers).
+function DiveStepScreen({ screen, session, directory, diveDivers: divers, derived, diveMode, actions, user }) {
   const s = session;
-  const { divers, setDivers, sites, setSites } = directory;
+  const { setDivers, sites, setSites } = directory;
   switch (screen) {
     case 'profil':
       return (

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 $NIVEAUX_PLONGEUR  = ['N1','N2','N3'];
 $NIVEAUX_ENCADRANT = ['N4','N5','E1','E2','E3','E4'];
-$DIPLOMES_PRO      = ['BEES1','DEJEPS','DESJEPS','Autre'];
+$DIPLOMES_PRO      = array_keys(Encadrement::DIPLOMES_PRO);
 $RECYCLEURS_OK     = ['Revo','AP','Triton','JJccr','Xccr','Megalodon','Shark','Submatix','Autre'];
 
 // Annuaire du CLUB COURANT (club_id) ; user_id = auteur de la fiche.

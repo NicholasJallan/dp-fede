@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../lib/Rules.php';
+require_once __DIR__ . '/../lib/Encadrement.php';
 
 // Charge les divers référencés dans les palanquées depuis la DB et retourne
 // ['diversById' => [...], 'dp' => array|null]. Renvoie 422 si la validation
@@ -21,6 +22,10 @@ function validatePalanqueesOrAbort(array $palanquees, array $answers, string $cl
         }
     }
 
+    // Niveau encadrant du cadre de la structure (associatif / SCA).
+    $club     = Db::row('SELECT structure_type FROM clubs WHERE id=?', [$clubId]);
+    $cadrePro = Encadrement::isCadrePro($club['structure_type'] ?? null);
+
     $diversById = [];
     if (!empty($driverIds)) {
         $ids   = array_keys($driverIds);
@@ -33,6 +38,7 @@ function validatePalanqueesOrAbort(array $palanquees, array $answers, string $cl
             [...$ids, $clubId]
         );
         foreach ($rows as $row) {
+            $row = Encadrement::applyToRow($row, $cadrePro);
             // Décoder qualifs → nitrox / trimix (même logique que routes/divers.php)
             $raw = json_decode($row['qualifs'] ?? '[]', true) ?? [];
             if (isset($raw['nitrox'])) {
@@ -56,6 +62,7 @@ function validatePalanqueesOrAbort(array $palanquees, array $answers, string $cl
             [$answers['dp_id'], $clubId]
         );
         if ($dpRow) {
+            $dpRow = Encadrement::applyToRow($dpRow, $cadrePro);
             $raw = json_decode($dpRow['qualifs'] ?? '[]', true) ?? [];
             $dpRow['nitrox'] = isset($raw['nitrox']) ? ($raw['nitrox'] ?? []) : array_values(array_intersect((array)$raw, ['PN', 'PN-C']));
             $dpRow['trimix'] = isset($raw['trimix']) ? ($raw['trimix'] ?? []) : array_values(array_intersect((array)$raw, ['PTH-40', 'PTH-70', 'PTH-120']));

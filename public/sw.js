@@ -32,6 +32,7 @@ const PRECACHE_URLS = [
   '/apple-touch-icon.png',
   '/android-chrome-192x192.png',
   '/android-chrome-512x512.png',
+  '/maskable-512x512.png',
   '/logo-ffessm.png',
   '/site.webmanifest',
 ];

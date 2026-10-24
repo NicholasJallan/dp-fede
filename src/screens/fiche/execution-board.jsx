@@ -45,7 +45,7 @@ function Gauge({ label, value, unit, real, missing }) {
   );
 }
 
-function Chrono({ debut, fin, duree, real }) {
+function Chrono({ debut, departAt, fin, duree, real }) {
   const inWater = !!debut && !fin;
   const now = useNow(1000, inWater);
   if (!debut) {
@@ -57,7 +57,7 @@ function Chrono({ debut, fin, duree, real }) {
       </div>
     );
   }
-  const seconds = fin ? (Number(real?.duree) || 0) * 60 : elapsedSeconds(debut, now);
+  const seconds = fin ? (Number(real?.duree) || 0) * 60 : elapsedSeconds(debut, now, departAt);
   const planned = (Number(duree) || 0) * 60;
   const ratio = planned > 0 ? Math.min(1, seconds / planned) : 0;
   const over = inWater && planned > 0 && seconds > planned;
@@ -126,10 +126,11 @@ function stateOf(debut, fin, over) {
   return { cls: 'is-surface', tone: 'muted', label: 'En surface' };
 }
 
-export function Cadran({ pal, index, diversById, debut, fin, real, pressions, onStart, onEnd, onPressure }) {
+export function Cadran({ pal, index, diversById, debut, departAt, fin, real, pressions, onStart, onEnd, onPressure }) {
   const membres = sortMembresForFiche(pal.membres || []);
   const now = useNow(15_000, !!debut && !fin);
-  const over = !!debut && !fin && Number(pal.duree) > 0 && elapsedSeconds(debut, now) > Number(pal.duree) * 60;
+  const over =
+    !!debut && !fin && Number(pal.duree) > 0 && elapsedSeconds(debut, now, departAt) > Number(pal.duree) * 60;
   const st = stateOf(debut, fin, over);
   const titleId = `cadran-${pal.id}`;
   // Teinte du type (PA / PE / formation), comme les cartes de l'écran Palanquées.
@@ -164,7 +165,7 @@ export function Cadran({ pal, index, diversById, debut, fin, real, pressions, on
         <Gauge label="Durée" value={pal.duree} unit="min" real={real?.duree} />
         <Gauge label="DTR" value={pal.dtr} unit="min" real={real?.dtr} missing={pal.dtr == null} />
       </div>
-      <Chrono debut={debut} fin={fin} duree={pal.duree} real={real} />
+      <Chrono debut={debut} departAt={departAt} fin={fin} duree={pal.duree} real={real} />
       {!fin && (
         <div className="cadran-actions">
           {!debut ? (

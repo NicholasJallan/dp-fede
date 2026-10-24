@@ -67,6 +67,18 @@ describe('chronomètre', () => {
   test("heure d'entrée absente : zéro", () => {
     assert.equal(elapsedSeconds('', new Date()), 0);
   });
+
+  test("instant exact de mise à l'eau : le chrono part de zéro", () => {
+    const depart = new Date(2026, 9, 20, 10, 23, 41);
+    assert.equal(elapsedSeconds('10:23', depart, depart.getTime()), 0);
+    assert.equal(elapsedSeconds('10:23', new Date(2026, 9, 20, 10, 24, 5), depart.getTime()), 24);
+  });
+
+  test("instant exact incohérent avec l'heure d'entrée : repli sur HH:MM", () => {
+    const depart = new Date(2026, 9, 20, 9, 0, 30).getTime();
+    const now = new Date(2026, 9, 20, 10, 23, 41);
+    assert.equal(elapsedSeconds('10:00', now, depart), 23 * 60 + 41);
+  });
 });
 
 describe('fin de plongée : bornes de saisie', () => {

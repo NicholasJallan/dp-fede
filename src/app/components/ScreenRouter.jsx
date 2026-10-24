@@ -71,6 +71,8 @@ function DiveStepScreen({ screen, session, directory, diveDivers: divers, derive
           setRealises={s.setRealises}
           heuresDebut={s.heuresDebut}
           setHeuresDebut={s.setHeuresDebut}
+          departs={s.departs}
+          setDeparts={s.setDeparts}
           heuresFin={s.heuresFin}
           setHeuresFin={s.setHeuresFin}
           diveId={s.currentDiveId}
@@ -87,6 +89,7 @@ function DiveStepScreen({ screen, session, directory, diveDivers: divers, derive
           pressions={s.pressions}
           realises={s.realises}
           heuresDebut={s.heuresDebut}
+          departs={s.departs}
           heuresFin={s.heuresFin}
           checked={s.checked}
           comments={s.comments}

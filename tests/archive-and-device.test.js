@@ -55,8 +55,10 @@ describe('auto-save — plus de render_state après archivage', () => {
       realises: {},
       heuresDebut: {},
       heuresFin: {},
+      departs: { p1: 1760947421000 },
     });
     assert.ok(patch.render_state);
+    assert.deepEqual(patch.render_state.departs, { p1: 1760947421000 });
     assert.equal(patch.date_plongee, '2026-10-20T09:00');
     assert.equal(patch.site_nom, 'Lac');
   });

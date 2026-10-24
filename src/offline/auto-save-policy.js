@@ -28,6 +28,7 @@ export function buildAutoSavePatch(s) {
       pressions: s.pressions,
       realises: s.realises,
       heuresDebut: s.heuresDebut,
+      departs: s.departs,
       heuresFin: s.heuresFin,
     },
     ...summarize(s.answers),

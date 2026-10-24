@@ -119,6 +119,7 @@ function useAppController() {
     pressions: session.pressions,
     realises: session.realises,
     heuresDebut: session.heuresDebut,
+    departs: session.departs,
     heuresFin: session.heuresFin,
   });
   useDiveLifecycle(session);

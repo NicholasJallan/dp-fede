@@ -22,10 +22,15 @@ export function addMinutes(hhmm, minutes) {
   return `${pad(Math.floor((total % (24 * 60)) / 60))}:${pad(total % 60)}`;
 }
 
-// Secondes écoulées depuis une heure d'entrée « HH:MM » (minute pleine,
-// cohérent avec l'heure portée sur la fiche). Passage de minuit géré.
-export function elapsedSeconds(startHHMM, now = new Date()) {
+// Secondes écoulées depuis la mise à l'eau. `departAt` (horodatage ms,
+// render_state.departs) donne l'instant exact : le chrono part de zéro.
+// Sans lui (plongées antérieures) ou s'il ne correspond pas à l'heure
+// d'entrée, repli sur « HH:MM » (minute pleine). Passage de minuit géré.
+export function elapsedSeconds(startHHMM, now = new Date(), departAt = null) {
   if (!startHHMM) return 0;
+  if (Number.isFinite(departAt) && nowHHMM(new Date(departAt)) === startHHMM) {
+    return Math.max(0, Math.floor((now.getTime() - departAt) / 1000));
+  }
   const [h, m] = startHHMM.split(':').map(Number);
   const start = new Date(now);
   start.setHours(h, m, 0, 0);

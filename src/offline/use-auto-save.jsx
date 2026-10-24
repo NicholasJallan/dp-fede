@@ -4,7 +4,7 @@
 //   const flushSave = useAutoSave({
 //     diveId, user, plongeeFigee,
 //     answers, palanquees, checked, comments,
-//     pressions, realises, heuresDebut, heuresFin,
+//     pressions, realises, heuresDebut, departs, heuresFin,
 //   });
 //   // flushSave(diveId) force un envoi immédiat (avant unmount / navigation).
 //
@@ -38,6 +38,7 @@ export function useAutoSave(state) {
     pressions,
     realises,
     heuresDebut,
+    departs,
     heuresFin,
   } = state;
 
@@ -45,7 +46,7 @@ export function useAutoSave(state) {
   // flushSave lise toujours l'état courant même si l'utilisateur quitte
   // la fiche juste après un setState.
   const stateRef = useRef({});
-  stateRef.current = { answers, palanquees, checked, comments, pressions, realises, heuresDebut, heuresFin };
+  stateRef.current = { answers, palanquees, checked, comments, pressions, realises, heuresDebut, departs, heuresFin };
 
   const timerRef = useRef(null);
   // Lu par flushSave au moment de l'appel (pas de fermeture périmée).
@@ -84,6 +85,7 @@ export function useAutoSave(state) {
     pressions,
     realises,
     heuresDebut,
+    departs,
     heuresFin,
     diveId,
     user,

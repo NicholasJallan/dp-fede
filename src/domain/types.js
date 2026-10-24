@@ -92,6 +92,7 @@
  * @property {{[palId: string]: string}} [pressions]
  * @property {{[palId: string]: boolean}} [realises]
  * @property {{[palId: string]: string}} [heuresDebut]
+ * @property {{[palId: string]: number}} [departs] instant exact (ms) de mise à l'eau, pour le chronomètre
  * @property {{[palId: string]: string}} [heuresFin]
  * @property {{[itemId: string]: boolean}} [checked]
  * @property {{[itemId: string]: string}} [comments]

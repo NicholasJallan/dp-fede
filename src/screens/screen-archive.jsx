@@ -45,7 +45,8 @@ function enrichPalanquees(palanquees, divers) {
 }
 
 function archivePayload(props) {
-  const { answers, palanquees, divers, pressions, realises, heuresDebut, heuresFin, checked, comments } = props;
+  const { answers, palanquees, divers, pressions, realises, heuresDebut, departs, heuresFin, checked, comments } =
+    props;
   return {
     status: 'archived',
     closed_at: new Date().toISOString(),
@@ -56,7 +57,7 @@ function archivePayload(props) {
     date_plongee: answers.date || '',
     answers,
     palanquees: enrichPalanquees(palanquees, divers),
-    render_state: { pressions, realises, heuresDebut, heuresFin, checked, comments },
+    render_state: { pressions, realises, heuresDebut, departs, heuresFin, checked, comments },
   };
 }
 

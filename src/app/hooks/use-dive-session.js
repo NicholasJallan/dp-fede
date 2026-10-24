@@ -12,6 +12,8 @@ export function useDiveSession() {
   const [pressions, setPressions] = useState({});
   const [realises, setRealises] = useState({});
   const [heuresDebut, setHeuresDebut] = useState({});
+  // Instant exact (ms) de chaque mise à l'eau : chronomètre à la seconde.
+  const [departs, setDeparts] = useState({});
   const [heuresFin, setHeuresFin] = useState({});
   const [plongeeFigee, setPlongeeFigee] = useState(false);
   const [confirmModal, setConfirmModal] = useState(false);
@@ -33,6 +35,7 @@ export function useDiveSession() {
     setPressions({});
     setRealises({});
     setHeuresDebut({});
+    setDeparts({});
     setHeuresFin({});
     setPlongeeFigee(false);
     setConfirmModal(false);
@@ -50,6 +53,7 @@ export function useDiveSession() {
     setPressions(rs.pressions || {});
     setRealises(rs.realises || {});
     setHeuresDebut(rs.heuresDebut || {});
+    setDeparts(rs.departs || {});
     setHeuresFin(rs.heuresFin || {});
     setPlongeeFigee(archived);
     startedCountRef.current = Object.keys(rs.heuresDebut || {}).length;
@@ -76,6 +80,8 @@ export function useDiveSession() {
     setRealises,
     heuresDebut,
     setHeuresDebut,
+    departs,
+    setDeparts,
     heuresFin,
     setHeuresFin,
     plongeeFigee,

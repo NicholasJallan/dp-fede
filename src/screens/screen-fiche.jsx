@@ -26,6 +26,7 @@ function useDiveTracking({
   palanquees,
   heuresDebut,
   setHeuresDebut,
+  setDeparts,
   setHeuresFin,
   realises,
   setRealises,
@@ -35,14 +36,20 @@ function useDiveTracking({
   const [finForm, setFinForm] = useState({ duree: '', profMax: '', dtr: '', commentaire: '', ...initialPaliers(null) });
   const [confirmDepart, setConfirmDepart] = useState(null);
 
+  // Heure d'entrée « HH:MM » (fiche) + instant exact (chronomètre à zéro).
+  const markStart = (palId) => {
+    const at = new Date();
+    setHeuresDebut((prev) => ({ ...prev, [palId]: nowHHMM(at) }));
+    setDeparts((prev) => ({ ...prev, [palId]: at.getTime() }));
+  };
   const start = (palId) => {
     // Premier départ : confirmation (verrouille définitivement la préparation).
     if (Object.keys(heuresDebut).length === 0) setConfirmDepart(palId);
-    else setHeuresDebut((prev) => ({ ...prev, [palId]: nowHHMM() }));
+    else markStart(palId);
   };
   const confirmStart = () => {
     if (!confirmDepart) return;
-    setHeuresDebut((prev) => ({ ...prev, [confirmDepart]: nowHHMM() }));
+    markStart(confirmDepart);
     setConfirmDepart(null);
   };
 
@@ -100,7 +107,17 @@ function useDiveTracking({
 }
 
 // PDF serveur (mPDF) après envoi de l'état courant ; repli impression navigateur.
-function usePdfDownload({ diveId, answers, palanquees, renderState, pressions, realises, heuresDebut, heuresFin }) {
+function usePdfDownload({
+  diveId,
+  answers,
+  palanquees,
+  renderState,
+  pressions,
+  realises,
+  heuresDebut,
+  departs,
+  heuresFin,
+}) {
   const { showToast } = useToasts();
   const [busy, setBusy] = useState(false);
   const download = async () => {
@@ -113,7 +130,7 @@ function usePdfDownload({ diveId, answers, palanquees, renderState, pressions, r
       await api.dives.pushNow(diveId, {
         answers,
         palanquees,
-        render_state: { ...(renderState || {}), pressions, realises, heuresDebut, heuresFin },
+        render_state: { ...(renderState || {}), pressions, realises, heuresDebut, departs, heuresFin },
       });
       const blob = await api.pdf.blob(diveId, 'fiche');
       const a = document.createElement('a');
@@ -136,7 +153,8 @@ function usePdfDownload({ diveId, answers, palanquees, renderState, pressions, r
 }
 
 function ScreenFiche(props) {
-  const { answers, palanquees, divers, setAnswer, pressions, setPressions, realises, heuresDebut, heuresFin } = props;
+  const { answers, palanquees, divers, setAnswer, pressions, setPressions, realises, heuresDebut, departs, heuresFin } =
+    props;
   const { user } = useAuth();
   const diversById = useMemo(() => Object.fromEntries(divers.map((d) => [d.id, d])), [divers]);
   const [obs, setObs] = useState(answers.fiche_observations || '');
@@ -201,6 +219,7 @@ function ScreenFiche(props) {
               index={i}
               diversById={diversById}
               debut={heuresDebut[p.id]}
+              departAt={departs[p.id]}
               fin={heuresFin[p.id]}
               real={realises[p.id]}
               pressions={pressions}

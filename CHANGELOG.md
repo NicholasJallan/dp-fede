@@ -11,6 +11,7 @@ Dates en ISO 8601.
 - PDF de la fiche : numéros secondaires et canal VHF selon le pays et le milieu (`backend/lib/Emergency.php`, portage de `src/domain/emergency.js`, cas communs `tests/fixtures/emergency.json`) ; il affichait toujours le CROSS, même en lac.
 - Club sans numéro réglé : repli `112` (était `18`).
 - Check-list : encadrant sur recycleur en milieu naturel → système de secours indépendant du recycleur (A322-94), JS et PDF.
+- DP introuvable dans l'annuaire (pas encore chargé, supprimé) : l'ouverture du profil n'efface plus son nom ni sa qualification, et l'écran Palanquées ne ramène plus les nitrox / trimix à l'air (`src/app/dp-guards.js`).
 - Neuf règles sans aucun test couvertes par des cas partagés JS / PHP (`TX_PUBLIC`, `TX_ENCADRANT`, `EXTRA_NX`, `EXTRA_NOT_GP`, `GAS_NONE`, `BASSIN_BAPTEME`, `BASSIN_EFFECTIF`, `AUTO_ENCADREMENT`, `MEDICAL_MISSING`).
 
 ### Palanquées : gaz de déco, DTR, date de naissance (22/10/2026)

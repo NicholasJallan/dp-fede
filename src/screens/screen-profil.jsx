@@ -26,6 +26,7 @@ import {
   URGENCE_PAR_PAYS,
 } from '../domain/index.js';
 import { api } from '../api/api.js';
+import { dpAnswerFields } from '../app/dp-guards.js';
 
 // ── DPPicker ──────────────────────────────────────────────────────────────
 function DPPicker({ id, value, divers, onChange, setDivers }) {
@@ -351,9 +352,12 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
   // useEffectEvent lit les valeurs courantes sans en faire des dépendances.
 
   // Quand DP change → propager dp_qual
+  // DP introuvable (annuaire pas encore chargé, DP supprimé) : rien n'est effacé.
   const propagateDp = useEffectEvent(() => {
-    setAnswer('dp_qual', dpQual || '');
-    setAnswer('dp_nom', selectedDP ? diverFullName(selectedDP) : '');
+    const fields = dpAnswerFields(answers.dp_id, selectedDP);
+    if (!fields) return;
+    setAnswer('dp_qual', fields.dp_qual);
+    setAnswer('dp_nom', fields.dp_nom);
   });
   useEffect(() => {
     propagateDp();

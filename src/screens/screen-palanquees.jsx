@@ -31,6 +31,7 @@ import { PalCard } from './palanquees/pal-card.jsx';
 import { DiverPool } from './palanquees/diver-pool.jsx';
 import { BirthdateDialog } from './palanquees/birthdate-dialog.jsx';
 import { useBirthdatePrompt } from './palanquees/use-birthdate-prompt.js';
+import { clampPalMelanges } from '../app/dp-guards.js';
 
 // Contexte d'aptitudes d'une palanquée : enseignant présent + mode (le bonus
 // de formation n'existe qu'en enseignement).
@@ -268,15 +269,9 @@ function usePalanqueeMutations({ setPalanquees, diversById, dpDiver, siteMax, de
 
 // Re-bornages automatiques quand le DP ou le site changent.
 function useAutoClamp({ setPalanquees, allowedMelangeValues, dpDiver, siteMax }) {
+  // DP introuvable : getAvailableMelanges(null) ne permettrait que l'air.
   useEffect(() => {
-    setPalanquees((prev) =>
-      prev.map((p) => {
-        const cur = p.melanges || [];
-        const next = cur.filter((m) => allowedMelangeValues.has(m));
-        if (next.length === cur.length) return p;
-        return { ...p, melanges: next.length > 0 ? next : ['Air'] };
-      }),
-    );
+    setPalanquees((prev) => clampPalMelanges(prev, allowedMelangeValues, dpDiver));
   }, [allowedMelangeValues]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {

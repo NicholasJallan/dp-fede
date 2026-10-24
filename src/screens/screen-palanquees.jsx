@@ -71,11 +71,16 @@ function withDtrFor(prev, next) {
 
 const nextPalId = (pals) => 'p' + (Math.max(0, ...pals.map((p) => parseInt(p.id.slice(1), 10) || 0)) + 1);
 
-// Validation du DP pour le lieu (III-15 a, A322-98).
-function dpCheck(dpQual, answers) {
+// Validation du DP pour le lieu (III-15 a, A322-98) et le cadre (SCA : L212-1).
+function dpCheck(dpQual, answers, dpDiver) {
   if (!dpQual) return { tone: 'warn', text: 'Aucun directeur de plongée sélectionné (étape 1, section A).' };
   const q = CDS.DP_QUALIF[dpQual];
   if (!q) return { tone: 'err', text: `${dpQual} ne peut pas être directeur de plongée.` };
+  if (dpDiver?.dp_diplome_pro_requis)
+    return {
+      tone: 'err',
+      text: `Structure commerciale (SCA) : un DP ${dpQual} doit être titulaire d'un diplôme professionnel (L212-1).`,
+    };
   const bassin = isBassinDerogation(answers, 0);
   if (bassin && !q.bassin)
     return { tone: 'err', text: 'Piscine ou fosse de 6 m au plus : DP enseignant E1 minimum (A322-98).' };
@@ -310,7 +315,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
     () => new Set(palanquees.flatMap((p) => p.membres.filter((m) => !m._bapteme).map((m) => m.diverId))),
     [palanquees],
   );
-  const dpState = useMemo(() => dpCheck(answers.dp_qual || '', answers), [answers]);
+  const dpState = useMemo(() => dpCheck(answers.dp_qual || '', answers, dpDiver), [answers, dpDiver]);
 
   useAutoClamp({ setPalanquees, allowedMelangeValues, dpDiver, siteMax });
   useDerivedAnswers({ palanquees, divers, diversById, answers, setAnswer });

@@ -906,6 +906,9 @@ class Rules
             $add('warn', 'DP_MISSING', 'Directeur de plongée non désigné ou non qualifié.', 'A322-72');
             return;
         }
+        if (!empty($ctx['dp']['dp_diplome_pro_requis'])) {
+            $add('err', 'DP_DIPLOME_PRO', "Structure commerciale (SCA) : un DP {$level} doit être titulaire d'un diplôme professionnel.", 'L212-1');
+        }
         if ($ctx['bassin'] && !$q['bassin']) {
             $add('err', 'DP_QUAL_MILIEU', "Piscine / fosse ≤ 6 m : DP enseignant E1 minimum (DP actuel {$level}).", 'A322-98');
         } elseif (!$ctx['bassin'] && !$q['naturel']) {

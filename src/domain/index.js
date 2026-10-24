@@ -24,6 +24,7 @@ export {
   isCadrePro,
   encadrantLevel,
   diverForCadre,
+  dpDiplomeProRequis,
 } from './encadrement.js';
 export { QUESTIONS } from './questions.js';
 export { CHECKLIST_RULES } from './checklist.js';

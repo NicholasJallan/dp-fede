@@ -45,8 +45,9 @@ function DPPicker({ id, value, divers, onChange, setDivers }) {
         <select id={id} className="input" value={value || ''} onChange={(e) => onChange(e.target.value)}>
           <option value="">Choisir le directeur de plongée</option>
           {candidates.map((d) => (
-            <option key={d.id} value={d.id}>
+            <option key={d.id} value={d.id} disabled={d.dp_diplome_pro_requis && d.id !== value}>
               {diverFullName(d)} ({d.niveau_encadrant}){d.diplome_pro ? ` — ${diplomeProLabel(d.diplome_pro)}` : ''}
+              {d.dp_diplome_pro_requis ? ' — diplôme pro requis (SCA)' : ''}
             </option>
           ))}
         </select>
@@ -476,6 +477,12 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
                     </span>
                   )}
                   {dpN5 && <span>N5 : exploration uniquement, pas d'aptitude E1 à E4 en palanquée.</span>}
+                  {selectedDP.dp_diplome_pro_requis && (
+                    <Alert tone="err">
+                      Structure commerciale (SCA) : un DP {dpQual} doit être titulaire d'un diplôme professionnel
+                      (DEJEPS, DESJEPS, BEES…). Choisir un autre DP ou compléter sa fiche.
+                    </Alert>
+                  )}
                 </div>
               )}
             </>

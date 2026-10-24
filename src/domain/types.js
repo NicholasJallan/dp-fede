@@ -21,6 +21,7 @@
  * @property {boolean} [tiv]
  * @property {string} [diplome_pro]   code de DIPLOMES_PRO (encadrement.js)
  * @property {NiveauEncadrant} [niveau_encadrant_annuaire]  niveau saisi, quand diverForCadre l'a remplacé
+ * @property {boolean} [dp_diplome_pro_requis]  enseignant sans diplôme pro en SCA : pas DP (diverForCadre)
  * @property {string} [medical]
  * @property {string} [notes]
  * @property {string} [deleted_at]

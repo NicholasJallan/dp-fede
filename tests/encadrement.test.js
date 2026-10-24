@@ -7,6 +7,7 @@ import {
   diplomeProLabel,
   diplomeProLevel,
   diverForCadre,
+  dpDiplomeProRequis,
   encadrantLevel,
   isCadrePro,
 } from '../src/domain/encadrement.js';
@@ -59,6 +60,26 @@ test('diverForCadre : niveau du cadre, niveau saisi conservé', () => {
   assert.equal(v.niveau_encadrant, 'E3');
   assert.equal(v.niveau_encadrant_annuaire, 'E4');
   assert.equal(d.niveau_encadrant, 'E4', 'pas de mutation');
+});
+
+test('dpDiplomeProRequis : en SCA, un enseignant sans diplôme pro n’est pas DP', () => {
+  for (const ne of ['E1', 'E2', 'E3', 'E4']) {
+    assert.equal(dpDiplomeProRequis({ niveau_encadrant: ne, diplome_pro: '' }, true), true, ne);
+    assert.equal(dpDiplomeProRequis({ niveau_encadrant: ne, diplome_pro: '' }, false), false, `${ne} associatif`);
+  }
+  assert.equal(dpDiplomeProRequis({ niveau_encadrant: 'E3', diplome_pro: 'DEJEPS' }, true), false);
+  assert.equal(dpDiplomeProRequis({ niveau_encadrant: 'E3', diplome_pro: 'Autre' }, true), false, 'BPJEPS…');
+  assert.equal(dpDiplomeProRequis({ niveau_encadrant: 'N5', diplome_pro: '' }, true), false, 'P5 / DPE');
+  assert.equal(dpDiplomeProRequis({ niveau_encadrant: 'N4', diplome_pro: '' }, true), false);
+});
+
+test('diverForCadre : enseignant sans diplôme pro en SCA marqué non DP, niveau inchangé', () => {
+  const d = { id: 'a', niveau_encadrant: 'E4', diplome_pro: '' };
+  const v = diverForCadre(d, true);
+  assert.equal(v.dp_diplome_pro_requis, true);
+  assert.equal(v.niveau_encadrant, 'E4');
+  assert.equal(v.niveau_encadrant_annuaire, undefined);
+  assert.equal(diverForCadre(d, false), d);
 });
 
 test('diverToForm relit le niveau saisi d’une vue diverForCadre (pas d’écrasement à l’écriture)', () => {

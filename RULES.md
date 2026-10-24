@@ -225,7 +225,12 @@ MF2) ou obtenu avant la réforme = E4.
 Exemple : MF1 + BEPPA + DEJEPS sans CC → E4 en club, E3 en SCA. Ce niveau
 s'applique au DP comme aux encadrants des palanquées.
 
-Codes : `DP_QUAL_MILIEU`, `DP_MODE`, `DP_GAS`, `DP_DEPTH`, `DP_MISSING`.
+**DP en SCA** : un enseignant (E1 → E4) ne peut être DP que s'il est titulaire
+d'un diplôme professionnel (L212-1) ; sans diplôme, il est grisé dans le choix
+du DP et la plongée est bloquée (`DP_DIPLOME_PRO`). « Autre » compte comme
+diplôme (BPJEPS…). Un P5 / DPE (N5) reste DP en exploration.
+
+Codes : `DP_QUAL_MILIEU`, `DP_MODE`, `DP_GAS`, `DP_DEPTH`, `DP_MISSING`, `DP_DIPLOME_PRO`.
 
 ---
 

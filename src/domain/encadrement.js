@@ -10,6 +10,8 @@
 // la demande par équivalence avec le MF2) ou obtenu avant la réforme, E4.
 //
 // Exemple : MF1 + BEPPA + DEJEPS sans CC → E4 en club, E3 en SCA.
+// En SCA, un enseignant (E1 → E4) ne peut être DP que s'il est titulaire d'un
+// diplôme professionnel (L212-1) ; un P5 / DPE reste DP en exploration.
 // Portage PHP : backend/lib/Encadrement.php.
 
 import { CDS } from './cds-tables.js';
@@ -74,10 +76,24 @@ export function encadrantLevel(diver, cadrePro) {
 }
 
 /**
+ * Enseignant (E1 → E4) sans diplôme professionnel en structure commerciale :
+ * il ne peut pas être directeur de plongée (L212-1). « Autre » compte comme
+ * diplôme (BPJEPS…). Un N5 (P5 / DPE) n'est pas concerné.
+ * @param {Partial<Diver>|null|undefined} diver
+ * @param {boolean} cadrePro
+ * @returns {boolean}
+ */
+export function dpDiplomeProRequis(diver, cadrePro) {
+  return cadrePro && rank(diver?.niveau_encadrant) > 0 && !diver?.diplome_pro;
+}
+
+/**
  * Plongeur tel que vu par les règles de la plongée : `niveau_encadrant`
  * remplacé par le niveau du cadre. La valeur saisie à l'annuaire reste dans
  * `niveau_encadrant_annuaire` (relue par diverToForm avant toute écriture).
- * Renvoie l'objet d'origine quand rien ne change.
+ * `dp_diplome_pro_requis` signale un enseignant sans diplôme pro en SCA
+ * (refusé comme DP par validatePal). Renvoie l'objet d'origine quand rien ne
+ * change.
  * @template {Partial<Diver>} T
  * @param {T} diver
  * @param {boolean} cadrePro
@@ -85,6 +101,12 @@ export function encadrantLevel(diver, cadrePro) {
  */
 export function diverForCadre(diver, cadrePro) {
   const level = encadrantLevel(diver, cadrePro);
-  if (level === (diver.niveau_encadrant || null)) return diver;
-  return { ...diver, niveau_encadrant: level, niveau_encadrant_annuaire: diver.niveau_encadrant || null };
+  const levelChanged = level !== (diver.niveau_encadrant || null);
+  const dpRefuse = dpDiplomeProRequis(diver, cadrePro);
+  if (!levelChanged && !dpRefuse) return diver;
+  return {
+    ...diver,
+    ...(levelChanged && { niveau_encadrant: level, niveau_encadrant_annuaire: diver.niveau_encadrant || null }),
+    ...(dpRefuse && { dp_diplome_pro_requis: true }),
+  };
 }

@@ -46,4 +46,22 @@ final class EncadrementTest extends TestCase
         $legacy = ['niveau_encadrant' => 'E4', 'qualifs' => '["PN","RIFAP"]'];
         $this->assertSame('E4', \Encadrement::applyToRow($legacy, true)['niveau_encadrant']);
     }
+
+    public function testDpDiplomeProRequisEnSca(): void
+    {
+        foreach (['E1', 'E2', 'E3', 'E4'] as $ne) {
+            $this->assertTrue(\Encadrement::dpDiplomeProRequis($ne, null, true), $ne);
+            $this->assertFalse(\Encadrement::dpDiplomeProRequis($ne, null, false), "{$ne} associatif");
+        }
+        $this->assertFalse(\Encadrement::dpDiplomeProRequis('E3', 'DEJEPS', true));
+        $this->assertFalse(\Encadrement::dpDiplomeProRequis('E3', 'Autre', true));
+        $this->assertFalse(\Encadrement::dpDiplomeProRequis('N5', null, true), 'P5 / DPE');
+        $this->assertFalse(\Encadrement::dpDiplomeProRequis('N4', null, true));
+
+        $sans = ['niveau_encadrant' => 'E4', 'qualifs' => json_encode(['nitrox' => ['PN-C']])];
+        $this->assertTrue(\Encadrement::applyToRow($sans, true)['dp_diplome_pro_requis'] ?? false);
+        $this->assertArrayNotHasKey('dp_diplome_pro_requis', \Encadrement::applyToRow($sans, false));
+        $avec = ['niveau_encadrant' => 'E4', 'qualifs' => json_encode(['diplome' => 'DEJEPS-E4'])];
+        $this->assertArrayNotHasKey('dp_diplome_pro_requis', \Encadrement::applyToRow($avec, true));
+    }
 }

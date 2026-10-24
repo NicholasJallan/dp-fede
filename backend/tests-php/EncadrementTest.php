@@ -49,13 +49,13 @@ final class EncadrementTest extends TestCase
 
     public function testDpDiplomeProRequisEnSca(): void
     {
-        foreach (['E1', 'E2', 'E3', 'E4'] as $ne) {
+        foreach (['N5', 'E1', 'E2', 'E3', 'E4'] as $ne) {
             $this->assertTrue(\Encadrement::dpDiplomeProRequis($ne, null, true), $ne);
             $this->assertFalse(\Encadrement::dpDiplomeProRequis($ne, null, false), "{$ne} associatif");
         }
         $this->assertFalse(\Encadrement::dpDiplomeProRequis('E3', 'DEJEPS', true));
         $this->assertFalse(\Encadrement::dpDiplomeProRequis('E3', 'Autre', true));
-        $this->assertFalse(\Encadrement::dpDiplomeProRequis('N5', null, true), 'P5 / DPE');
+        $this->assertFalse(\Encadrement::dpDiplomeProRequis('N5', 'DEJEPS', true), 'N5 + DEJEPS');
         $this->assertFalse(\Encadrement::dpDiplomeProRequis('N4', null, true));
 
         $sans = ['niveau_encadrant' => 'E4', 'qualifs' => json_encode(['nitrox' => ['PN-C']])];

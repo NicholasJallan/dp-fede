@@ -62,14 +62,14 @@ test('diverForCadre : niveau du cadre, niveau saisi conservé', () => {
   assert.equal(d.niveau_encadrant, 'E4', 'pas de mutation');
 });
 
-test('dpDiplomeProRequis : en SCA, un enseignant sans diplôme pro n’est pas DP', () => {
-  for (const ne of ['E1', 'E2', 'E3', 'E4']) {
+test('dpDiplomeProRequis : en SCA, un N5 ou un E1 → E4 sans diplôme pro n’est pas DP', () => {
+  for (const ne of ['N5', 'E1', 'E2', 'E3', 'E4']) {
     assert.equal(dpDiplomeProRequis({ niveau_encadrant: ne, diplome_pro: '' }, true), true, ne);
     assert.equal(dpDiplomeProRequis({ niveau_encadrant: ne, diplome_pro: '' }, false), false, `${ne} associatif`);
   }
   assert.equal(dpDiplomeProRequis({ niveau_encadrant: 'E3', diplome_pro: 'DEJEPS' }, true), false);
   assert.equal(dpDiplomeProRequis({ niveau_encadrant: 'E3', diplome_pro: 'Autre' }, true), false, 'BPJEPS…');
-  assert.equal(dpDiplomeProRequis({ niveau_encadrant: 'N5', diplome_pro: '' }, true), false, 'P5 / DPE');
+  assert.equal(dpDiplomeProRequis({ niveau_encadrant: 'N5', diplome_pro: 'DEJEPS' }, true), false, 'N5 + DEJEPS');
   assert.equal(dpDiplomeProRequis({ niveau_encadrant: 'N4', diplome_pro: '' }, true), false);
 });
 

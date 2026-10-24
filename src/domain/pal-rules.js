@@ -539,7 +539,7 @@ function checkDp(ctx, add) {
     add(
       'err',
       'DP_DIPLOME_PRO',
-      `Structure commerciale (SCA) : un DP ${level} doit être titulaire d'un diplôme professionnel.`,
+      `Structure commerciale (SCA) : le DP doit être titulaire d'un diplôme d'État (DP actuel ${level}, sans diplôme pro).`,
       'L212-1',
     );
   }

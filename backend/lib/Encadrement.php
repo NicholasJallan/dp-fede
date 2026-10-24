@@ -9,8 +9,8 @@ declare(strict_types=1);
  * MF2 / BEPPA = E4) ; diplôme pro (qualifs.diplome) = prérogatives d'État
  * (III-15 b), seules valables en structure commerciale (SCA). DEJEPS seul :
  * E3 ; avec le certificat complémentaire ou obtenu avant la réforme : E4.
- * En SCA, un enseignant (E1 → E4) sans diplôme pro ne peut pas être DP
- * (L212-1) ; un N5 (P5 / DPE) n'est pas concerné.
+ * En SCA, seul le titulaire d'un diplôme d'État peut être DP (L212-1) : ni
+ * un N5 (P5 / DPE), ni un E1 → E4 sans diplôme pro.
  *
  * Fonctions pures.
  */
@@ -27,6 +27,9 @@ final class Encadrement
     ];
 
     private const ENS_RANK = ['E1' => 1, 'E2' => 2, 'E3' => 3, 'E4' => 4];
+
+    /** Niveaux pouvant diriger une plongée en club (Rules::DP_QUALIF). */
+    private const DP_LEVELS = ['N5', 'E1', 'E2', 'E3', 'E4'];
 
     public static function isCadrePro(?string $structureType): bool
     {
@@ -51,11 +54,11 @@ final class Encadrement
         return self::ENS_RANK[$pro] > (self::ENS_RANK[$ne ?? ''] ?? 0) ? $pro : $ne;
     }
 
-    /** Enseignant sans diplôme pro en SCA : pas DP. « Autre » compte comme diplôme. */
+    /** Candidat DP (N5, E1 → E4) sans diplôme pro en SCA : pas DP. « Autre » compte comme diplôme. */
     public static function dpDiplomeProRequis(?string $niveauEncadrant, mixed $diplomePro, bool $cadrePro): bool
     {
         return $cadrePro
-            && isset(self::ENS_RANK[$niveauEncadrant ?? ''])
+            && in_array($niveauEncadrant, self::DP_LEVELS, true)
             && !(is_string($diplomePro) && $diplomePro !== '');
     }
 

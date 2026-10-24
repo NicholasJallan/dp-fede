@@ -79,7 +79,7 @@ function dpCheck(dpQual, answers, dpDiver) {
   if (dpDiver?.dp_diplome_pro_requis)
     return {
       tone: 'err',
-      text: `Structure commerciale (SCA) : un DP ${dpQual} doit être titulaire d'un diplôme professionnel (L212-1).`,
+      text: `Structure commerciale (SCA) : le DP doit être titulaire d'un diplôme d'État (DP actuel ${dpQual}, sans diplôme pro ; L212-1).`,
     };
   const bassin = isBassinDerogation(answers, 0);
   if (bassin && !q.bassin)

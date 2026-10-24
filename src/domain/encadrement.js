@@ -10,8 +10,9 @@
 // la demande par équivalence avec le MF2) ou obtenu avant la réforme, E4.
 //
 // Exemple : MF1 + BEPPA + DEJEPS sans CC → E4 en club, E3 en SCA.
-// En SCA, un enseignant (E1 → E4) ne peut être DP que s'il est titulaire d'un
-// diplôme professionnel (L212-1) ; un P5 / DPE reste DP en exploration.
+// En SCA, seul le titulaire d'un diplôme d'État peut être DP (L212-1) : ni un
+// P5 / DPE, ni un enseignant fédéral (E1 → E4) sans diplôme pro. En club, N5
+// et E1 → E4 dirigent selon leurs prérogatives (III-15 a).
 // Portage PHP : backend/lib/Encadrement.php.
 
 import { CDS } from './cds-tables.js';
@@ -76,22 +77,23 @@ export function encadrantLevel(diver, cadrePro) {
 }
 
 /**
- * Enseignant (E1 → E4) sans diplôme professionnel en structure commerciale :
- * il ne peut pas être directeur de plongée (L212-1). « Autre » compte comme
- * diplôme (BPJEPS…). Un N5 (P5 / DPE) n'est pas concerné.
+ * Candidat DP (N5, E1 → E4) sans diplôme professionnel en structure
+ * commerciale : il ne peut pas être directeur de plongée (L212-1). « Autre »
+ * compte comme diplôme (BPJEPS…).
  * @param {Partial<Diver>|null|undefined} diver
  * @param {boolean} cadrePro
  * @returns {boolean}
  */
 export function dpDiplomeProRequis(diver, cadrePro) {
-  return cadrePro && rank(diver?.niveau_encadrant) > 0 && !diver?.diplome_pro;
+  const ne = /** @type {keyof typeof CDS.DP_QUALIF} */ (diver?.niveau_encadrant || '');
+  return cadrePro && !!CDS.DP_QUALIF[ne] && !diver?.diplome_pro;
 }
 
 /**
  * Plongeur tel que vu par les règles de la plongée : `niveau_encadrant`
  * remplacé par le niveau du cadre. La valeur saisie à l'annuaire reste dans
  * `niveau_encadrant_annuaire` (relue par diverToForm avant toute écriture).
- * `dp_diplome_pro_requis` signale un enseignant sans diplôme pro en SCA
+ * `dp_diplome_pro_requis` signale un candidat DP sans diplôme pro en SCA
  * (refusé comme DP par validatePal). Renvoie l'objet d'origine quand rien ne
  * change.
  * @template {Partial<Diver>} T

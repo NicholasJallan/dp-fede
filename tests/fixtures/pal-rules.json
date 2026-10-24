@@ -124,7 +124,8 @@
     "e4": { "niveau_encadrant": "E4" },
     "e4_pth120": { "niveau_encadrant": "E4", "nitrox": ["PN", "PN-C"], "trimix": ["PTH-40", "PTH-70", "PTH-120"] },
     "n5": { "niveau_encadrant": "N5" },
-    "e3_sca_sans_diplome": { "niveau_encadrant": "E3", "dp_diplome_pro_requis": true }
+    "e3_sca_sans_diplome": { "niveau_encadrant": "E3", "dp_diplome_pro_requis": true },
+    "n5_sca_sans_diplome": { "niveau_encadrant": "N5", "dp_diplome_pro_requis": true }
   },
   "cases": [
     {
@@ -687,6 +688,19 @@
       "name": "SCA : DP E3 sans diplôme professionnel",
       "ref": "L212-1",
       "dp": "e3_sca_sans_diplome",
+      "pal": {
+        "membres": [
+          ["n4", "GP"],
+          ["n2", "PE40"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["DP_DIPLOME_PRO"]
+    },
+    {
+      "name": "SCA : DP N5 sans diplôme professionnel",
+      "ref": "L212-1",
+      "dp": "n5_sca_sans_diplome",
       "pal": {
         "membres": [
           ["n4", "GP"],

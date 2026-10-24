@@ -94,7 +94,7 @@ function DiveStepScreen({ screen, session, directory, diveDivers: divers, derive
           checked={s.checked}
           comments={s.comments}
           plongeeFigee={s.plongeeFigee}
-          onStartNew={actions.startPreparation}
+          onStartNew={() => actions.startPreparation()}
           onArchiveDone={() => s.setArchiveDone(true)}
           diveId={s.currentDiveId}
         />

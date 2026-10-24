@@ -186,6 +186,11 @@ test.describe('build local — parcours en ligne', () => {
     expect(realised.paliers).toEqual({ 9: '', 6: '', 3: '3' });
     expect(realised.confort).toMatchObject({ on: true, duree: '2' });
 
+    // « Terminé » : nouvelle préparation vierge (le clic ne sert pas de modèle).
+    await nextBtn(page).click();
+    await expect(heading(page)).toHaveText('Caractériser la plongée à venir');
+    await expect(page.getByText("Cet écran n'a pas pu s'afficher")).toHaveCount(0);
+
     expect(errors.filter((e) => !isNetworkNoise(e))).toEqual([]);
   });
 

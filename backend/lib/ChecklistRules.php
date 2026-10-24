@@ -121,6 +121,7 @@ final class ChecklistRules
                     ['id' => 'p2_parachute_indiv', 'text' => 'Chaque plongeur porte son parachute individuel', 'when' => ['parachute_par_plongeur' => true]],
                     ['id' => 'p2_nx_signature', 'text' => 'Plongeurs nitrox : fiche de leur bloc complétée et signée (nom ou initiales)', 'when' => ['nitrox' => true]],
                     ['id' => 'p2_rec_aptitudes', 'text' => 'Aptitudes recycleur validées + circuit ouvert de secours pour > 6m', 'when' => ['recycleur' => true]],
+                    ['id' => 'p2_rec_secours_encadrant', 'text' => 'Encadrant sur recycleur : système respiratoire de secours indépendant du recycleur', 'when' => fn(array $a): bool => !empty($a['recycleur']) && self::reglesMilieuNaturel($a)],
                     ['id' => 'p2_planifs', 'text' => "Copie des planifications présente sur le lieu de mise à l'eau", 'when' => ['trimix' => true]],
                     ['id' => 'p2_tx_embarcation', 'text' => 'Support logistique ou embarcation avec une personne habilitée à la manœuvrer', 'when' => ['trimix' => true]],
                     ['id' => 'p2_bord_entree', 'text' => "Points d'entrée/sortie de l'eau identifiés et sécurisés", 'when' => ['depart_bord' => true]],

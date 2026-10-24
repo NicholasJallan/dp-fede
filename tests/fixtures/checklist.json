@@ -90,6 +90,7 @@
         "p2_parachute",
         "p2_parachute_indiv",
         "p2_rec_aptitudes",
+        "p2_rec_secours_encadrant",
         "p2_bord_entree",
         "p2_go_decision"
       ]
@@ -222,6 +223,66 @@
         "p2_briefing",
         "p2_rappels_secu",
         "p2_palanquees",
+        "p2_go_decision"
+      ]
+    },
+    {
+      "name": "Recycleur en milieu naturel",
+      "answers": {
+        "milieu": "Lac",
+        "recycleur": true
+      },
+      "visible": [
+        "p1_meteo",
+        "p1_blocs",
+        "p1_gonflage",
+        "p1_rec_check",
+        "p1_plan_secours",
+        "p1_o2_secours",
+        "p1_bavu",
+        "p1_trousse",
+        "p1_fiches_evac",
+        "p1_bloc_secours",
+        "p1_tablette",
+        "p1_tables",
+        "p1_doc_plongeurs",
+        "p1_secours_coord",
+        "p2_appel",
+        "p2_briefing",
+        "p2_rappels_secu",
+        "p2_palanquees",
+        "p2_equipement",
+        "p2_parachute",
+        "p2_rec_aptitudes",
+        "p2_rec_secours_encadrant",
+        "p2_go_decision"
+      ]
+    },
+    {
+      "name": "Recycleur en piscine ≤ 6 m",
+      "answers": {
+        "milieu": "Piscine",
+        "site_prof_max": 4,
+        "recycleur": true
+      },
+      "visible": [
+        "p1_blocs",
+        "p1_gonflage",
+        "p1_rec_check",
+        "p1_plan_secours",
+        "p1_o2_secours",
+        "p1_bavu",
+        "p1_trousse",
+        "p1_fiches_evac",
+        "p1_bloc_secours",
+        "p1_tablette",
+        "p1_doc_plongeurs",
+        "p1_secours_coord",
+        "p2_appel",
+        "p2_briefing",
+        "p2_rappels_secu",
+        "p2_palanquees",
+        "p2_rec_aptitudes",
         "p2_go_decision"
       ]
     }

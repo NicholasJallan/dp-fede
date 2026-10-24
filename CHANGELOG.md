@@ -10,6 +10,8 @@ Dates en ISO 8601.
 - Numéro d'urgence (bouton URGENCE, fiche, PDF) : il suit le pays du site, y compris après un changement de site (18 en France, 144 en Suisse, sinon numéro du club ou 112) ; il était figé à l'ouverture d'une nouvelle plongée, avant le choix du site (« 18 » sur un lac suisse). Modifiable dans la section Sécurité surface (`urgence_num`, `urgence_manuel`), retour au numéro du pays en un clic.
 - PDF de la fiche : numéros secondaires et canal VHF selon le pays et le milieu (`backend/lib/Emergency.php`, portage de `src/domain/emergency.js`, cas communs `tests/fixtures/emergency.json`) ; il affichait toujours le CROSS, même en lac.
 - Club sans numéro réglé : repli `112` (était `18`).
+- Check-list : encadrant sur recycleur en milieu naturel → système de secours indépendant du recycleur (A322-94), JS et PDF.
+- Neuf règles sans aucun test couvertes par des cas partagés JS / PHP (`TX_PUBLIC`, `TX_ENCADRANT`, `EXTRA_NX`, `EXTRA_NOT_GP`, `GAS_NONE`, `BASSIN_BAPTEME`, `BASSIN_EFFECTIF`, `AUTO_ENCADREMENT`, `MEDICAL_MISSING`).
 
 ### Palanquées : gaz de déco, DTR, date de naissance (22/10/2026)
 

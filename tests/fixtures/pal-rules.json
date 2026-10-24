@@ -126,6 +126,17 @@
       "trimix": ["PTH-40", "PTH-70", "PTH-120"],
       "medical": "2026-01-01",
       "date_naissance": "1990-01-01"
+    },
+    "e3_pth120": {
+      "niveau_encadrant": "E3",
+      "nitrox": ["PN", "PN-C"],
+      "trimix": ["PTH-40", "PTH-70", "PTH-120"],
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "n1_no_med": {
+      "niveau_plongeur": "N1",
+      "date_naissance": "1990-01-01"
     }
   },
   "dps": {
@@ -1776,6 +1787,142 @@
         "profMax": 20
       },
       "errors": ["APT_MISSING"]
+    },
+    {
+      "name": "Trimix interdit aux baptêmes et débutants",
+      "ref": "III-18 a",
+      "dp": "e4_pth120",
+      "pal": {
+        "membres": [["e4_pth120", "E4"], { "bapteme": true }],
+        "profMax": 40,
+        "melanges": ["Tx"]
+      },
+      "errors": ["TX_PUBLIC"]
+    },
+    {
+      "name": "Trimix enseignement 0-70 m : E4 requis",
+      "ref": "III-18 a",
+      "dp": "e4_pth120",
+      "pal": {
+        "mode": "enseignement",
+        "membres": [
+          ["e3_pth120", "E3"],
+          ["n3_pth120", "PE60"]
+        ],
+        "profMax": 70,
+        "melanges": ["Tx"]
+      },
+      "errors": ["TX_ENCADRANT"]
+    },
+    {
+      "name": "Plongeur supplémentaire au nitrox sans PN-C",
+      "ref": "III-17 b/c",
+      "dp": "e3_pnc",
+      "pal": {
+        "mode": "exploration",
+        "membres": [
+          ["n4_pnc", "GP"],
+          ["n4", "GP"],
+          ["n1_pn", "PE20"],
+          ["n1_pn#2", "PE20"],
+          ["n1_pn#3", "PE20"],
+          ["n1_pn#4", "PE20"]
+        ],
+        "profMax": 20,
+        "melanges": ["Nx ≤ 40%"],
+        "o2": 32
+      },
+      "errors": ["EXTRA_NX"]
+    },
+    {
+      "name": "Plongeur supplémentaire ni GP ni P4",
+      "ref": "III-16 a",
+      "dp": "e3",
+      "pal": {
+        "mode": "enseignement",
+        "membres": [
+          ["e3", "E3"],
+          ["e1", "E1"],
+          ["n1", "PE20"],
+          ["n1#2", "PE20"],
+          ["n1#3", "PE20"],
+          ["n1#4", "PE20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["EXTRA_NOT_GP"]
+    },
+    {
+      "name": "Aucun mélange sélectionné (avertissement)",
+      "dp": "e3",
+      "pal": {
+        "membres": [
+          ["n3", "PA60"],
+          ["n3#2", "PA60"]
+        ],
+        "profMax": 20,
+        "melanges": []
+      },
+      "errors": [],
+      "warnings": ["GAS_NONE"]
+    },
+    {
+      "name": "Baptême en piscine sans encadrant qualifié",
+      "ref": "A322-98",
+      "dp": "e1",
+      "answers": { "milieu": "Piscine" },
+      "pal": {
+        "membres": [{ "bapteme": true }, ["n3", "PA60"]],
+        "profMax": 6
+      },
+      "errors": ["BASSIN_BAPTEME"]
+    },
+    {
+      "name": "Effectif excessif en piscine (avertissement)",
+      "ref": "A322-98",
+      "dp": "e1",
+      "answers": { "milieu": "Piscine" },
+      "pal": {
+        "mode": "enseignement",
+        "membres": [
+          ["e1", "E1"],
+          ["n1", "PE20"],
+          ["n1#2", "PE20"],
+          ["n1#3", "PE20"],
+          ["n1#4", "PE20"],
+          ["n1#5", "PE20"]
+        ],
+        "profMax": 6
+      },
+      "errors": [],
+      "warnings": ["BASSIN_EFFECTIF"]
+    },
+    {
+      "name": "Palanquée sans encadrant avec un débutant",
+      "ref": "III-16 b",
+      "dp": "e3",
+      "pal": {
+        "membres": [
+          ["n3", "PA60"],
+          ["deb", "PE12"]
+        ],
+        "profMax": 12
+      },
+      "errors": ["AUTO_ENCADREMENT"]
+    },
+    {
+      "name": "Plongeur sans date de certificat médical (avertissement)",
+      "dp": "e3",
+      "pal": {
+        "mode": "enseignement",
+        "membres": [
+          ["e3", "E3"],
+          ["n1_no_med", "PE20"]
+        ],
+        "profMax": 20
+      },
+      "errors": [],
+      "warnings": ["MEDICAL_MISSING"]
     }
   ]
 }

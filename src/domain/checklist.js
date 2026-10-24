@@ -239,6 +239,14 @@ export const CHECKLIST_RULES = [
         when: { recycleur: true },
       },
       {
+        // A322-94 : en milieu naturel, l'encadrant sur recycleur a un secours indépendant.
+        id: 'p2_rec_secours_encadrant',
+        text: 'Encadrant sur recycleur : système respiratoire de secours indépendant du recycleur',
+        ref: 'CdS A322-94',
+        tags: ['recycleur'],
+        when: (a) => a.recycleur === true && reglesMilieuNaturel(a),
+      },
+      {
         id: 'p2_planifs',
         text: "Copie des planifications présente sur le lieu de mise à l'eau",
         ref: 'CdS A322-97',

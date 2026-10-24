@@ -10,13 +10,13 @@ Règles réglementaires appliquées par l'outil, telles qu'elles sont codées.
 
 ## Où vivent les règles
 
-| Élément                                                                    | Fichier                         |
-| -------------------------------------------------------------------------- | ------------------------------- |
-| Tableaux des annexes (données pures)                                       | `src/domain/cds-tables.js`      |
-| Moteur de validation (`validatePal`)                                       | `src/domain/pal-rules.js`       |
-| Aptitudes d'un plongeur, profondeurs, type de palanquée                    | `src/domain/aptitudes.js`       |
-| Portage serveur (comportement identique)                                   | `backend/lib/Rules.php`         |
-| **Cas réglementaires partagés JS + PHP** (95 cas, chacun avec son article) | `tests/fixtures/pal-rules.json` |
+| Élément                                                                     | Fichier                         |
+| --------------------------------------------------------------------------- | ------------------------------- |
+| Tableaux des annexes (données pures)                                        | `src/domain/cds-tables.js`      |
+| Moteur de validation (`validatePal`)                                        | `src/domain/pal-rules.js`       |
+| Aptitudes d'un plongeur, profondeurs, type de palanquée                     | `src/domain/aptitudes.js`       |
+| Portage serveur (comportement identique)                                    | `backend/lib/Rules.php`         |
+| **Cas réglementaires partagés JS + PHP** (124 cas, chacun avec son article) | `tests/fixtures/pal-rules.json` |
 
 Toute modification de règle :
 
@@ -301,7 +301,7 @@ Items conditionnels de `CHECKLIST_RULES` (`src/domain/checklist.js`).
   masquées en bassin.
 - Moyen de rappel depuis l'embarcation.
 - Trimix (A322-97) : ligne lestée, copie des planifications, embarcation avec pilote.
-- Recycleurs (A322-94).
+- Recycleurs (A322-94) : aptitudes et circuit ouvert de secours au-delà de 6 m ; en milieu naturel (`reglesMilieuNaturel`), système de secours de l'encadrant indépendant du recycleur. Les qualifications recycleur ne sont pas validées par le moteur de palanquées (décision du 25/10/2026 : check-list seule).
 
 ---
 

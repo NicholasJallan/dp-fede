@@ -34,13 +34,20 @@ const PRECACHE_URLS = [
   '/android-chrome-512x512.png?v=2',
   '/maskable-512x512.png?v=2',
   '/logo-ffessm.png',
+  '/fonts/atkinson-italic-400-latin-ext.woff2',
+  '/fonts/atkinson-italic-400-latin.woff2',
+  '/fonts/atkinson-normal-400-latin-ext.woff2',
+  '/fonts/atkinson-normal-400-latin.woff2',
+  '/fonts/atkinson-normal-700-latin-ext.woff2',
+  '/fonts/atkinson-normal-700-latin.woff2',
+  '/fonts/jetbrains-mono-var-latin-ext.woff2',
+  '/fonts/jetbrains-mono-var-latin.woff2',
   '/site.webmanifest',
 ];
 
 // Origines CDN qu'on accepte de cacher en runtime (réponses opaques OK).
 const CDN_ORIGINS = [
-  'https://fonts.googleapis.com',
-  'https://fonts.gstatic.com',
+  // Google Fonts retiré : polices auto-hébergées (public/fonts/, précachées)
   // https://unpkg.com retiré : React/ReactDOM/Babel sont maintenant bundlés dans app.js
   // https://cdnjs.cloudflare.com retiré : jsPDF/html2canvas supprimés (PDF côté serveur via mPDF)
 ];

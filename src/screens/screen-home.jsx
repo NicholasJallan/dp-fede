@@ -1,7 +1,7 @@
 // DP Assistant — Accueil : plongée en cours, alertes de l'annuaire,
 // plongées préparées et archivées du club courant.
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '../auth/auth-context.jsx';
 import { useOnline } from '../offline/use-online.jsx';
 import { useToasts } from '../components/toast.jsx';
@@ -235,15 +235,22 @@ function usePendingDrive(user, showToast, reload) {
   return { pendingDrive, finalizing, message, refreshPending, finalizeAll };
 }
 
+// Un rafraîchissement raté (dp:syncDone, réseau) garde la liste affichée ;
+// seule la réponse du dernier appel est retenue (appels concurrents).
 function useDives() {
   const [dives, setDives] = useState(null);
   const [loadError, setLoadError] = useState('');
+  const lastCall = useRef(0);
   const loadDives = useCallback(async () => {
+    const call = ++lastCall.current;
     try {
-      setDives(await api.dives.list());
+      const rows = await api.dives.list();
+      if (call !== lastCall.current) return;
+      setDives(rows);
       setLoadError('');
     } catch (err) {
-      setDives([]);
+      if (call !== lastCall.current) return;
+      setDives((prev) => prev ?? []);
       setLoadError(err.message);
     }
   }, []);

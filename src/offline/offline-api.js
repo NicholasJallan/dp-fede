@@ -18,6 +18,7 @@ import { randomUUID } from './uuid.js';
 import { getCsrfToken } from '../api/google-drive.js';
 import { notifyIfAuthExpired } from '../api/auth-events.js';
 import { clubHeaders, getCurrentClubId } from '../api/club-header.js';
+import { REQUEST_TIMEOUT_MS, timeoutSignal } from '../api/fetch-timeout.js';
 
 function emitDataChanged(store) {
   window.dispatchEvent(new CustomEvent('dp:dataChanged', { detail: { store } }));
@@ -303,6 +304,44 @@ function decorateDiveWrites(dives, ctx) {
     return merged;
   };
 
+  // cancelArchive(client_uuid) — archivage refusé (« à revoir ») : le DP
+  // revient à la plongée pour la corriger. Le statut 'archived' sort de la
+  // file, sinon la première auto-sauvegarde (coalesce) le renverrait et
+  // archiverait sans nouvelle confirmation. false : rien à annuler, ou envoi
+  // en cours (l'issue appartient au serveur).
+  dives.cancelArchive = async (client_uuid) => {
+    const isArchiving = (it) =>
+      it.payload?.client_uuid === client_uuid &&
+      ((it.kind === 'dive.update' && it.payload.patch?.status === 'archived') ||
+        (it.kind === 'dive.create' && it.payload.status === 'archived'));
+    const items = (await outbox.pending()).filter(isArchiving);
+    if (items.length === 0 || items.some((it) => it.status === 'inflight')) return false;
+
+    for (const it of items) {
+      if (it.kind === 'dive.create') {
+        const { closed_at: _closed, ...payload } = it.payload;
+        await outbox.update(it.id, {
+          payload: { ...payload, status: 'in_progress' },
+          status: 'pending',
+          nextRetryAt: Date.now(),
+        });
+        continue;
+      }
+      const { status: _status, closed_at: _closed, ...patch } = it.payload.patch;
+      if (Object.keys(patch).length === 0) await outbox.markDone(it.id);
+      else
+        await outbox.update(it.id, { payload: { ...it.payload, patch }, status: 'pending', nextRetryAt: Date.now() });
+    }
+    const cur = await store.get('dives', client_uuid);
+    if (cur) {
+      const { closed_at: _closed, ...rest } = cur;
+      await store.put('dives', client_uuid, { ...rest, status: 'in_progress' });
+    }
+    window.dispatchEvent(new CustomEvent('dp:outboxChanged', { detail: { kind: 'dive.update', op: 'cancelArchive' } }));
+    emitDataChanged('dives');
+    return true;
+  };
+
   // delete(client_uuid) — optimistic soft-delete
   dives.delete = async (client_uuid) => {
     const cur = await store.get('dives', client_uuid);
@@ -328,6 +367,7 @@ function decorateDiveWrites(dives, ctx) {
         ...clubHeaders(getCurrentClubId()),
       },
       body: JSON.stringify({ drive_link }),
+      signal: timeoutSignal(REQUEST_TIMEOUT_MS),
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok || !json.ok) {

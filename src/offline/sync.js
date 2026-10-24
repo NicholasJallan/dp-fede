@@ -33,6 +33,7 @@ import { getCsrfToken } from '../api/google-drive.js';
 import { notifyIfAuthExpired } from '../api/auth-events.js';
 import { clubHeaders } from '../api/club-header.js';
 import { bindLocalDataToClub, isInLocalScope } from './club-scope.js';
+import { REQUEST_TIMEOUT_MS, timeoutSignal } from '../api/fetch-timeout.js';
 
 // 400/404/409/422 : refus métier (un 409 d'idempotence est traité à part,
 // cf. isIdempotentConflict) ; 403 hors CSRF/origine : rôle insuffisant ou
@@ -75,7 +76,7 @@ export function isPermanentRefusal(err) {
 // fiches créés par les autres membres du club.
 export const PULL_INTERVAL_MS = 60_000;
 
-export function createSync({ store, outbox, getNetStatus }) {
+export function createSync({ store, outbox, getNetStatus, timeoutMs = REQUEST_TIMEOUT_MS }) {
   // ── État interne ────────────────────────────────────────────────────────
   let _cycleInFlight = null;
   let _cycleQueued = false;
@@ -107,6 +108,7 @@ export function createSync({ store, outbox, getNetStatus }) {
       headers,
       credentials: 'include',
       body: body != null ? JSON.stringify(body) : undefined,
+      signal: timeoutSignal(timeoutMs),
     });
     const json = await res.json().catch(() => ({ ok: false, error: 'invalid json' }));
     if (!res.ok || !json.ok) {

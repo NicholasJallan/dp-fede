@@ -1,7 +1,7 @@
 // DP Assistant — Historique des plongées archivées (lecture seule), avec
 // les PDF archivés par le club (fiche, check-list) et leur état.
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert } from '../components/components.jsx';
 import { Icon, StatusIcon } from '../components/icons.jsx';
 import { formatDateTime } from '../components/format.js';
@@ -160,13 +160,21 @@ function ScreenArchives() {
   const [loadingId, setLoadingId] = useState(null);
   const [error, setError] = useState('');
 
+  // Échec : la liste affichée est gardée ; seule la dernière réponse compte.
+  const lastCall = useRef(0);
   const refresh = useCallback(() => {
+    const call = ++lastCall.current;
     api.dives
       .listArchived()
-      .then((rows) => setArchives(rows))
+      .then((rows) => {
+        if (call !== lastCall.current) return;
+        setArchives(rows);
+        setError('');
+      })
       .catch((err) => {
+        if (call !== lastCall.current) return;
         setError(err.message);
-        setArchives([]);
+        setArchives((prev) => prev ?? []);
       });
   }, []);
 

@@ -9,9 +9,12 @@
 //   - ScreenArchive.proceedWithToken (premier archivage)
 //   - finalizePendingDrive (reprise après reconnexion)
 
+import { timeoutSignal } from './fetch-timeout.js';
+
 const DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
 const UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink';
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
+const UPLOAD_TIMEOUT_MS = 60_000;
 
 // Récupère l'ID du dossier `name` (créé par cette app, scope drive.file)
 // ou le crée. Retourne l'ID Drive.
@@ -37,6 +40,28 @@ export async function driveGetOrCreateFolder(token, name) {
   return folder.id;
 }
 
+// Drive : apostrophe et antislash d'une valeur de requête `q` échappés.
+const driveQueryValue = (s) => String(s).replace(/[\\']/g, (c) => `\\${c}`);
+
+// Upload idempotent : un nouvel essai (fiche envoyée, check-list en échec)
+// ne recrée pas de doublon. Recherche en échec → upload quand même : mieux
+// un doublon qu'une fiche absente.
+export async function driveUploadFileOnce(token, blob, filename, folderId) {
+  const q = `name='${driveQueryValue(filename)}' and '${driveQueryValue(folderId)}' in parents and trashed=false`;
+  const res = await fetch(
+    `${DRIVE_API}?q=${encodeURIComponent(q)}&fields=${encodeURIComponent('files(id,webViewLink)')}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+  if (res.ok) {
+    const data = await res.json();
+    const found = data?.files?.[0];
+    if (found?.id) return { id: found.id, webViewLink: found.webViewLink };
+  }
+  return driveUploadFile(token, blob, filename, folderId);
+}
+
 // Upload un blob dans le dossier `folderId` avec le nom `filename`.
 // Retourne { id, webViewLink } pour pouvoir afficher un lien clickable.
 export async function driveUploadFile(token, blob, filename, folderId) {
@@ -50,6 +75,7 @@ export async function driveUploadFile(token, blob, filename, folderId) {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: form,
+    signal: timeoutSignal(UPLOAD_TIMEOUT_MS),
   });
   const data = await res.json();
   if (!res.ok || !data.id) {

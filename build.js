@@ -93,6 +93,8 @@ const cssOptions = {
   ...shared,
   entryPoints: [path.join(ROOT, 'src/styles/styles.css')],
   outfile: path.join(DIST, 'styles.css'),
+  // Polices servies telles quelles depuis public/fonts/ (src/styles/fonts.css).
+  external: ['/fonts/*'],
 };
 
 async function watch() {

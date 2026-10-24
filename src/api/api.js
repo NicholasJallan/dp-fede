@@ -15,6 +15,10 @@ import { getCsrfToken } from './google-drive.js';
 import { notifyIfAuthExpired } from './auth-events.js';
 import { filenameFromDisposition } from './download.js';
 import { clubHeaders, getCurrentClubId } from './club-header.js';
+import { REQUEST_TIMEOUT_MS, timeoutSignal } from './fetch-timeout.js';
+
+// Génération PDF (mPDF sur le Pi) et import CSV : plus longs qu'une requête JSON.
+const SLOW_REQUEST_TIMEOUT_MS = 90_000;
 
 const API_BASE = '/api';
 const WRITE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
@@ -77,6 +81,7 @@ async function apiFetch(path, options = {}) {
     headers,
     credentials: 'include',
     cache: 'no-store',
+    signal: timeoutSignal(form ? SLOW_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS, rest.signal),
     body: form || (body != null ? JSON.stringify(body) : undefined),
   });
 
@@ -92,7 +97,12 @@ async function apiFetch(path, options = {}) {
 // Fichier binaire (PDF archivé, CSV) : { blob, filename }.
 async function apiBlob(path, fallbackName) {
   const scope = clubScope(path);
-  const res = await fetch(API_BASE + path, { credentials: 'include', cache: 'no-store', headers: scope.headers });
+  const res = await fetch(API_BASE + path, {
+    credentials: 'include',
+    cache: 'no-store',
+    headers: scope.headers,
+    signal: timeoutSignal(SLOW_REQUEST_TIMEOUT_MS),
+  });
   if (!res.ok) {
     const { message, code } = await errorBody(res);
     throw failure(res, path, scope.clubId, message, code);
@@ -136,6 +146,7 @@ async function fetchPdfBlob(diveId, type = 'fiche') {
       ...scope.headers,
     },
     body: JSON.stringify({ dive_id: diveId, type }),
+    signal: timeoutSignal(SLOW_REQUEST_TIMEOUT_MS),
   });
   if (!res.ok) {
     const { message, code } = await errorBody(res);

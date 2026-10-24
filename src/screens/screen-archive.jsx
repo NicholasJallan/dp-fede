@@ -18,7 +18,7 @@ import { Icon, StatusIcon } from '../components/icons.jsx';
 import { formatDateTime } from '../components/format.js';
 import { api } from '../api/api.js';
 import { getDriveToken, isGisAvailable } from '../api/google-drive.js';
-import { driveGetOrCreateFolder, driveUploadFile } from '../api/drive-upload.js';
+import { driveGetOrCreateFolder, driveUploadFileOnce } from '../api/drive-upload.js';
 import { useDriveExport } from '../api/drive-preference.js';
 import { useArchiveConfirmation } from './archive/use-archive-confirmation.js';
 import { DiveDocuments } from './archives/dive-documents.jsx';
@@ -61,7 +61,7 @@ function archivePayload(props) {
   };
 }
 
-function ConfirmationNotice({ conf, onRearchive, onStartNew }) {
+function ConfirmationNotice({ conf, onRearchive, onStartNew, onBackToDive }) {
   const newDive = (
     <button type="button" className="btn primary" onClick={onStartNew}>
       <Icon.Plus />
@@ -90,6 +90,11 @@ function ConfirmationNotice({ conf, onRearchive, onStartNew }) {
                 <Icon.Refresh />
                 Réessayer
               </button>
+              {onBackToDive && (
+                <button type="button" className="btn" onClick={onBackToDive}>
+                  Revenir à la plongée pour corriger
+                </button>
+              )}
               {newDive}
             </>
           }
@@ -97,7 +102,7 @@ function ConfirmationNotice({ conf, onRearchive, onStartNew }) {
           <p>
             <b>Motif :</b> {conf.error}
           </p>
-          <p>La plongée reste sur cet appareil. Corrigez si besoin puis réessayez.</p>
+          <p>La plongée reste sur cet appareil. Revenez à la plongée pour la corriger, puis archivez-la de nouveau.</p>
         </Notice>
       );
     case 'rejected':
@@ -273,7 +278,7 @@ function DriveCopyCard({ copy, enabled, setEnabled, confirmed, online }) {
 }
 
 function ScreenArchive(props) {
-  const { answers, palanquees, onStartNew, diveId } = props;
+  const { answers, palanquees, onStartNew, onBackToDive, diveId } = props;
   const online = useOnline();
   const flow = useArchiveFlow(props);
   const already = useAlreadyArchived(diveId);
@@ -333,7 +338,14 @@ function ScreenArchive(props) {
               <p>{flow.error}</p>
             </Notice>
           )}
-          {recorded && <ConfirmationNotice conf={conf} onRearchive={flow.archive} onStartNew={onStartNew} />}
+          {recorded && (
+            <ConfirmationNotice
+              conf={conf}
+              onRearchive={flow.archive}
+              onStartNew={onStartNew}
+              onBackToDive={onBackToDive}
+            />
+          )}
         </div>
       </section>
 
@@ -407,13 +419,13 @@ async function finalizePendingDrive(archive, divers, user, onProgress) {
   const token = await getDriveToken({ explicit: false, timeoutMs: 15000 });
   onProgress?.('envoi');
   const folderId = await driveGetOrCreateFolder(token, 'dp-fede');
-  const ficheFile = await driveUploadFile(
+  const ficheFile = await driveUploadFileOnce(
     token,
     fichePdf,
     buildFilename(answers, 'fiche-securite', archive.site_nom),
     folderId,
   );
-  await driveUploadFile(token, checklistPdf, buildFilename(answers, 'checklist', archive.site_nom), folderId);
+  await driveUploadFileOnce(token, checklistPdf, buildFilename(answers, 'checklist', archive.site_nom), folderId);
   onProgress?.('enregistrement');
   await api.dives.markDriveDone(archive.client_uuid, ficheFile.webViewLink || '');
   return ficheFile.webViewLink || '';

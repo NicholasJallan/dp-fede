@@ -17,9 +17,20 @@ import { ScreenStats } from '../../screens/stats/screen-stats.jsx';
 import { ScreenImport } from '../../screens/import/screen-import.jsx';
 import { isSuperAdmin } from '../../auth/super-admin.js';
 import { ADMIN_SCREENS } from '../constants.js';
+import { api } from '../../api/api.js';
 
 // divers : annuaire vu dans le cadre de la structure (useDiveDivers).
-function DiveStepScreen({ screen, session, directory, diveDivers: divers, derived, diveMode, actions, user }) {
+function DiveStepScreen({
+  screen,
+  session,
+  directory,
+  diveDivers: divers,
+  derived,
+  diveMode,
+  actions,
+  user,
+  onNavigate,
+}) {
   const s = session;
   const { setDivers, sites, setSites } = directory;
   switch (screen) {
@@ -96,6 +107,15 @@ function DiveStepScreen({ screen, session, directory, diveDivers: divers, derive
           plongeeFigee={s.plongeeFigee}
           onStartNew={() => actions.startPreparation()}
           onArchiveDone={() => s.setArchiveDone(true)}
+          onBackToDive={async () => {
+            // Archivage refusé : retirer le statut de la file avant de
+            // déverrouiller (sinon la 1re auto-sauvegarde archiverait).
+            if (!(await api.dives.cancelArchive(s.currentDiveId))) return false;
+            s.setArchiveDone(false);
+            s.setPlongeeFigee(false);
+            onNavigate('fiche');
+            return true;
+          }}
           diveId={s.currentDiveId}
         />
       );

@@ -18,8 +18,7 @@ const CARDS = [
   },
   {
     badge: 'GP',
-    // Le GP encadre une palanquée PE guidée : même teinte.
-    kind: 'pe',
+    kind: 'gp',
     title: 'Guide de palanquée',
     text: "Un encadrant qui guide une palanquée en exploration est renseigné avec l'aptitude GP, et non avec ses aptitudes d'enseignement.",
   },

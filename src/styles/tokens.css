@@ -58,6 +58,8 @@
   --c-pe-tint: #eceefb;
   --c-form: #7a3fae; /* violet — formation et baptême */
   --c-form-tint: #f3ebfa;
+  --c-gp: #a2266e; /* framboise — GP, guide de palanquée (rappel d'accueil) */
+  --c-gp-tint: #fbe9f3;
 
   /* ── Typographie ───────────────────────────────────────────────── */
   --font-text: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -151,6 +153,8 @@
     --c-pe-tint: #121a40;
     --c-form: #cfa4f5;
     --c-form-tint: #211235;
+    --c-gp: #f28cc6;
+    --c-gp-tint: #2e0f22;
     --shadow-float: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px #24425b;
     --shadow-bar: 0 -4px 16px rgba(0, 0, 0, 0.5);
   }
@@ -194,6 +198,8 @@
   --c-pe-tint: #121a40;
   --c-form: #cfa4f5;
   --c-form-tint: #211235;
+  --c-gp: #f28cc6;
+  --c-gp-tint: #2e0f22;
   --shadow-float: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px #24425b;
   --shadow-bar: 0 -4px 16px rgba(0, 0, 0, 0.5);
 }
@@ -210,7 +216,7 @@
 }
 
 /* Type de palanquée → teinte (cartes Palanquées, cadrans d'exécution, rappel
-   d'accueil). Classes kind-<getPalType()> ou familles kind-pa / -pe / -form. */
+   d'accueil). Classes kind-<getPalType()> ou familles kind-pa / -pe / -form / -gp. */
 .kind-exploration,
 .kind-pa {
   --kind-edge: var(--c-pa);
@@ -226,4 +232,8 @@
 .kind-form {
   --kind-edge: var(--c-form);
   --kind-tint: var(--c-form-tint);
+}
+.kind-gp {
+  --kind-edge: var(--c-gp);
+  --kind-tint: var(--c-gp-tint);
 }

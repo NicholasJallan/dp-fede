@@ -100,10 +100,6 @@ class Validate {
         return is_array($v) ? $v : [];
     }
 
-    public function jsonArr(string $key): string {
-        return json_encode($this->arr($key), JSON_UNESCAPED_UNICODE);
-    }
-
     /**
      * Encode en JSON un objet/tableau reçu du client, en refusant les autres
      * types et les charges trop volumineuses (fonction pure, testée).

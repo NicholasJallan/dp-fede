@@ -191,7 +191,7 @@ CSS;
     }
 
     /**
-     * Génère le HTML complet pour wkhtmltopdf.
+     * Génère le HTML complet rendu par mPDF.
      * @param string $title   Titre du document
      * @param string $body    Contenu HTML du template
      */

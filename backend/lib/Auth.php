@@ -240,13 +240,6 @@ class Auth {
         return $user;
     }
 
-    // Require admin role or abort 403
-    public static function requireAdmin(): array {
-        $user = self::requireUser();
-        if ($user['role'] !== 'admin') Json::abort(403, 'Accès réservé aux administrateurs');
-        return $user;
-    }
-
     // Email du super-administrateur unique du système.
     // Le super-admin a accès aux endpoints de gestion d'utilisateurs (liste,
     // changement de rôle, suppression). Aucun autre compte n'y a accès, même

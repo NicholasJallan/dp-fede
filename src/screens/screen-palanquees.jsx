@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Alert } from '../components/components.jsx';
-import { DiverQuickAdd } from '../components/diver-form.jsx';
+import { DiverQuickAdd } from '../components/diver-quick-add.jsx';
 import { Icon } from '../components/icons.jsx';
 import {
   aptitudeMaxDepth,

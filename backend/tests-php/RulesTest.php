@@ -147,7 +147,7 @@ class RulesTest extends TestCase
             ['E1', 'formation',   6],
             ['E1', 'exploration', 6],
             ['E2', 'formation',   6],
-            ['E3', 'formation',   60],
+            ['E3', 'formation',   40],
             ['E3', 'exploration', 60],
             ['E4', 'formation',   60],
             ['N5', 'formation',   0],
@@ -166,7 +166,7 @@ class RulesTest extends TestCase
     {
         $e3pth = ['niveau_encadrant' => 'E3', 'trimix' => ['PTH-120']];
         $this->assertSame(70, Rules::getDpMaxDepth('exploration', $e3pth));
-        $this->assertSame(60, Rules::getDpMaxDepth('formation',   $e3pth)); // trimix 40 < air 60
+        $this->assertSame(40, Rules::getDpMaxDepth('formation',   $e3pth)); // enseignement : 40 m
 
         $e4pth = ['niveau_encadrant' => 'E4', 'trimix' => ['PTH-120']];
         $this->assertSame(120, Rules::getDpMaxDepth('exploration', $e4pth));

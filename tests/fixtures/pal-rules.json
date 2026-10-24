@@ -543,7 +543,7 @@
     {
       "name": "Enseignement 0-60 m par un E3 → E4 requis",
       "ref": "III-16 a",
-      "dp": "e3",
+      "dp": "e4",
       "pal": {
         "membres": [
           ["e3", "E3"],
@@ -556,7 +556,7 @@
     {
       "name": "E4 forme des N2 vers PE-60 à 60 m",
       "ref": "III-16 a",
-      "dp": "e3",
+      "dp": "e4",
       "pal": {
         "membres": [
           ["e4", "E4"],
@@ -564,6 +564,33 @@
           ["n2#2", "PE60"]
         ],
         "profMax": 60
+      },
+      "errors": []
+    },
+    {
+      "name": "DP E3 : enseignement limité à 40 m",
+      "ref": "III-15 a",
+      "dp": "e3",
+      "pal": {
+        "membres": [
+          ["e4", "E4"],
+          ["n2", "PE60"],
+          ["n2#2", "PE60"]
+        ],
+        "profMax": 50
+      },
+      "errors": ["DP_DEPTH"]
+    },
+    {
+      "name": "DP E3 : enseignement à 40 m",
+      "ref": "III-15 a",
+      "dp": "e3",
+      "pal": {
+        "membres": [
+          ["e3", "E3"],
+          ["n1", "PE40"]
+        ],
+        "profMax": 40
       },
       "errors": []
     },

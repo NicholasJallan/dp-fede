@@ -18,8 +18,8 @@ describe("getDpMaxDepth — limites de base à l'air", () => {
     ['E1', 'exploration', 6],
     ['E2', 'formation', 6],
     ['E2', 'exploration', 6],
-    // E3 (MF1) : air/nitrox en enseignement ou en exploration (III-15 a)
-    ['E3', 'formation', 60],
+    // E3 (MF1) : air/nitrox exploration 60 m, enseignement 40 m
+    ['E3', 'formation', 40],
     ['E3', 'exploration', 60],
     ['E4', 'formation', 60],
     ['E4', 'exploration', 60],
@@ -40,9 +40,9 @@ describe('getDpMaxDepth — extensions PTH-120', () => {
     assert.equal(getDpMaxDepth('exploration', dp), 70);
   });
 
-  test('E3 + PTH-120 en formation → 60 m (air ; trimix limité à 40 m)', () => {
+  test('E3 + PTH-120 en formation → 40 m (enseignement air et trimix)', () => {
     const dp = { niveau_encadrant: 'E3', trimix: ['PTH-120'] };
-    assert.equal(getDpMaxDepth('formation', dp), 60);
+    assert.equal(getDpMaxDepth('formation', dp), 40);
   });
 
   test('E4 + PTH-120 en exploration → 120 m', () => {
@@ -74,7 +74,7 @@ describe('getDpMaxDepth — extensions PTH-120', () => {
 describe('getDpMaxDepth — baptême', () => {
   test('baptême est traité comme une formation', () => {
     const dp = { niveau_encadrant: 'E3', trimix: [] };
-    assert.equal(getDpMaxDepth('bapteme', dp), 60);
+    assert.equal(getDpMaxDepth('bapteme', dp), 40);
   });
 
   test('N5 ne peut pas faire un baptême (formation=0)', () => {

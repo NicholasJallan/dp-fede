@@ -36,7 +36,8 @@ export const APTITUDE_MAP = {
  *
  *   N5 (P5/DPE) : exploration uniquement, air/nitrox → 60 m
  *   E1 / E2     : piscine ou fosse ≤ 6 m uniquement → 6 m
- *   E3 (MF1)    : air/nitrox 60 m ; trimix enseignement 40 m, exploration 70 m
+ *   E3 (MF1)    : air/nitrox exploration 60 m, enseignement 40 m ;
+ *                 trimix enseignement 40 m, exploration 70 m
  *   E4 (MF2)    : air/nitrox 60 m ; trimix enseignement 80 m, exploration 120 m
  *
  * @param {'formation'|'bapteme'|'exploration'|'guidee'} palType
@@ -49,7 +50,7 @@ export function getDpMaxDepth(palType, dp) {
   const isTraining = palType === 'formation' || palType === 'bapteme';
   if (isTraining && !q.enseignement) return 0;
   if (!q.naturel) return CDS.LIMITS.BASSIN_DEROGATION_MAX;
-  const air = CDS.LIMITS.AIR_MAX;
+  const air = (isTraining && q.airEnseignement) || CDS.LIMITS.AIR_MAX;
   const hasPth120 = (dp?.trimix || []).includes('PTH-120');
   if (!q.trimix || !hasPth120) return air;
   return Math.max(air, q.trimix[isTraining ? 'enseignement' : 'exploration']);

@@ -95,11 +95,11 @@ class Rules
 
     /** Annexe III-15 a (+ A322-98) — qualification minimale du directeur de plongée. */
     private const DP_QUALIF = [
-        'N5' => ['naturel' => true,  'bassin' => false, 'enseignement' => false, 'trimix' => null],
-        'E1' => ['naturel' => false, 'bassin' => true,  'enseignement' => true,  'trimix' => null],
-        'E2' => ['naturel' => false, 'bassin' => true,  'enseignement' => true,  'trimix' => null],
-        'E3' => ['naturel' => true,  'bassin' => true,  'enseignement' => true,  'trimix' => ['enseignement' => 40, 'exploration' => 70]],
-        'E4' => ['naturel' => true,  'bassin' => true,  'enseignement' => true,  'trimix' => ['enseignement' => 80, 'exploration' => 120]],
+        'N5' => ['naturel' => true,  'bassin' => false, 'enseignement' => false, 'airEnseignement' => null, 'trimix' => null],
+        'E1' => ['naturel' => false, 'bassin' => true,  'enseignement' => true,  'airEnseignement' => null, 'trimix' => null],
+        'E2' => ['naturel' => false, 'bassin' => true,  'enseignement' => true,  'airEnseignement' => null, 'trimix' => null],
+        'E3' => ['naturel' => true,  'bassin' => true,  'enseignement' => true,  'airEnseignement' => 40,   'trimix' => ['enseignement' => 40, 'exploration' => 70]],
+        'E4' => ['naturel' => true,  'bassin' => true,  'enseignement' => true,  'airEnseignement' => null, 'trimix' => ['enseignement' => 80, 'exploration' => 120]],
     ];
 
     // ── Tables data.js ──────────────────────────────────────────────────────
@@ -166,7 +166,7 @@ class Rules
         $isTraining = ($palType === 'formation' || $palType === 'bapteme');
         if ($isTraining && !$q['enseignement']) return 0;
         if (!$q['naturel']) return self::LIMIT_BASSIN_DEROGATION_MAX;
-        $air = self::LIMIT_AIR_MAX;
+        $air = ($isTraining ? $q['airEnseignement'] : null) ?? self::LIMIT_AIR_MAX;
         $hasPth120 = in_array('PTH-120', self::listOf($dp['trimix'] ?? null), true);
         if ($q['trimix'] === null || !$hasPth120) return $air;
         return max($air, $q['trimix'][$isTraining ? 'enseignement' : 'exploration']);
@@ -920,7 +920,11 @@ class Rules
         if ($ctx['gas']['nitrox'] && !self::hasGasQual($ctx['dp'], 'PN-C')) {
             $add('err', 'DP_GAS', 'Plongée au nitrox : le DP doit justifier PN-C.', 'A322-72');
         }
-        if ($ctx['gas']['trimix']) self::checkDpTrimix($ctx, $q, $level, $add);
+        if ($ctx['gas']['trimix']) {
+            self::checkDpTrimix($ctx, $q, $level, $add);
+        } elseif ($ctx['mode'] === 'enseignement' && $q['airEnseignement'] !== null && $ctx['profMax'] > $q['airEnseignement']) {
+            $add('err', 'DP_DEPTH', "DP {$level} : enseignement limité à {$q['airEnseignement']} m (palanquée à " . self::fmt($ctx['profMax']) . ' m).', 'III-15 a');
+        }
     }
 
     private static function checkDpTrimix(array $ctx, array $q, string $level, callable $add): void

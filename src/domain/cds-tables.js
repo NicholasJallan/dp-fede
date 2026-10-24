@@ -92,13 +92,27 @@ const TRIMIX_AUTONOMIE = Object.freeze({
 
 // Annexe III-15 a (+ A322-98) — qualification minimale du directeur de plongée.
 // naturel : peut diriger en milieu naturel ; bassin : piscine/fosse ≤ 6 m ;
+// airEnseignement : profondeur max d'une plongée d'enseignement à l'air ou au
+// nitrox dirigée par ce DP (E3 : 40 m ; null = AIR_MAX) ;
 // trimix : profondeur max par mode (null = trimix interdit).
 const DP_QUALIF = Object.freeze({
-  N5: { naturel: true, bassin: false, enseignement: false, trimix: null },
-  E1: { naturel: false, bassin: true, enseignement: true, trimix: null },
-  E2: { naturel: false, bassin: true, enseignement: true, trimix: null },
-  E3: { naturel: true, bassin: true, enseignement: true, trimix: { enseignement: 40, exploration: 70 } },
-  E4: { naturel: true, bassin: true, enseignement: true, trimix: { enseignement: 80, exploration: 120 } },
+  N5: { naturel: true, bassin: false, enseignement: false, airEnseignement: null, trimix: null },
+  E1: { naturel: false, bassin: true, enseignement: true, airEnseignement: null, trimix: null },
+  E2: { naturel: false, bassin: true, enseignement: true, airEnseignement: null, trimix: null },
+  E3: {
+    naturel: true,
+    bassin: true,
+    enseignement: true,
+    airEnseignement: 40,
+    trimix: { enseignement: 40, exploration: 70 },
+  },
+  E4: {
+    naturel: true,
+    bassin: true,
+    enseignement: true,
+    airEnseignement: null,
+    trimix: { enseignement: 80, exploration: 120 },
+  },
 });
 
 export const CDS = Object.freeze({

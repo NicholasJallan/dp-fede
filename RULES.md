@@ -205,8 +205,18 @@ Codes : `TX_GP`, `TX_ENCADRANT`, `TX_ENCADRANT_QUAL`, `TX_AIR`, `TX_QUAL`, `TX_P
 | ---------------- | -------------- | ------------ | --------------------------- | ---------------------------------------- |
 | N5 (P5 / DPE)    | oui            | non          | **non** (exploration seule) | non                                      |
 | E1, E2           | non            | oui          | oui                         | non                                      |
-| E3 (MF1)         | oui            | oui          | oui                         | enseignement ≤ 40 m, exploration ≤ 70 m  |
+| E3 (MF1)         | oui            | oui          | oui, **≤ 40 m**             | enseignement ≤ 40 m, exploration ≤ 70 m  |
 | E4 (MF2 / BEPPA) | oui            | oui          | oui                         | enseignement ≤ 80 m, exploration ≤ 120 m |
+
+À l'air ou au nitrox, un DP E3 dirige l'exploration jusqu'à 60 m et
+l'enseignement jusqu'à 40 m (`DP_DEPTH`) ; un DP E4 dirige l'enseignement
+jusqu'à 60 m.
+
+Diplômes d'État de III-15 a et III-15 b dans leur rédaction de l'arrêté du
+24 novembre 2025 (en vigueur le 17/01/2026, copie dans `doc/`) : DP E3 =
+BEES 1, DEJEPS « activités de plongée subaquatique » ; DP E4 = BEES 2, DEJEPS
+« plongée subaquatique » (ancien intitulé), CC « plongée profonde et tutorat »,
+DESJEPS. Le BPJEPS figure en GP, E1 et E2 de III-15 b, jamais en III-15 a.
 
 Le DP doit en outre justifier PN-C au nitrox et PTH-120 au trimix (A322-72).
 

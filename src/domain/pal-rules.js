@@ -559,7 +559,16 @@ function checkDp(ctx, add) {
   if (ctx.gas.nitrox && !hasGasQual(ctx.dp, 'PN-C')) {
     add('err', 'DP_GAS', 'Plongée au nitrox : le DP doit justifier PN-C.', 'A322-72');
   }
-  if (ctx.gas.trimix) checkDpTrimix(ctx, q, level, add);
+  if (ctx.gas.trimix) {
+    checkDpTrimix(ctx, q, level, add);
+  } else if (ctx.mode === 'enseignement' && q.airEnseignement && ctx.profMax > q.airEnseignement) {
+    add(
+      'err',
+      'DP_DEPTH',
+      `DP ${level} : enseignement limité à ${q.airEnseignement} m (palanquée à ${ctx.profMax} m).`,
+      'III-15 a',
+    );
+  }
 }
 
 function checkDpTrimix(ctx, q, level, add) {

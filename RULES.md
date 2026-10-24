@@ -213,7 +213,8 @@ Le DP doit en outre justifier PN-C au nitrox et PTH-120 au trimix (A322-72).
 **Niveau retenu selon le cadre** (`src/domain/encadrement.js`). Le niveau
 encadrant de l'annuaire porte les prérogatives fédérales (MF1 = E3, MF2 /
 BEPPA = E4), valables en club associatif. Le diplôme d'État (III-15 b) donne
-son propre niveau : BEES1 / DEJEPS = E3 ; BEES2 / DESJEPS / DEJEPS complété
+son propre niveau : BPJEPS = E2 (enseignement 0–20 m, exploration 0–40 m,
+DP seulement en piscine ou fosse ≤ 6 m : annexe II-1, A322-98) ; BEES1 / DEJEPS = E3 ; BEES2 / DESJEPS / DEJEPS complété
 du certificat complémentaire (délivré à la demande par équivalence avec le
 MF2) ou obtenu avant la réforme = E4.
 
@@ -228,8 +229,9 @@ s'applique au DP comme aux encadrants des palanquées.
 **DP en SCA** : seul le titulaire d'un diplôme d'État peut être DP (L212-1),
 ni un P5 / DPE (N5), ni un enseignant fédéral (E1 → E4) sans diplôme pro ;
 ceux-ci sont grisés dans le choix du DP et la plongée est bloquée
-(`DP_DIPLOME_PRO`). « Autre » compte comme diplôme (BPJEPS…). En club, N5 et
-E1 → E4 dirigent selon le tableau ci-dessus.
+(`DP_DIPLOME_PRO`). « Autre » ne compte pas (prérogatives invérifiables). Un
+BPJEPS (E2) n'est DP qu'en piscine ou fosse ≤ 6 m. En club, N5 et E1 → E4
+dirigent selon le tableau ci-dessus.
 
 Codes : `DP_QUAL_MILIEU`, `DP_MODE`, `DP_GAS`, `DP_DEPTH`, `DP_MISSING`, `DP_DIPLOME_PRO`.
 

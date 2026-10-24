@@ -41,7 +41,7 @@ export function trimixPrereq(form, qual) {
 }
 
 // Diplôme pro : le niveau encadrant (associatif) vaut au moins celui du
-// diplôme (DEJEPS → E3, DEJEPS + CC / DESJEPS → E4) ; DEJEPS / DESJEPS → PN-C.
+// diplôme (BPJEPS → E2, DEJEPS → E3, DEJEPS + CC / DESJEPS → E4) ; DEJEPS / DESJEPS → PN-C.
 function applyDiplomePro(f, val) {
   const pro = diplomeProLevel(val);
   const ne = pro && (CDS.ENS_RANK[pro] || 0) > (CDS.ENS_RANK[f.niveau_encadrant] || 0) ? pro : f.niveau_encadrant;

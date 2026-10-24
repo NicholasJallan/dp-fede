@@ -11,7 +11,7 @@ declare(strict_types=1);
  *
  * Règles (cf. docs/import-plongeurs.md) :
  *   - N1/P1/« Niveau 1 »/« Plongeur N1 »/1 → N1 (idem 2, 3) ; 4/GP → N4 ; 5/DP → N5 ;
- *   - MF1, BEES1, DEJEPS → E3 ; MF2, BEES2, DESJEPS → E4 ;
+ *   - BPJEPS → E2 ; MF1, BEES1, DEJEPS → E3 ; MF2, BEES2, DESJEPS → E4 ;
  *   - Initiateur → E2 si le plongeur est aussi GP (N4/N5), sinon E1 ;
  *   - plusieurs niveaux dans une cellule (« N4 / Initiateur ») : on retient le
  *     plus élevé de chaque catégorie ;
@@ -31,7 +31,7 @@ class LevelMapper
         'DP' => 'N5', 'DIRECTEURDEPLONGEE' => 'N5',
         'MF1' => 'E3', 'MONITEURFEDERAL1' => 'E3', 'MONITEURFEDERAL1ER' => 'E3',
         'MONITEURFEDERAL1ERDEGRE' => 'E3', 'MONITEURFEDERALPREMIERDEGRE' => 'E3',
-        'BEES1' => 'E3', 'DEJEPS' => 'E3',
+        'BPJEPS' => 'E2', 'BEES1' => 'E3', 'DEJEPS' => 'E3',
         'MF2' => 'E4', 'MONITEURFEDERAL2' => 'E4', 'MONITEURFEDERAL2EME' => 'E4',
         'MONITEURFEDERAL2EMEDEGRE' => 'E4', 'MONITEURFEDERALDEUXIEMEDEGRE' => 'E4',
         'BEES2' => 'E4', 'BEES3' => 'E4', 'DESJEPS' => 'E4',

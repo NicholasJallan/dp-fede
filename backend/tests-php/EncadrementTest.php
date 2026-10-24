@@ -28,6 +28,8 @@ final class EncadrementTest extends TestCase
             'BEES2'                        => ['E3', 'BEES2', 'E4', 'E4'],
             'MF2 sans diplôme pro'         => ['E4', null, 'E4', 'E4'],
             'diplôme Autre'                => ['E3', 'Autre', 'E3', 'E3'],
+            'MF1 + BPJEPS'                 => ['E3', 'BPJEPS', 'E3', 'E2'],
+            'GP + BPJEPS'                  => ['N4', 'BPJEPS', 'E2', 'E2'],
             'sans encadrement'             => [null, null, null, null],
         ];
     }
@@ -54,7 +56,8 @@ final class EncadrementTest extends TestCase
             $this->assertFalse(\Encadrement::dpDiplomeProRequis($ne, null, false), "{$ne} associatif");
         }
         $this->assertFalse(\Encadrement::dpDiplomeProRequis('E3', 'DEJEPS', true));
-        $this->assertFalse(\Encadrement::dpDiplomeProRequis('E3', 'Autre', true));
+        $this->assertTrue(\Encadrement::dpDiplomeProRequis('E3', 'Autre', true), '« Autre » ne compte pas');
+        $this->assertFalse(\Encadrement::dpDiplomeProRequis('E3', 'BPJEPS', true), 'BPJEPS : E2');
         $this->assertFalse(\Encadrement::dpDiplomeProRequis('N5', 'DEJEPS', true), 'N5 + DEJEPS');
         $this->assertFalse(\Encadrement::dpDiplomeProRequis('N4', null, true));
 

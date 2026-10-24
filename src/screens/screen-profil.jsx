@@ -479,8 +479,8 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
                   {dpN5 && <span>N5 : exploration uniquement, pas d'aptitude E1 à E4 en palanquée.</span>}
                   {selectedDP.dp_diplome_pro_requis && (
                     <Alert tone="err">
-                      Structure commerciale (SCA) : le DP doit être titulaire d'un diplôme d'État (DEJEPS, DESJEPS,
-                      BEES…). Choisir un autre DP ou compléter sa fiche.
+                      Structure commerciale (SCA) : le DP doit être titulaire d'un diplôme d'État reconnu (DEJEPS,
+                      DESJEPS, BEES ; BPJEPS en piscine ou fosse ≤ 6 m). Choisir un autre DP ou compléter sa fiche.
                     </Alert>
                   )}
                 </div>

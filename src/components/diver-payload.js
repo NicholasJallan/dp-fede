@@ -81,6 +81,8 @@ export const sourceLabel = (source) => SOURCE_LABELS[source] || source || 'Saisi
 
 // Aide sous le diplôme pro : niveau retenu selon le cadre de la plongée.
 export function diplomeProHint(form) {
+  if (form.diplome_pro === 'Autre')
+    return 'Diplôme non reconnu : ne permet pas d’être DP en structure commerciale (SCA).';
   const pro = diplomeProLevel(form.diplome_pro);
   if (!pro) return undefined;
   const club = form.niveau_encadrant || pro;
@@ -88,5 +90,6 @@ export function diplomeProHint(form) {
     form.diplome_pro === 'DEJEPS' && form.niveau_encadrant === 'E4'
       ? " Titulaire du MF2 : le certificat complémentaire (DEJEPS E4) s'obtient à la demande, par équivalence."
       : '';
-  return `En club associatif : ${club}. En structure commerciale (SCA) : ${pro}.${cc}`;
+  const bpjeps = form.diplome_pro === 'BPJEPS' ? ' DP seulement en piscine ou fosse de 6 m au plus.' : '';
+  return `En club associatif : ${club}. En structure commerciale (SCA) : ${pro}.${bpjeps}${cc}`;
 }

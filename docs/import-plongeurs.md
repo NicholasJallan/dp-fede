@@ -63,6 +63,7 @@ colonnes « niveau » et « niveau encadrant » sont combinées.
 | E1 … E4                                        | N3 (E1 : N2, ou N3 si indiqué) | E1 … E4          |
 | Initiateur / Initiatrice **sans** GP           | N2 (N3 si indiqué)             | E1               |
 | Initiateur **avec** N4/GP (même ligne)         | N3                             | E2               |
+| BPJEPS                                         | N3                             | E2               |
 | MF1, Moniteur fédéral 1er degré, BEES1, DEJEPS | N3                             | E3               |
 | MF2, Moniteur fédéral 2e degré, BEES2, DESJEPS | N3                             | E4               |
 | Débutant, Aucun, Baptême, vide, N/A            | —                              | —                |

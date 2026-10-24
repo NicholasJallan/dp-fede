@@ -9,6 +9,9 @@
 // Le DEJEPS seul donne E3 ; complété du certificat complémentaire (obtenu à
 // la demande par équivalence avec le MF2) ou obtenu avant la réforme, E4.
 //
+// Le BPJEPS donne E2 : enseignement 0-20 m, exploration 0-40 m, DP seulement
+// en piscine ou fosse de 6 m au plus (annexe II-1, A322-98).
+//
 // Exemple : MF1 + BEPPA + DEJEPS sans CC → E4 en club, E3 en SCA.
 // En SCA, seul le titulaire d'un diplôme d'État peut être DP (L212-1) : ni un
 // P5 / DPE, ni un enseignant fédéral (E1 → E4) sans diplôme pro. En club, N5
@@ -21,6 +24,7 @@ import { CDS } from './cds-tables.js';
 
 /** Diplômes professionnels : code stocké → libellé et niveau E (III-15 b). */
 export const DIPLOMES_PRO = Object.freeze({
+  BPJEPS: { label: 'BPJEPS', level: 'E2' },
   BEES1: { label: 'BEES1', level: 'E3' },
   BEES2: { label: 'BEES2', level: 'E4' },
   DEJEPS: { label: 'DEJEPS E3', level: 'E3' },
@@ -77,16 +81,16 @@ export function encadrantLevel(diver, cadrePro) {
 }
 
 /**
- * Candidat DP (N5, E1 → E4) sans diplôme professionnel en structure
+ * Candidat DP (N5, E1 → E4) sans diplôme professionnel reconnu en structure
  * commerciale : il ne peut pas être directeur de plongée (L212-1). « Autre »
- * compte comme diplôme (BPJEPS…).
+ * ne compte pas : l'app ne peut pas en vérifier les prérogatives.
  * @param {Partial<Diver>|null|undefined} diver
  * @param {boolean} cadrePro
  * @returns {boolean}
  */
 export function dpDiplomeProRequis(diver, cadrePro) {
   const ne = /** @type {keyof typeof CDS.DP_QUALIF} */ (diver?.niveau_encadrant || '');
-  return cadrePro && !!CDS.DP_QUALIF[ne] && !diver?.diplome_pro;
+  return cadrePro && !!CDS.DP_QUALIF[ne] && !diplomeProLevel(diver?.diplome_pro);
 }
 
 /**

@@ -35,6 +35,7 @@ final class LevelMapperTest extends TestCase
             'MF1'                    => ['N4', 'MF1', 'N3', 'E3'],
             'MF2'                    => ['', 'MF2', 'N3', 'E4'],
             'MF1 en toutes lettres'  => ['', 'Moniteur fédéral 1er degré', 'N3', 'E3'],
+            'BPJEPS'                 => ['', 'BPJEPS', 'N3', 'E2'],
             'BEES1'                  => ['', 'BEES1', 'N3', 'E3'],
             'DEJEPS'                 => ['', 'DE-JEPS', 'N3', 'E3'],
             'DESJEPS'                => ['', 'DESJEPS', 'N3', 'E4'],

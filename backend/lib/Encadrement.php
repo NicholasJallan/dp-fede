@@ -9,6 +9,7 @@ declare(strict_types=1);
  * MF2 / BEPPA = E4) ; diplôme pro (qualifs.diplome) = prérogatives d'État
  * (III-15 b), seules valables en structure commerciale (SCA). DEJEPS seul :
  * E3 ; avec le certificat complémentaire ou obtenu avant la réforme : E4.
+ * BPJEPS : E2 (DP seulement en piscine ou fosse ≤ 6 m).
  * En SCA, seul le titulaire d'un diplôme d'État peut être DP (L212-1) : ni
  * un N5 (P5 / DPE), ni un E1 → E4 sans diplôme pro.
  *
@@ -18,6 +19,7 @@ final class Encadrement
 {
     /** Code stocké → niveau E (null : pas de niveau reconnu). */
     public const DIPLOMES_PRO = [
+        'BPJEPS'    => 'E2',
         'BEES1'     => 'E3',
         'BEES2'     => 'E4',
         'DEJEPS'    => 'E3',
@@ -54,12 +56,12 @@ final class Encadrement
         return self::ENS_RANK[$pro] > (self::ENS_RANK[$ne ?? ''] ?? 0) ? $pro : $ne;
     }
 
-    /** Candidat DP (N5, E1 → E4) sans diplôme pro en SCA : pas DP. « Autre » compte comme diplôme. */
+    /** Candidat DP (N5, E1 → E4) sans diplôme pro reconnu en SCA : pas DP (« Autre » ne compte pas). */
     public static function dpDiplomeProRequis(?string $niveauEncadrant, mixed $diplomePro, bool $cadrePro): bool
     {
         return $cadrePro
             && in_array($niveauEncadrant, self::DP_LEVELS, true)
-            && !(is_string($diplomePro) && $diplomePro !== '');
+            && self::diplomeProLevel($diplomePro) === null;
     }
 
     /**

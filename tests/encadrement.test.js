@@ -24,6 +24,8 @@ const CASES = [
   ['E3', 'BEES2', 'E4', 'E4', 'BEES2'],
   ['E4', null, 'E4', 'E4', 'MF2 sans diplôme pro : fédéral partout'],
   ['E3', 'Autre', 'E3', 'E3', 'diplôme « Autre » sans niveau'],
+  ['E3', 'BPJEPS', 'E3', 'E2', 'MF1 + BPJEPS'],
+  ['N4', 'BPJEPS', 'E2', 'E2', 'GP + BPJEPS'],
   [null, null, null, null, 'plongeur sans encadrement'],
 ];
 
@@ -68,7 +70,12 @@ test('dpDiplomeProRequis : en SCA, un N5 ou un E1 → E4 sans diplôme pro n’e
     assert.equal(dpDiplomeProRequis({ niveau_encadrant: ne, diplome_pro: '' }, false), false, `${ne} associatif`);
   }
   assert.equal(dpDiplomeProRequis({ niveau_encadrant: 'E3', diplome_pro: 'DEJEPS' }, true), false);
-  assert.equal(dpDiplomeProRequis({ niveau_encadrant: 'E3', diplome_pro: 'Autre' }, true), false, 'BPJEPS…');
+  assert.equal(
+    dpDiplomeProRequis({ niveau_encadrant: 'E3', diplome_pro: 'Autre' }, true),
+    true,
+    '« Autre » ne compte pas',
+  );
+  assert.equal(dpDiplomeProRequis({ niveau_encadrant: 'E3', diplome_pro: 'BPJEPS' }, true), false, 'BPJEPS : E2');
   assert.equal(dpDiplomeProRequis({ niveau_encadrant: 'N5', diplome_pro: 'DEJEPS' }, true), false, 'N5 + DEJEPS');
   assert.equal(dpDiplomeProRequis({ niveau_encadrant: 'N4', diplome_pro: '' }, true), false);
 });
@@ -96,4 +103,9 @@ test('diplomeProHint : niveaux par cadre et rappel du CC pour un MF2', () => {
     /associatif : E4.*\(SCA\) : E3.*équivalence/,
   );
   assert.doesNotMatch(diplomeProHint({ diplome_pro: 'DEJEPS-E4', niveau_encadrant: 'E4' }), /équivalence/);
+  assert.match(
+    diplomeProHint({ diplome_pro: 'BPJEPS', niveau_encadrant: 'E2' }),
+    /\(SCA\) : E2\. DP seulement en piscine/,
+  );
+  assert.match(diplomeProHint({ diplome_pro: 'Autre', niveau_encadrant: 'E3' }), /ne permet pas d’être DP/);
 });

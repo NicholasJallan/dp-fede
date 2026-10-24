@@ -5,6 +5,12 @@ Dates en ISO 8601.
 
 ## [Unreleased]
 
+### Revue de code du 25/10/2026 — numéro d'urgence
+
+- Numéro d'urgence (bouton URGENCE, fiche, PDF) : il suit le pays du site, y compris après un changement de site (18 en France, 144 en Suisse, sinon numéro du club ou 112) ; il était figé à l'ouverture d'une nouvelle plongée, avant le choix du site (« 18 » sur un lac suisse). Modifiable dans la section Sécurité surface (`urgence_num`, `urgence_manuel`), retour au numéro du pays en un clic.
+- PDF de la fiche : numéros secondaires et canal VHF selon le pays et le milieu (`backend/lib/Emergency.php`, portage de `src/domain/emergency.js`, cas communs `tests/fixtures/emergency.json`) ; il affichait toujours le CROSS, même en lac.
+- Club sans numéro réglé : repli `112` (était `18`).
+
 ### Palanquées : gaz de déco, DTR, date de naissance (22/10/2026)
 
 - Nx > 40 % déclaré avec un autre gaz (air, Nx ≤ 40 %, trimix) = gaz de décompression : plus de contrôle de MOD (A322-92) sur ce gaz, seul le gaz fond est contrôlé (JS et PHP, `palGas`) ; champs « O₂ du gaz fond » / « O₂ du gaz de déco » (`o2` / `o2_deco`), affichés sur la fiche et le PDF ; anciennes saisies (O₂ > 40 % dans le champ unique) reportées en déco (`withDecoO2`).

@@ -83,7 +83,11 @@ if (!empty($answers['pavillon_alpha']) || !empty($answers['bouee_surface'])) {
 }
 if (!empty($answers['eau_potable'])) $secItems[] = '• Eau douce potable : <b>Oui</b>';
 if (!empty($answers['rappel']))     $secItems[] = '• Moyen de rappel : <b>Oui</b>';
-$urgenceNum = $h($answers['urgence_num'] ?? $user['urgence_defaut'] ?? '18');
+$siteMilieu = isset($answers['milieu']) ? (string)$answers['milieu'] : null;
+$sitePays   = isset($answers['site_pays_code']) ? (string)$answers['site_pays_code'] : null;
+$urgenceNum = $h(trim((string)($answers['urgence_num'] ?? ''))
+    ?: Emergency::defaultNumber($sitePays, isset($user['urgence_defaut']) ? (string)$user['urgence_defaut'] : null));
+$emergency  = Emergency::info($sitePays, $siteMilieu);
 $secItems[] = "• Numéro d'urgence : <b>{$urgenceNum}</b>";
 
 $half = (int)ceil(count($secItems) / 2);
@@ -286,8 +290,11 @@ $heuresFin   = $renderState['heuresFin']   ?? [];
   <h2>Conduite à tenir — déclenchement des secours</h2>
   <div style="font-size:12px;border:1px solid #1e293b;padding:8px 10px;border-radius:4px;">
     <div style="font-weight:700;font-size:13px;">
-      ☎ URGENCE : <?= $urgenceNum ?> <span class="muted" style="font-weight:400;">· 112 (Europe) · 196 (secours en mer · CROSS)</span>
+      ☎ URGENCE : <?= $urgenceNum ?> <span class="muted" style="font-weight:400;">· <?= $h($emergency['secondaryNums']) ?></span>
     </div>
+    <?php if ($emergency['vhf'] !== null): ?>
+      <div>• VHF, canal de détresse : <b><?= $h($emergency['vhf']) ?></b></div>
+    <?php endif; ?>
     <div style="margin-top:4px;">1. Sortir la victime de l'eau · 2. O₂ normobare 15 L/min · 3. Alerter les secours · 4. Surveiller / réanimer si besoin.</div>
     <div>• Lieu / RDV secours : <b><?= $h($answers['site_acces_secours'] ?? $answers['site_nom'] ?? '—') ?></b></div>
     <div>• Coordonnées GPS : <b><?= $h($gpsLabel) ?></b></div>

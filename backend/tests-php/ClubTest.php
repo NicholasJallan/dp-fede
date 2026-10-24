@@ -124,10 +124,10 @@ final class ClubTest extends TestCase
     public function testDefaultEmergencyNumberIsNotAChange(): void
     {
         $club = ['urgence_defaut' => null, 'nom' => 'A'];
-        // Le front actuel renvoie '18' (repli) : pas une modification.
-        $this->assertSame([], \Club::changedFields($club, ['urgence_defaut' => '18', 'nom' => 'A']));
-        $this->assertSame(['urgence_defaut' => '112'], \Club::changedFields($club, ['urgence_defaut' => '112']));
-        $this->assertSame('18', \Club::profileOverlay([], $club + ['id' => 'c1'], 'dp', 1)['urgence_defaut']);
+        // Décision utilisateur « 112 si pays inconnu » : le repli est '112'.
+        $this->assertSame([], \Club::changedFields($club, ['urgence_defaut' => '112', 'nom' => 'A']));
+        $this->assertSame(['urgence_defaut' => '18'], \Club::changedFields($club, ['urgence_defaut' => '18']));
+        $this->assertSame('112', \Club::profileOverlay([], $club + ['id' => 'c1'], 'dp', 1)['urgence_defaut']);
     }
 
     public function testDiffers(): void

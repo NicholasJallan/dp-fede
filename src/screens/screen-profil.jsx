@@ -15,7 +15,16 @@ import {
 import { Icon, StatusIcon } from '../components/icons.jsx';
 import { DiverQuickAdd } from '../components/diver-form.jsx';
 import { SiteFormModal } from './screen-admin-sites.jsx';
-import { CDS, diplomeProLabel, getMilieuType, matchCondition, QUESTIONS, STRUCTURE_LABELS } from '../domain/index.js';
+import {
+  CDS,
+  diplomeProLabel,
+  getMilieuType,
+  matchCondition,
+  QUESTIONS,
+  resolveUrgenceNumber,
+  STRUCTURE_LABELS,
+  URGENCE_PAR_PAYS,
+} from '../domain/index.js';
 import { api } from '../api/api.js';
 
 // ── DPPicker ──────────────────────────────────────────────────────────────
@@ -395,14 +404,16 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
     initDate();
   }, []);
 
-  // Numéro d'urgence par défaut selon pays du site + compte utilisateur
+  // Numéro d'urgence : suit le pays du site (y compris après un changement de
+  // site) tant que le DP ne l'a pas saisi lui-même (urgence_manuel).
   const defaultUrgence = useEffectEvent(() => {
-    if (answers.urgence_num) return;
-    const code = selectedSite?.pays_code || '';
-    const userDefault = user?.urgence_defaut || '18';
-    if (code === 'CH') setAnswer('urgence_num', '144');
-    else if (code === 'FR') setAnswer('urgence_num', '18');
-    else setAnswer('urgence_num', userDefault);
+    const next = resolveUrgenceNumber({
+      paysCode: selectedSite?.pays_code,
+      clubDefault: user?.urgence_defaut,
+      current: answers.urgence_num,
+      manual: answers.urgence_manuel,
+    });
+    if (next !== answers.urgence_num) setAnswer('urgence_num', next);
   });
   useEffect(() => {
     defaultUrgence();
@@ -506,6 +517,50 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
         <Field key={q.id} label={q.label} hint={q.hint} required={q.required}>
           {({ id }) => (
             <SitePicker id={id} value={val} sites={sites} setSites={setSites} onChange={set} answers={answers} />
+          )}
+        </Field>
+      );
+    }
+
+    if (q.id === 'urgence_num') {
+      const paysCode = selectedSite?.pays_code;
+      const auto = resolveUrgenceNumber({ paysCode, clubDefault: user?.urgence_defaut });
+      const manual = answers.urgence_manuel === true;
+      return (
+        <Field
+          key={q.id}
+          label={q.label}
+          hint={manual ? 'Saisi par le DP : ne suit plus le pays du site.' : q.hint}
+          regRef={q.ref}
+        >
+          {({ id, hintId }) => (
+            <>
+              <input
+                id={id}
+                className="input"
+                type="tel"
+                inputMode="tel"
+                aria-describedby={hintId}
+                value={val || ''}
+                onChange={(e) => {
+                  setAnswer('urgence_manuel', true);
+                  set(e.target.value);
+                }}
+              />
+              {manual && auto !== val && (
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    setAnswer('urgence_manuel', false);
+                    setAnswer('urgence_num', auto);
+                  }}
+                >
+                  Revenir au {auto}
+                  {URGENCE_PAR_PAYS[paysCode] ? ` (${paysCode})` : ''}
+                </button>
+              )}
+            </>
           )}
         </Field>
       );

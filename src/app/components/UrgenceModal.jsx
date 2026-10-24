@@ -3,14 +3,14 @@
 import React from 'react';
 import { Dialog } from '../../components/dialog.jsx';
 import { Icon } from '../../components/icons.jsx';
-import { getEmergencyInfo } from '../../domain/index.js';
+import { defaultUrgenceNumber, getEmergencyInfo } from '../../domain/index.js';
 
 function formatCoords(coords) {
   return coords?.lat != null ? `${Number(coords.lat).toFixed(5)}, ${Number(coords.lng).toFixed(5)}` : '—';
 }
 
 export function UrgenceModal({ answers, user, onClose }) {
-  const urgenceNum = answers.urgence_num || user?.urgence_defaut || '18';
+  const urgenceNum = answers.urgence_num || defaultUrgenceNumber(answers.site_pays_code, user?.urgence_defaut);
   const emi = getEmergencyInfo(answers.site_pays_code, answers.milieu);
   return (
     <Dialog

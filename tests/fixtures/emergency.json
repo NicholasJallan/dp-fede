@@ -1,0 +1,166 @@
+{
+  "_doc": "Cas de référence partagés JS + PHP pour les numéros d urgence (src/domain/emergency.js / backend/lib/Emergency.php).",
+  "info": [
+    {
+      "pays": "CH",
+      "milieu": "Lac",
+      "secondaryNums": "1414 (REGA · évacuation aérienne) · 117 (Police) · 112 (Europe)",
+      "vhf": null
+    },
+    {
+      "pays": "CH",
+      "milieu": "En mer",
+      "secondaryNums": "1414 (REGA · évacuation aérienne) · 117 (Police) · 112 (Europe)",
+      "vhf": null
+    },
+    {
+      "pays": "FR",
+      "milieu": "En mer",
+      "secondaryNums": "15 (SAMU) · 112 (Europe) · 196 (CROSS)",
+      "vhf": "Canal 16 (CROSS)"
+    },
+    {
+      "pays": "FR",
+      "milieu": "Lac",
+      "secondaryNums": "15 (SAMU) · 112 (Europe)",
+      "vhf": null
+    },
+    {
+      "pays": "FR",
+      "milieu": "  en MER ",
+      "secondaryNums": "15 (SAMU) · 112 (Europe) · 196 (CROSS)",
+      "vhf": "Canal 16 (CROSS)"
+    },
+    {
+      "pays": null,
+      "milieu": "Carrière",
+      "secondaryNums": "112 (Europe) · 15 (SAMU FR) · 18 (Pompiers FR) · 144 (CH) · 1414 (REGA CH)",
+      "vhf": null
+    },
+    {
+      "pays": "XX",
+      "milieu": "Piscine",
+      "secondaryNums": "112 (Europe) · 15 (SAMU FR) · 18 (Pompiers FR) · 144 (CH) · 1414 (REGA CH)",
+      "vhf": null
+    },
+    {
+      "pays": "XX",
+      "milieu": "En mer",
+      "secondaryNums": "112 (Europe) · 196 (CROSS) · 15 (SAMU FR) · 18 (Pompiers FR) · 144 (CH) · 1414 (REGA CH)",
+      "vhf": "Canal 16"
+    }
+  ],
+  "defaultNumber": [
+    {
+      "pays": "CH",
+      "clubDefault": "18",
+      "expected": "144"
+    },
+    {
+      "pays": "CH",
+      "clubDefault": null,
+      "expected": "144"
+    },
+    {
+      "pays": "FR",
+      "clubDefault": "112",
+      "expected": "18"
+    },
+    {
+      "pays": "FR",
+      "clubDefault": null,
+      "expected": "18"
+    },
+    {
+      "pays": "IT",
+      "clubDefault": " 118 ",
+      "expected": "118"
+    },
+    {
+      "pays": "",
+      "clubDefault": " 15 ",
+      "expected": "15"
+    },
+    {
+      "pays": null,
+      "clubDefault": " 18 ",
+      "expected": "18"
+    },
+    {
+      "pays": null,
+      "clubDefault": " 112 ",
+      "expected": "112"
+    },
+    {
+      "pays": "IT",
+      "clubDefault": "",
+      "expected": "112"
+    },
+    {
+      "pays": "IT",
+      "clubDefault": "   ",
+      "expected": "112"
+    },
+    {
+      "pays": "IT",
+      "clubDefault": null,
+      "expected": "112"
+    },
+    {
+      "pays": null,
+      "clubDefault": null,
+      "expected": "112"
+    }
+  ],
+  "resolve": [
+    {
+      "pays": "CH",
+      "clubDefault": "18",
+      "current": " 117 ",
+      "manual": true,
+      "expected": "117"
+    },
+    {
+      "pays": "FR",
+      "clubDefault": "18",
+      "current": "01 23 45 67 89",
+      "manual": true,
+      "expected": "01 23 45 67 89"
+    },
+    {
+      "pays": "CH",
+      "clubDefault": "18",
+      "current": "   ",
+      "manual": true,
+      "expected": "144"
+    },
+    {
+      "pays": null,
+      "clubDefault": " 15 ",
+      "current": "",
+      "manual": true,
+      "expected": "15"
+    },
+    {
+      "pays": "CH",
+      "clubDefault": "18",
+      "current": "18",
+      "manual": false,
+      "expected": "144"
+    },
+    {
+      "pays": "FR",
+      "clubDefault": "112",
+      "current": "144",
+      "manual": false,
+      "expected": "18"
+    },
+    {
+      "pays": null,
+      "clubDefault": "15",
+      "current": "18",
+      "manual": false,
+      "expected": "15"
+    }
+  ]
+}

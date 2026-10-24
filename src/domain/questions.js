@@ -163,6 +163,13 @@ export const QUESTIONS = [
         type: 'bool',
         hint: 'Numéros adaptés au pays du site (France : 15/18/112, mer : 196 ; Suisse : 144/117/1414).',
       },
+      {
+        id: 'urgence_num',
+        label: "Numéro d'urgence (bouton URGENCE et fiche)",
+        type: 'text',
+        hint: 'Suit le pays du site : 18 en France, 144 en Suisse, sinon le numéro du club ou le 112.',
+        ref: 'CdS A322-78',
+      },
       { id: 'o2', label: 'Matériel O₂ vérifié (pression, BAVU, masques) ?', type: 'bool', ref: 'CdS A322-78' },
       { id: 'trousse', label: 'Trousse de secours + couverture isothermique vérifiées ?', type: 'bool' },
       { id: 'eau_potable', label: 'Eau douce potable disponible ?', type: 'bool' },

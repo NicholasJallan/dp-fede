@@ -5,6 +5,7 @@ import React from 'react';
 import { CdsLink, diverFullName, formatDateTime } from '../../components/components.jsx';
 import {
   formatPaliers,
+  defaultUrgenceNumber,
   getEmergencyInfo,
   getPalType,
   REGLEMENTATION,
@@ -241,7 +242,7 @@ export function FicheDocument({
   pressions,
   observations,
 }) {
-  const urgence = answers.urgence_num || user?.urgence_defaut || '18';
+  const urgence = answers.urgence_num || defaultUrgenceNumber(answers.site_pays_code, user?.urgence_defaut);
   const emi = getEmergencyInfo(answers.site_pays_code, answers.milieu);
   const depart =
     [answers.depart_bord && 'Du bord', answers.depart_bateau && 'En bateau'].filter(Boolean).join(', ') || '—';

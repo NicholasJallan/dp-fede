@@ -32,7 +32,13 @@ export { matchCondition } from './conditions.js';
 export { getMilieuType, isMilieuNaturel, reglesMilieuNaturel } from './milieu.js';
 export { sortMembresForFiche } from './fiche.js';
 export { PALIER_DEPTHS, initialPaliers, paliersDone, paliersTotal, formatPaliers } from './paliers.js';
-export { getEmergencyInfo } from './emergency.js';
+export {
+  getEmergencyInfo,
+  defaultUrgenceNumber,
+  resolveUrgenceNumber,
+  URGENCE_PAR_PAYS,
+  URGENCE_INCONNUE,
+} from './emergency.js';
 export { computePalHardLimit, clampProfMax } from './depth-clamp.js';
 export { minDtr, dtrForProf } from './dtr.js';
 export {

@@ -21,7 +21,7 @@ class Club
     public const STRUCTURE_TYPES = ['club', 'sca', 'csa', 'autre'];
 
     /** Numéro d'urgence affiché quand le club n'en a pas défini. */
-    public const DEFAULT_URGENCE = '18';
+    public const DEFAULT_URGENCE = '112';
 
     private const ALL = ['responsable', 'dp', 'encadrant', 'lecture'];
 

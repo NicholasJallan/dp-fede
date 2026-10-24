@@ -45,7 +45,7 @@ Profilage de la plongée, check-list conditionnelle, composition des palanquées
 
 | Technologie     | Usage                           | Version                                |
 | --------------- | ------------------------------- | -------------------------------------- |
-| **PHP**         | API REST                        | 8.5 (FPM, pool dédié ; ≥ 8.2 supporté) |
+| **PHP**         | API REST                        | 8.5 (FPM, pool dédié ; minimum requis) |
 | **MariaDB**     | Persistance                     | 10.x                                   |
 | **wkhtmltopdf** | Génération PDF server-side      | installé sur le Pi                     |
 | **nginx**       | Reverse proxy + CSP headers     | —                                      |

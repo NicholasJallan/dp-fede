@@ -13,7 +13,7 @@ declare(strict_types=1);
  * référence vivent dans tests/fixtures/pal-rules.json, exécutés côté JS
  * (tests/pal-rules.test.js) ET côté PHP (tests-php/RulesFixturesTest.php).
  *
- * Compatible PHP 7.4 (prod : PHP 7.4-FPM).
+ * PHP 8.5 (prod : pool PHP-FPM 8.5 dp-fede).
  */
 class Rules
 {

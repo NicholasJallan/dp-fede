@@ -227,8 +227,22 @@ export function BrandMark() {
       <circle cx="40.6" cy="31.4" r="0.7" fill="#fff" />
       <circle cx="42.3" cy="33.2" r="0.85" fill="#fff" />
       <circle cx="40.4" cy="35.3" r="1" fill="#fff" />
-      <path d="M37.8 38.8 42.2 43.1 54.4 29.4" fill="none" stroke="#0b2e4a" strokeWidth="6.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M37.8 38.8 42.2 43.1 54.4 29.4" fill="none" stroke="#ffd60a" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M37.8 38.8 42.2 43.1 54.4 29.4"
+        fill="none"
+        stroke="#0b2e4a"
+        strokeWidth="6.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M37.8 38.8 42.2 43.1 54.4 29.4"
+        fill="none"
+        stroke="#ffd60a"
+        strokeWidth="3.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

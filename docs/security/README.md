@@ -97,7 +97,7 @@ ssh pi@bullesenvalais.ch "ls -la /etc/dp-fede/"
 
 En place (`.github/workflows/ci.yml`) :
 
-- `composer audit` + PHPUnit (PHP 8.2 / 8.5)
+- `composer audit` + PHPUnit (PHP 8.5)
 
 À venir :
 

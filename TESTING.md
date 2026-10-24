@@ -105,7 +105,7 @@ describe('Ma nouvelle règle', () => {
 
 ## Couverture
 
-État actuel : **391 tests JS** (node 20+), **407 tests PHPUnit** (PHP 8.2 et 8.5 en CI), **42 tests e2e locaux** (Playwright, API simulée).
+État actuel : **391 tests JS** (node 20+), **407 tests PHPUnit** (PHP 8.5 en CI), **42 tests e2e locaux** (Playwright, API simulée).
 
 Recette de la migration des structures de production en clubs, sur un MariaDB jetable : `php deploy/recette-migration-clubs.php` (variables `DP_RECETTE_DSN`, `DP_RECETTE_USER`, `DP_RECETTE_PASS`).
 

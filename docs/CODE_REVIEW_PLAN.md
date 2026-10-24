@@ -921,7 +921,7 @@ node --version          # >= 20
 npm test                # baseline verte
 cd backend
 composer install        # installe PHPUnit (dev)
-composer test           # baseline verte (PHP 8.2+)
+composer test           # baseline verte (PHP 8.5)
 ```
 
 Si une tâche modifie le backend ou le frontend, déployer sur le Pi à la fin

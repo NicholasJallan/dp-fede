@@ -16,15 +16,12 @@ Dépendances transitives (via mPDF) : `setasign/fpdi`, `myclabs/deep-copy`,
 `psr/log`, `psr/http-message`, `mpdf/psr-http-message-shim`,
 `mpdf/psr-log-aware-trait`, `paragonie/random_compat`.
 
-Dev uniquement (jamais installé sur le Pi) : `phpunit/phpunit` ^9.6 et
-`doctrine/instantiator` ~2.0.0 (dépendance de PHPUnit épinglée : la 2.1 exige
-PHP 8.4, la CI teste aussi 8.2).
+Dev uniquement (jamais installé sur le Pi) : `phpunit/phpunit` ^9.6.
 
-`composer.json` exige `"php": ">=8.2"` et fixe `config.platform.php = 8.5.11`
+`composer.json` exige `"php": ">=8.5"` et fixe `config.platform.php = 8.5.11`
 (PHP du pool de production) : la résolution correspond à la production,
-quelle que soit la version locale, et chaque paquet verrouillé accepte aussi
-8.2 (CI 8.2 et 8.5). Au runtime, `vendor/composer/platform_check.php` refuse
-de démarrer sous PHP < 8.2 (cf. [../deploy/php85.md](../deploy/php85.md)).
+quelle que soit la version locale (CI 8.5). Au runtime,
+`vendor/composer/platform_check.php` refuse de démarrer sous PHP < 8.5 (cf. [../deploy/php85.md](../deploy/php85.md)).
 Régénérer le verrou : `composer update` (jamais `--ignore-platform-reqs`).
 
 Sans `vendor/`, l'API démarre quand même : la vérification JWT retombe sur
@@ -33,7 +30,7 @@ l'endpoint `tokeninfo` de Google et la génération PDF échoue (500).
 ## Audit
 
 - **CI** : `composer audit` à chaque push/PR (`.github/workflows/ci.yml`, job
-  backend, PHP 8.2 et 8.5).
+  backend, PHP 8.5).
 - **Local** :
 
   ```bash

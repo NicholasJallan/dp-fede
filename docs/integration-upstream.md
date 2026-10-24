@@ -53,7 +53,7 @@ nouvelle architecture, soit déjà couverte (justification ci-dessous).
 | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `useEffect` non importé (étape 4 en page blanche)                       | Déjà couvert (corrigé dans `c08ab44`, `ErrorBoundary`).                                                                                                                                                                                                                                                                     |
 | mPDF introuvable (pas d'autoload) → `PdfAutoload.php` + `psr-log-shim/` | **Supprimés**. `index.php` et `cli-bootstrap.php` chargent `vendor/autoload.php` s'il est présent ; sous PHP 8.5 avec `composer install --no-dev` (verrou résolu pour 8.5.11), le `platform_check` passe. Le contournement visait PHP 7.4 ; la copie figée de psr/log v1 entrerait en conflit avec psr/log v3 de `vendor/`. |
-| `mixed` dans `checklist.php`                                            | Sans objet (PHP ≥ 8.2).                                                                                                                                                                                                                                                                                                     |
+| `mixed` dans `checklist.php`                                            | Sans objet (PHP ≥ 8.5).                                                                                                                                                                                                                                                                                                     |
 | `sec_surface` non défini                                                | Porté (`!empty`, test de rendu du template).                                                                                                                                                                                                                                                                                |
 | Archivage PDF seul pour BEPPA (slug codé en dur), `drive_synced` forcé  | **Généralisé** : l'archivage ne dépend jamais de Drive (le serveur archive les PDF, A322-72) ; copie Drive facultative, préférence de l'appareil (`src/api/drive-preference.js`) ; désactivée, ni demande Google ni « copie à faire ». `drive_synced` n'a plus à être forcé (affichage conditionné par la préférence).      |
 
@@ -85,9 +85,8 @@ le test de rendu de `fiche.php` passe un `distance_cote` entier.
 
 ## PHP 8.5
 
-`composer.json` : `php >= 8.2`, `config.platform.php = 8.5.11`
-(`doctrine/instantiator` dev épinglé `~2.0.0` pour rester installable en
-8.2) ; CI 8.2 et 8.5 ; pool `[dp-fede]` de php8.5-fpm à côté du pool
+`composer.json` : `php >= 8.5`, `config.platform.php = 8.5.11` ;
+CI 8.5 ; pool `[dp-fede]` de php8.5-fpm à côté du pool
 « dive » (jamais modifié, plus de réglage global) ; APCu partagé entre
 pools → clés préfixées et cache JWKS signé. Voir [deploy/php85.md](deploy/php85.md).
 

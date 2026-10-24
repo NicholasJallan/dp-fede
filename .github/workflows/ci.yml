@@ -31,13 +31,8 @@ jobs:
           fi
 
   backend:
-    name: Backend — PHPUnit (PHP ${{ matrix.php }})
+    name: Backend — PHPUnit (PHP 8.5)
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        # 8.2 : version minimale (composer.json) ; 8.5 : production (pool dp-fede sur le Pi).
-        php: ['8.2', '8.5']
     defaults:
       run:
         working-directory: backend
@@ -45,9 +40,19 @@ jobs:
       - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.php }}
+          # Version de production (pool dp-fede sur le Pi) ; composer.json exige >= 8.5.
+          php-version: '8.5'
           extensions: mbstring, gd, pdo_mysql, curl, openssl, xml, intl, apcu
           coverage: none
+      # Cache des archives Composer : évite de retélécharger mPDF & co. depuis
+      # codeload.github.com à chaque run (réponses 429 « Too Many Requests »).
+      - id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
       - run: composer install --no-interaction --no-progress
       - name: Syntaxe de tous les fichiers PHP (routes et templates non couverts par PHPUnit)
         run: find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l > /dev/null

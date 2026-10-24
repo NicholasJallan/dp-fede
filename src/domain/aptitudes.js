@@ -20,7 +20,8 @@ export const APTITUDE_MAP = {
   N3: { mandatory: ['PE20', 'PE40', 'PE60', 'PA12', 'PA20', 'PA40', 'PA60'], optional: [] },
   // Encadrants : toutes les aptitudes plongeur N3 (PA60 inclus) + rôle encadrant
   N4: { mandatory: ['PE20', 'PE40', 'PE60', 'PA12', 'PA20', 'PA40', 'PA60', 'GP'], optional: [] },
-  N5: { mandatory: ['PE20', 'PE40', 'PE60', 'PA12', 'PA20', 'PA40', 'PA60'], optional: [] },
+  // N5 (P5 / DPE) : suppose le N4 → guide de palanquée.
+  N5: { mandatory: ['PE20', 'PE40', 'PE60', 'PA12', 'PA20', 'PA40', 'PA60', 'GP'], optional: [] },
   // E1 (initiateur) : N2 minimum — aptitudes N3 seulement si niveau plongeur N3.
   E1: { mandatory: ['PE20', 'PE40', 'PA12', 'PA20'], optional: ['PA40', 'GP', 'Enseignant'] },
   // III-15 b : E-2 = initiateur ET guide de palanquée → GP de droit.
@@ -140,10 +141,9 @@ export function getDiverAptitudes(diver, isExploration, palContext) {
     apts.add('PA60');
   }
   if (ne) {
-    if (ne === 'N4') apts.add('GP');
-    else if (ne === 'N5') {
-      /* N5 = DP plongeur, pas guide */
-    } else if (ne === 'E1') {
+    if (ne === 'N4' || ne === 'N5')
+      apts.add('GP'); // le P5 suppose le P4
+    else if (ne === 'E1') {
       if (sup.includes('GP')) apts.add('GP');
       apts.add(ne); // Enseignant
     } else if (ne === 'E2') {

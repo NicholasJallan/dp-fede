@@ -83,11 +83,14 @@ export function hasGasQual(diver, req) {
   return gasQualRank(diver) >= tables().GAS_QUAL_RANK[req];
 }
 
-/** GP ou P4 au minimum (III-15 b : un E-2 est initiateur ET guide de palanquée). */
+/**
+ * GP ou P4 au minimum (III-15 b : un E-2 est initiateur ET guide de
+ * palanquée ; un P5 / DPE suppose le P4).
+ */
 export function isGpQualified(m) {
   if (m.aptitude === 'GP' || ['E2', 'E3', 'E4'].includes(m.aptitude)) return true;
   const d = m.diver || {};
-  return ['N4', 'E2', 'E3', 'E4'].includes(d.niveau_encadrant) || (d.aptitudes_sup || []).includes('GP');
+  return ['N4', 'N5', 'E2', 'E3', 'E4'].includes(d.niveau_encadrant) || (d.aptitudes_sup || []).includes('GP');
 }
 
 export function ageAt(birthIso, when) {

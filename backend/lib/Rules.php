@@ -232,8 +232,8 @@ class Rules
             array_push($apts, 'PE20', 'PE40', 'PE60', 'PA12', 'PA20', 'PA40', 'PA60');
         }
         if ($ne !== '') {
-            if ($ne === 'N4') {
-                $apts[] = 'GP';
+            if ($ne === 'N4' || $ne === 'N5') {
+                $apts[] = 'GP'; // le P5 suppose le P4
             } elseif ($ne === 'E1') {
                 if (in_array('GP', $sup, true)) $apts[] = 'GP';
                 $apts[] = $ne;
@@ -242,7 +242,6 @@ class Rules
                 $apts[] = 'GP';
                 $apts[] = $ne;
             }
-            // N5 = DP plongeur, ni guide ni enseignant.
         }
 
         if (in_array('PTH-70', $trimix, true) || in_array('PTH-120', $trimix, true)) $apts[] = 'PTH70';
@@ -699,22 +698,24 @@ class Rules
         self::checkAutonomieAges($ctx, $add);
     }
 
+    /** A322-73 : âge minimal selon l'espace d'évolution, pas selon l'aptitude PA choisie. */
     private static function checkAutonomieAges(array $ctx, callable $add): void
     {
         $trimix = $ctx['gas']['trimix'];
+        $space  = self::spaceFor($ctx['profMax'], self::AUTONOMIE_AGE_MIN) ?? 60;
+        $prof   = self::fmt($ctx['profMax']);
         foreach ($ctx['membres'] as $m) {
-            $apt   = self::aptOf($m);
-            $level = self::paLevel($apt);
-            if ($level === null && strpos($apt, 'PTH') === 0) $level = 60;
-            if ($level === null || self::isBapteme($m)) continue;
-            $minAge = $trimix ? 18 : (self::AUTONOMIE_AGE_MIN[$level] ?? null);
-            $ref    = ($level === 60 || $trimix) ? 'A322-73 / A322-89' : 'A322-73';
+            $apt = self::aptOf($m);
+            $autonome = self::paLevel($apt) !== null || strpos($apt, 'PTH') === 0;
+            if (!$autonome || self::isBapteme($m)) continue;
+            $minAge = $trimix ? 18 : self::AUTONOMIE_AGE_MIN[$space];
+            $ref    = ($space === 60 || $trimix) ? 'A322-73 / A322-89' : 'A322-73';
             $name   = self::memberName($m);
             $age    = self::ageAt(self::strOrNull($m['diver']['date_naissance'] ?? null), $ctx['date']);
             if ($age === null) {
-                $add('warn', 'AGE_UNKNOWN', "{$name} : date de naissance non renseignée — autonomie {$apt} à partir de {$minAge} ans.", $ref, [self::memberId($m)]);
-            } elseif ($minAge !== null && $age < $minAge) {
-                $add('err', 'AGE_AUTONOMIE', "{$name} ({$age} ans) : autonomie {$apt}" . ($trimix ? ' au trimix' : '') . " à partir de {$minAge} ans.", $ref, [self::memberId($m)]);
+                $add('warn', 'AGE_UNKNOWN', "{$name} : date de naissance non renseignée — autonomie à {$prof} m à partir de {$minAge} ans.", $ref, [self::memberId($m)]);
+            } elseif ($age < $minAge) {
+                $add('err', 'AGE_AUTONOMIE', "{$name} ({$age} ans) : autonomie à {$prof} m" . ($trimix ? ' au trimix' : '') . " à partir de {$minAge} ans.", $ref, [self::memberId($m)]);
             }
         }
     }
@@ -734,6 +735,8 @@ class Rules
                 // PN couvre ≤ 40 % d'O₂ (III-17 a) ; seul un élève PN en formation PN-C est toléré.
                 $enFormation = $ctx['mode'] === 'enseignement' && $hasPN;
                 $add($enFormation ? 'warn' : 'err', 'NX_PNC', self::memberName($m) . " : nitrox > 40 % d'O₂ → aptitude PN-C.", 'III-17 a', [self::memberId($m)]);
+            } elseif ($ctx['gas']['nx40plus']) {
+                self::checkPncAptitudes($m, $add);
             }
         }
         $enc = $ctx['encadrant'];
@@ -743,6 +746,18 @@ class Rules
         // Seul le gaz fond est soumis à la MOD : pas le nitrox de décompression
         // (Nx > 40 % avec un autre gaz, ou nitrox au trimix).
         if ($ctx['gas']['bottomNitrox']) self::checkPpO2($ctx, $add);
+    }
+
+    /** III-17 a : le PN-C suppose PE-40 en encadré, PA-40 en autonomie (sans bonus de formation). */
+    private static function checkPncAptitudes(array $m, callable $add): void
+    {
+        $autonome = self::paLevel(self::aptOf($m)) !== null;
+        $apts = self::getDiverAptitudes($m['diver']);
+        $ok = $autonome
+            ? (in_array('PA40', $apts, true) || in_array('PA60', $apts, true))
+            : (in_array('PE40', $apts, true) || in_array('PE60', $apts, true));
+        if ($ok) return;
+        $add('err', 'NX_PNC_APT', self::memberName($m) . ' : PN-C → aptitude ' . ($autonome ? 'PA-40' : 'PE-40') . " requise (nitrox > 40 % d'O₂).", 'III-17 a', [self::memberId($m)]);
     }
 
     /** A322-92 : PpO₂ ≤ 1,6 bar ⇒ profondeur maximale d'utilisation du gaz fond. */
@@ -1058,12 +1073,12 @@ class Rules
         return $max;
     }
 
-    /** GP ou P4 au minimum (III-15 b : un E-2 est initiateur ET guide de palanquée). */
+    /** GP ou P4 au minimum (III-15 b : un E-2 est initiateur ET guide de palanquée ; un P5 suppose le P4). */
     private static function isGpQualified(array $m): bool
     {
         if (in_array(self::aptOf($m), ['GP', 'E2', 'E3', 'E4'], true)) return true;
         $d = is_array($m['diver'] ?? null) ? $m['diver'] : [];
-        return in_array(self::str($d['niveau_encadrant'] ?? null), ['N4', 'E2', 'E3', 'E4'], true)
+        return in_array(self::str($d['niveau_encadrant'] ?? null), ['N4', 'N5', 'E2', 'E3', 'E4'], true)
             || in_array('GP', self::listOf($d['aptitudes_sup'] ?? null), true);
     }
 

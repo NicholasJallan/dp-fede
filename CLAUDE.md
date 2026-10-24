@@ -217,7 +217,7 @@ pas la modifier à la main. `PRECACHE_URLS` liste l'app shell : `/`,
 Lancer : `npm test` (utilise `node --test`, Node 20+ requis, zéro dépendance NPM).
 Les tests sont des modules ES (`tests/package.json` → `"type": "module"`) qui
 importent directement `src/domain/*` et les fabriques de `src/offline/*`.
-Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **446 tests JS**, 439 PHPUnit, 45 e2e locaux
+Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **460 tests JS**, 452 PHPUnit, 45 e2e locaux
 (métier FFESSM/Code du Sport + offline : outbox, offline-store, sync, dive-lifecycle, home-buckets + contextualisation check-list par milieu
 
 - socle club : `sync-club.test.js` (X-DP-Club, périmètre club du store), `club-logic.test.js` (droits, alertes, rapport d'import, suppressions)
@@ -236,7 +236,7 @@ Modules purs dans `src/domain/` (ré-exportés par `src/domain/index.js`) :
 - `encadrantLevel(diver, cadrePro)`, `diverForCadre`, `isCadrePro(structureType)`, `DIPLOMES_PRO` (`encadrement.js`) — niveau encadrant retenu selon le cadre associatif / commercial
 - `getMilieuType(milieu)` (`milieu.js`) — normalise 'En mer'/'Lac'/'Carrière'/'Piscine'/'Fosse' → 'mer'/'lac'/'piscine'/'fosse'
 - `isMilieuNaturel(milieu)` (`milieu.js`) — vrai en mer/lac/carrière, faux en piscine/fosse ; sert à masquer les questions et items de check-list sans objet en bassin (météo, marée, bouée)
-- `reglesMilieuNaturel(answers)` (`milieu.js`) — vrai aussi pour une piscine / fosse de plus de 6 m (A322-98, fosse de profondeur inconnue présumée > 6 m) ; conditionne les items réglementaires de check-list (tables de déco, équipement, parachute). `backend/templates/checklist.php` (PDF) est un portage plus ancien de la check-list qui ne les reprend pas
+- `reglesMilieuNaturel(answers)` (`milieu.js`) — vrai aussi pour une piscine / fosse de plus de 6 m (A322-98, fosse de profondeur inconnue présumée > 6 m) ; conditionne les items réglementaires de check-list (tables de déco, équipement, parachute). la check-list du PDF (`backend/templates/checklist.php`) lit `backend/lib/ChecklistRules.php`, portage de `checklist.js` : toute modification de la check-list se fait des deux côtés (ids, textes, conditions), contrôlé par `tests/checklist-php.test.js` et les scénarios partagés `tests/fixtures/checklist.json` (PHPUnit `ChecklistRulesTest`)
 - `getDiverAptitudes(diver, isExploration, palContext)` (`aptitudes.js`) — aptitudes disponibles pour un plongeur ; `palContext` (optionnel) apporte le bonus formation selon l'enseignant de la palanquée
 - `getDpMaxDepth(palType, dp)` (`aptitudes.js`) — profondeur max autorisée pour un DP selon le type ('formation'/'exploration') ; 0 = type interdit ; DP E3 : enseignement 40 m, exploration 60 m (trimix 40 / 70 m) — `DP_QUALIF.airEnseignement`, contrôlé par `checkDp` (`DP_DEPTH`). Texte de référence des annexes III-15 a / b (arrêté du 24/11/2025) : `doc/`
 - `getFormationBonusAptitudes(diver, maxEnsLevel)` (`aptitudes.js`) — aptitudes PE bonus accordées en formation selon l'enseignant présent

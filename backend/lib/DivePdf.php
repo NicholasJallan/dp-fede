@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/PdfRender.php';
 require_once __DIR__ . '/Rules.php';
+require_once __DIR__ . '/ChecklistRules.php';
 
 /**
  * Rendu PDF (fiche de sécurité / check-list) d'une plongée d'un club.

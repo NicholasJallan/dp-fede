@@ -20,6 +20,13 @@
       "medical": "2026-01-01",
       "date_naissance": "1990-01-01"
     },
+    "n1_pnc": {
+      "niveau_plongeur": "N1",
+      "nitrox": ["PN", "PN-C"],
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "n5": { "niveau_encadrant": "N5", "medical": "2026-01-01", "date_naissance": "1990-01-01" },
     "n2_pa40": {
       "niveau_plongeur": "N2",
       "aptitudes_sup": ["PA40"],
@@ -934,6 +941,81 @@
       "errors": ["AIR_60", "TX_ROLE_NO_GAS"]
     },
 
+    {
+      "name": "PN-C sans PE-40 : N1 au nitrox > 40 %",
+      "ref": "III-17 a",
+      "dp": "e3_pnc",
+      "pal": {
+        "membres": [
+          ["e3_pnc", "E3"],
+          ["n1_pnc", "PE20"]
+        ],
+        "profMax": 20,
+        "melanges": ["Nx > 40%"],
+        "o2": 50
+      },
+      "errors": ["NX_PNC_APT"]
+    },
+    {
+      "name": "PN-C sans PA-40 : N2 autonome au nitrox > 40 %",
+      "ref": "III-17 a",
+      "dp": "e3_pnc",
+      "pal": {
+        "membres": [
+          ["n2_pnc", "PA20"],
+          ["n2_pnc#2", "PA20"]
+        ],
+        "profMax": 20,
+        "melanges": ["Nx > 40%"],
+        "o2": 50
+      },
+      "errors": ["NX_PNC_APT"]
+    },
+    {
+      "name": "PN-C avec PE-40 : N2 encadré au nitrox > 40 %",
+      "ref": "III-17 a",
+      "dp": "e3_pnc",
+      "pal": {
+        "membres": [
+          ["n4_pnc", "GP"],
+          ["n2_pnc", "PE20"],
+          ["n2_pnc#2", "PE20"]
+        ],
+        "profMax": 20,
+        "mode": "exploration",
+        "melanges": ["Nx > 40%"],
+        "o2": 50
+      },
+      "errors": []
+    },
+    {
+      "name": "Exploration : un N5 guide des PE-40 à 30 m",
+      "ref": "III-16 b",
+      "dp": "e3",
+      "pal": {
+        "membres": [
+          ["n5", "GP"],
+          ["n2", "PE40"],
+          ["n2#2", "PE40"]
+        ],
+        "profMax": 30,
+        "mode": "exploration"
+      },
+      "errors": []
+    },
+    {
+      "name": "Autonomie à 30 m : N3 de 17 ans inscrit PA-60",
+      "ref": "A322-73",
+      "dp": "e3",
+      "pal": {
+        "membres": [
+          ["n3_17", "PA60"],
+          ["n3", "PA60"]
+        ],
+        "profMax": 30
+      },
+      "errors": []
+    },
     {
       "name": "Nitrox : un GP sans PN-C ne compte pas comme plongeur supplémentaire",
       "ref": "III-17 c",

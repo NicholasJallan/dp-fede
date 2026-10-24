@@ -58,17 +58,17 @@ Chaque issue de validation porte :
 
 ## 2. Limites absolues (A322-73, A322-76, A322-92)
 
-| Règle                                                                                                    | Code           |
-| -------------------------------------------------------------------------------------------------------- | -------------- |
-| Air et nitrox : 60 m maximum. Si de l'air figure avec du trimix, il limite aussi la palanquée (A322-73). | `AIR_60`       |
-| Trimix encadré : 80 m maximum. Trimix autonome : 120 m maximum.                                          | `TX_DEPTH`     |
-| Nitrox : PpO₂ ≤ 1,6 bar, soit une profondeur maximale d'utilisation de `⌊(1,6 / FO₂ − 1) × 10⌋` m.       | `PPO2_MAX`     |
-| Nitrox : % d'O₂ non saisi → avertissement.                                                               | `O2_UNKNOWN`   |
-| Au trimix, le nitrox déclaré est un gaz de décompression : pas de contrôle de PpO₂ au fond.              | —              |
-| Une palanquée compte au moins deux plongeurs.                                                            | `PAL_SOLO`     |
-| Profondeur maximale prévue non renseignée : bloquant (l'espace d'évolution ne peut pas être contrôlé).   | `PROF_MISSING` |
-| Oxygène pur : recycleur ou décompression seulement, jamais gaz fond en circuit ouvert (A322-90).         | `O2_PUR_FOND`  |
-| La profondeur est limitée par l'aptitude la plus restrictive. Le **panachage d'aptitudes est autorisé**. | `APT_DEPTH`    |
+| Règle                                                                                                                            | Code           |
+| -------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| Air et nitrox : 60 m maximum. Si de l'air figure avec du trimix, il limite aussi la palanquée (A322-73).                         | `AIR_60`       |
+| Trimix encadré : 80 m maximum. Trimix autonome : 120 m maximum.                                                                  | `TX_DEPTH`     |
+| Nitrox : PpO₂ ≤ 1,6 bar, soit une profondeur maximale d'utilisation de `⌊(1,6 / FO₂ − 1) × 10⌋` m.                               | `PPO2_MAX`     |
+| Nitrox : % d'O₂ non saisi → avertissement.                                                                                       | `O2_UNKNOWN`   |
+| Au trimix, le trimix est toujours le gaz fond : le nitrox déclaré est un gaz de décompression (pas de contrôle de PpO₂ au fond). | —              |
+| Une palanquée compte au moins deux plongeurs.                                                                                    | `PAL_SOLO`     |
+| Profondeur maximale prévue non renseignée : bloquant (l'espace d'évolution ne peut pas être contrôlé).                           | `PROF_MISSING` |
+| Oxygène pur : recycleur ou décompression seulement, jamais gaz fond en circuit ouvert (A322-90).                                 | `O2_PUR_FOND`  |
+| La profondeur est limitée par l'aptitude la plus restrictive. Le **panachage d'aptitudes est autorisé**.                         | `APT_DEPTH`    |
 
 ---
 
@@ -91,6 +91,8 @@ Chaque issue de validation porte :
 - **Pas de bonus au nitrox ni au trimix** : l'élève y justifie déjà l'aptitude PE de l'espace (III-17 b, III-18 b).
 - Une aptitude choisie qui n'est pas justifiée par les brevets est bloquante : `APT_NOT_JUSTIFIED` (A322-77).
 - La **compétence d'encadrement est celle de la personne** (brevet détenu), pas seulement du rôle choisi (III-16 b « E3 ou GP ou P4 »).
+- Un **N5 (P5 / DPE)** compte comme GP / P4 (le P5 suppose le P4) : il peut guider une palanquée ou être plongeur supplémentaire.
+- Un **E1 avec le GP** reste E1 en enseignement ; il guide comme GP en exploration.
 
 ---
 
@@ -139,12 +141,15 @@ Codes :
   - un baptême ou un débutant sans encadrant est bloquant (`AUTO_ENCADREMENT`).
 - Âge minimal :
 
-  | Autonomie    | Âge minimal        |
-  | ------------ | ------------------ |
-  | PA-12, PA-20 | 16 ans             |
-  | PA-40        | 17 ans             |
-  | PA-60        | 18 ans             |
-  | Trimix       | majeurs uniquement |
+  | Profondeur prévue (A322-73) | Âge minimal        |
+  | --------------------------- | ------------------ |
+  | jusqu'à 20 m                | 16 ans             |
+  | jusqu'à 40 m                | 17 ans             |
+  | au-delà de 40 m             | 18 ans (A322-89)   |
+  | Trimix                      | majeurs uniquement |
+
+  L'âge dépend de l'espace d'évolution, pas de l'aptitude PA choisie : un N3 de
+  17 ans inscrit PA-60 peut être autonome à 30 m.
 
   Âge insuffisant → `AGE_AUTONOMIE`. Date de naissance absente → avertissement `AGE_UNKNOWN`.
 
@@ -168,6 +173,8 @@ Codes :
 - **Nx > 40 % d'O₂** : PN-C requis (`NX_PNC`).
   - Pour un élève **déjà PN** en formation PN-C : simple avertissement.
   - Sinon : bloquant.
+  - Le PN-C suppose PE-40 en encadré, PA-40 en autonomie (III-17 a, `NX_PNC_APT`) ;
+    la fiche plongeur ne propose le PN-C qu'à partir du N2.
 - **Exploration à 0-6 m** : III-17 c n'a pas de ligne pour cet espace, donc le minimum est PE-12 + PN.
 
 ### Trimix / héliox (A322-96, III-18 a/b/c)

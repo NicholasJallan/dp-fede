@@ -32,99 +32,15 @@ $structure = $structParts ? implode(' — ', $structParts) : 'Structure non rens
 $checked  = $renderState['checked']  ?? [];
 $comments = $renderState['comments'] ?? [];
 
-// Règles de check-list (portées depuis data.js CHECKLIST_RULES)
-$milieu  = PdfRender::toText($answers['milieu'] ?? null);
-$isMilieuNaturel = !in_array(strtolower($milieu), ['piscine', 'fosse'], true);
-
-// Déclaration conditionnelle : le template peut être rendu plusieurs fois
-// dans le même processus (archivage serveur, bin/documents.php).
-if (!function_exists('matchCond')) {
-    function matchCond(mixed $when, array $a): bool {
-        if (!$when) return true;
-        if ($when === null) return true;
-        // Pour les conditions tableau simples (équivalent des objets JS {key:true})
-        if (is_array($when)) {
-            foreach ($when as $k => $v) {
-                if ($v === true  && empty($a[$k]))     return false;
-                if ($v === false && !empty($a[$k]))    return false;
-                if (is_string($v) && ($a[$k] ?? null) !== $v) return false;
-            }
-            return true;
-        }
-        // Callable : fn(array $answers): bool
-        if (is_callable($when)) return $when($a);
-        return true;
-    }
-}
-
-$getMilieuType = function ($m): string {
-    $m = PdfRender::toText($m);
-    if (!$m) return 'mer';
-    $ml = strtolower($m);
-    if (strpos($ml, 'lac') !== false || strpos($ml, 'carrière') !== false || strpos($ml, 'carriere') !== false) return 'lac';
-    if (strpos($ml, 'piscine') !== false) return 'piscine';
-    if (strpos($ml, 'fosse')   !== false) return 'fosse';
-    return 'mer';
-};
-$isMilieuNaturelFn = function (array $a) use ($getMilieuType): bool {
-    $t = $getMilieuType($a['milieu'] ?? null);
-    return !in_array($t, ['piscine', 'fosse'], true);
-};
-
-$CHECKLIST_RULES = [
-    [
-        'phase' => 1,
-        'phaseTitle' => "Préparation — avant l'arrivée sur site",
-        'items' => [
-            ['id'=>'p1_meteo',         'text'=>'Bulletin météo consulté (vent, mer, courant, visibilité, alerte)',                      'when' => $isMilieuNaturelFn],
-            ['id'=>'p1_maree',         'text'=>'Heure et coefficient de marée vérifiés',                                                'when' => ['maree_relevant'=>true]],
-            ['id'=>'p1_blocs',         'text'=>'Dates de réépreuve TIV / requalif. blocs des plongeurs OK'],
-            ['id'=>'p1_gonflage',      'text'=>'Gonflage des blocs effectué — pressions contrôlées'],
-            ['id'=>'p1_analyse_nx',    'text'=>'Chaque bloc Nitrox analysé et étiqueté (% O₂, MOD, signature plongeur)',              'when' => ['nitrox'=>true]],
-            ['id'=>'p1_analyse_nx_sup','text'=>'Plongeurs Nx>40 % : qualification PN-C contrôlée + analyse signée',                   'when' => fn($a) => !empty($a['nitrox_sup_40'])],
-            ['id'=>'p1_analyse_tx',    'text'=>'Trimix/Héliox : analyse mélanges + planif décompression validée',                     'when' => ['trimix'=>true]],
-            ['id'=>'p1_bloc_relais',   'text'=>'Bloc(s) relais / déco analysés et étiquetés',                                         'when' => ['bloc_relais'=>true]],
-            ['id'=>'p1_rec_check',     'text'=>'Check-list constructeur de chaque recycleur — pré-breathing',                         'when' => ['recycleur'=>true]],
-            ['id'=>'p1_o2_secours',    'text'=>"Oxygénothérapie : bouteille > 100 bar, BAVU, masques (adulte/enfant)"],
-            ['id'=>'p1_trousse',       'text'=>'Trousse de secours + couverture isothermique vérifiées'],
-            ['id'=>'p1_doc_plongeurs', 'text'=>'Brevets, licences, certificats médicaux à jour pour chaque plongeur'],
-            ['id'=>'p1_etrangers',     'text'=>'Évaluation par un E3 des plongeurs aux brevets étrangers',                           'when' => ['etrangers'=>true]],
-            ['id'=>'p1_mineurs',       'text'=>'Autorisations parentales signées récupérées',                                         'when' => ['mineurs'=>true]],
-            ['id'=>'p1_vhf_test',      'text'=>'VHF testée + piles secondaires + Canal 16 (détresse) configuré',                     'when' => ['depart_bateau'=>true]],
-            ['id'=>'p1_carburant',     'text'=>'Carburant + matériel de bord (gilets, signaux, mouillage) OK',                       'when' => ['depart_bateau'=>true]],
-            ['id'=>'p1_shot_line',     'text'=>'Shot-line (ligne lestée de descente) préparée — lest, longueur, parachutes/bouée de signalisation', 'when' => fn($a) => !empty($a['shot_line']) || !empty($a['trimix'])],
-            ['id'=>'p1_secours_coord', 'text'=>'Coordonnées des secours affichées (pays-appropriées)'],
-        ],
-    ],
-    [
-        'phase' => 2,
-        'phaseTitle' => 'Sur site — avant la mise à l\'eau',
-        'items' => [
-            ['id'=>'p2_appel',           'text'=>'Appel nominatif des plongeurs présents — vérification aptitudes'],
-            ['id'=>'p2_briefing',        'text'=>'Briefing général : site, profil, paramètres, signes, consignes'],
-            ['id'=>'p2_rappels_secu',    'text'=>'Rappels de sécurité individuels communiqués : moyen de rappel, conduite à tenir en cas de perte de palanquée, procédure de remontée d\'urgence'],
-            ['id'=>'p2_palanquees',      'text'=>'Composition annoncée — GP / serre-files / autonomes identifiés'],
-            ['id'=>'p2_sec_surface',     'text'=>'Sécurité surface en poste — relais identifiés si rotation',                         'when' => ['sec_surface'=>true]],
-            ['id'=>'p2_pavillon',        'text'=>"Pavillon Alpha hissé sur l'embarcation",                                           'when' => ['depart_bateau'=>true]],
-            ['id'=>'p2_echelle',         'text'=>'Échelle de remontée déployée — ancrage adapté',                                    'when' => ['depart_bateau'=>true]],
-            ['id'=>'p2_shot_line_pose',  'text'=>'Shot-line installée à l\'eau, lestée et amarrée correctement (obligatoire en Trimix)', 'when' => fn($a) => !empty($a['shot_line']) || !empty($a['trimix'])],
-            ['id'=>'p2_parachute',       'text'=>'Chaque palanquée a son parachute de palier',                                       'when' => ['parachute_obligatoire'=>true]],
-            ['id'=>'p2_parachute_indiv', 'text'=>'Chaque plongeur porte son parachute individuel',                                   'when' => ['parachute_par_plongeur'=>true]],
-            ['id'=>'p2_nx_signature',    'text'=>'Plongeurs Nitrox : signature finale de l\'analyse de leur bloc',                   'when' => ['nitrox'=>true]],
-            ['id'=>'p2_rec_aptitudes',   'text'=>'Aptitudes recycleur validées + circuit ouvert de secours pour > 6m',               'when' => ['recycleur'=>true]],
-            ['id'=>'p2_planifs',         'text'=>'Copies des planifs déco remises à chaque palanquée Trimix',                        'when' => ['trimix'=>true]],
-            ['id'=>'p2_bord_entree',     'text'=>"Points d'entrée/sortie de l'eau identifiés et sécurisés",                         'when' => ['depart_bord'=>true]],
-            ['id'=>'p2_go_decision',     'text'=>'Décision finale du DP : conditions OK pour autoriser la mise à l\'eau'],
-        ],
-    ],
-];
+// Règles de check-list : portage de src/domain/checklist.js (lib/ChecklistRules.php).
+$CHECKLIST_RULES = ChecklistRules::phases();
 
 // Comptages globaux
 $totalItems = 0;
 $doneItems  = 0;
 foreach ($CHECKLIST_RULES as $phase) {
     foreach ($phase['items'] as $it) {
-        if (matchCond($it['when'] ?? null, $answers)) {
+        if (ChecklistRules::matches($it['when'] ?? null, $answers)) {
             $totalItems++;
             if (!empty($checked[$it['id']])) $doneItems++;
         }
@@ -153,7 +69,7 @@ foreach ($CHECKLIST_RULES as $phase) {
 
   <!-- Phases -->
   <?php foreach ($CHECKLIST_RULES as $phase):
-    $items = array_filter($phase['items'], fn($it) => matchCond($it['when'] ?? null, $answers));
+    $items = array_filter($phase['items'], fn($it) => ChecklistRules::matches($it['when'] ?? null, $answers));
     if (empty($items)) continue;
     $phaseDone = count(array_filter($items, fn($it) => !empty($checked[$it['id']])));
   ?>

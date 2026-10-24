@@ -285,19 +285,22 @@ function checkAutonomie(ctx, add) {
   checkAutonomieAges(ctx, add);
 }
 
+// A322-73 : l'âge minimal dépend de l'espace d'évolution (profondeur prévue),
+// pas de l'aptitude PA choisie ; 18 ans au-delà de 40 m (A322-89) et au trimix.
 function checkAutonomieAges(ctx, add) {
   const minAges = tables().AUTONOMIE_AGE_MIN;
+  const space = spaceFor(ctx.profMax, minAges) ?? 60;
   for (const m of ctx.membres) {
-    const level = paLevel(m.aptitude) ?? (m.aptitude.startsWith('PTH') ? 60 : null);
-    if (level === null || m._bapteme) continue;
-    const minAge = ctx.gas.trimix ? 18 : minAges[level];
-    const ref = level === 60 || ctx.gas.trimix ? 'A322-73 / A322-89' : 'A322-73';
+    const autonome = paLevel(m.aptitude) !== null || m.aptitude.startsWith('PTH');
+    if (!autonome || m._bapteme) continue;
+    const minAge = ctx.gas.trimix ? 18 : minAges[space];
+    const ref = space === 60 || ctx.gas.trimix ? 'A322-73 / A322-89' : 'A322-73';
     const age = ageAt(m.diver.date_naissance, ctx.date);
     if (age === null) {
       add(
         'warn',
         'AGE_UNKNOWN',
-        `${memberName(m)} : date de naissance non renseignée — autonomie ${m.aptitude} à partir de ${minAge} ans.`,
+        `${memberName(m)} : date de naissance non renseignée — autonomie à ${ctx.profMax} m à partir de ${minAge} ans.`,
         ref,
         [memberId(m)],
       );
@@ -305,7 +308,7 @@ function checkAutonomieAges(ctx, add) {
       add(
         'err',
         'AGE_AUTONOMIE',
-        `${memberName(m)} (${age} ans) : autonomie ${m.aptitude}${ctx.gas.trimix ? ' au trimix' : ''} à partir de ${minAge} ans.`,
+        `${memberName(m)} (${age} ans) : autonomie à ${ctx.profMax} m${ctx.gas.trimix ? ' au trimix' : ''} à partir de ${minAge} ans.`,
         ref,
         [memberId(m)],
       );
@@ -332,6 +335,8 @@ function checkNitroxQuals(ctx, add) {
         'III-17 a',
         [memberId(m)],
       );
+    } else if (ctx.gas.nx40plus) {
+      checkPncAptitudes(m, add);
     }
   }
   if (ctx.encadrant && !hasGasQual(ctx.encadrant.diver, 'PN-C')) {
@@ -342,6 +347,24 @@ function checkNitroxQuals(ctx, add) {
   // Seul le gaz fond est soumis à la MOD : pas le nitrox de décompression
   // (Nx > 40 % avec un autre gaz, ou nitrox au trimix).
   if (ctx.gas.bottomNitrox) checkPpO2(ctx, add);
+}
+
+/**
+ * III-17 a : le PN-C suppose PE-40 en palanquée encadrée, PA-40 en autonomie
+ * (aptitudes acquises, sans le bonus de formation).
+ */
+function checkPncAptitudes(m, add) {
+  const autonome = paLevel(m.aptitude) !== null;
+  const req = autonome ? 'PA40' : 'PE40';
+  const apts = getDiverAptitudes(m.diver, false);
+  if (apts.includes(req) || apts.includes(autonome ? 'PA60' : 'PE60')) return;
+  add(
+    'err',
+    'NX_PNC_APT',
+    `${memberName(m)} : PN-C → aptitude ${autonome ? 'PA-40' : 'PE-40'} requise (nitrox > 40 % d'O₂).`,
+    'III-17 a',
+    [memberId(m)],
+  );
 }
 
 /** A322-92 : PpO₂ ≤ 1,6 bar ⇒ profondeur maximale d'utilisation du gaz fond. */

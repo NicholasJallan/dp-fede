@@ -32,6 +32,13 @@ export function toggleTrimixQual(list, val) {
   return TRIMIX_QUALS.slice(0, idx + 1);
 }
 
+// PN-C (III-17 a) : PE-40 ou PA-40 (N2 minimum).
+export function nitroxPrereq(form, qual) {
+  if (qual !== 'PN-C') return null;
+  const lvl40 = !!form.niveau_encadrant || form.niveau_plongeur === 'N2' || form.niveau_plongeur === 'N3';
+  return lvl40 ? null : 'PE-40 ou PA-40 requis (N2 minimum)';
+}
+
 export function trimixPrereq(form, qual) {
   if (!form.nitrox.includes('PN-C')) return 'PN-C requis';
   const lvl60 = form.niveau_plongeur === 'N3' || !!form.niveau_encadrant;
@@ -273,17 +280,23 @@ export function DiverFormFields({ f }) {
       )}
       <AptitudesGroup form={form} setField={setField} />
       <ChipGroup label="Nitrox">
-        {['PN', 'PN-C'].map((q) => (
-          <Chip
-            key={q}
-            on={form.nitrox.includes(q)}
-            locked={q === 'PN' && form.nitrox.includes('PN-C')}
-            onToggle={() => f.toggleNitrox(q)}
-          >
-            {q}
-            {q === 'PN-C' ? ' (inclut PN)' : ''}
-          </Chip>
-        ))}
+        {['PN', 'PN-C'].map((q) => {
+          const on = form.nitrox.includes(q);
+          const reason = nitroxPrereq(form, q);
+          return (
+            <Chip
+              key={q}
+              on={on}
+              locked={(q === 'PN' && form.nitrox.includes('PN-C')) || (!!reason && !on)}
+              title={reason}
+              onToggle={() => f.toggleNitrox(q)}
+            >
+              {q}
+              {q === 'PN-C' ? ' (inclut PN)' : ''}
+              {reason && !on ? ` (${reason})` : ''}
+            </Chip>
+          );
+        })}
       </ChipGroup>
       <ChipGroup label="Trimix, héliox (PTH)" hint="PTH-70 inclut PTH-40, PTH-120 inclut PTH-70 (annexe III-18 a).">
         {TRIMIX_QUALS.map((q) => {

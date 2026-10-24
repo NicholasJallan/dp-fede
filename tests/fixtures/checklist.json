@@ -1,0 +1,229 @@
+{
+  "_doc": "Scénarios de check-list partagés JS (tests/checklist-php.test.js) et PHP (backend/tests-php/ChecklistRulesTest.php) : 'visible' = identifiants affichés, dans l'ordre.",
+  "scenarios": [
+    {
+      "name": "Mer, départ bateau, nitrox > 40 % et trimix",
+      "answers": {
+        "milieu": "En mer",
+        "depart_bateau": true,
+        "nitrox": true,
+        "nitrox_sup_40": true,
+        "trimix": true,
+        "bloc_relais": true,
+        "maree_relevant": true
+      },
+      "visible": [
+        "p1_meteo",
+        "p1_maree",
+        "p1_blocs",
+        "p1_gonflage",
+        "p1_analyse_nx",
+        "p1_analyse_nx_sup",
+        "p1_analyse_tx",
+        "p1_bloc_relais",
+        "p1_plan_secours",
+        "p1_o2_secours",
+        "p1_bavu",
+        "p1_trousse",
+        "p1_fiches_evac",
+        "p1_bloc_secours",
+        "p1_tablette",
+        "p1_tables",
+        "p1_doc_plongeurs",
+        "p1_vhf_test",
+        "p1_carburant",
+        "p1_shot_line",
+        "p1_secours_coord",
+        "p2_appel",
+        "p2_briefing",
+        "p2_rappels_secu",
+        "p2_palanquees",
+        "p2_equipement",
+        "p2_rappel",
+        "p2_pavillon",
+        "p2_echelle",
+        "p2_shot_line_pose",
+        "p2_parachute",
+        "p2_nx_signature",
+        "p2_planifs",
+        "p2_tx_embarcation",
+        "p2_go_decision"
+      ]
+    },
+    {
+      "name": "Lac, départ du bord, recycleur, mineurs et étrangers",
+      "answers": {
+        "milieu": "Lac",
+        "depart_bord": true,
+        "recycleur": true,
+        "mineurs": true,
+        "etrangers": true,
+        "parachute_par_plongeur": true,
+        "sec_surface": true,
+        "shot_line": true
+      },
+      "visible": [
+        "p1_meteo",
+        "p1_blocs",
+        "p1_gonflage",
+        "p1_rec_check",
+        "p1_plan_secours",
+        "p1_o2_secours",
+        "p1_bavu",
+        "p1_trousse",
+        "p1_fiches_evac",
+        "p1_bloc_secours",
+        "p1_tablette",
+        "p1_tables",
+        "p1_doc_plongeurs",
+        "p1_etrangers",
+        "p1_mineurs",
+        "p1_shot_line",
+        "p1_secours_coord",
+        "p2_appel",
+        "p2_briefing",
+        "p2_rappels_secu",
+        "p2_palanquees",
+        "p2_equipement",
+        "p2_sec_surface",
+        "p2_shot_line_pose",
+        "p2_parachute",
+        "p2_parachute_indiv",
+        "p2_rec_aptitudes",
+        "p2_bord_entree",
+        "p2_go_decision"
+      ]
+    },
+    {
+      "name": "Piscine de 4 m",
+      "answers": {
+        "milieu": "Piscine",
+        "site_prof_max": 4,
+        "depart_bord": true
+      },
+      "visible": [
+        "p1_blocs",
+        "p1_gonflage",
+        "p1_plan_secours",
+        "p1_o2_secours",
+        "p1_bavu",
+        "p1_trousse",
+        "p1_fiches_evac",
+        "p1_bloc_secours",
+        "p1_tablette",
+        "p1_doc_plongeurs",
+        "p1_secours_coord",
+        "p2_appel",
+        "p2_briefing",
+        "p2_rappels_secu",
+        "p2_palanquees",
+        "p2_bord_entree",
+        "p2_go_decision"
+      ]
+    },
+    {
+      "name": "Piscine de profondeur inconnue",
+      "answers": {
+        "milieu": "Piscine"
+      },
+      "visible": [
+        "p1_blocs",
+        "p1_gonflage",
+        "p1_plan_secours",
+        "p1_o2_secours",
+        "p1_bavu",
+        "p1_trousse",
+        "p1_fiches_evac",
+        "p1_bloc_secours",
+        "p1_tablette",
+        "p1_doc_plongeurs",
+        "p1_secours_coord",
+        "p2_appel",
+        "p2_briefing",
+        "p2_rappels_secu",
+        "p2_palanquees",
+        "p2_go_decision"
+      ]
+    },
+    {
+      "name": "Fosse de 20 m : règles du milieu naturel",
+      "answers": {
+        "milieu": "Fosse",
+        "site_prof_max": 20
+      },
+      "visible": [
+        "p1_blocs",
+        "p1_gonflage",
+        "p1_plan_secours",
+        "p1_o2_secours",
+        "p1_bavu",
+        "p1_trousse",
+        "p1_fiches_evac",
+        "p1_bloc_secours",
+        "p1_tablette",
+        "p1_tables",
+        "p1_doc_plongeurs",
+        "p1_secours_coord",
+        "p2_appel",
+        "p2_briefing",
+        "p2_rappels_secu",
+        "p2_palanquees",
+        "p2_equipement",
+        "p2_parachute",
+        "p2_go_decision"
+      ]
+    },
+    {
+      "name": "Fosse de profondeur inconnue : présumée de plus de 6 m",
+      "answers": {
+        "milieu": "Fosse"
+      },
+      "visible": [
+        "p1_blocs",
+        "p1_gonflage",
+        "p1_plan_secours",
+        "p1_o2_secours",
+        "p1_bavu",
+        "p1_trousse",
+        "p1_fiches_evac",
+        "p1_bloc_secours",
+        "p1_tablette",
+        "p1_tables",
+        "p1_doc_plongeurs",
+        "p1_secours_coord",
+        "p2_appel",
+        "p2_briefing",
+        "p2_rappels_secu",
+        "p2_palanquees",
+        "p2_equipement",
+        "p2_parachute",
+        "p2_go_decision"
+      ]
+    },
+    {
+      "name": "Fosse de 6 m",
+      "answers": {
+        "milieu": "Fosse",
+        "site_prof_max": 6
+      },
+      "visible": [
+        "p1_blocs",
+        "p1_gonflage",
+        "p1_plan_secours",
+        "p1_o2_secours",
+        "p1_bavu",
+        "p1_trousse",
+        "p1_fiches_evac",
+        "p1_bloc_secours",
+        "p1_tablette",
+        "p1_doc_plongeurs",
+        "p1_secours_coord",
+        "p2_appel",
+        "p2_briefing",
+        "p2_rappels_secu",
+        "p2_palanquees",
+        "p2_go_decision"
+      ]
+    }
+  ]
+}

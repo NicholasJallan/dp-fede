@@ -40,6 +40,7 @@ require_once __DIR__ . '/../lib/Account.php';
 require_once __DIR__ . '/../lib/Migrator.php';
 require_once __DIR__ . '/../lib/Retention.php';
 require_once __DIR__ . '/../lib/PdfRender.php';
+require_once __DIR__ . '/../lib/ChecklistRules.php';
 require_once __DIR__ . '/../lib/Club.php';
 require_once __DIR__ . '/../lib/ClubInvitation.php';
 require_once __DIR__ . '/../lib/ClubAlerts.php';

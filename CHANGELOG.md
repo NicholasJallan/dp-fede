@@ -12,6 +12,7 @@ Dates en ISO 8601.
 - Club sans numéro réglé : repli `112` (était `18`).
 - Check-list : encadrant sur recycleur en milieu naturel → système de secours indépendant du recycleur (A322-94), JS et PDF.
 - DP introuvable dans l'annuaire (pas encore chargé, supprimé) : l'ouverture du profil n'efface plus son nom ni sa qualification, et l'écran Palanquées ne ramène plus les nitrox / trimix à l'air (`src/app/dp-guards.js`).
+- Archivage d'une plongée (A322-72) : les règles bloquantes sont vérifiées sur l'état complet (corps + stocké) à chaque passage en `archived`, même si le PATCH ne porte que le statut ; la mise à l'eau (`in_progress`) n'est jamais refusée. PATCH et POST en transaction (`backend/lib/DiveService.php`), ligne verrouillée (`SELECT … FOR UPDATE`), `UPDATE` limité au club, `documents_status = 'pending'` posé avec le statut ; suppression limitée au club et refusée sur une plongée archivée dans la même instruction.
 - Neuf règles sans aucun test couvertes par des cas partagés JS / PHP (`TX_PUBLIC`, `TX_ENCADRANT`, `EXTRA_NX`, `EXTRA_NOT_GP`, `GAS_NONE`, `BASSIN_BAPTEME`, `BASSIN_EFFECTIF`, `AUTO_ENCADREMENT`, `MEDICAL_MISSING`).
 
 ### Palanquées : gaz de déco, DTR, date de naissance (22/10/2026)

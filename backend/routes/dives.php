@@ -4,83 +4,6 @@ declare(strict_types=1);
 require_once __DIR__ . '/../lib/Rules.php';
 require_once __DIR__ . '/../lib/Encadrement.php';
 
-// Charge les divers référencés dans les palanquées depuis la DB et retourne
-// ['diversById' => [...], 'dp' => array|null]. Renvoie 422 si la validation
-// des règles dures échoue (erreurs bloquantes). Les warnings sont ignorés
-// (le front affiche le feedback temps réel, le back valide les dures seulement).
-function validatePalanqueesOrAbort(array $palanquees, array $answers, string $clubId): void
-{
-    if (empty($palanquees)) return;
-
-    // Collecter tous les diverId uniques référencés
-    $driverIds = [];
-    foreach ($palanquees as $pal) {
-        foreach ($pal['membres'] ?? [] as $m) {
-            if (empty($m['_bapteme']) && !empty($m['diverId'])) {
-                $driverIds[$m['diverId']] = true;
-            }
-        }
-    }
-
-    // Niveau encadrant du cadre de la structure (associatif / SCA).
-    $club     = Db::row('SELECT structure_type FROM clubs WHERE id=?', [$clubId]);
-    $cadrePro = Encadrement::isCadrePro($club['structure_type'] ?? null);
-
-    $diversById = [];
-    if (!empty($driverIds)) {
-        $ids   = array_keys($driverIds);
-        $phs   = implode(',', array_fill(0, count($ids), '?'));
-        $rows  = Db::all(
-            "SELECT id, nom, prenom, niveau_plongeur, niveau_encadrant,
-                    aptitudes_sup, qualifs, medical, date_naissance
-               FROM divers
-              WHERE id IN ({$phs}) AND club_id=? AND deleted_at IS NULL",
-            [...$ids, $clubId]
-        );
-        foreach ($rows as $row) {
-            $row = Encadrement::applyToRow($row, $cadrePro);
-            // Décoder qualifs → nitrox / trimix (même logique que routes/divers.php)
-            $raw = json_decode($row['qualifs'] ?? '[]', true) ?? [];
-            if (isset($raw['nitrox'])) {
-                $row['nitrox'] = $raw['nitrox'] ?? [];
-                $row['trimix'] = $raw['trimix'] ?? [];
-            } else {
-                $row['nitrox'] = array_values(array_intersect((array)$raw, ['PN', 'PN-C']));
-                $row['trimix'] = array_values(array_intersect((array)$raw, ['PTH-40', 'PTH-70', 'PTH-120']));
-            }
-            $row['aptitudes_sup'] = json_decode($row['aptitudes_sup'] ?? '[]', true) ?? [];
-            $diversById[$row['id']] = $row;
-        }
-    }
-
-    // Charger le DP
-    $dp = null;
-    if (!empty($answers['dp_id'])) {
-        $dpRow = Db::row(
-            'SELECT id, niveau_encadrant, qualifs, aptitudes_sup
-               FROM divers WHERE id=? AND club_id=? AND deleted_at IS NULL',
-            [$answers['dp_id'], $clubId]
-        );
-        if ($dpRow) {
-            $dpRow = Encadrement::applyToRow($dpRow, $cadrePro);
-            $raw = json_decode($dpRow['qualifs'] ?? '[]', true) ?? [];
-            $dpRow['nitrox'] = isset($raw['nitrox']) ? ($raw['nitrox'] ?? []) : array_values(array_intersect((array)$raw, ['PN', 'PN-C']));
-            $dpRow['trimix'] = isset($raw['trimix']) ? ($raw['trimix'] ?? []) : array_values(array_intersect((array)$raw, ['PTH-40', 'PTH-70', 'PTH-120']));
-            $dp = $dpRow;
-        }
-    }
-
-    // Si le DP n'est pas en DB, construire un dp minimal depuis answers (dp_qual)
-    if (!$dp && !empty($answers['dp_qual'])) {
-        $dp = ['niveau_encadrant' => $answers['dp_qual'], 'nitrox' => [], 'trimix' => []];
-    }
-
-    $result = Rules::validateDive($palanquees, $diversById, $answers, $dp);
-    if (!$result['ok']) {
-        Json::abort(422, implode(' | ', $result['errors']));
-    }
-}
-
 // ── GET /api/dives ─────────────────────────────────────────────────────────
 // Liste des plongées (tous statuts par défaut).
 // ?status=prepared,in_progress,archived — filtre sur un ou plusieurs statuts.
@@ -186,64 +109,17 @@ if ($method === 'POST' && $path === '/api/dives') {
 
     if ($clientUuid) respondIfClientUuidKnown($clientUuid, $clubId);
 
-    $status  = in_array($body['status'] ?? '', ['prepared', 'in_progress', 'archived'])
-        ? $body['status'] : 'prepared';
-    $dpDate  = parseDiveDateToMySql((string)($body['date_plongee'] ?? ''));
-    $planned = $dpDate; // planned_at = date_plongee à la création
-
-    // Validation règles métier uniquement si la plongée est créée avec un statut
-    // avancé (in_progress ou archived = sync offline d'une session déjà terminée).
-    // Pour 'prepared', la palanquée peut être incomplète → pas de blocage.
-    if (!empty($body['palanquees']) && in_array($status, ['in_progress', 'archived'], true)) {
-        validatePalanqueesOrAbort($body['palanquees'], $body['answers'] ?? [], $clubId);
-    }
-    $rsJson = !empty($body['render_state']) ? renderStateJsonOrAbort($body['render_state']) : null;
-
-    $id = Db::uuid();
     try {
-        Db::q(
-            'INSERT INTO dives
-             (id, club_id, user_id, client_uuid, status, site_nom, date_plongee, planned_at,
-              dp_nom, dp_qual, activite, answers, palanquees, drive_link, closed_at)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,' . ($status === 'archived' ? 'NOW()' : 'NULL') . ')',
-            [
-                $id, $clubId, $user['id'], $clientUuid, $status,
-                substr((string)($body['site_nom']   ?? ''), 0, 255),
-                $dpDate,
-                $planned,
-                substr((string)($body['dp_nom']     ?? ''), 0, 200),
-                substr((string)($body['dp_qual']    ?? ''), 0, 20),
-                substr((string)($body['activite']   ?? ''), 0, 50),
-                json_encode($body['answers']    ?? [], JSON_UNESCAPED_UNICODE),
-                json_encode($body['palanquees'] ?? [], JSON_UNESCAPED_UNICODE),
-                substr((string)($body['drive_link'] ?? ''), 0, 500),
-            ]
-        );
+        $created = DiveService::create($clubId, (string)$user['id'], $body);
+    } catch (DiveRefusal $e) {
+        Json::abort($e->httpStatus, $e->getMessage(), $e->errorCode);
     } catch (PDOException $e) {
         // Deux rejeux simultanés : l'index unique (club_id, client_uuid) a
         // arrêté le second → même réponse qu'un rejeu séquentiel.
         if ($clientUuid && (string)$e->getCode() === '23000') respondIfClientUuidKnown($clientUuid, $clubId);
         throw $e;
     }
-
-    // H4 : render_state → table dédiée (n'impacte pas dives.updated_at)
-    if (!empty($rsJson)) {
-        Db::q(
-            'INSERT INTO dive_runtime_state (dive_id, state) VALUES (?,?)',
-            [$id, $rsJson]
-        );
-    }
-
-    Log::action('dive.created', ['dive_id' => $id, 'club_id' => $clubId]);
-    $documentsStatus = null;
-    if ($status === 'archived') {
-        // Plongée archivée hors-ligne puis synchronisée : même traitement
-        // qu'un passage en 'archived' par PATCH.
-        Log::action('dive.archived', ['dive_id' => $id]);
-        DiveArchive::onArchived($id);
-        $documentsStatus = 'pending';
-    }
-    Json::ok(['id' => $id, 'duplicate' => false, 'documents_status' => $documentsStatus], 201);
+    Json::ok(['id' => $created['id'], 'duplicate' => false, 'documents_status' => $created['documents_status']], 201);
 }
 
 /**
@@ -274,130 +150,11 @@ if ($method === 'PATCH' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
     Csrf::verify();
     $user = Auth::require();
     Club::requirePermission($user, 'dives.write');
-    $body = Json::body();
-
-    $row = DiveStore::findActive($m[1], (string)$user['club_id']);
-    if (!$row) Json::abort(404, 'Plongée introuvable');
-
-    $curStatus = $row['status'];
-    $newStatus = isset($body['status']) && in_array($body['status'], ['prepared', 'in_progress', 'archived'])
-        ? $body['status'] : null;
-
-    // Transition rétrograde interdite
-    if ($newStatus !== null && $curStatus === 'archived' && $newStatus !== 'archived') {
-        Json::abort(422, 'Impossible de modifier le statut d\'une plongée archivée', DivePolicy::ARCHIVED_IMMUTABLE);
+    try {
+        Json::ok(DiveService::patch((string)$user['club_id'], $m[1], Json::body()));
+    } catch (DiveRefusal $e) {
+        Json::abort($e->httpStatus, $e->getMessage(), $e->errorCode);
     }
-
-    $hasRenderState = isset($body['render_state']);
-    if ($curStatus === 'archived') {
-        $violation = DivePolicy::archivedPatchViolation($body, DiveStore::storedRenderState((string)$row['id']));
-        if ($violation !== null) Json::abort(422, $violation, DivePolicy::ARCHIVED_IMMUTABLE);
-        // État identique (rejeu) : rien à écrire.
-        $hasRenderState = false;
-    }
-
-    $sets   = [];
-    $params = [];
-
-    if ($curStatus !== 'archived') {
-        // Champs librement mutables tant que pas encore archivé
-        if (isset($body['answers'])) {
-            $sets[]   = 'answers=?';
-            $params[] = json_encode($body['answers'], JSON_UNESCAPED_UNICODE);
-        }
-        if (isset($body['palanquees'])) {
-            $sets[]   = 'palanquees=?';
-            $params[] = json_encode($body['palanquees'], JSON_UNESCAPED_UNICODE);
-        }
-        if (isset($body['site_nom'])) {
-            $sets[]   = 'site_nom=?';
-            $params[] = substr((string)$body['site_nom'], 0, 255);
-        }
-        if (isset($body['date_plongee'])) {
-            $sets[]   = 'date_plongee=?';
-            $params[] = parseDiveDateToMySql((string)$body['date_plongee']);
-        }
-        if (isset($body['dp_nom'])) {
-            $sets[]   = 'dp_nom=?';
-            $params[] = substr((string)$body['dp_nom'], 0, 200);
-        }
-        if (isset($body['dp_qual'])) {
-            $sets[]   = 'dp_qual=?';
-            $params[] = substr((string)$body['dp_qual'], 0, 20);
-        }
-        if (isset($body['activite'])) {
-            $sets[]   = 'activite=?';
-            $params[] = substr((string)$body['activite'], 0, 50);
-        }
-        if ($newStatus !== null) {
-            $sets[]   = 'status=?';
-            $params[] = $newStatus;
-            if ($newStatus === 'archived') $sets[] = 'closed_at=NOW()';
-        }
-        if (isset($body['planned_at'])) {
-            $sets[]   = 'planned_at=?';
-            $params[] = parseDiveDateToMySql((string)$body['planned_at']);
-        }
-        if (isset($body['started_at'])) {
-            $sets[]   = 'started_at=?';
-            $params[] = parseDiveDateToMySql((string)$body['started_at']);
-        }
-    }
-
-    // drive_link mutable même après archivage
-    if (isset($body['drive_link'])) {
-        $sets[]   = 'drive_link=?';
-        $params[] = substr((string)$body['drive_link'], 0, 500);
-    }
-
-    // Rejeu sans effet du PATCH d'archivage (outbox, réponse perdue) : succès.
-    $archivedReplay = $curStatus === 'archived' && $newStatus === 'archived';
-    if (empty($sets) && !$hasRenderState && !$archivedReplay) Json::abort(422, 'Aucun champ à mettre à jour');
-
-    // Validation règles métier uniquement lors d'une transition de statut significative
-    // (in_progress ou archived). Les auto-saves intermédiaires ('prepared') ne
-    // bloquent pas la composition en cours (membres sans aptitude, etc.).
-    if (isset($body['palanquees']) && $curStatus !== 'archived'
-        && in_array($newStatus, ['in_progress', 'archived'], true)) {
-        $ans = $body['answers'] ?? [];
-        if (empty($ans)) {
-            $existingAnswers = Db::row('SELECT answers FROM dives WHERE id=?', [$row['id']]);
-            $ans = json_decode($existingAnswers['answers'] ?? '{}', true) ?? [];
-        }
-        validatePalanqueesOrAbort($body['palanquees'], $ans, (string)$user['club_id']);
-    }
-
-    // Garde-fou anti-écrasement : un client qui aurait ouvert la plongée sans
-    // son contenu (ex. hors-ligne) ne doit pas vider une composition existante.
-    if ($curStatus !== 'archived' && isEmptyDivePayload($body)) {
-        $existing = Db::row('SELECT palanquees FROM dives WHERE id=?', [$row['id']]);
-        $existingPals = json_decode($existing['palanquees'] ?? '[]', true) ?: [];
-        if (!empty($existingPals)) {
-            Json::abort(409, 'Mise à jour refusée : elle viderait une plongée existante', 'EMPTY_OVERWRITE_REFUSED');
-        }
-    }
-
-    // H4 : render_state → dive_runtime_state (UPSERT sans toucher dives.updated_at),
-    // écrit seulement après validation, et seulement si la plongée n'a pas été
-    // archivée entre-temps (condition dans la même instruction).
-    if ($hasRenderState) {
-        $rsJson = renderStateJsonOrAbort($body['render_state']);
-        if (!DiveStore::writeRuntimeStateUnlessArchived((string)$row['id'], $rsJson)) {
-            Json::abort(422, DivePolicy::ARCHIVED_MESSAGE, DivePolicy::ARCHIVED_IMMUTABLE);
-        }
-    }
-
-    if (!empty($sets)) {
-        $params[] = $row['id'];
-        Db::q('UPDATE dives SET ' . implode(',', $sets) . ' WHERE id=?', $params);
-    }
-
-    if ($newStatus === 'archived' && $curStatus !== 'archived') {
-        Log::action('dive.archived', ['dive_id' => $row['id'], 'club_id' => $user['club_id']]);
-        DiveArchive::onArchived((string)$row['id']);
-    }
-    $updated = Db::row('SELECT id, status, drive_link, documents_status FROM dives WHERE id=?', [$row['id']]);
-    Json::ok($updated);
 }
 
 // ── DELETE /api/dives/:id ───────────────────────────────────────────────────
@@ -413,7 +170,7 @@ if ($method === 'DELETE' && preg_match('#^/api/dives/([^/]+)$#', $path, $m)) {
         Json::abort(422, 'Impossible de supprimer une plongée archivée', DivePolicy::ARCHIVED_IMMUTABLE);
     }
 
-    Db::q('UPDATE dives SET deleted_at=NOW() WHERE id=?', [$row['id']]);
+    Db::q("UPDATE dives SET deleted_at=NOW() WHERE id=? AND club_id=? AND status<>'archived'", [$row['id'], $user['club_id']]);
     Log::action('dive.deleted', ['dive_id' => $row['id']]);
     Json::ok(['id' => $row['id'], 'deleted' => true]);
 }
@@ -486,61 +243,13 @@ function archivedDiveOrAbort(string $idOrUuid, string $clubId, bool $mustBeArchi
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// render_state : objet JSON { pressions, realises, heuresDebut, heuresFin,
-// checked, comments } — refuse les autres types et les charges > 512 Ko.
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** @param mixed $value */
-function renderStateJsonOrAbort($value): string {
-    try {
-        return Validate::encodeJsonObject($value, DivePolicy::RENDER_STATE_MAX_BYTES, 'render_state');
-    } catch (InvalidArgumentException $e) {
-        Json::abort(422, $e->getMessage());
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Helpers de format date_plongee / planned_at / started_at / closed_at.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function parseDiveDateToMySql(string $raw): ?string {
-    $raw = trim($raw);
-    if ($raw === '') return null;
-    $candidates = [
-        'Y-m-d\TH:i',
-        'Y-m-d\TH:i:s',
-        'Y-m-d H:i',
-        'Y-m-d H:i:s',
-        'Y-m-d',
-    ];
-    foreach ($candidates as $fmt) {
-        $dt = DateTimeImmutable::createFromFormat($fmt, $raw);
-        if ($dt !== false) return $dt->format('Y-m-d H:i:s');
-    }
-    // ISO 8601 avec fuseau (ex. toISOString() → 2026-06-12T06:30:00.000Z) :
-    // converti dans le fuseau du serveur, comme les dates saisies localement.
-    if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/', $raw)) {
-        try {
-            $dt = new DateTimeImmutable($raw);
-            return $dt->setTimezone(new DateTimeZone(date_default_timezone_get()))->format('Y-m-d H:i:s');
-        } catch (Exception $e) {
-            return null;
-        }
-    }
-    return null;
-}
-
-/**
- * Vrai si le PATCH porte answers ET palanquees vides : signature d'un client
- * qui écrirait un état jamais chargé.
- */
-function isEmptyDivePayload(array $body): bool {
-    if (!array_key_exists('answers', $body) || !array_key_exists('palanquees', $body)) return false;
-    return empty($body['answers']) && empty($body['palanquees']);
+    return DiveDates::toMysql($raw);
 }
 
 function normalizeDiveDate(?string $sqlDate): ?string {
-    if (!$sqlDate) return null;
-    $dt = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $sqlDate);
-    return $dt ? $dt->format('Y-m-d\TH:i') : $sqlDate;
+    return DiveDates::fromMysql($sqlDate);
 }

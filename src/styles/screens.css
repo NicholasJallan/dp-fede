@@ -706,9 +706,6 @@
   font-weight: 700;
   font-size: var(--fs-md);
 }
-.login-brand .brand-mark {
-  color: var(--c-abyss);
-}
 .login-card h1 {
   font-size: var(--fs-xl);
 }

@@ -570,6 +570,3 @@
     display: block;
   }
 }
-.brand-mark .needle {
-  stroke: var(--c-signal);
-}

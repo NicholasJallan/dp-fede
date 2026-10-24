@@ -211,14 +211,24 @@ export const Icon = {
   ),
 };
 
-/** Marque « DP Assistant » : cadran de profondimètre stylisé. */
+/** Marque « DP Assistant » : fiche de sécurité, pavillon Alpha et coche (même dessin que l'icône PWA). */
 export function BrandMark() {
   return (
-    <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-      <circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" strokeWidth="2.5" />
-      <path d="M16 4v4M28 16h-4M16 28v-4M4 16h4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-      <path className="needle" d="M16 16 22 10" strokeWidth="3" strokeLinecap="round" />
-      <circle cx="16" cy="16" r="2.5" fill="currentColor" />
+    <svg className="brand-mark" viewBox="6 4 52 52" aria-hidden="true" focusable="false">
+      <rect x="6" y="4" width="52" height="52" rx="11" fill="#0b2e4a" />
+      <rect x="14.4" y="12.3" width="35.2" height="41.5" rx="2.2" fill="none" stroke="#fff" strokeWidth="2.4" />
+      <rect x="24.2" y="9" width="15.6" height="4.6" rx="1.2" fill="#fff" />
+      <circle cx="32" cy="8.8" r="2.6" fill="#fff" />
+      <rect x="18" y="14.8" width="13.3" height="15.5" fill="#fff" />
+      <path d="M31.3 14.8H46.5L39.4 22.55 46.5 30.3H31.3Z" fill="#0077b6" />
+      <path d="M15.6 37C21 33 27 34 32 37S43 41 48.4 37V52.6H15.6Z" fill="#0077b6" />
+      <path d="M15.6 45C21 41 27 42 33 46S43 49 48.4 46V52.6H15.6Z" fill="#0b6f66" />
+      <path d="M15.6 45C21 41 27 42 33 46S43 49 48.4 46" fill="none" stroke="#fff" strokeWidth="1.6" />
+      <circle cx="40.6" cy="31.4" r="0.7" fill="#fff" />
+      <circle cx="42.3" cy="33.2" r="0.85" fill="#fff" />
+      <circle cx="40.4" cy="35.3" r="1" fill="#fff" />
+      <path d="M37.8 38.8 42.2 43.1 54.4 29.4" fill="none" stroke="#0b2e4a" strokeWidth="6.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M37.8 38.8 42.2 43.1 54.4 29.4" fill="none" stroke="#ffd60a" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

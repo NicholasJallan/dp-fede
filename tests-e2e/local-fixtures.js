@@ -62,6 +62,16 @@ const DIVERS = [
   // Sans date de naissance : saisie rapide proposée à l'ajout en palanquée.
   diver('d-n1', 'PETIT', 'Zoé', { niveau_plongeur: 'N1', date_naissance: null }),
   diver('d-e2', 'ROUX', 'Marc', { niveau_encadrant: 'E2' }),
+  diver('d-dp-pf', 'TAHITI', 'Arii', {
+    date_naissance: '1980-01-01',
+    medical: '2026-09-01',
+    pf: { aptitudes: ['PE-40', 'PA-40'], fonctions: ['DP-60'], gaz: [] },
+  }),
+  diver('d-pe1', 'VAHINE', 'Moana', { niveau_plongeur: 'N1', date_naissance: '1995-01-01', medical: '2026-09-01' }),
+  diver('d-pe2', 'TANE', 'Maea', { niveau_plongeur: 'N1', date_naissance: '1996-01-01', medical: '2026-09-01' }),
+  diver('d-pe3', 'RAU', 'Hina', { niveau_plongeur: 'N1', date_naissance: '1997-01-01', medical: '2026-09-01' }),
+  diver('d-pe4', 'TEIKI', 'Marama', { niveau_plongeur: 'N1', date_naissance: '1998-01-01', medical: '2026-09-01' }),
+  diver('d-pe5', 'POE', 'Teva', { niveau_plongeur: 'N1', date_naissance: '1999-01-01', medical: '2026-09-01' }),
 ];
 
 const SITE_LAC = {
@@ -90,7 +100,20 @@ const SITE_CARRIERE = {
   acces_secours: 'Portail nord',
   caisson: 'Hôpital Édouard-Herriot, Lyon',
 };
-const SITES = [SITE_LAC, SITE_CARRIERE];
+const SITE_TAHITI = {
+  id: 's-pf',
+  nom: 'La Vallée Blanche',
+  milieu: 'En mer',
+  profondeur_max: 50,
+  depart_bord: false,
+  depart_bateau: true,
+  pays: 'Polynésie française',
+  pays_code: 'PF',
+  coordonnees: { lat: -17.55, lng: -149.62 },
+  acces_secours: 'Port de Papeete',
+  caisson: 'CHPF Papeete',
+};
+const SITES = [SITE_LAC, SITE_CARRIERE, SITE_TAHITI];
 
 function baseAnswers(site, date) {
   return {

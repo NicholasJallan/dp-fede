@@ -53,11 +53,23 @@ export {
   normalizeJurisdiction,
   jurisdictionForCountry,
   resolveJurisdiction,
+  diveJurisdiction,
 } from './jurisdiction.js';
 export { rulesFor } from './rules-for.js';
 export { ageAt, calendarDate } from './pal-helpers.js';
 export { PF_CODES, pfFromFr, pfProfile } from './pf/pf-profile.js';
 export { validatePalPf } from './pf/pf-rules.js';
+export {
+  pfRolesFor,
+  pfRoleMaxDepth,
+  pfDpMaxDepth,
+  pfPalHardLimit,
+  pfPalMode,
+  pfPalType,
+  pfAvailableMelanges,
+  pfIsDpCandidate,
+  pfIsEnseignantRole,
+} from './pf/pf-ui.js';
 export { minDtr, dtrForProf } from './dtr.js';
 export {
   validatePal,

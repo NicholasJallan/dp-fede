@@ -3,12 +3,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import {
-  STRUCTURE_LABELS,
-  JURISDICTION_LABELS,
-  structureLabels,
-  structureLabel,
-} from '../src/domain/levels.js';
+import { STRUCTURE_LABELS, JURISDICTION_LABELS, structureLabels, structureLabel } from '../src/domain/levels.js';
 
 import win from './setup.js';
 

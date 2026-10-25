@@ -14,14 +14,14 @@ if (file_exists(__DIR__ . '/../lib/RulesFor.php')) {
  */
 final class RulesForTest extends TestCase
 {
-    public function testForJurisdictionReturnsRulesClassAtLotZero(): void
+    public function testForJurisdiction(): void
     {
         $this->assertSame(\Rules::class, \RulesFor::forJurisdiction('FR'));
-        $this->assertSame(\Rules::class, \RulesFor::forJurisdiction('PF'));
+        $this->assertSame(\PfRules::class, \RulesFor::forJurisdiction('PF'));
+        $this->assertSame(\PfRules::class, \RulesFor::forJurisdiction('  pf  '));
         $this->assertSame(\Rules::class, \RulesFor::forJurisdiction(null));
         $this->assertSame(\Rules::class, \RulesFor::forJurisdiction(''));
         $this->assertSame(\Rules::class, \RulesFor::forJurisdiction('XX'));
         $this->assertSame(\Rules::class, \RulesFor::forJurisdiction('  fr  '));
-        $this->assertSame(\Rules::class, \RulesFor::forJurisdiction('  pf  '));
     }
 }

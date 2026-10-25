@@ -3,22 +3,16 @@
 //
 // Une palanquée bloquée (issue tone 'err') est encadrée en rouge détresse,
 // avec un résumé en tête et ses plongeurs concernés surlignés. Chaque règle
-// affiche son texte et sa référence au Code du sport, sans survol.
+// affiche son texte et sa référence (Code du sport, ou loi du pays et arrêté
+// n° 199 CM en Polynésie), sans survol. Rôles, mode et plafond viennent des
+// règles de la juridiction (ctx.rules).
 
 import React, { useEffect, useId } from 'react';
 import { CdsLink, Pill, diverFullName } from '../../components/components.jsx';
 import { Icon, StatusIcon } from '../../components/icons.jsx';
-import {
-  derivePalMode,
-  gasQualSummary,
-  getDiverAptitudes,
-  minDtr,
-  PAL_TYPE_LABELS,
-  palGas,
-  parseCdsRefs,
-} from '../../domain/index.js';
+import { gasQualSummary, minDtr, PAL_TYPE_LABELS, palGas, parseCdsRefs } from '../../domain/index.js';
 
-const ENS_ROLES = ['E1', 'E2', 'E3', 'E4'];
+const isEncadrantRolePf = (role) => /^(ENS|GP)-/.test(role || '');
 
 function memberName(m, diversById) {
   if (m._bapteme) return `${m.prenom || ''} ${(m.nom || '').toUpperCase()}`.trim();
@@ -27,8 +21,16 @@ function memberName(m, diversById) {
 }
 
 // Référence lisible : article du Code du sport (lien Légifrance) ou annexe.
-export function IssueRef({ refText }) {
+export function IssueRef({ refText, jurisdiction }) {
   if (!refText) return null;
+  if (jurisdiction === 'PF') {
+    const texte = /^LP\b/.test(refText) ? 'loi du pays n° 2017-44' : 'arrêté n° 199 CM';
+    return (
+      <span className="issue-ref">
+        {texte} : {refText}
+      </span>
+    );
+  }
   const arts = parseCdsRefs(refText);
   return (
     <span className="issue-ref">
@@ -39,7 +41,7 @@ export function IssueRef({ refText }) {
 
 const ISSUE_TAG = { err: 'Bloquant', warn: 'Alerte', ok: 'Conforme' };
 
-function IssueList({ issues, onBirthdate }) {
+function IssueList({ issues, onBirthdate, jurisdiction }) {
   return (
     <ul className="issue-list" aria-label="Règles appliquées">
       {issues.map((v, i) => (
@@ -49,7 +51,7 @@ function IssueList({ issues, onBirthdate }) {
             <b>{ISSUE_TAG[v.tone]} :</b>
             {v.text}
           </span>
-          <IssueRef refText={v.ref} />
+          <IssueRef refText={v.ref} jurisdiction={jurisdiction} />
           {v.code === 'AGE_UNKNOWN' && onBirthdate && v.ids?.[0] && (
             <button type="button" className="btn issue-action" onClick={() => onBirthdate(v.ids[0])}>
               Saisir la date de naissance
@@ -77,11 +79,11 @@ function PalAlarm({ blocking, flaggedNames }) {
 
 // Mode enseignement / exploration (A322-75) : choisi dès qu'un enseignant
 // est présent ; un baptême est toujours de l'enseignement.
-function PalModeToggle({ pal, onChange }) {
+function PalModeToggle({ pal, rules, onChange }) {
   const labelId = useId();
   const apts = pal.membres.map((m) => m.aptitude);
-  if (!apts.some((a) => ENS_ROLES.includes(a)) || apts.includes('Baptême')) return null;
-  const mode = derivePalMode(pal);
+  if (!apts.some(rules.isEnseignantRole) || apts.includes('Baptême') || apts.includes('Débutant')) return null;
+  const mode = rules.palMode(pal);
   return (
     <div className="pal-mode">
       <span className="pal-mode-label" id={labelId}>
@@ -139,7 +141,7 @@ function NumParam({ label, unit, value, onChange, placeholder, missing, alert, h
   );
 }
 
-function PalParams({ pal, hardLimit, onProf, onField }) {
+function PalParams({ pal, hardLimit, pf, onProf, onField }) {
   const gas = palGas(pal.melanges);
   const dtrMin = minDtr(pal.profMax);
   return (
@@ -177,6 +179,31 @@ function PalParams({ pal, hardLimit, onProf, onField }) {
           onChange={(v) => onField('o2', v)}
         />
       )}
+      {pf && gas.trimix && (
+        <>
+          <NumParam
+            label="O₂ du trimix"
+            unit="%"
+            value={pal.o2}
+            min={5}
+            max={50}
+            placeholder="à saisir"
+            missing={pal.o2 == null}
+            hint="PpO₂ 1,6 bar (art. 29)"
+            onChange={(v) => onField('o2', v)}
+          />
+          <NumParam
+            label="Hélium du trimix"
+            unit="%"
+            value={pal.he}
+            min={0}
+            max={95}
+            placeholder="à saisir"
+            hint="PpN₂ 4 bar au plus (art. 31)"
+            onChange={(v) => onField('he', v)}
+          />
+        </>
+      )}
       {gas.decoNitrox && (
         <NumParam
           label="O₂ du gaz de déco"
@@ -203,7 +230,16 @@ function ChipToggle({ on, locked, reason, onToggle, children }) {
   );
 }
 
-function PalOptions({ pal, palType, melangesCatalog, siteShotLine, onToggleMelange, onToggleNoDeco, onField }) {
+function PalOptions({
+  pal,
+  palType,
+  melangesCatalog,
+  siteShotLine,
+  pfFormation,
+  onToggleMelange,
+  onToggleNoDeco,
+  onField,
+}) {
   const melanges = pal.melanges || [];
   const isBapteme = palType === 'bapteme';
   return (
@@ -235,14 +271,22 @@ function PalOptions({ pal, palType, melangesCatalog, siteShotLine, onToggleMelan
               Shot-line
             </ChipToggle>
           )}
+          {pfFormation && (
+            <ChipToggle
+              on={!!pal.derogation_formation_60}
+              onToggle={() => onField('derogation_formation_60', !pal.derogation_formation_60)}
+            >
+              Formation jusqu'à 60 m (standards de l'organisme, art. 26)
+            </ChipToggle>
+          )}
         </div>
       </fieldset>
     </div>
   );
 }
 
-function AptitudeSelect({ diver, value, palContext, onChange, invalid }) {
-  const available = getDiverAptitudes(diver, false, palContext);
+function AptitudeSelect({ diver, value, palContext, rules, onChange, invalid }) {
+  const available = rules.rolesFor(diver, palContext);
   const single = available.length === 1 ? available[0] : null;
   // Une seule aptitude possible : sélection automatique (après rendu).
   useEffect(() => {
@@ -268,7 +312,19 @@ function AptitudeSelect({ diver, value, palContext, onChange, invalid }) {
   );
 }
 
-function MemberRow({ m, diversById, flagged, palContext, onAptitude, onRemove }) {
+// Polynésie : encadrement rémunéré ou bénévole (LP 5, LP 18) ; toujours
+// rémunéré dans une structure lucrative.
+function RemunereToggle({ m, d, onChange }) {
+  const on = typeof m.remunere === 'boolean' ? m.remunere : !!d.pf?.patente;
+  return (
+    <label className="qualif-toggle remunere">
+      <input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} />
+      Rémunéré
+    </label>
+  );
+}
+
+function MemberRow({ m, diversById, flagged, palContext, rules, showRemunere, onAptitude, onRemunere, onRemove }) {
   const name = memberName(m, diversById);
   const d = m._bapteme ? null : diversById[m.diverId];
   if (!m._bapteme && !d) return null;
@@ -288,17 +344,41 @@ function MemberRow({ m, diversById, flagged, palContext, onAptitude, onRemove })
           <Pill>Baptême</Pill>
         </span>
       ) : (
-        <AptitudeSelect diver={d} value={m.aptitude} palContext={palContext} invalid={flagged} onChange={onAptitude} />
+        <AptitudeSelect
+          diver={d}
+          value={m.aptitude}
+          palContext={palContext}
+          rules={rules}
+          invalid={flagged}
+          onChange={onAptitude}
+        />
       )}
+
       <button type="button" className="x" aria-label={`Retirer ${name} de la palanquée`} onClick={onRemove}>
         ×
       </button>
+      {showRemunere && !m._bapteme && isEncadrantRolePf(m.aptitude) && (
+        <RemunereToggle m={m} d={d} onChange={onRemunere} />
+      )}
     </div>
   );
 }
 
 export function PalCard({ pal, index, ctx }) {
-  const { diversById, issues, palType, palContext, hardLimit, melangesCatalog, siteShotLine, actions } = ctx;
+  const {
+    diversById,
+    issues,
+    palType,
+    palContext,
+    hardLimit,
+    melangesCatalog,
+    siteShotLine,
+    rules,
+    jurisdiction,
+    lucratif,
+    actions,
+  } = ctx;
+  const pf = jurisdiction === 'PF';
   const blocking = issues.filter((v) => v.tone === 'err');
   const flagged = new Set(blocking.flatMap((v) => v.ids || []));
   const flaggedNames = pal.membres
@@ -330,13 +410,14 @@ export function PalCard({ pal, index, ctx }) {
       </div>
       {blocking.length > 0 && <PalAlarm blocking={blocking} flaggedNames={flaggedNames} />}
       <div className="pal-body">
-        <PalModeToggle pal={pal} onChange={actions.setMode} />
-        <PalParams pal={pal} hardLimit={hardLimit} onProf={actions.setProf} onField={actions.setField} />
+        <PalModeToggle pal={pal} rules={rules} onChange={actions.setMode} />
+        <PalParams pal={pal} hardLimit={hardLimit} pf={pf} onProf={actions.setProf} onField={actions.setField} />
         <PalOptions
           pal={pal}
           palType={palType}
           melangesCatalog={melangesCatalog}
           siteShotLine={siteShotLine}
+          pfFormation={pf && rules.palMode(pal) === 'enseignement'}
           onToggleMelange={actions.toggleMelange}
           onToggleNoDeco={actions.toggleNoDeco}
           onField={actions.setField}
@@ -350,12 +431,15 @@ export function PalCard({ pal, index, ctx }) {
               diversById={diversById}
               flagged={flagged.has(m._bapteme ? m.id : m.diverId)}
               palContext={palContext}
+              rules={rules}
+              showRemunere={pf && !lucratif}
               onAptitude={(apt) => actions.setAptitude(m.diverId, apt)}
+              onRemunere={(v) => actions.setRemunere(m.diverId, v)}
               onRemove={() => actions.removeMember(m._bapteme ? m.id : m.diverId)}
             />
           ))}
         </div>
-        <IssueList issues={issues} onBirthdate={actions.editBirthdate} />
+        <IssueList issues={issues} onBirthdate={actions.editBirthdate} jurisdiction={jurisdiction} />
       </div>
     </article>
   );

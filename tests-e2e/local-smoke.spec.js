@@ -974,4 +974,64 @@ test.describe('build local — socle club', () => {
       expect(created.pf?.aptitudes).toContain('PE-40');
     });
   }
+
+  test('palanquées sous réglementation Polynésie française (arrêté n° 199 CM)', async ({ page }) => {
+    state.clubs[CLUB_ID].jurisdiction = 'PF';
+    state.realFonts = true;
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
+    await openHome(page);
+
+    // Créer une nouvelle plongée
+    await page.getByRole('button', { name: /Nouvelle plongée/ }).click();
+    await expect(heading(page)).toHaveText('Caractériser la plongée à venir');
+
+    // Choisir le site PF et le DP DP-60
+    await page.getByLabel('Directeur de Plongée').selectOption('d-dp-pf');
+    await page.getByLabel('Site de plongée').selectOption('s-pf');
+    await expect(page.locator('.info-box', { hasText: 'La Vallée Blanche' })).toBeVisible();
+    await nextBtn(page).click();
+
+    // Étape 2 : Palanquées
+    await expect(heading(page)).toHaveText('Constituer les palanquées');
+
+    // Le texte « Polynésie française (arrêté n° 199 CM) » apparaît
+    await expect(page.locator('.page-head')).toContainText('Polynésie française (arrêté n° 199 CM)');
+
+    // Ajouter un guide N4 (Léa DURAND) dans une nouvelle palanquée
+    await page.getByLabel('Ajouter Léa DURAND à une palanquée').selectOption('__new__');
+    const pal = page.locator('.pal').first();
+
+    // Un guide N4 propose GP-40
+    const gpSel = pal.getByLabel('Aptitude de Léa DURAND');
+    await expect(gpSel.locator('option[value="GP-40"]')).toHaveCount(1);
+    await gpSel.selectOption('GP-40');
+
+    // Ajouter un premier N1 (Moana VAHINE)
+    await page.getByLabel('Ajouter Moana VAHINE à une palanquée').selectOption({ index: 1 });
+
+    // Le sélecteur d'aptitude d'un N1 propose PE-20 (et pas PE20)
+    const n1Sel = pal.getByLabel('Aptitude de Moana VAHINE');
+    await expect(n1Sel.locator('option[value="PE-20"]')).toHaveCount(1);
+    await expect(n1Sel.locator('option[value="PE20"]')).toHaveCount(0);
+
+    // Ajouter 4 autres N1 (total: 5 PE-20 + 1 GP-40 à 20 m)
+    await page.getByLabel('Ajouter Maea TANE à une palanquée').selectOption({ index: 1 });
+    await page.getByLabel('Ajouter Hina RAU à une palanquée').selectOption({ index: 1 });
+    await page.getByLabel('Ajouter Marama TEIKI à une palanquée').selectOption({ index: 1 });
+    await page.getByLabel('Ajouter Teva POE à une palanquée').selectOption({ index: 1 });
+
+    // Assigner PE-20 aux 5 plongeurs
+    for (const name of ['Moana VAHINE', 'Maea TANE', 'Hina RAU', 'Marama TEIKI', 'Teva POE']) {
+      await pal.getByLabel(`Aptitude de ${name}`).selectOption('PE-20');
+    }
+
+    // La palanquée GP-40 + 5 PE-20 à 20 m n'est PAS bloquée (conforme en PF, max 5 encadrés)
+    await expect(pal).not.toHaveClass(/is-blocked/);
+    await expect(pal.locator('.pal-alarm')).toHaveCount(0);
+    await expect(pal.locator('.issue.ok')).toContainText('Composition conforme');
+
+    // Capture demandée
+    await shot(page, 'palanquees-pf-375-light');
+  });
 });

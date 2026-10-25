@@ -554,3 +554,9 @@
   grid-column: 2;
   justify-self: start;
 }
+
+/* Polynésie : case « Rémunéré » d'un encadrant, sur sa propre ligne. */
+.diver-row .remunere {
+  grid-column: 1 / -1;
+  justify-self: start;
+}

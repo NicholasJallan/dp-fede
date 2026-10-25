@@ -190,6 +190,166 @@ final class DiveServiceTest extends TestCase
         $this->assertSame(['site-123', self::CLUB], $siteEntry['params']);
     }
 
+    public function testRulesErrorsPfClubAndSiteAllowsGp40Plus5Pe20(): void
+    {
+        $this->pdo->respond('/SELECT jurisdiction, structure_type FROM clubs/', [['jurisdiction' => 'PF', 'structure_type' => 'club']]);
+        $this->pdo->respond('/SELECT pays_code FROM sites/', [['pays_code' => 'PF']]);
+
+        $pal = [
+            'id' => 'p1',
+            'profMax' => 20,
+            'duree' => 30,
+            'melanges' => ['Air'],
+            'membres' => [
+                ['diverId' => 'gp', 'aptitude' => 'GP-40'],
+                ['diverId' => 'p1', 'aptitude' => 'PE-20'],
+                ['diverId' => 'p2', 'aptitude' => 'PE-20'],
+                ['diverId' => 'p3', 'aptitude' => 'PE-20'],
+                ['diverId' => 'p4', 'aptitude' => 'PE-20'],
+                ['diverId' => 'p5', 'aptitude' => 'PE-20'],
+            ],
+        ];
+        $answers = [
+            'site_id' => 'site-pf',
+            'dp_id'   => 'dp1',
+            'date'    => '2026-06-01T10:00',
+        ];
+
+        $diverRows = [
+            ['id' => 'gp', 'nom' => 'Guide', 'prenom' => 'G', 'niveau_plongeur' => null, 'niveau_encadrant' => 'N4', 'aptitudes_sup' => '[]', 'qualifs' => '[]', 'medical' => '2026-01-01', 'date_naissance' => '1990-01-01', 'pf' => '{"fonctions":["GP-40"]}'],
+            ['id' => 'p1', 'nom' => 'Un', 'prenom' => 'P', 'niveau_plongeur' => 'N1', 'niveau_encadrant' => null, 'aptitudes_sup' => '[]', 'qualifs' => '[]', 'medical' => '2026-01-01', 'date_naissance' => '1990-01-01', 'pf' => '{"aptitudes":["PE-20"]}'],
+            ['id' => 'p2', 'nom' => 'Deux', 'prenom' => 'P', 'niveau_plongeur' => 'N1', 'niveau_encadrant' => null, 'aptitudes_sup' => '[]', 'qualifs' => '[]', 'medical' => '2026-01-01', 'date_naissance' => '1990-01-01', 'pf' => '{"aptitudes":["PE-20"]}'],
+            ['id' => 'p3', 'nom' => 'Trois', 'prenom' => 'P', 'niveau_plongeur' => 'N1', 'niveau_encadrant' => null, 'aptitudes_sup' => '[]', 'qualifs' => '[]', 'medical' => '2026-01-01', 'date_naissance' => '1990-01-01', 'pf' => '{"aptitudes":["PE-20"]}'],
+            ['id' => 'p4', 'nom' => 'Quatre', 'prenom' => 'P', 'niveau_plongeur' => 'N1', 'niveau_encadrant' => null, 'aptitudes_sup' => '[]', 'qualifs' => '[]', 'medical' => '2026-01-01', 'date_naissance' => '1990-01-01', 'pf' => '{"aptitudes":["PE-20"]}'],
+            ['id' => 'p5', 'nom' => 'Cinq', 'prenom' => 'P', 'niveau_plongeur' => 'N1', 'niveau_encadrant' => null, 'aptitudes_sup' => '[]', 'qualifs' => '[]', 'medical' => '2026-01-01', 'date_naissance' => '1990-01-01', 'pf' => '{"aptitudes":["PE-20"]}'],
+        ];
+        $this->pdo->respond('/FROM divers.*WHERE id IN/is', $diverRows);
+        $this->pdo->respond('/FROM divers.*WHERE id=\?/is', [
+            ['id' => 'dp1', 'niveau_encadrant' => 'N5', 'qualifs' => '[]', 'aptitudes_sup' => '[]', 'medical' => '2026-01-01', 'pf' => '{"fonctions":["DP-40"]}']
+        ]);
+
+        $err = \DiveService::rulesErrors([$pal], $answers, self::CLUB);
+        $this->assertNull($err, "En PF (annexe X), GP-40 + 5 PE-20 à 20 m est permis : {$err}");
+    }
+
+    public function testRulesErrorsSameDiveWithSiteInFranceReturnsFrError(): void
+    {
+        $this->pdo->respond('/SELECT jurisdiction, structure_type FROM clubs/', [['jurisdiction' => 'PF', 'structure_type' => 'club']]);
+        $this->pdo->respond('/SELECT pays_code FROM sites/', [['pays_code' => 'FR']]);
+
+        $pal = [
+            'id' => 'p1',
+            'profMax' => 20,
+            'duree' => 30,
+            'melanges' => ['Air'],
+            'membres' => [
+                ['diverId' => 'gp', 'aptitude' => 'GP'],
+                ['diverId' => 'p1', 'aptitude' => 'PE20'],
+                ['diverId' => 'p2', 'aptitude' => 'PE20'],
+                ['diverId' => 'p3', 'aptitude' => 'PE20'],
+                ['diverId' => 'p4', 'aptitude' => 'PE20'],
+                ['diverId' => 'p5', 'aptitude' => 'PE20'],
+            ],
+        ];
+        $answers = [
+            'site_id' => 'site-fr',
+            'dp_id'   => 'dp1',
+            'date'    => '2026-06-01T10:00',
+        ];
+
+        $diverRows = [
+            ['id' => 'gp', 'nom' => 'Guide', 'prenom' => 'G', 'niveau_plongeur' => null, 'niveau_encadrant' => 'N4', 'aptitudes_sup' => '[]', 'qualifs' => '[]', 'medical' => '2026-01-01', 'date_naissance' => '1990-01-01', 'pf' => null],
+            ['id' => 'p1', 'nom' => 'Un', 'prenom' => 'P', 'niveau_plongeur' => 'N1', 'niveau_encadrant' => null, 'aptitudes_sup' => '[]', 'qualifs' => '[]', 'medical' => '2026-01-01', 'date_naissance' => '1990-01-01', 'pf' => null],
+            ['id' => 'p2', 'nom' => 'Deux', 'prenom' => 'P', 'niveau_plongeur' => 'N1', 'niveau_encadrant' => null, 'aptitudes_sup' => '[]', 'qualifs' => '[]', 'medical' => '2026-01-01', 'date_naissance' => '1990-01-01', 'pf' => null],
+            ['id' => 'p3', 'nom' => 'Trois', 'prenom' => 'P', 'niveau_plongeur' => 'N1', 'niveau_encadrant' => null, 'aptitudes_sup' => '[]', 'qualifs' => '[]', 'medical' => '2026-01-01', 'date_naissance' => '1990-01-01', 'pf' => null],
+            ['id' => 'p4', 'nom' => 'Quatre', 'prenom' => 'P', 'niveau_plongeur' => 'N1', 'niveau_encadrant' => null, 'aptitudes_sup' => '[]', 'qualifs' => '[]', 'medical' => '2026-01-01', 'date_naissance' => '1990-01-01', 'pf' => null],
+            ['id' => 'p5', 'nom' => 'Cinq', 'prenom' => 'P', 'niveau_plongeur' => 'N1', 'niveau_encadrant' => null, 'aptitudes_sup' => '[]', 'qualifs' => '[]', 'medical' => '2026-01-01', 'date_naissance' => '1990-01-01', 'pf' => null],
+        ];
+        $this->pdo->respond('/FROM divers.*WHERE id IN/is', $diverRows);
+        $this->pdo->respond('/FROM divers.*WHERE id=\?/is', [
+            ['id' => 'dp1', 'niveau_encadrant' => 'N5', 'qualifs' => '[]', 'aptitudes_sup' => '[]', 'medical' => '2026-01-01', 'pf' => null]
+        ]);
+
+        $err = \DiveService::rulesErrors([$pal], $answers, self::CLUB);
+        $this->assertNotNull($err, "En France (A.322-74), GP + 5 PE-20 à 20 m doit être refusé (effectif max 4)");
+        $this->assertStringContainsString('4', $err);
+    }
+
+    public function testRulesErrorsDecodesDiverPfJsonField(): void
+    {
+        $this->pdo->respond('/SELECT jurisdiction, structure_type FROM clubs/', [['jurisdiction' => 'PF', 'structure_type' => 'club']]);
+        $this->pdo->respond('/SELECT pays_code FROM sites/', [['pays_code' => 'PF']]);
+
+        $pal = [
+            'id' => 'p1',
+            'profMax' => 20,
+            'duree' => 30,
+            'melanges' => ['Air'],
+            'membres' => [
+                ['diverId' => 'gp', 'aptitude' => 'GP-40'],
+                ['diverId' => 'p1', 'aptitude' => 'PE-20'],
+            ],
+        ];
+        $answers = [
+            'site_id' => 'site-pf',
+            'dp_id'   => 'dp1',
+            'date'    => '2026-06-01T10:00',
+        ];
+
+        // Plongeur p1 n'a aucun niveau français, uniquement son profil pf en JSON
+        $diverRows = [
+            ['id' => 'gp', 'nom' => 'Guide', 'prenom' => 'G', 'niveau_plongeur' => null, 'niveau_encadrant' => null, 'aptitudes_sup' => '[]', 'qualifs' => '[]', 'medical' => '2026-01-01', 'date_naissance' => '1990-01-01', 'pf' => '{"aptitudes":[],"fonctions":["GP-40"],"gaz":[]}'],
+            ['id' => 'p1', 'nom' => 'Un', 'prenom' => 'P', 'niveau_plongeur' => null, 'niveau_encadrant' => null, 'aptitudes_sup' => '[]', 'qualifs' => '[]', 'medical' => '2026-01-01', 'date_naissance' => '1990-01-01', 'pf' => '{"aptitudes":["PE-20"],"fonctions":[],"gaz":[]}'],
+        ];
+        $this->pdo->respond('/FROM divers.*WHERE id IN/is', $diverRows);
+        $this->pdo->respond('/FROM divers.*WHERE id=\?/is', [
+            ['id' => 'dp1', 'niveau_encadrant' => null, 'qualifs' => '[]', 'aptitudes_sup' => '[]', 'medical' => '2026-01-01', 'pf' => '{"aptitudes":[],"fonctions":["DP-40"],"gaz":[]}']
+        ]);
+
+        $err = \DiveService::rulesErrors([$pal], $answers, self::CLUB);
+        $this->assertNull($err, "Le profil PF stocké en JSON doit être décodé et justifier l'aptitude : {$err}");
+    }
+
+    public function testRulesErrorsScaClubInDbEnforcesHomologationEvenIfClientSendsClub(): void
+    {
+        // En base, le club est une SCA (structure lucrative, LP 5)
+        $this->pdo->respond('/SELECT jurisdiction, structure_type FROM clubs/', [['jurisdiction' => 'PF', 'structure_type' => 'sca']]);
+        $this->pdo->respond('/SELECT pays_code FROM sites/', [['pays_code' => 'PF']]);
+
+        $pal = [
+            'id' => 'p1',
+            'profMax' => 20,
+            'duree' => 30,
+            'melanges' => ['Air'],
+            'membres' => [
+                ['diverId' => 'gp', 'aptitude' => 'GP-40'],
+                ['diverId' => 'p1', 'aptitude' => 'PE-20'],
+            ],
+        ];
+        // Le client tente d'envoyer structure_type = 'club' pour contourner l'homologation
+        $answers = [
+            'site_id'        => 'site-pf',
+            'dp_id'          => 'dp1',
+            'structure_type' => 'club',
+            'date'           => '2026-06-01T10:00',
+        ];
+
+        $diverRows = [
+            // GP sans diplome_homologue
+            ['id' => 'gp', 'nom' => 'Guide', 'prenom' => 'G', 'niveau_plongeur' => null, 'niveau_encadrant' => null, 'aptitudes_sup' => '[]', 'qualifs' => '[]', 'medical' => '2026-01-01', 'date_naissance' => '1990-01-01', 'pf' => '{"aptitudes":[],"fonctions":["GP-40"],"diplome_homologue":null}'],
+            ['id' => 'p1', 'nom' => 'Un', 'prenom' => 'P', 'niveau_plongeur' => null, 'niveau_encadrant' => null, 'aptitudes_sup' => '[]', 'qualifs' => '[]', 'medical' => '2026-01-01', 'date_naissance' => '1990-01-01', 'pf' => '{"aptitudes":["PE-20"]}'],
+        ];
+        $this->pdo->respond('/FROM divers.*WHERE id IN/is', $diverRows);
+        $this->pdo->respond('/FROM divers.*WHERE id=\?/is', [
+            // DP sans diplome_homologue
+            ['id' => 'dp1', 'niveau_encadrant' => null, 'qualifs' => '[]', 'aptitudes_sup' => '[]', 'medical' => '2026-01-01', 'pf' => '{"fonctions":["DP-40"],"diplome_homologue":null}']
+        ]);
+
+        $err = \DiveService::rulesErrors([$pal], $answers, self::CLUB);
+        $this->assertNotNull($err, "Une structure lucrative en base doit exiger l'homologation même si le client prétend être un club");
+        $this->assertStringContainsString("liste d'homologation", $err);
+    }
+
     // ── create ─────────────────────────────────────────────────────────────
 
     public function testCreateWithRenderStateWrapsInTransactionAndInsertsBoth(): void

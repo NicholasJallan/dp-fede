@@ -5,27 +5,27 @@ import { Pill, diverFullName } from '../../components/components.jsx';
 import { Icon } from '../../components/icons.jsx';
 import { DiverQuickAdd } from '../../components/diver-quick-add.jsx';
 import { SiteFormModal } from '../sites/site-form-modal.jsx';
-import { CDS, diplomeProLabel, getMilieuType } from '../../domain/index.js';
+import { CDS, diplomeProLabel, getMilieuType, pfProfile } from '../../domain/index.js';
+
+/** Fonction DP la plus élevée (sinon ENS) d'un plongeur, au sens de l'arrêté n° 199 CM. */
+function pfDpLabel(d) {
+  const fonctions = pfProfile(d).fonctions;
+  return [...fonctions].reverse().find((f) => f.startsWith('DP-')) || fonctions.find((f) => f.startsWith('ENS-')) || '';
+}
 import { api } from '../../api/api.js';
 
 // ── DPPicker ──────────────────────────────────────────────────────────────
-function DPPicker({ id, value, divers, onChange, setDivers }) {
+// `rules` : règles de la juridiction de la plongée (rulesFor) — en Polynésie,
+// un DP justifie une fonction DP-40 à DP-120, ou ENS en espace restreint.
+function DPPicker({ id, value, divers, onChange, setDivers, rules }) {
   const [showAdd, setShowAdd] = useState(false);
+  const pf = rules?.jurisdiction === 'PF';
 
-  const candidates = useMemo(
-    () =>
-      divers.filter((d) => {
-        const ne = d.niveau_encadrant;
-        return ne && ['E1', 'E2', 'E3', 'E4', 'N5'].includes(ne);
-      }),
-    [divers],
-  );
+  const candidates = useMemo(() => divers.filter((d) => rules.isDpCandidate(d)), [divers, rules]);
 
   const onCreated = (newDiver) => {
     setDivers((prev) => [...prev, newDiver].sort((a, b) => a.nom.localeCompare(b.nom)));
-    if (newDiver.niveau_encadrant && ['E1', 'E2', 'E3', 'E4', 'N5'].includes(newDiver.niveau_encadrant)) {
-      onChange(newDiver.id);
-    }
+    if (rules.isDpCandidate(newDiver)) onChange(newDiver.id);
     setShowAdd(false);
   };
 
@@ -36,7 +36,8 @@ function DPPicker({ id, value, divers, onChange, setDivers }) {
           <option value="">Choisir le directeur de plongée</option>
           {candidates.map((d) => (
             <option key={d.id} value={d.id} disabled={d.dp_diplome_pro_requis && d.id !== value}>
-              {diverFullName(d)} ({d.niveau_encadrant}){d.diplome_pro ? ` — ${diplomeProLabel(d.diplome_pro)}` : ''}
+              {diverFullName(d)} ({pf ? pfDpLabel(d) : d.niveau_encadrant})
+              {d.diplome_pro ? ` — ${diplomeProLabel(d.diplome_pro)}` : ''}
               {d.dp_diplome_pro_requis ? ' — diplôme pro requis (SCA)' : ''}
             </option>
           ))}
@@ -55,7 +56,9 @@ function DPPicker({ id, value, divers, onChange, setDivers }) {
       </div>
       {candidates.length === 0 && (
         <p className="field-hint warn">
-          Aucun plongeur de l'annuaire ne peut être DP. Ajoutez un plongeur de niveau encadrant E1 à E4 ou N5.
+          {pf
+            ? "Aucun plongeur de l'annuaire n'a de fonction de directeur de plongée (DP-40 à DP-120) : complétez sa fiche, section Polynésie française."
+            : "Aucun plongeur de l'annuaire ne peut être DP. Ajoutez un plongeur de niveau encadrant E1 à E4 ou N5."}
         </p>
       )}
 

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useEffectEvent, useMemo } from 'react';
 import { useAuth } from '../auth/auth-context.jsx';
 import { useClub } from '../club/club-context.jsx';
+import { useDiveRules } from '../app/hooks/use-dive-rules.js';
 import { Alert, Field, Opt, Question, Pill, CdsLink, diverFullName } from '../components/components.jsx';
 import {
   diplomeProLabel,
@@ -22,6 +23,7 @@ import { MeteoField, MareeField } from './profil/conditions-fields.jsx';
 function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, setSites }) {
   const { user } = useAuth();
   const { jurisdiction: clubJurisdiction } = useClub();
+  const diveRules = useDiveRules(answers);
   const sections = QUESTIONS;
   const [activeId, setActiveId] = useState(sections[0].id);
 
@@ -162,7 +164,14 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
         <Field key={q.id} label={q.label} hint={q.hint} regRef={q.ref} required={q.required}>
           {({ id }) => (
             <>
-              <DPPicker id={id} value={val} divers={divers} setDivers={setDivers} onChange={set} />
+              <DPPicker
+                id={id}
+                value={val}
+                divers={divers}
+                setDivers={setDivers}
+                onChange={set}
+                rules={diveRules.rules}
+              />
               {selectedDP && (
                 <div className="info-box">
                   <div className="row tight">

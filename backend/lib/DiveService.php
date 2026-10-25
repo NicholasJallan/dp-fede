@@ -52,8 +52,7 @@ final class DiveService
                 if (empty($m['_bapteme']) && !empty($m['diverId'])) $ids[(string)$m['diverId']] = true;
             }
         }
-        $club     = Db::row('SELECT jurisdiction, structure_type FROM clubs WHERE id=?', [$clubId]);
-        $cadrePro = Encadrement::isCadrePro($club['structure_type'] ?? null);
+        $club = Db::row('SELECT jurisdiction, structure_type FROM clubs WHERE id=?', [$clubId]);
 
         // Réglementation du lieu : le pays du site enregistré prime sur ce
         // que le client a déduit (answers.jurisdiction n'est jamais lu).
@@ -61,6 +60,12 @@ final class DiveService
             ? Db::row('SELECT pays_code FROM sites WHERE id=? AND club_id=?', [(string)$answers['site_id'], $clubId])
             : null;
         $answers['jurisdiction'] = self::diveJurisdiction($site, $answers, $club);
+        $pf = $answers['jurisdiction'] === 'PF';
+        // Polynésie : pas de cadre SCA du Code du sport (niveaux réécrits par
+        // le diplôme pro) ; la structure (lucrative ou non, LP 5) est celle
+        // enregistrée, jamais celle envoyée par le client.
+        $cadrePro = !$pf && Encadrement::isCadrePro($club['structure_type'] ?? null);
+        if ($pf) $answers['structure_type'] = $club['structure_type'] ?? null;
 
         $diversById = [];
         if ($ids) {
@@ -68,13 +73,13 @@ final class DiveService
             $phs  = implode(',', array_fill(0, count($ids), '?'));
             $rows = Db::all(
                 "SELECT id, nom, prenom, niveau_plongeur, niveau_encadrant,
-                        aptitudes_sup, qualifs, medical, date_naissance
+                        aptitudes_sup, qualifs, medical, date_naissance, pf
                    FROM divers
                   WHERE id IN ({$phs}) AND club_id=? AND deleted_at IS NULL",
                 [...$ids, $clubId]
             );
             foreach ($rows as $row) {
-                $row = self::withGasQualifs(Encadrement::applyToRow($row, $cadrePro));
+                $row = self::withPfProfile(self::withGasQualifs(Encadrement::applyToRow($row, $cadrePro)));
                 $row['aptitudes_sup'] = json_decode($row['aptitudes_sup'] ?? '[]', true) ?? [];
                 $diversById[$row['id']] = $row;
             }
@@ -88,14 +93,15 @@ final class DiveService
         $dp = null;
         if (!empty($answers['dp_id'])) {
             $dpRow = Db::row(
-                'SELECT id, niveau_encadrant, qualifs, aptitudes_sup
+                'SELECT id, niveau_encadrant, qualifs, aptitudes_sup, medical, pf
                    FROM divers WHERE id=? AND club_id=? AND deleted_at IS NULL',
                 [$answers['dp_id'], $clubId]
             );
-            if ($dpRow) $dp = self::withGasQualifs(Encadrement::applyToRow($dpRow, $cadrePro));
+            if ($dpRow) $dp = self::withPfProfile(self::withGasQualifs(Encadrement::applyToRow($dpRow, $cadrePro)));
         }
-        // DP absent de l'annuaire : niveau déclaré dans la plongée.
-        if (!$dp && !empty($answers['dp_qual'])) {
+        // DP absent de l'annuaire : niveau déclaré dans la plongée (en
+        // Polynésie, PfRules le lit directement dans answers.dp_qual).
+        if (!$dp && !$pf && !empty($answers['dp_qual'])) {
             $dp = ['niveau_encadrant' => $answers['dp_qual'], 'nitrox' => [], 'trimix' => []];
         }
 
@@ -320,6 +326,16 @@ final class DiveService
     }
 
     /** qualifs JSON → listes nitrox / trimix (même lecture que routes/divers.php). */
+    /** Profil polynésien saisi (colonne JSON pf) et diplôme pro (qualifs.diplome) pour PfProfile. */
+    private static function withPfProfile(array $row): array
+    {
+        $pf = is_string($row['pf'] ?? null) ? json_decode($row['pf'], true) : ($row['pf'] ?? null);
+        $row['pf'] = is_array($pf) ? $pf : null;
+        $qualifs = json_decode(is_string($row['qualifs'] ?? null) ? $row['qualifs'] : '[]', true);
+        $row['diplome_pro'] = is_array($qualifs) ? ($qualifs['diplome'] ?? null) : null;
+        return $row;
+    }
+
     private static function withGasQualifs(array $row): array
     {
         $raw = json_decode($row['qualifs'] ?? '[]', true) ?? [];

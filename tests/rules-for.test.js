@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { rulesFor } from '../src/domain/rules-for.js';
 import {
   validatePal,
+  validatePalPf,
   getDiverAptitudes,
   getDpMaxDepth,
   computePalHardLimit,
@@ -14,32 +15,51 @@ import {
 
 import win from './setup.js';
 
-describe('rulesFor — dispatcher de règles (Lot 0)', () => {
+const COMMON_INTERFACE_KEYS = [
+  'rolesFor',
+  'palHardLimit',
+  'dpMaxDepth',
+  'palMode',
+  'palType',
+  'availableMelanges',
+  'isDpCandidate',
+  'isEnseignantRole',
+];
+
+describe('rulesFor — dispatcher de règles (Lot 2d)', () => {
   test('Exporté par src/domain/index.js via setup.js', () => {
     assert.equal(typeof win.rulesFor, 'function');
   });
 
-  test('rulesFor("FR") renvoie un profil complet pointant sur le domaine FR', () => {
+  test('rulesFor("FR") renvoie le profil FR avec clés legacy et API commune', () => {
     const rules = rulesFor('FR');
     assert.ok(Object.isFrozen(rules), 'L’objet renvoyé doit être gelé');
     assert.equal(rules.jurisdiction, 'FR');
     assert.equal(rules.validatePal, validatePal);
+    assert.equal(rules.checklistRules, CHECKLIST_RULES);
+
+    // Clés legacy FR
     assert.equal(rules.getDiverAptitudes, getDiverAptitudes);
     assert.equal(rules.getDpMaxDepth, getDpMaxDepth);
     assert.equal(rules.computePalHardLimit, computePalHardLimit);
-    assert.equal(rules.checklistRules, CHECKLIST_RULES);
+
+    // API commune
+    for (const key of COMMON_INTERFACE_KEYS) {
+      assert.equal(typeof rules[key], 'function', `clé commune FR manquante : ${key}`);
+    }
   });
 
-  test('rulesFor("PF") retombe sur FR au Lot 0 (PF non encore implémentée)', () => {
+  test('rulesFor("PF") renvoie le profil PF avec validatePalPf et API commune', () => {
     const rules = rulesFor('PF');
     assert.ok(Object.isFrozen(rules));
-    // Au Lot 0, jurisdiction indique la juridiction dont les règles sont réellement appliquées
-    assert.equal(rules.jurisdiction, 'FR');
-    assert.equal(rules.validatePal, validatePal);
-    assert.equal(rules.getDiverAptitudes, getDiverAptitudes);
-    assert.equal(rules.getDpMaxDepth, getDpMaxDepth);
-    assert.equal(rules.computePalHardLimit, computePalHardLimit);
+    assert.equal(rules.jurisdiction, 'PF');
+    assert.equal(rules.validatePal, validatePalPf);
     assert.equal(rules.checklistRules, CHECKLIST_RULES);
+
+    // API commune
+    for (const key of COMMON_INTERFACE_KEYS) {
+      assert.equal(typeof rules[key], 'function', `clé commune PF manquante : ${key}`);
+    }
   });
 
   test('rulesFor avec valeurs invalides (null, undefined, inconnu) retombe sur FR', () => {
@@ -53,6 +73,6 @@ describe('rulesFor — dispatcher de règles (Lot 0)', () => {
 
   test('Insensible à la casse et aux espaces ("  fr  ", "  pf  ")', () => {
     assert.equal(rulesFor('  fr  ').jurisdiction, 'FR');
-    assert.equal(rulesFor('  pf  ').jurisdiction, 'FR');
+    assert.equal(rulesFor('  pf  ').jurisdiction, 'PF');
   });
 });

@@ -11,6 +11,7 @@ import {
   normalizeJurisdiction,
   jurisdictionForCountry,
   resolveJurisdiction,
+  diveJurisdiction,
 } from '../src/domain/jurisdiction.js';
 
 import win from './setup.js';
@@ -58,4 +59,20 @@ describe('resolveJurisdiction — rejeu fixture', () => {
       assert.equal(resolveJurisdiction(item.pays, item.club), item.out);
     });
   }
+});
+
+describe('diveJurisdiction — juridiction d’une plongée', () => {
+  test("site_pays_code 'PF' + club FR → PF", () => {
+    assert.equal(diveJurisdiction({ site_pays_code: 'PF' }, 'FR'), 'PF');
+  });
+
+  test('site_pays_code absent + club PF → PF', () => {
+    assert.equal(diveJurisdiction({}, 'PF'), 'PF');
+    assert.equal(diveJurisdiction(null, 'PF'), 'PF');
+    assert.equal(diveJurisdiction({ site_pays_code: null }, 'PF'), 'PF');
+  });
+
+  test("site_pays_code 'FR' + club PF → FR", () => {
+    assert.equal(diveJurisdiction({ site_pays_code: 'FR' }, 'PF'), 'FR');
+  });
 });

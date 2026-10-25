@@ -47,3 +47,15 @@ export function jurisdictionForCountry(paysCode) {
 export function resolveJurisdiction(paysCode, clubJurisdiction) {
   return jurisdictionForCountry(paysCode) ?? normalizeJurisdiction(clubJurisdiction) ?? DEFAULT_JURISDICTION;
 }
+
+/**
+ * Juridiction d'une plongée côté interface : pays du site recopié dans
+ * `answers.site_pays_code`, sinon juridiction du club (le serveur la recalcule
+ * depuis le site enregistré, DiveService::diveJurisdiction).
+ * @param {{ site_pays_code?: string|null }|null|undefined} answers
+ * @param {unknown} clubJurisdiction
+ * @returns {Jurisdiction}
+ */
+export function diveJurisdiction(answers, clubJurisdiction) {
+  return resolveJurisdiction(answers?.site_pays_code, clubJurisdiction);
+}

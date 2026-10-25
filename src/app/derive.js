@@ -26,13 +26,15 @@ export function computeProfilNotes(answers) {
 
 // Palanquées présentant des erreurs bloquantes :
 // [{ id, nom, errs: [{ code, text, ref }] }].
-export function computeBlockingPalSummary(palanquees, divers, answers) {
+// `answers` : réponses passées au moteur (juridiction et structure, cf.
+// useDiveRules) ; `rules` : règles de cette juridiction.
+export function computeBlockingPalSummary(palanquees, divers, answers, rules = rulesFor(answers.jurisdiction)) {
   const diversById = {};
   divers.forEach((d) => {
     diversById[d.id] = d;
   });
   const dp = divers.find((d) => d.id === answers.dp_id) || null;
-  const { validatePal } = rulesFor(answers.jurisdiction);
+  const { validatePal } = rules;
   return palanquees
     .map((p, idx) => {
       const issues = validatePal(p, diversById, answers, dp);

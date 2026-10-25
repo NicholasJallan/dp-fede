@@ -39,7 +39,7 @@ const FORMATION = Object.freeze({
   50: { max: 2, ens: 50, extraEns: 50, extraGp: false },
 });
 // Annexe XI — espace maximal d'un élève selon l'aptitude qu'il détient.
-const FORMATION_MAX_PAR_ROLE = Object.freeze({
+export const FORMATION_MAX_PAR_ROLE = Object.freeze({
   Baptême: 6,
   Débutant: 12,
   'PE-12': 20,

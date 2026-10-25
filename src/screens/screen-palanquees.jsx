@@ -1,9 +1,9 @@
 // DP Assistant — Plongeurs & palanquées.
 //
-// La logique métier (validatePal, derivePalMode, getMaxEnsLevel) vit dans
-// src/domain/pal-rules.js ; le plafond de profondeur dans
-// src/domain/depth-clamp.js. Ce fichier ne contient que l'état de l'écran,
-// les dérivations vers `answers` et les mutations des palanquées.
+// Les règles (validation, rôles proposés, plafond de profondeur, DP,
+// mélanges) sont celles de la juridiction de la plongée : rulesFor(…) via
+// useDiveRules (Code du sport ou Polynésie française). Ce fichier ne contient
+// que l'état de l'écran, les dérivations vers `answers` et les mutations.
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Alert } from '../components/components.jsx';
@@ -11,23 +11,16 @@ import { DiverQuickAdd } from '../components/diver-quick-add.jsx';
 import { Icon } from '../components/icons.jsx';
 import {
   ageAt,
-  aptitudeMaxDepth,
   CDS,
   clampProfMax,
-  computePalHardLimit,
-  derivePalMode,
   dtrForProf,
-  getAvailableMelanges,
-  getDiverAptitudes,
-  getDpMaxDepth,
   getMaxEnsLevel,
-  getPalType,
   isBassinDerogation,
   minDtr,
   sortMembresForFiche,
-  validatePal,
   withDecoO2,
 } from '../domain/index.js';
+import { useDiveRules } from '../app/hooks/use-dive-rules.js';
 import { PalCard } from './palanquees/pal-card.jsx';
 import { DiverPool } from './palanquees/diver-pool.jsx';
 import { BirthdateDialog } from './palanquees/birthdate-dialog.jsx';
@@ -36,23 +29,36 @@ import { clampPalMelanges } from '../app/dp-guards.js';
 
 // Contexte d'aptitudes d'une palanquée : enseignant présent + mode (le bonus
 // de formation n'existe qu'en enseignement).
-function palContextOf(pal, membres = pal.membres) {
-  return { maxEnsLevel: getMaxEnsLevel(membres), mode: derivePalMode({ ...pal, membres }) };
+function palContextOf(rules, pal, membres = pal.membres) {
+  return { maxEnsLevel: getMaxEnsLevel(membres), mode: rules.palMode({ ...pal, membres }) };
 }
 
 // Plafond effectif : aptitude la plus restrictive ∩ gaz ∩ limite DP ∩ site.
-function hardLimitFor(pal, membres, dp, siteMax = Infinity) {
-  return computePalHardLimit({
+function hardLimitFor(rules, pal, membres, dp, siteMax = Infinity) {
+  return rules.palHardLimit({
     membres,
     dp,
     sessionMax: Infinity,
     siteMax,
     melanges: pal.melanges || ['Air'],
-    mode: derivePalMode({ ...pal, membres }),
-    aptitudeMaxDepth,
-    getPalType,
-    getDpMaxDepth,
+    mode: rules.palMode({ ...pal, membres }),
+    derogation: !!pal.derogation_formation_60,
   });
+}
+
+const isEncadrantRole = (apt) => apt === 'GP' || /^E[1-4]$/.test(apt) || /^(ENS|GP)-/.test(apt || '');
+
+// Polynésie : le DP justifie une fonction DP-40 à DP-120 (annexe I), ou est un
+// enseignant en espace aquatique restreint (art. 7) ; contrôle fin par palanquée.
+function dpCheckPf(answers, dpDiver, rules) {
+  if (!answers.dp_id && !answers.dp_qual)
+    return { tone: 'warn', text: 'Aucun directeur de plongée sélectionné (étape 1, section A).' };
+  if (dpDiver && !rules.isDpCandidate(dpDiver))
+    return {
+      tone: 'err',
+      text: "Ce plongeur n'a aucune fonction de directeur de plongée (DP-40 à DP-120, arrêté n° 199 CM, annexe I).",
+    };
+  return { tone: 'ok', text: 'Directeur de plongée désigné (Polynésie française, arrêté n° 199 CM).' };
 }
 
 const ageOn = (birthIso, whenIso) => ageAt(birthIso, whenIso ? new Date(whenIso) : new Date());
@@ -87,13 +93,13 @@ function dpCheck(dpQual, answers, dpDiver) {
 }
 
 // Valeurs de `answers` dérivées des palanquées (ne pas re-questionner le DP).
-function useDerivedAnswers({ palanquees, divers, diversById, answers, setAnswer }) {
+function useDerivedAnswers({ palanquees, divers, diversById, answers, setAnswer, rules }) {
   useEffect(() => {
     if (!palanquees.length) {
       setAnswer('activite', 'Exploration');
       return;
     }
-    const modes = new Set(palanquees.filter((p) => p.membres.length).map((p) => derivePalMode(p)));
+    const modes = new Set(palanquees.filter((p) => p.membres.length).map((p) => rules.palMode(p)));
     const hasEns = modes.has('enseignement'),
       hasExp = modes.has('exploration');
     setAnswer('activite', hasEns && hasExp ? 'Mixte' : hasEns ? 'Enseignement' : 'Exploration');
@@ -129,9 +135,9 @@ function useDerivedAnswers({ palanquees, divers, diversById, answers, setAnswer 
   }, [palanquees]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
-function usePalanqueeMutations({ setPalanquees, diversById, dpDiver, siteMax, defaultMode, answers }) {
+function usePalanqueeMutations({ setPalanquees, diversById, dpDiver, siteMax, defaultMode, answers, rules }) {
   const derivePalNom = (index, membres) => {
-    const enc = membres.find((m) => m.aptitude === 'GP' || ['E1', 'E2', 'E3', 'E4'].includes(m.aptitude));
+    const enc = membres.find((m) => isEncadrantRole(m.aptitude));
     const prenom = enc && !enc._bapteme ? diversById[enc.diverId]?.prenom || null : null;
     return `Palanquée ${index + 1}${prenom ? ` ${prenom}` : ''}`;
   };
@@ -139,7 +145,7 @@ function usePalanqueeMutations({ setPalanquees, diversById, dpDiver, siteMax, de
   const mapPal = (palId, fn) =>
     setPalanquees((prev) => prev.map((p, i) => (p.id === palId ? withDtrFor(p, fn(p, i)) : p)));
   const autoAptitude = (d, pal) => {
-    const apts = d ? getDiverAptitudes(d, false, palContextOf(pal)) : [];
+    const apts = d ? rules.rolesFor(d, palContextOf(rules, pal)) : [];
     return apts.length === 1 ? apts[0] : '';
   };
   const newPal = (id, index, membres, profMax) => ({
@@ -168,7 +174,7 @@ function usePalanqueeMutations({ setPalanquees, diversById, dpDiver, siteMax, de
           ...p,
           membres,
           nom: p.nomAuto ? derivePalNom(i, membres) : p.nom,
-          profMax: clampProfMax(p.profMax, hardLimitFor(p, membres, dpDiver, siteMax)),
+          profMax: clampProfMax(p.profMax, hardLimitFor(rules, p, membres, dpDiver, siteMax)),
         };
       }),
     removeFromPal: (palId, idOrIdx) =>
@@ -180,20 +186,26 @@ function usePalanqueeMutations({ setPalanquees, diversById, dpDiver, siteMax, de
       mapPal(palId, (p, i) => {
         let membres = p.membres.map((m) => (!m._bapteme && m.diverId === diverId ? { ...m, aptitude } : m));
         // Propage l'aptitude aux membres sans aptitude si elle leur est ouverte.
-        const ctx = palContextOf(p, membres);
+        const ctx = palContextOf(rules, p, membres);
         membres = sortMembresForFiche(
           membres.map((m) => {
             if (m.aptitude || m._bapteme || !diversById[m.diverId]) return m;
-            return getDiverAptitudes(diversById[m.diverId], false, ctx).includes(aptitude) ? { ...m, aptitude } : m;
+            return rules.rolesFor(diversById[m.diverId], ctx).includes(aptitude) ? { ...m, aptitude } : m;
           }),
         );
         return {
           ...p,
           membres,
           nom: p.nomAuto ? derivePalNom(i, membres) : p.nom,
-          profMax: clampProfMax(p.profMax, hardLimitFor(p, membres, dpDiver, siteMax)),
+          profMax: clampProfMax(p.profMax, hardLimitFor(rules, p, membres, dpDiver, siteMax)),
         };
       }),
+    // Polynésie : encadrement rémunéré ou bénévole pour cette plongée (LP 5, LP 18).
+    setRemunere: (palId, diverId, remunere) =>
+      mapPal(palId, (p) => ({
+        ...p,
+        membres: p.membres.map((m) => (!m._bapteme && m.diverId === diverId ? { ...m, remunere } : m)),
+      })),
     setField: (palId, field, value) =>
       mapPal(palId, (p) => ({ ...p, [field]: value, ...(field === 'nom' ? { nomAuto: false } : {}) })),
     toggleMelange: (palId, m) =>
@@ -204,30 +216,30 @@ function usePalanqueeMutations({ setPalanquees, diversById, dpDiver, siteMax, de
     setProf: (palId, profMax) =>
       mapPal(palId, (p) => ({
         ...p,
-        profMax: clampProfMax(profMax, hardLimitFor(p, p.membres || [], dpDiver, siteMax)),
+        profMax: clampProfMax(profMax, hardLimitFor(rules, p, p.membres || [], dpDiver, siteMax)),
       })),
     toggleNoDeco: (palId) => mapPal(palId, (p) => ({ ...p, no_deco: !p.no_deco })),
     setMode: (palId, mode) =>
       mapPal(palId, (p) => {
         // Les aptitudes « bonus formation » ne valent pas en exploration : vidées.
         const next = { ...p, mode };
-        const ctx = palContextOf(next);
+        const ctx = palContextOf(rules, next);
         const membres = p.membres.map((m) => {
           const d = !m._bapteme && diversById[m.diverId];
-          return d && m.aptitude && !getDiverAptitudes(d, false, ctx).includes(m.aptitude) ? { ...m, aptitude: '' } : m;
+          return d && m.aptitude && !rules.rolesFor(d, ctx).includes(m.aptitude) ? { ...m, aptitude: '' } : m;
         });
         return { ...next, membres };
       }),
     addPal: () =>
       setPalanquees((prev) => {
-        const dpLimit = getDpMaxDepth('exploration', dpDiver) || Infinity;
-        return [...prev, newPal(nextPalId(prev), prev.length, [], Math.min(60, siteMax, dpLimit))];
+        const limit = hardLimitFor(rules, { melanges: ['Air'], mode: defaultMode }, [], dpDiver, siteMax);
+        return [...prev, newPal(nextPalId(prev), prev.length, [], Number.isFinite(limit) ? limit : 60)];
       }),
     addPalWithDiver: (diverId) =>
       setPalanquees((prev) => {
         const base = { melanges: ['Air'], mode: defaultMode, membres: [] };
         const membres = [{ diverId, aptitude: autoAptitude(diversById[diverId], base) }];
-        const hardLimit = hardLimitFor(base, membres, dpDiver, siteMax);
+        const hardLimit = hardLimitFor(rules, base, membres, dpDiver, siteMax);
         return [...prev, newPal(nextPalId(prev), prev.length, membres, Number.isFinite(hardLimit) ? hardLimit : 60)];
       }),
     removePal: (palId) =>
@@ -261,7 +273,7 @@ function usePalanqueeMutations({ setPalanquees, diversById, dpDiver, siteMax, de
 }
 
 // Re-bornages automatiques quand le DP ou le site changent.
-function useAutoClamp({ setPalanquees, allowedMelangeValues, dpDiver, siteMax }) {
+function useAutoClamp({ setPalanquees, allowedMelangeValues, dpDiver, siteMax, rules }) {
   // DP introuvable : getAvailableMelanges(null) ne permettrait que l'air.
   useEffect(() => {
     setPalanquees((prev) => clampPalMelanges(prev, allowedMelangeValues, dpDiver));
@@ -270,11 +282,11 @@ function useAutoClamp({ setPalanquees, allowedMelangeValues, dpDiver, siteMax })
   useEffect(() => {
     setPalanquees((prev) =>
       prev.map((p) => {
-        const hardLimit = hardLimitFor(p, p.membres || [], dpDiver, siteMax);
+        const hardLimit = hardLimitFor(rules, p, p.membres || [], dpDiver, siteMax);
         return !Number.isFinite(hardLimit) || p.profMax <= hardLimit ? p : withDtrFor(p, { ...p, profMax: hardLimit });
       }),
     );
-  }, [dpDiver, siteMax]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dpDiver, siteMax, rules]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Palanquées saisies avec une version antérieure : DTR minimum proposée et
   // O₂ du gaz de déco sorti du champ « gaz fond ».
@@ -289,12 +301,14 @@ function useAutoClamp({ setPalanquees, allowedMelangeValues, dpDiver, siteMax })
 
 function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answers, setAnswer }) {
   const [showQuickDiver, setShowQuickDiver] = useState(false);
-  const isExplorationOnly = answers.dp_qual === 'N5';
+  const { rules, ruleAnswers, jurisdiction, lucratif } = useDiveRules(answers);
+  const pf = jurisdiction === 'PF';
+  const isExplorationOnly = !pf && answers.dp_qual === 'N5';
   const siteMax = answers.site_prof_max ? Number(answers.site_prof_max) : Infinity;
 
   const diversById = useMemo(() => Object.fromEntries(divers.map((d) => [d.id, d])), [divers]);
   const dpDiver = useMemo(() => divers.find((d) => d.id === answers.dp_id) || null, [divers, answers.dp_id]);
-  const melangesCatalog = useMemo(() => getAvailableMelanges(dpDiver), [dpDiver]);
+  const melangesCatalog = useMemo(() => rules.availableMelanges(dpDiver), [rules, dpDiver]);
   const allowedMelangeValues = useMemo(
     () => new Set(melangesCatalog.filter((m) => m.allowed).map((m) => m.value)),
     [melangesCatalog],
@@ -303,22 +317,26 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
     () => new Set(palanquees.flatMap((p) => p.membres.filter((m) => !m._bapteme).map((m) => m.diverId))),
     [palanquees],
   );
-  const dpState = useMemo(() => dpCheck(answers.dp_qual || '', answers, dpDiver), [answers, dpDiver]);
+  const dpState = useMemo(
+    () => (pf ? dpCheckPf(answers, dpDiver, rules) : dpCheck(answers.dp_qual || '', answers, dpDiver)),
+    [pf, rules, answers, dpDiver],
+  );
 
-  useAutoClamp({ setPalanquees, allowedMelangeValues, dpDiver, siteMax });
-  useDerivedAnswers({ palanquees, divers, diversById, answers, setAnswer });
+  useAutoClamp({ setPalanquees, allowedMelangeValues, dpDiver, siteMax, rules });
+  useDerivedAnswers({ palanquees, divers, diversById, answers, setAnswer, rules });
   const mut = usePalanqueeMutations({
     setPalanquees,
     diversById,
     dpDiver,
     siteMax,
     answers,
+    rules,
     defaultMode: isExplorationOnly ? 'exploration' : undefined,
   });
   const birthdate = useBirthdatePrompt({ diversById, setDivers });
 
   const blockedCount = palanquees.filter((p) =>
-    validatePal(p, diversById, answers, dpDiver).some((i) => i.tone === 'err'),
+    rules.validatePal(p, diversById, ruleAnswers, dpDiver).some((i) => i.tone === 'err'),
   ).length;
 
   return (
@@ -328,10 +346,23 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
           <span className="num">2</span>Plongeurs et palanquées
         </p>
         <h1>Constituer les palanquées</h1>
-        <p>Ajoutez les plongeurs depuis l'annuaire. Chaque palanquée est vérifiée en direct selon le Code du sport.</p>
+        <p>
+          Ajoutez les plongeurs depuis l'annuaire. Chaque palanquée est vérifiée en direct selon{' '}
+          {pf ? 'la réglementation de la Polynésie française (arrêté n° 199 CM)' : 'le Code du sport'}.
+        </p>
       </div>
 
       <Alert tone={dpState.tone}>{dpState.text}</Alert>
+      {pf && !lucratif && (answers.dp_id || answers.dp_qual) && (
+        <label className="qualif-toggle">
+          <input
+            type="checkbox"
+            checked={!!(answers.dp_remunere ?? dpDiver?.pf?.patente)}
+            onChange={(e) => setAnswer('dp_remunere', e.target.checked)}
+          />
+          Directeur de plongée rémunéré pour cette plongée (diplôme homologué exigé, LP 18)
+        </label>
+      )}
       {isExplorationOnly && <Alert tone="info">DP N5 : exploration uniquement, pas d'enseignement.</Alert>}
       {blockedCount > 0 && (
         <Alert
@@ -375,10 +406,13 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
                 index={idx}
                 ctx={{
                   diversById,
-                  issues: validatePal(p, diversById, answers, dpDiver),
-                  palType: getPalType(p.membres, p.mode),
-                  palContext: palContextOf(p),
-                  hardLimit: hardLimitFor(p, p.membres || [], dpDiver, siteMax),
+                  issues: rules.validatePal(p, diversById, ruleAnswers, dpDiver),
+                  palType: rules.palType(p.membres, pf ? rules.palMode(p) : p.mode),
+                  palContext: palContextOf(rules, p),
+                  hardLimit: hardLimitFor(rules, p, p.membres || [], dpDiver, siteMax),
+                  rules,
+                  jurisdiction,
+                  lucratif,
                   melangesCatalog,
                   siteShotLine: !!answers.shot_line,
                   actions: {
@@ -388,6 +422,7 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
                     toggleMelange: (m) => mut.toggleMelange(p.id, m),
                     toggleNoDeco: () => mut.toggleNoDeco(p.id),
                     setAptitude: (diverId, apt) => mut.setAptitude(p.id, diverId, apt),
+                    setRemunere: (diverId, v) => mut.setRemunere(p.id, diverId, v),
                     removeMember: (id) => mut.removeFromPal(p.id, id),
                     remove: () => mut.removePal(p.id),
                     editBirthdate: birthdate.open,

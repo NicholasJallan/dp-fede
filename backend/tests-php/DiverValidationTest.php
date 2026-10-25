@@ -120,4 +120,61 @@ final class DiverValidationTest extends TestCase
         $errors = \DiverValidation::errors($body);
         $this->assertNotEmpty($errors);
     }
+
+    public function testMedicalIsRequiredInFRByDefault(): void
+    {
+        $body = self::validBody();
+        unset($body['medical']);
+
+        $errorsDefault = \DiverValidation::errors($body);
+        $this->assertContains('Date du certificat médical est requis', $errorsDefault);
+
+        $errorsFR = \DiverValidation::errors($body, 'FR');
+        $this->assertContains('Date du certificat médical est requis', $errorsFR);
+    }
+
+    public function testMedicalIsOptionalInPF(): void
+    {
+        $body = self::validBody();
+        unset($body['medical']);
+        $this->assertSame([], \DiverValidation::errors($body, 'PF'));
+
+        $body['medical'] = '';
+        $this->assertSame([], \DiverValidation::errors($body, 'PF'));
+
+        $body['medical'] = null;
+        $this->assertSame([], \DiverValidation::errors($body, 'PF'));
+    }
+
+    public function testMedicalInvalidDateStillTriggersErrorInPFIfProvided(): void
+    {
+        $body = self::validBody();
+        $body['medical'] = '2026-02-31';
+
+        $errors = \DiverValidation::errors($body, 'PF');
+        $this->assertContains('Date du certificat médical doit être une date valide au format AAAA-MM-JJ', $errors);
+    }
+
+    public function testPfErrorsPropagatedWhenPfKeyPresent(): void
+    {
+        $body = self::validBody();
+        $body['pf'] = [
+            'aptitudes' => ['BAD_APT'],
+            'gaz'       => ['BAD_GAZ'],
+        ];
+
+        $errors = \DiverValidation::errors($body);
+        $this->assertContains('pf.aptitudes : code inconnu BAD_APT', $errors);
+        $this->assertContains('pf.gaz : code inconnu BAD_GAZ', $errors);
+    }
+
+    public function testNoPfErrorsWhenPfKeyAbsentOrNull(): void
+    {
+        $body = self::validBody();
+        unset($body['pf']);
+        $this->assertSame([], \DiverValidation::errors($body));
+
+        $body['pf'] = null;
+        $this->assertSame([], \DiverValidation::errors($body));
+    }
 }

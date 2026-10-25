@@ -29,6 +29,8 @@ export const emptyDiver = () => ({
   licence_fin: '',
   representant_legal: '',
   autorisation_parentale_saison: '',
+  // Profil polynésien saisi par le DP (null : déduit des niveaux FFESSM).
+  pf: null,
 });
 
 export function diverToForm(d) {
@@ -54,17 +56,20 @@ export function diverToForm(d) {
     licence_fin: d.licence_fin || '',
     representant_legal: d.representant_legal || '',
     autorisation_parentale_saison: d.autorisation_parentale_saison || '',
+    pf: d.pf ?? null,
     source: d.source || '',
     external_id: d.external_id || '',
     // Champs club absents de la fiche lue (cache local antérieur) : à ne pas effacer.
-    _absent: CLUB_FIELDS.filter((k) => !(k in d)),
+    _absent: [...CLUB_FIELDS, 'pf'].filter((k) => !(k in d)),
   };
 }
 
 export function formToPayload(form) {
   const { _absent: absent = [], ...rest } = form;
   const payload = Object.fromEntries(
-    Object.entries(rest).filter(([k, v]) => !READ_ONLY_FIELDS.includes(k) && !(absent.includes(k) && v === '')),
+    Object.entries(rest).filter(
+      ([k, v]) => !READ_ONLY_FIELDS.includes(k) && !(absent.includes(k) && (v === '' || v === null)),
+    ),
   );
   return {
     ...payload,

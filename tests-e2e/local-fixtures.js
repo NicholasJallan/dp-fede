@@ -36,6 +36,7 @@ const USER = {
   club_role: 'responsable',
   club_count: 2,
   club_nom: 'Club Test',
+  club_jurisdiction: 'FR',
   structure_type: 'club',
   urgence_defaut: '112',
 };
@@ -370,6 +371,7 @@ function seedClub() {
       numero_ffessm: '06123456',
       siret: '',
       structure_type: 'club',
+      jurisdiction: 'FR',
       president_prenom: 'Anne',
       president_nom: 'Martin',
       president_tel: '0600000000',
@@ -383,6 +385,7 @@ function seedClub() {
       numero_ffessm: '06999999',
       siret: '',
       structure_type: 'club',
+      jurisdiction: 'FR',
       president_prenom: '',
       president_nom: '',
       president_tel: '',
@@ -652,6 +655,7 @@ function currentUser(state) {
     club_id: club.id,
     club_nom: club.nom,
     club_role: state.currentClub === CLUB_ID ? state.role : 'dp',
+    club_jurisdiction: club.jurisdiction || 'FR',
   };
 }
 
@@ -663,7 +667,15 @@ function apiResponse(method, path, search, body, state) {
     state.imports.push(dryRun ? 'dry_run' : 'apply');
     return ok(importReport(dryRun));
   }
-  if (path === '/api/divers') return ok(DIVERS);
+  if (path === '/api/divers') {
+    if (method === 'POST') {
+      const id = body.id || `d-${Date.now()}`;
+      const record = { id, ...body };
+      state.diverCreations.push(record);
+      return ok(record, 201);
+    }
+    return ok(DIVERS);
+  }
   if (method === 'PUT' && path.startsWith('/api/divers/')) {
     state.diverUpdates.push({ id: path.split('/').pop(), ...body });
     return ok({ id: path.split('/').pop(), ...body });
@@ -703,6 +715,7 @@ function newState() {
     ],
     imports: [],
     diverUpdates: [],
+    diverCreations: [],
     downloads: [],
     deleteConflict: false,
     deleted: false,

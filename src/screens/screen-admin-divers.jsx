@@ -37,10 +37,11 @@ function medicalExpiry(d) {
 
 function DiverEditDialog({ editing, onClose, onSaved }) {
   const f = useDiverForm(editing === 'new' ? emptyDiver() : diverToForm(editing));
+  const { jurisdiction } = useClub();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const save = async () => {
-    const problem = validateDiverForm(f.form);
+    const problem = validateDiverForm(f.form, jurisdiction);
     if (problem) {
       setError(problem);
       return;

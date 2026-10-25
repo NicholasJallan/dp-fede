@@ -3,7 +3,7 @@
 // niveau implicite d'un encadrant, cascades nitrox / trimix (III-17 a,
 // III-18 a), diplôme professionnel, contrôle avant enregistrement.
 
-import { CDS, diplomeProLevel } from '../domain/index.js';
+import { CDS, DEFAULT_JURISDICTION, diplomeProLevel, PF_CODES } from '../domain/index.js';
 import { isSeason } from '../club/season.js';
 
 export const NIVEAUX_PLONGEUR = ['N1', 'N2', 'N3'];
@@ -73,12 +73,33 @@ export function applyNitrox(f, val) {
   return { ...f, nitrox: nx };
 }
 
-export function validateDiverForm(form) {
+// En Polynésie, le certificat médical n'est exigé que des encadrants et des
+// pratiquants à antécédents (arrêté n° 199 CM, art. 12 et 13).
+export function validateDiverForm(form, jurisdiction = DEFAULT_JURISDICTION) {
   if (!form.nom.trim()) return 'Le nom est obligatoire.';
-  if (!form.medical) return 'La date du certificat médical est obligatoire.';
+  if (!form.medical && jurisdiction !== 'PF') return 'La date du certificat médical est obligatoire.';
   if (form.autorisation_parentale_saison && !isSeason(form.autorisation_parentale_saison)) {
     return "Saison de l'autorisation parentale invalide (format 2026-2027).";
   }
   if ((form.representant_legal || '').length > 200) return 'Représentant légal : 200 caractères maximum.';
   return '';
+}
+
+export const emptyPf = () => ({
+  aptitudes: [],
+  gaz: [],
+  fonctions: [],
+  diplome_homologue: null,
+  stagiaire: false,
+  patente: false,
+  brevets: '',
+  attestation: null,
+});
+
+/** Coche ou décoche un code PF (aptitudes, gaz ou fonctions), dans l'ordre de PF_CODES. */
+export function togglePfCode(pf, key, code) {
+  const base = pf ?? emptyPf();
+  const current = base[key] || [];
+  const next = current.includes(code) ? current.filter((c) => c !== code) : [...current, code];
+  return { ...base, [key]: PF_CODES[key].filter((c) => next.includes(c)) };
 }

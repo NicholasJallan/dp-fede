@@ -7,6 +7,7 @@ import { emptyDiver, formToPayload } from './diver-payload.js';
 
 import { BaptemeFields, DiverFormFields, useDiverForm } from './diver-form.jsx';
 import { validateDiverForm } from './diver-form-rules.js';
+import { useClub } from '../club/club-context.jsx';
 
 export function DiverQuickAdd({ onCreated, onClose, initialName = '', allowBapteme = false, baptemeOnSave = null }) {
   const parts = initialName.trim().split(/\s+/);
@@ -16,6 +17,7 @@ export function DiverQuickAdd({ onCreated, onClose, initialName = '', allowBapte
     nom: parts.length > 1 ? parts.slice(1).join(' ') : '',
   });
   const { form, setField } = f;
+  const { jurisdiction } = useClub();
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const [isBapteme, setIsBapteme] = useState(false);
@@ -25,7 +27,7 @@ export function DiverQuickAdd({ onCreated, onClose, initialName = '', allowBapte
       ? !form.prenom.trim() && !form.nom.trim()
         ? 'Saisissez au moins le prénom ou le nom du baptisé.'
         : ''
-      : validateDiverForm(form);
+      : validateDiverForm(form, jurisdiction);
     if (problem) {
       setErr(problem);
       return;

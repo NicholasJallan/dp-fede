@@ -4,7 +4,8 @@
 
 import React, { useState, useEffect, useId } from 'react';
 import { Alert, Field } from './ui.jsx';
-import { APTITUDE_MAP, DIPLOMES_PRO } from '../domain/index.js';
+import { APTITUDE_MAP, DIPLOMES_PRO, PF_CODES, pfProfile } from '../domain/index.js';
+import { useClub } from '../club/club-context.jsx';
 import { isMinor, seasonChoices, seasonLabel } from '../club/season.js';
 import { diplomeProHint, sourceLabel } from './diver-payload.js';
 
@@ -30,6 +31,8 @@ import {
   trimixPrereq,
   applyDiplomePro,
   applyNitrox,
+  emptyPf,
+  togglePfCode,
 } from './diver-form-rules.js';
 
 /** État + mutateurs du formulaire plongeur. */
@@ -123,9 +126,117 @@ function AptitudesGroup({ form, setField }) {
   );
 }
 
+const PF_DIPLOME_LABELS = {
+  BPJEPS: 'BPJEPS plongée',
+  DEJEPS: 'DEJEPS plongée',
+  'DEJEPS-E4': 'DEJEPS plongée + CC plongée profonde',
+  DESJEPS: 'DESJEPS plongée',
+  BEES1: 'BEES 1 plongée',
+  BEES2: 'BEES 2 plongée',
+  BEES3: 'BEES 3 plongée',
+  'BPP-GAPPN': 'BPP GAPPN plongée subaquatique',
+};
+
+const PF_GROUPS = [
+  { key: 'aptitudes', label: 'Aptitudes (annexe IV)' },
+  { key: 'gaz', label: 'Mélanges (annexes V et VI)' },
+  { key: 'fonctions', label: 'Fonctions : enseignant, guide, directeur de plongée (annexes I à III)' },
+];
+
+// Profil au sens de l'arrêté n° 199 CM. Tant que le DP n'a rien coché, une
+// liste est déduite des niveaux FFESSM ; la première modification part de
+// cette déduction (art. LP 13 : le DP reconnaît les aptitudes).
+function PfFields({ form, setField, open }) {
+  const profile = pfProfile(form);
+  const pf = form.pf ?? emptyPf();
+  const update = (patch) => setField('pf', { ...pf, ...patch });
+  const toggle = (key, code) => {
+    const base = profile.derived[key] ? { ...pf, [key]: profile[key] } : pf;
+    setField('pf', togglePfCode(base, key, code));
+  };
+  return (
+    <details className="field" open={open}>
+      <summary className="field-label">Polynésie française (arrêté n° 199 CM)</summary>
+      {PF_GROUPS.map(({ key, label }) => (
+        <ChipGroup
+          key={key}
+          label={label}
+          hint={
+            profile.derived[key]
+              ? 'Déduit des niveaux FFESSM : cochez ou décochez pour saisir vous-même.'
+              : 'Saisi par le directeur de plongée.'
+          }
+        >
+          {PF_CODES[key].map((code) => (
+            <Chip key={code} on={profile[key].includes(code)} onToggle={() => toggle(key, code)}>
+              {code}
+            </Chip>
+          ))}
+          {!profile.derived[key] && (
+            <button type="button" className="btn ghost sm" onClick={() => update({ [key]: [] })}>
+              Revenir à la déduction
+            </button>
+          )}
+        </ChipGroup>
+      ))}
+      <div className="grid-2">
+        <Field
+          label="Diplôme homologué"
+          hint="Exigé pour encadrer contre rémunération (loi du pays n° 2017-44, art. LP 18)."
+        >
+          <select
+            className="input"
+            value={pf.diplome_homologue || ''}
+            onChange={(e) => update({ diplome_homologue: e.target.value || null })}
+          >
+            <option value="">
+              {profile.derived.diplome_homologue && profile.diplome_homologue
+                ? `Déduit : ${PF_DIPLOME_LABELS[profile.diplome_homologue]}`
+                : 'Aucun'}
+            </option>
+            {PF_CODES.diplomes.map((code) => (
+              <option key={code} value={code}>
+                {PF_DIPLOME_LABELS[code]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <ChipGroup label="Statut">
+          <Chip on={!!pf.patente} onToggle={() => update({ patente: !pf.patente })}>
+            Patenté (indépendant rémunéré)
+          </Chip>
+          <Chip on={!!pf.stagiaire} onToggle={() => update({ stagiaire: !pf.stagiaire })}>
+            Stagiaire (sous tuteur)
+          </Chip>
+        </ChipGroup>
+      </div>
+      <div className="grid-2">
+        <Field label="Brevets" hint="Brevets et organismes, tels qu'à reporter sur la feuille de palanquée.">
+          <input
+            className="input"
+            maxLength={500}
+            value={pf.brevets || ''}
+            placeholder="PADI OWSI, TEC 40…"
+            onChange={(e) => update({ brevets: e.target.value })}
+          />
+        </Field>
+        <Field label="Attestation de condition physique" hint="Questionnaire sur l'honneur (annexe XVII).">
+          <input
+            className="input mono"
+            type="date"
+            value={pf.attestation || ''}
+            onChange={(e) => update({ attestation: e.target.value || null })}
+          />
+        </Field>
+      </div>
+    </details>
+  );
+}
+
 /** Champs complets d'un plongeur (hors baptême). */
 export function DiverFormFields({ f }) {
   const { form, setField } = f;
+  const isPf = useClub().jurisdiction === 'PF';
   return (
     <>
       <div className="grid-2">
@@ -264,7 +375,13 @@ export function DiverFormFields({ f }) {
         </ChipGroup>
       </div>
       <div className="grid-2">
-        <Field label="Certificat médical (date d'émission)" required>
+        <Field
+          label="Certificat médical (date d'émission)"
+          required={!isPf}
+          hint={
+            isPf ? 'Exigé des encadrants et des plongeurs à antécédents (arrêté n° 199 CM, art. 12 et 13).' : undefined
+          }
+        >
           <input
             className="input mono"
             type="date"
@@ -286,6 +403,7 @@ export function DiverFormFields({ f }) {
         </Field>
       </div>
       <MinorFields form={form} setField={setField} />
+      <PfFields form={form} setField={setField} open={isPf || !!form.pf} />
       <Field label="Notes" hint="Pas d'information médicale : seule la date du certificat est conservée.">
         <textarea
           className="textarea"

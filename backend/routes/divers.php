@@ -55,7 +55,7 @@ if ($method === 'POST' && $path === '/api/divers') {
     $user = Auth::require();
     Club::requirePermission($user, 'divers.write');
     $body = Json::body();
-    $v    = validateDiverBody($body);
+    $v    = validateDiverBody($body, (string)$user['club_id']);
 
     $clientId = $v->nullable('id');
     $id       = $clientId && SyncHelpers::isValidUuid($clientId) ? $clientId : Db::uuid();
@@ -88,7 +88,7 @@ if ($method === 'PUT' && preg_match('#^/api/divers/([^/]+)$#', $path, $m)) {
     diverInClubOrAbort((string)$user['club_id'], $m[1]);
 
     $body = Json::body();
-    $v    = validateDiverBody($body);
+    $v    = validateDiverBody($body, (string)$user['club_id']);
     $cols = diverBaseValues($v, $DIPLOMES_PRO, $RECYCLEURS_OK) + diverExtraValues($body, $v);
 
     $sets   = array_map(static fn(string $c): string => "{$c}=?", array_keys($cols));
@@ -123,8 +123,11 @@ function diverInClubOrAbort(string $clubId, string $diverId): array {
     return $row;
 }
 
-function validateDiverBody(array $body): Validate {
-    $errors = DiverValidation::errors($body);
+function validateDiverBody(array $body, string $clubId): Validate {
+    // Juridiction de l'annuaire : celle du club (le certificat médical n'est
+    // pas exigé de tous les pratiquants en Polynésie, arrêté n° 199 CM art. 12).
+    $club   = Db::row('SELECT jurisdiction FROM clubs WHERE id=?', [$clubId]);
+    $errors = DiverValidation::errors($body, Jurisdiction::normalize($club['jurisdiction'] ?? null) ?? Jurisdiction::DEFAULT);
     if ($errors) Json::abort(422, implode('; ', $errors));
     return new Validate($body);
 }
@@ -155,6 +158,11 @@ function diverExtraValues(array $body, Validate $v): array {
     $out = [];
     foreach (['licence_fin', 'representant_legal', 'autorisation_parentale_saison'] as $col) {
         if (array_key_exists($col, $body)) $out[$col] = $v->nullable($col);
+    }
+    // Profil polynésien (validé par DiverValidation) : null = déduit des niveaux FFESSM.
+    if (array_key_exists('pf', $body)) {
+        [$pf]      = PfProfile::sanitize($body['pf']);
+        $out['pf'] = $pf === null ? null : json_encode($pf, JSON_UNESCAPED_UNICODE);
     }
     return $out;
 }
@@ -198,6 +206,7 @@ function decodeDiver(array $row): array {
         $row['tiv']       = in_array('TIV',   $raw, true);
     }
     $row['aptitudes_sup'] = json_decode($row['aptitudes_sup'] ?? '[]', true) ?? [];
+    $row['pf'] = isset($row['pf']) ? json_decode((string)$row['pf'], true) : null;
     // Le client a besoin du flag « supprimé » pour appliquer le delete dans son
     // store local. updated_at sert au cursor de sync (?since=).
     $row['deleted'] = !empty($row['deleted_at']);

@@ -1,0 +1,413 @@
+{
+  "_doc": "Dérivation FR → PF et profil effectif (Annexes I, II, III, VII, VIII, IX de l'arrêté 199 CM). Partagé JS (tests/pf-profile.test.js) et PHP (backend/tests-php/PfProfileTest.php).",
+  "fromFr": [
+    {
+      "desc": "N1 FFESSM seul",
+      "ref": "Annexe VII ligne PE-12 et PE-20 ('Plongeur niveau 1 - P1')",
+      "diver": { "nom": "N1", "niveau_plongeur": "N1" },
+      "out": {
+        "aptitudes": ["PE-12", "PE-20"],
+        "gaz": [],
+        "fonctions": [],
+        "diplome_homologue": null
+      }
+    },
+    {
+      "desc": "N1 FFESSM + PA12 supplémentaire",
+      "ref": "Annexe VII (PE-12/20) + Annexe VIII ligne PA-12 ('Qualification PA-12')",
+      "diver": { "nom": "N1-PA12", "niveau_plongeur": "N1", "aptitudes_sup": ["PA12"] },
+      "out": {
+        "aptitudes": ["PE-12", "PE-20", "PA-12"],
+        "gaz": [],
+        "fonctions": [],
+        "diplome_homologue": null
+      }
+    },
+    {
+      "desc": "N1 FFESSM + PE40 supplémentaire",
+      "ref": "Annexe VII ligne PE-30/40 ('Qualification PE-40') + Annexe VIII ligne PA-40 ('Qualification PE-40')",
+      "diver": { "nom": "N1-PE40", "niveau_plongeur": "N1", "aptitudes_sup": ["PE40"] },
+      "out": {
+        "aptitudes": ["PE-12", "PE-20", "PE-30", "PE-40", "PA-40"],
+        "gaz": [],
+        "fonctions": [],
+        "diplome_homologue": null
+      }
+    },
+    {
+      "desc": "N2 FFESSM seul (lettre du texte : PA-40 accordé au P2, pas PA-30)",
+      "ref": "Annexe VII (P2 → PE-30/40), Annexe VIII (P2 → PA-20, PA-40 ; PA-12 prérequis Ann. IV)",
+      "diver": { "nom": "N2", "niveau_plongeur": "N2" },
+      "out": {
+        "aptitudes": ["PE-12", "PE-20", "PE-30", "PE-40", "PA-12", "PA-20", "PA-40"],
+        "gaz": [],
+        "fonctions": [],
+        "diplome_homologue": null
+      }
+    },
+    {
+      "desc": "N2 FFESSM + PA40 supplémentaire",
+      "ref": "Annexe VIII ligne PA-30 ('Qualification PA-40')",
+      "diver": { "nom": "N2-PA40", "niveau_plongeur": "N2", "aptitudes_sup": ["PA40"] },
+      "out": {
+        "aptitudes": ["PE-12", "PE-20", "PE-30", "PE-40", "PA-12", "PA-20", "PA-30", "PA-40"],
+        "gaz": [],
+        "fonctions": [],
+        "diplome_homologue": null
+      }
+    },
+    {
+      "desc": "N2 FFESSM + PE60 supplémentaire",
+      "ref": "Annexe VII ligne PE-50 ('Qualification PE-60') + Annexe VIII ligne PA-50 ('Qualification PE-60')",
+      "diver": { "nom": "N2-PE60", "niveau_plongeur": "N2", "aptitudes_sup": ["PE60"] },
+      "out": {
+        "aptitudes": ["PE-12", "PE-20", "PE-30", "PE-40", "PE-50", "PA-12", "PA-20", "PA-40", "PA-50"],
+        "gaz": [],
+        "fonctions": [],
+        "diplome_homologue": null
+      }
+    },
+    {
+      "desc": "N3 FFESSM seul",
+      "ref": "Annexe VII ligne PE-50 ('Plongeur niveau 3 - P3'), Annexe VIII lignes PA-30 et PA-50 ('P3')",
+      "diver": { "nom": "N3", "niveau_plongeur": "N3" },
+      "out": {
+        "aptitudes": ["PE-12", "PE-20", "PE-30", "PE-40", "PE-50", "PA-12", "PA-20", "PA-30", "PA-40", "PA-50"],
+        "gaz": [],
+        "fonctions": [],
+        "diplome_homologue": null
+      }
+    },
+    {
+      "desc": "N4 FFESSM / Guide de palanquée (plongeur effectif N3)",
+      "ref": "Annexe II ('guide de palanquée - plongeur de niveau 4' → GP-40)",
+      "diver": { "nom": "N4", "niveau_encadrant": "N4" },
+      "out": {
+        "aptitudes": ["PE-12", "PE-20", "PE-30", "PE-40", "PE-50", "PA-12", "PA-20", "PA-30", "PA-40", "PA-50"],
+        "gaz": [],
+        "fonctions": ["GP-40"],
+        "diplome_homologue": null
+      }
+    },
+    {
+      "desc": "N5 FFESSM (plongeur effectif N3, GP-40 + DP-40)",
+      "ref": "Annexe I ('N5 FFESSM' → DP-40), Annexe II (suppose le N4 → GP-40)",
+      "diver": { "nom": "N5", "niveau_encadrant": "N5" },
+      "out": {
+        "aptitudes": ["PE-12", "PE-20", "PE-30", "PE-40", "PE-50", "PA-12", "PA-20", "PA-30", "PA-40", "PA-50"],
+        "gaz": [],
+        "fonctions": ["GP-40", "DP-40"],
+        "diplome_homologue": null
+      }
+    },
+    {
+      "desc": "E1 FFESSM (Initiateur, plongeur effectif N2 par défaut)",
+      "ref": "Annexe III ('Initiateur FFESSM' → ENS-06), Annexe VII/VIII (P2)",
+      "diver": { "nom": "E1", "niveau_encadrant": "E1" },
+      "out": {
+        "aptitudes": ["PE-12", "PE-20", "PE-30", "PE-40", "PA-12", "PA-20", "PA-40"],
+        "gaz": [],
+        "fonctions": ["ENS-06"],
+        "diplome_homologue": null
+      }
+    },
+    {
+      "desc": "E1 FFESSM avec niveau_plongeur N3 explicite",
+      "ref": "Annexe III (ENS-06), Annexe VII/VIII (P3)",
+      "diver": { "nom": "E1-N3", "niveau_encadrant": "E1", "niveau_plongeur": "N3" },
+      "out": {
+        "aptitudes": ["PE-12", "PE-20", "PE-30", "PE-40", "PE-50", "PA-12", "PA-20", "PA-30", "PA-40", "PA-50"],
+        "gaz": [],
+        "fonctions": ["ENS-06"],
+        "diplome_homologue": null
+      }
+    },
+    {
+      "desc": "E2 FFESSM (Initiateur + N4, GP-40 + ENS-06/20)",
+      "ref": "Annexe II (GP-40), Annexe III ('Initiateur FFESSM + N4' → ENS-20)",
+      "diver": { "nom": "E2", "niveau_encadrant": "E2" },
+      "out": {
+        "aptitudes": ["PE-12", "PE-20", "PE-30", "PE-40", "PE-50", "PA-12", "PA-20", "PA-30", "PA-40", "PA-50"],
+        "gaz": [],
+        "fonctions": ["ENS-06", "ENS-20", "GP-40"],
+        "diplome_homologue": null
+      }
+    },
+    {
+      "desc": "E3 FFESSM (MF1 : ENS-30, GP-40, DP-60)",
+      "ref": "Annexe I ('MF1 FFESSM' → DP-60), Annexe II (GP-40), Annexe III ('MF1 FFESSM' → ENS-30)",
+      "diver": { "nom": "E3", "niveau_encadrant": "E3" },
+      "out": {
+        "aptitudes": ["PE-12", "PE-20", "PE-30", "PE-40", "PE-50", "PA-12", "PA-20", "PA-30", "PA-40", "PA-50"],
+        "gaz": [],
+        "fonctions": ["ENS-06", "ENS-20", "ENS-30", "GP-40", "DP-40", "DP-60"],
+        "diplome_homologue": null
+      }
+    },
+    {
+      "desc": "E3 FFESSM + PTH-70 (débloque DP-70)",
+      "ref": "Annexe I note 2 ('MF1 + PTH-70' → DP-70), Annexe IX ('PTH-70')",
+      "diver": { "nom": "E3-PTH70", "niveau_encadrant": "E3", "trimix": ["PTH-70"] },
+      "out": {
+        "aptitudes": ["PE-12", "PE-20", "PE-30", "PE-40", "PE-50", "PA-12", "PA-20", "PA-30", "PA-40", "PA-50"],
+        "gaz": ["PTH-50", "PTH-70"],
+        "fonctions": ["ENS-06", "ENS-20", "ENS-30", "GP-40", "DP-40", "DP-60", "DP-70"],
+        "diplome_homologue": null
+      }
+    },
+    {
+      "desc": "E3 FFESSM + PTH-120 (MF1 plafonné à DP-70 selon Annexe I note 2)",
+      "ref": "Annexe I note 2, Annexe IX (PTH-120 → gaz PTH-100/120)",
+      "diver": { "nom": "E3-PTH120", "niveau_encadrant": "E3", "trimix": ["PTH-120"] },
+      "out": {
+        "aptitudes": ["PE-12", "PE-20", "PE-30", "PE-40", "PE-50", "PA-12", "PA-20", "PA-30", "PA-40", "PA-50"],
+        "gaz": ["PTH-50", "PTH-70", "PTH-100", "PTH-120"],
+        "fonctions": ["ENS-06", "ENS-20", "ENS-30", "GP-40", "DP-40", "DP-60", "DP-70"],
+        "diplome_homologue": null
+      }
+    },
+    {
+      "desc": "E4 FFESSM (MF2 : ENS-50, GP-50, DP-60 sans trimix)",
+      "ref": "Annexe I ('MF2 FFESSM' → DP-60), Annexe II ('MF2 FFESSM' → GP-50), Annexe III ('MF2 FFESSM' → ENS-50)",
+      "diver": { "nom": "E4", "niveau_encadrant": "E4" },
+      "out": {
+        "aptitudes": ["PE-12", "PE-20", "PE-30", "PE-40", "PE-50", "PA-12", "PA-20", "PA-30", "PA-40", "PA-50"],
+        "gaz": [],
+        "fonctions": ["ENS-06", "ENS-20", "ENS-30", "ENS-40", "ENS-50", "GP-40", "GP-50", "DP-40", "DP-60"],
+        "diplome_homologue": null
+      }
+    },
+    {
+      "desc": "E4 FFESSM + PTH-120 (débloque DP-70, DP-100, DP-120)",
+      "ref": "Annexe I notes 2, 3, 4 ('MF2 + PTH-120' → DP-120)",
+      "diver": { "nom": "E4-PTH120", "niveau_encadrant": "E4", "trimix": ["PTH-120"] },
+      "out": {
+        "aptitudes": ["PE-12", "PE-20", "PE-30", "PE-40", "PE-50", "PA-12", "PA-20", "PA-30", "PA-40", "PA-50"],
+        "gaz": ["PTH-50", "PTH-70", "PTH-100", "PTH-120"],
+        "fonctions": [
+          "ENS-06",
+          "ENS-20",
+          "ENS-30",
+          "ENS-40",
+          "ENS-50",
+          "GP-40",
+          "GP-50",
+          "DP-40",
+          "DP-60",
+          "DP-70",
+          "DP-100",
+          "DP-120"
+        ],
+        "diplome_homologue": null
+      }
+    },
+    {
+      "desc": "BPJEPS seul (diplôme pro sans brevet fédéral)",
+      "ref": "Annexe II (BPJEPS → GP-40), Annexe III (BPJEPS → ENS-20), Arrêté 2391 CM (homologué)",
+      "diver": { "nom": "Pro-BPJEPS", "diplome_pro": "BPJEPS" },
+      "out": {
+        "aptitudes": [],
+        "gaz": [],
+        "fonctions": ["ENS-06", "ENS-20", "GP-40"],
+        "diplome_homologue": "BPJEPS"
+      }
+    },
+    {
+      "desc": "DEJEPS seul (diplôme pro sans certificat complémentaire)",
+      "ref": "Annexe I (DEJEPS → DP-60), Annexe II (GP-40), Annexe III (ENS-30), Arrêté 2391 CM",
+      "diver": { "nom": "Pro-DEJEPS", "diplome_pro": "DEJEPS" },
+      "out": {
+        "aptitudes": [],
+        "gaz": [],
+        "fonctions": ["ENS-06", "ENS-20", "ENS-30", "GP-40", "DP-40", "DP-60"],
+        "diplome_homologue": "DEJEPS"
+      }
+    },
+    {
+      "desc": "DEJEPS-E4 seul (diplôme pro avec certificat complémentaire)",
+      "ref": "Annexe I (DEJEPS(5) → DP-60), Annexe II (GP-50), Annexe III (ENS-50), Arrêté 2391 CM",
+      "diver": { "nom": "Pro-DEJEPS-E4", "diplome_pro": "DEJEPS-E4" },
+      "out": {
+        "aptitudes": [],
+        "gaz": [],
+        "fonctions": ["ENS-06", "ENS-20", "ENS-30", "ENS-40", "ENS-50", "GP-40", "GP-50", "DP-40", "DP-60"],
+        "diplome_homologue": "DEJEPS-E4"
+      }
+    },
+    {
+      "desc": "DEJEPS-E4 + PTH-120 (débloque DP-100/120)",
+      "ref": "Annexe I (3)(4)(5) (DEJEPS avec CC + PTH-120 → DP-120)",
+      "diver": { "nom": "Pro-DEJEPS-E4-Tx", "diplome_pro": "DEJEPS-E4", "trimix": ["PTH-120"] },
+      "out": {
+        "aptitudes": [],
+        "gaz": ["PTH-50", "PTH-70", "PTH-100", "PTH-120"],
+        "fonctions": [
+          "ENS-06",
+          "ENS-20",
+          "ENS-30",
+          "ENS-40",
+          "ENS-50",
+          "GP-40",
+          "GP-50",
+          "DP-40",
+          "DP-60",
+          "DP-70",
+          "DP-100",
+          "DP-120"
+        ],
+        "diplome_homologue": "DEJEPS-E4"
+      }
+    },
+    {
+      "desc": "Nitrox PN seul",
+      "ref": "Annexe V (aptitudes nitrox PN)",
+      "diver": { "nom": "Nx-PN", "nitrox": ["PN"] },
+      "out": {
+        "aptitudes": [],
+        "gaz": ["PN"],
+        "fonctions": [],
+        "diplome_homologue": null
+      }
+    },
+    {
+      "desc": "Nitrox PN et PN-C seuls",
+      "ref": "Annexe V (aptitudes nitrox PN-C)",
+      "diver": { "nom": "Nx", "nitrox": ["PN-C"] },
+      "out": {
+        "aptitudes": [],
+        "gaz": ["PN", "PN-C"],
+        "fonctions": [],
+        "diplome_homologue": null
+      }
+    },
+    {
+      "desc": "Trimix PTH-40 seul",
+      "ref": "Annexe IX (PTH-40 → PTH-50)",
+      "diver": { "nom": "Tx-40", "trimix": ["PTH-40"] },
+      "out": {
+        "aptitudes": [],
+        "gaz": ["PTH-50"],
+        "fonctions": [],
+        "diplome_homologue": null
+      }
+    },
+    {
+      "desc": "Plongeur vide (aucun champ)",
+      "ref": "Valeurs par défaut",
+      "diver": { "nom": "Inconnu" },
+      "out": {
+        "aptitudes": [],
+        "gaz": [],
+        "fonctions": [],
+        "diplome_homologue": null
+      }
+    }
+  ],
+  "effective": [
+    {
+      "desc": "Plongeur N1 avec pf vide → tout est déduit",
+      "diver": { "nom": "N1", "niveau_plongeur": "N1" },
+      "out": {
+        "aptitudes": ["PE-12", "PE-20"],
+        "gaz": [],
+        "fonctions": [],
+        "diplome_homologue": null,
+        "stagiaire": false,
+        "patente": false,
+        "brevets": "",
+        "attestation": null,
+        "derived": { "aptitudes": true, "gaz": true, "fonctions": true, "diplome_homologue": true }
+      }
+    },
+    {
+      "desc": "Plongeur N1 avec pf.aptitudes saisie non vide → prime sur la dérivation",
+      "diver": {
+        "nom": "N1-Custom",
+        "niveau_plongeur": "N1",
+        "pf": {
+          "aptitudes": ["PE-40"]
+        }
+      },
+      "out": {
+        "aptitudes": ["PE-40"],
+        "gaz": [],
+        "fonctions": [],
+        "diplome_homologue": null,
+        "stagiaire": false,
+        "patente": false,
+        "brevets": "",
+        "attestation": null,
+        "derived": { "aptitudes": false, "gaz": true, "fonctions": true, "diplome_homologue": true }
+      }
+    },
+    {
+      "desc": "Plongeur N1 avec pf.aptitudes tableau vide → repli sur dérivation",
+      "diver": {
+        "nom": "N1-EmptyArray",
+        "niveau_plongeur": "N1",
+        "pf": {
+          "aptitudes": []
+        }
+      },
+      "out": {
+        "aptitudes": ["PE-12", "PE-20"],
+        "gaz": [],
+        "fonctions": [],
+        "diplome_homologue": null,
+        "stagiaire": false,
+        "patente": false,
+        "brevets": "",
+        "attestation": null,
+        "derived": { "aptitudes": true, "gaz": true, "fonctions": true, "diplome_homologue": true }
+      }
+    },
+    {
+      "desc": "Codes inconnus dans pf sont ignorés et filtrés sur PF_CODES",
+      "diver": {
+        "nom": "Bad-Codes",
+        "pf": {
+          "aptitudes": ["PE-20", "APT_INCONNUE"],
+          "gaz": ["PN", "TX_INCONNU"],
+          "fonctions": ["GP-40", "MONITEUR_INCONNU"],
+          "diplome_homologue": "DIPLOME_INCONNU"
+        }
+      },
+      "out": {
+        "aptitudes": ["PE-20"],
+        "gaz": ["PN"],
+        "fonctions": ["GP-40"],
+        "diplome_homologue": null,
+        "stagiaire": false,
+        "patente": false,
+        "brevets": "",
+        "attestation": null,
+        "derived": { "aptitudes": false, "gaz": false, "fonctions": false, "diplome_homologue": true }
+      }
+    },
+    {
+      "desc": "diplome_homologue saisi prime sur le diplôme déduit",
+      "diver": {
+        "nom": "Pro-Custom",
+        "diplome_pro": "BPJEPS",
+        "pf": {
+          "diplome_homologue": "BPP-GAPPN",
+          "patente": true,
+          "stagiaire": true,
+          "brevets": "BPP GAPPN n° 123",
+          "attestation": "2026-06-15"
+        }
+      },
+      "out": {
+        "aptitudes": [],
+        "gaz": [],
+        "fonctions": ["ENS-06", "ENS-20", "GP-40"],
+        "diplome_homologue": "BPP-GAPPN",
+        "stagiaire": true,
+        "patente": true,
+        "brevets": "BPP GAPPN n° 123",
+        "attestation": "2026-06-15",
+        "derived": { "aptitudes": true, "gaz": true, "fonctions": true, "diplome_homologue": false }
+      }
+    }
+  ]
+}

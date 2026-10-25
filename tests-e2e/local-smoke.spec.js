@@ -920,4 +920,58 @@ test.describe('build local — socle club', () => {
       });
     }
   }
+
+  for (const width of [375, 1440]) {
+    test(`création d'un plongeur en réglementation PF ${width}px`, async ({ page }) => {
+      state.clubs[CLUB_ID].jurisdiction = 'PF';
+      state.realFonts = true;
+      await page.setViewportSize({ width, height: width < 768 ? 800 : 900 });
+      await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
+      await openHome(page);
+
+      const nav = async (name) => {
+        if (width >= 1024) return openTopbar(page, name);
+        await page.locator('.topbar-menu > button').click();
+        return page.locator('.menu-pop').getByRole('button', { name }).click();
+      };
+
+      await nav('Annuaire');
+      await expect(page.locator('.diver-admin-row').first()).toBeVisible();
+      await page.getByRole('button', { name: 'Nouveau plongeur' }).click();
+
+      const dlg = page.getByRole('dialog', { name: 'Nouveau plongeur' });
+      await expect(dlg).toBeVisible();
+
+      // Section « Polynésie française (arrêté n° 199 CM) » ouverte
+      const pfDetails = dlg.locator('details.field', { hasText: 'Polynésie française (arrêté n° 199 CM)' });
+      await expect(pfDetails).toHaveJSProperty('open', true);
+
+      // Certificat médical non obligatoire en PF (pas de span .req)
+      const medField = dlg.locator('.field', { hasText: 'Certificat médical' });
+      await expect(medField.locator('.req')).toHaveCount(0);
+
+      // Saisie nom / prénom
+      await dlg.getByLabel(/^Nom/).fill('Teheiura');
+      await dlg.getByLabel('Prénom').fill('Moana');
+
+      // Cocher une aptitude (ex: PE-40)
+      await dlg.getByRole('checkbox', { name: 'PE-40', exact: true }).check();
+
+      await noHorizontalOverflow(page);
+      await shot(page, `plongeur-pf-${width}-light`);
+
+      // Enregistrer sans certificat médical
+      await dlg.getByRole('button', { name: 'Enregistrer' }).click();
+      await expect(dlg).toHaveCount(0);
+
+      // Le corps POST porte pf.aptitudes
+      expect(state.diverCreations).toBeDefined();
+      expect(state.diverCreations.length).toBe(1);
+      const created = state.diverCreations[0];
+      expect(created.nom).toBe('Teheiura');
+      expect(created.prenom).toBe('Moana');
+      expect(created.medical).toBe('');
+      expect(created.pf?.aptitudes).toContain('PE-40');
+    });
+  }
 });

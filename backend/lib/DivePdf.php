@@ -46,7 +46,8 @@ class DivePdf
             'president_prenom' => $c['president_prenom'] ?? null,
             'president_nom'    => $c['president_nom'] ?? null,
             'president_tel'    => $c['president_tel'] ?? null,
-            'urgence_defaut'   => $c['urgence_defaut'] ?? '18',
+            // Même repli que l'écran (Club::profileOverlay) : 112 si le club n'a rien réglé.
+            'urgence_defaut'   => ($c['urgence_defaut'] ?? null) ?: Club::DEFAULT_URGENCE,
         ];
     }
 

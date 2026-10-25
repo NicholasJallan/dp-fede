@@ -104,6 +104,8 @@ bash deploy/deploy-backend.sh --dry-run   # relire ce qui serait envoyé / suppr
 bash deploy/deploy-backend.sh             # release → composer install --no-dev → backup → migrations → bascule
 ```
 
+Recette après déploiement, sur le MariaDB du Pi dans une base jetable (`dp_recette_dives`, jamais `dp_fede`) : `scp deploy/recette-dives.php pi@bullesenvalais.ch:/tmp/ && ssh pi@bullesenvalais.ch sudo php8.5 /tmp/recette-dives.php` (DiveService, verrou de ligne, PDF mPDF réels, purge 5 ans). Le PHP du Pi n'a pas `pdo_sqlite` : PHPUnit (RecordingPdo) tourne en local et en CI, pas sur le Pi.
+
 Les migrations ne tournent plus à chaque requête : `php backend/bin/migrate.php`
 (appelé par le script de déploiement, `--status` pour l'état). Purge RGPD et
 sessions : `backend/bin/purge.php` (cron, cf. `deploy/cron.example`).

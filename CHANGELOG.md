@@ -9,7 +9,7 @@ Dates en ISO 8601.
 
 - Numéro d'urgence (bouton URGENCE, fiche, PDF) : il suit le pays du site, y compris après un changement de site (18 en France, 144 en Suisse, sinon numéro du club ou 112) ; il était figé à l'ouverture d'une nouvelle plongée, avant le choix du site (« 18 » sur un lac suisse). Modifiable dans la section Sécurité surface (`urgence_num`, `urgence_manuel`), retour au numéro du pays en un clic.
 - PDF de la fiche : numéros secondaires et canal VHF selon le pays et le milieu (`backend/lib/Emergency.php`, portage de `src/domain/emergency.js`, cas communs `tests/fixtures/emergency.json`) ; il affichait toujours le CROSS, même en lac.
-- Club sans numéro réglé : repli `112` (était `18`).
+- Club sans numéro réglé : repli `112` (était `18`), y compris dans les PDF archivés (`DivePdf::clubProfile`, trouvé par la recette sur le Pi).
 - Check-list : encadrant sur recycleur en milieu naturel → système de secours indépendant du recycleur (A322-94), JS et PDF.
 - DP introuvable dans l'annuaire (pas encore chargé, supprimé) : l'ouverture du profil n'efface plus son nom ni sa qualification, et l'écran Palanquées ne ramène plus les nitrox / trimix à l'air (`src/app/dp-guards.js`).
 - Archivage d'une plongée (A322-72) : les règles bloquantes sont vérifiées sur l'état complet (corps + stocké) à chaque passage en `archived`, même si le PATCH ne porte que le statut ; la mise à l'eau (`in_progress`) n'est jamais refusée. PATCH et POST en transaction (`backend/lib/DiveService.php`), ligne verrouillée (`SELECT … FOR UPDATE`), `UPDATE` limité au club, `documents_status = 'pending'` posé avec le statut ; suppression limitée au club et refusée sur une plongée archivée dans la même instruction.

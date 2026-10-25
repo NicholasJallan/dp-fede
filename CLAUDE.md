@@ -220,7 +220,7 @@ pas la modifier à la main. `PRECACHE_URLS` liste l'app shell : `/`,
 Lancer : `npm test` (utilise `node --test`, Node 20+ requis, zéro dépendance NPM). Contrôles statiques, aussi en CI : `npm run typecheck` (TypeScript, seuls les fichiers `// @ts-check`, types JSDoc de `src/domain/types.js`) et `cd backend && composer phpstan` (PHPStan niveau 5 sur `lib/`, `bin/`, `index.php` ; les `routes/` sont des fichiers inclus, hors analyse). PHPUnit 13.
 Les tests sont des modules ES (`tests/package.json` → `"type": "module"`) qui
 importent directement `src/domain/*` et les fabriques de `src/offline/*`.
-Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **573 tests JS**, 544 PHPUnit, 45 e2e locaux
+Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **877 tests JS**, 810 PHPUnit, 48 e2e locaux
 (métier FFESSM/Code du Sport + offline : outbox, offline-store, sync, dive-lifecycle, home-buckets + contextualisation check-list par milieu
 
 - socle club : `sync-club.test.js` (X-DP-Club, périmètre club du store), `club-logic.test.js` (droits, alertes, rapport d'import, suppressions)
@@ -249,6 +249,18 @@ Modules purs dans `src/domain/` (ré-exportés par `src/domain/index.js`) :
 - `sortMembresForFiche(membres)` (`fiche.js`) — tri canonique des membres pour la fiche (encadrant → GP → … ; 2ᵉ GP en serre-file)
 - `validatePal` (`pal-rules.js`, règles) ; `derivePalMode`, `isBassinDerogation`, `hasGasQual`, `highestGasQual` / `gasQualSummary` (qualification affichée = la plus haute de chaque famille, jamais selon l'ordre de saisie), `palGas` (rôle fond / déco des mélanges : Nx > 40 % avec un autre gaz = déco, sans MOD), `withDecoO2`, contexte de palanquée (`pal-helpers.js`, ré-exportés par `pal-rules.js`) ; `computePalHardLimit`, `clampProfMax` (`depth-clamp.js`) ; `minDtr`, `dtrForProf` (`dtr.js`, DTR prévue ≥ 1 min / 10 m)
 - Graphe d'import sans cycle : `pal-helpers` ← `aptitudes` ← `pal-rules` (garder `pal-helpers.js` indépendant d'`aptitudes.js`).
+
+## Polynésie française (loi du pays n° 2017-44, arrêté n° 199 CM)
+
+Une seule appli ; seul le domaine réglementaire est doublé. Textes de référence dans `doc/` (arrêté consolidé ; liste d'homologation : arrêté n° 2391 CM du 01/12/2025).
+
+- **Juridiction d'une plongée = celle du LIEU** : `resolveJurisdiction(pays du site, juridiction du club)` (`src/domain/jurisdiction.js` ↔ `Jurisdiction.php`, `tests/fixtures/jurisdiction.json`) ; pays PF/PYF → 'PF', autre pays → 'FR', pays inconnu → `clubs.jurisdiction` (migration 012, choisie par le responsable dans l'écran Club). Le serveur la recalcule depuis le site enregistré (`DiveService::diveJurisdiction`, jamais `answers.jurisdiction`). Front : `useDiveRules(answers)` (`src/app/hooks/use-dive-rules.js`) → `{ jurisdiction, rules, ruleAnswers (avec structure_type du club), lucratif }`.
+- **Aiguillage** : `rulesFor(j)` (`src/domain/rules-for.js`) ↔ `RulesFor::forJurisdiction` : `validatePal`, `checklistRules` et une API commune aux écrans (`rolesFor`, `palHardLimit`, `dpMaxDepth`, `palMode`, `palType`, `availableMelanges`, `isDpCandidate`, `isEnseignantRole`). Les écrans de plongée ne doivent pas importer directement les fonctions FR (getDiverAptitudes, computePalHardLimit…).
+- **Domaine PF** (`src/domain/pf/` ↔ `backend/lib/Pf*.php`) : `pf-profile` (profil PF du plongeur : colonne JSON `divers.pf`, migration 013 ; déduction FFESSM → PF par les annexes I-III, VII-IX, lettre du texte : PA-40 au P2 ; la saisie du DP prime liste par liste), `pf-roles`, `pf-rules` (air, annexes X et XI ; homologation LP 5 / LP 18 ; stagiaires ; espace aquatique restreint art. 7), `pf-gas-rules` (nitrox / trimix, annexes XII-XV, PpO₂ 1,6, PpN₂ 5 / 4 bar, `pal.he`), `pf-ui` (rôles, plafonds, dérogation formation jusqu'à 60 m `pal.derogation_formation_60`), `pf-checklist` (↔ `PfChecklistRules`). Cas communs JS + PHP : `tests/fixtures/pal-rules-pf.json`, `pf-equivalences.json`, `checklist-pf.json`. Codes d'issue PF préfixés `PF_`.
+- **Rôles en palanquée PF** : `PE-12…PE-50`, `PA-12…PA-50`, `GP-40/50`, `ENS-06…ENS-50`, `Débutant`, `Baptême` ; DP : fonctions `DP-40…DP-120`. En formation, l'élève garde son aptitude acquise (annexe XI dit jusqu'où l'enseignant l'emmène).
+- **Encadrement rémunéré** : structure `sca` ou `patente` (type de structure PF) → tous rémunérés ; sinon case `remunere` du membre (et `answers.dp_remunere`), sinon `pf.patente`. Rémunéré sans `diplome_homologue` → `PF_HOMOLOGATION(_DP)`. En PF, pas de cadre SCA du Code du sport (`diverForCadre` / `Encadrement::applyToRow` non appliqués).
+- **Documents** : `DivePdf::templateFor` → `fiche-pf.php` (feuille de palanquée de l'annexe XX) en PF ; check-list PDF via `$checklistRules`. Urgence PF : 15 (SAMU), JRCC Tahiti +689 40 54 16 16, VHF 16. Questions PF du profil (`when` sur `jurisdiction === 'PF'`) : nuit, dérive, passe, navire, immatriculation, O₂ en litres.
+- Dates calendaires (âge, validité des certificats) : `calendarDate` (minuit LOCAL) — `new Date('AAAA-MM-JJ')` est en UTC, la veille à Tahiti (`tests/timezone.test.js`, TZ=Pacific/Tahiti).
 
 ## Règles de dérivation automatique (ne pas re-questionner l'utilisateur)
 

@@ -92,7 +92,12 @@ class ClubAlerts
      *
      * @return array{season:string, days:int, items: list<array>, counts: array<string,int>}
      */
-    public static function compute(array $divers, DateTimeImmutable $today, int $days = self::DEFAULT_DAYS): array
+    /**
+     * @param string $jurisdiction juridiction de l'annuaire (club) : en Polynésie,
+     *   le certificat n'est exigé que des encadrants (arrêté n° 199 CM, art. 12 et 13) ;
+     *   un pratiquant sans certificat n'est donc pas signalé.
+     */
+    public static function compute(array $divers, DateTimeImmutable $today, int $days = self::DEFAULT_DAYS, string $jurisdiction = 'FR'): array
     {
         $today  = $today->setTime(0, 0);
         $limit  = $today->modify("+{$days} days");
@@ -109,7 +114,9 @@ class ClubAlerts
 
             $expiry = self::caciExpiry($d['medical'] ?? null);
             if ($expiry === null) {
-                $items[] = $base + ['type' => 'caci_absent', 'severity' => 'warn', 'date' => null, 'days' => null];
+                if ($jurisdiction !== 'PF' || self::isEncadrantPf($d)) {
+                    $items[] = $base + ['type' => 'caci_absent', 'severity' => 'warn', 'date' => null, 'days' => null];
+                }
             } elseif ($expiry <= $today) {
                 $items[] = $base + self::dated('caci_expire', 'error', $expiry, $today);
             } elseif ($expiry <= $limit) {
@@ -169,10 +176,24 @@ class ClubAlerts
     public static function fetchForClub(string $clubId, int $days): array
     {
         $divers = Db::all(
-            'SELECT id, nom, prenom, medical, licence_fin, date_naissance, autorisation_parentale_saison, deleted_at
+            'SELECT id, nom, prenom, medical, licence_fin, date_naissance, autorisation_parentale_saison, deleted_at,
+                    niveau_encadrant, pf
                FROM divers WHERE club_id=? AND deleted_at IS NULL ORDER BY nom, prenom',
             [$clubId]
         );
-        return self::compute($divers, new DateTimeImmutable('today'), $days);
+        $club = Db::row('SELECT jurisdiction FROM clubs WHERE id=?', [$clubId]);
+        $jurisdiction = Jurisdiction::normalize($club['jurisdiction'] ?? null) ?? Jurisdiction::DEFAULT;
+        return self::compute($divers, new DateTimeImmutable('today'), $days, $jurisdiction);
+    }
+
+    /** Encadrant au sens de la Polynésie : niveau encadrant FFESSM, ou fonction ENS / GP / DP saisie. */
+    private static function isEncadrantPf(array $d): bool
+    {
+        if (!empty($d['niveau_encadrant'])) return true;
+        $pf = is_string($d['pf'] ?? null) ? json_decode($d['pf'], true) : ($d['pf'] ?? null);
+        foreach (is_array($pf) && is_array($pf['fonctions'] ?? null) ? $pf['fonctions'] : [] as $f) {
+            if (is_string($f) && preg_match('/^(ENS|GP|DP)-/', $f) === 1) return true;
+        }
+        return false;
     }
 }

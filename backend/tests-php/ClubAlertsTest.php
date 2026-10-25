@@ -97,4 +97,35 @@ final class ClubAlertsTest extends TestCase
         $this->assertSame('caci_expire', $r['items'][0]['type']);
         $this->assertSame(0, $r['items'][0]['days']);
     }
+
+    public function testComputeAlertsPfJurisdiction(): void
+    {
+        $today = new DateTimeImmutable('2026-10-20');
+        $divers = [
+            // Pratiquant PF sans certificat -> aucune alerte CACI
+            ['id' => 'p1', 'nom' => 'Pratiquant', 'prenom' => 'Sans', 'medical' => null, 'niveau_encadrant' => null, 'pf' => null],
+            ['id' => 'p2', 'nom' => 'Pratiquant', 'prenom' => 'Pe20', 'medical' => null, 'niveau_encadrant' => null, 'pf' => '{"aptitudes":["PE-20"]}'],
+            // Encadrant PF sans certificat (via niveau_encadrant ou fonction pf ENS/GP/DP) -> caci_absent
+            ['id' => 'e1', 'nom' => 'Moniteur', 'prenom' => 'E3', 'medical' => null, 'niveau_encadrant' => 'E3', 'pf' => null],
+            ['id' => 'e2', 'nom' => 'Guide', 'prenom' => 'Gp40', 'medical' => null, 'niveau_encadrant' => null, 'pf' => '{"fonctions":["GP-40"]}'],
+            ['id' => 'e3', 'nom' => 'Directeur', 'prenom' => 'Dp60', 'medical' => null, 'niveau_encadrant' => null, 'pf' => '{"fonctions":["DP-60"]}'],
+            // Pratiquant PF avec certificat expiré ou expirant bientôt -> alertes caci_expire / caci_expire_bientot conservées
+            ['id' => 'p3', 'nom' => 'Pratiquant', 'prenom' => 'Expire', 'medical' => '2025-10-01', 'niveau_encadrant' => null, 'pf' => null],
+            ['id' => 'p4', 'nom' => 'Pratiquant', 'prenom' => 'Bientot', 'medical' => '2025-11-05', 'niveau_encadrant' => null, 'pf' => null],
+        ];
+
+        // En PF : seuls les 3 encadrants ont caci_absent ; les 2 pratiquants sans certificat n'ont pas d'alerte CACI
+        $rPf = \ClubAlerts::compute($divers, $today, 30, 'PF');
+        $this->assertSame(3, $rPf['counts']['caci_absent'] ?? 0);
+        $this->assertSame(1, $rPf['counts']['caci_expire'] ?? 0);
+        $this->assertSame(1, $rPf['counts']['caci_expire_bientot'] ?? 0);
+
+        $absentIds = array_column(array_filter($rPf['items'], fn($it) => $it['type'] === 'caci_absent'), 'diver_id');
+        sort($absentIds);
+        $this->assertSame(['e1', 'e2', 'e3'], $absentIds);
+
+        // En FR (par défaut ou explicite) : tous les plongeurs sans certificat ont caci_absent (5)
+        $rFr = \ClubAlerts::compute($divers, $today, 30, 'FR');
+        $this->assertSame(5, $rFr['counts']['caci_absent'] ?? 0);
+    }
 }

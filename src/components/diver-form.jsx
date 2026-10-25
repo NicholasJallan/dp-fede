@@ -391,7 +391,11 @@ export function DiverFormFields({ f }) {
         </Field>
         <Field
           label="Date de naissance"
-          hint="Autonomie PA-12/PA-20 dès 16 ans, PA-40 dès 17 ans ; PA-60 et trimix réservés aux majeurs."
+          hint={
+            isPf
+              ? 'Autonomie réservée aux majeurs (loi du pays n° 2017-44, LP 4).'
+              : 'Autonomie PA-12/PA-20 dès 16 ans, PA-40 dès 17 ans ; PA-60 et trimix réservés aux majeurs.'
+          }
         >
           <input
             className="input mono"

@@ -188,4 +188,21 @@ describe('sortMembresForFiche — ordre canonique', () => {
     // L'un des GP doit être en queue
     assert.equal(sorted[sorted.length - 1].aptitude, 'GP');
   });
+
+  test('Codes Polynésie française (ENS, GP, PE, PA, Débutant) avec serre-file GP-40', () => {
+    const membres = [
+      { id: 'deb', aptitude: 'Débutant' },
+      { id: 'pe', aptitude: 'PE-20' },
+      { id: 'gp1', aptitude: 'GP-40' },
+      { id: 'pa', aptitude: 'PA-40' },
+      { id: 'ens', aptitude: 'ENS-30' },
+      { id: 'gp2', aptitude: 'GP-40' },
+    ];
+    const sorted = sortMembresForFiche(membres);
+    assert.deepEqual(
+      sorted.map((m) => m.aptitude),
+      ['ENS-30', 'GP-40', 'PE-20', 'PA-40', 'Débutant', 'GP-40'],
+    );
+    assert.equal(sorted[sorted.length - 1].id, 'gp2');
+  });
 });

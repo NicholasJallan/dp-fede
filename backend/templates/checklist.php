@@ -34,7 +34,9 @@ $checked  = $renderState['checked']  ?? [];
 $comments = $renderState['comments'] ?? [];
 
 // Règles de check-list : portage de src/domain/checklist.js (lib/ChecklistRules.php).
-$CHECKLIST_RULES = ChecklistRules::phases();
+// En Polynésie : PfChecklistRules (DivePdf passe $checklistRules).
+$rulesClass      = isset($checklistRules) && is_string($checklistRules) ? $checklistRules : ChecklistRules::class;
+$CHECKLIST_RULES = $rulesClass::phases();
 
 // Comptages globaux
 $totalItems = 0;

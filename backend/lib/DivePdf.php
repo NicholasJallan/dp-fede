@@ -48,11 +48,32 @@ class DivePdf
             'president_tel'    => $c['president_tel'] ?? null,
             // Même repli que l'écran (Club::profileOverlay) : 112 si le club n'a rien réglé.
             'urgence_defaut'   => ($c['urgence_defaut'] ?? null) ?: Club::DEFAULT_URGENCE,
+            'jurisdiction'     => Jurisdiction::normalize($c['jurisdiction'] ?? null) ?? Jurisdiction::DEFAULT,
         ];
+    }
+
+    /** Réglementation de la plongée : pays du site, sinon celle du club. */
+    public static function jurisdictionFor(array $answers, array $profile): string
+    {
+        $pays = isset($answers['site_pays_code']) ? (string)$answers['site_pays_code'] : null;
+        return Jurisdiction::resolve($pays, $profile['jurisdiction'] ?? null);
+    }
+
+    /** Template du document : la Polynésie a sa feuille de palanquée (annexe XX de l'arrêté n° 199 CM). */
+    public static function templateFor(string $type, string $jurisdiction): string
+    {
+        if ($type === 'checklist') return 'checklist.php';
+        return $jurisdiction === 'PF' ? 'fiche-pf.php' : 'fiche.php';
     }
 
     /** Génère le PDF (octets). */
     public static function render(array $dive, string $type, array $profile): string
+    {
+        return PdfRender::generate(self::html($dive, $type, $profile));
+    }
+
+    /** HTML du document, avant sa conversion en PDF. */
+    public static function html(array $dive, string $type, array $profile): string
     {
         if (!in_array($type, self::TYPES, true)) {
             throw new InvalidArgumentException("Type de document inconnu : {$type}");
@@ -67,9 +88,37 @@ class DivePdf
             'diversById'  => self::diversById(is_array($palanquees) ? $palanquees : [], (string)$dive['club_id']),
             'user'        => $profile,
         ];
-        $file = __DIR__ . '/../templates/' . ($type === 'checklist' ? 'checklist.php' : 'fiche.php');
-        $html = PdfRender::buildHtml(self::TITLES[$type], self::renderTemplate($file, $vars));
-        return PdfRender::generate($html);
+        $jurisdiction = self::jurisdictionFor($vars['answers'], $profile);
+        $vars['checklistRules'] = $jurisdiction === 'PF' ? PfChecklistRules::class : ChecklistRules::class;
+        $vars['dp'] = $jurisdiction === 'PF' ? self::dpRow($vars['answers'], (string)$dive['club_id']) : null;
+        $file = __DIR__ . '/../templates/' . self::templateFor($type, $jurisdiction);
+        $title = $type === 'fiche' && $jurisdiction === 'PF' ? 'Feuille de palanquée' : self::TITLES[$type];
+        return PdfRender::buildHtml($title, self::renderTemplate($file, $vars));
+    }
+
+    /** DP de la plongée (profil polynésien pour le bloc DP de l'annexe XX). */
+    private static function dpRow(array $answers, string $clubId): ?array
+    {
+        $id = $answers['dp_id'] ?? null;
+        if (!is_string($id) || $id === '') return null;
+        $row = Db::row('SELECT id, niveau_encadrant, qualifs, aptitudes_sup, pf FROM divers WHERE id=? AND club_id=?', [$id, $clubId]);
+        return $row ? self::decodePf($row) : null;
+    }
+
+    /** Colonnes JSON utiles au profil polynésien (pf, qualifs → nitrox / trimix / diplôme). */
+    private static function decodePf(array $row): array
+    {
+        $pf = is_string($row['pf'] ?? null) ? json_decode($row['pf'], true) : null;
+        $row['pf'] = is_array($pf) ? $pf : null;
+        $q = is_string($row['qualifs'] ?? null) ? json_decode($row['qualifs'], true) : null;
+        if (is_array($q)) {
+            $row['nitrox'] = $q['nitrox'] ?? [];
+            $row['trimix'] = $q['trimix'] ?? [];
+            $row['diplome_pro'] = $q['diplome'] ?? null;
+        }
+        $sup = is_string($row['aptitudes_sup'] ?? null) ? json_decode($row['aptitudes_sup'], true) : null;
+        $row['aptitudes_sup'] = is_array($sup) ? $sup : [];
+        return $row;
     }
 
     /** Nom de fichier proposé au téléchargement. */
@@ -100,12 +149,12 @@ class DivePdf
         $ids  = array_keys($members);
         $phs  = implode(',', array_fill(0, count($ids), '?'));
         $rows = Db::all(
-            "SELECT id, nom, prenom, licence, niveau_plongeur, niveau_encadrant FROM divers
+            "SELECT id, nom, prenom, licence, niveau_plongeur, niveau_encadrant, pf, qualifs, aptitudes_sup FROM divers
               WHERE id IN ({$phs}) AND club_id=?",
             [...$ids, $clubId]
         );
         $out = [];
-        foreach ($rows as $row) $out[$row['id']] = $row;
+        foreach ($rows as $row) $out[$row['id']] = self::decodePf($row);
         foreach ($members as $id => $m) {
             if (isset($out[$id])) continue;
             $out[$id] = [

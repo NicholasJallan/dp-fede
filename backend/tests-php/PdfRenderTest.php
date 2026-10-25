@@ -137,4 +137,22 @@ final class PdfRenderTest extends TestCase
         $this->assertStringNotContainsString('#fef2f2', $css, 'rouge réservé au bloquant');
         $this->assertStringNotContainsString('#fff7ed', $css);
     }
+
+    public function testSortMembresForFichePf(): void
+    {
+        $membres = [
+            ['id' => 'deb', 'aptitude' => 'Débutant'],
+            ['id' => 'pe',  'aptitude' => 'PE-20'],
+            ['id' => 'gp1', 'aptitude' => 'GP-40'],
+            ['id' => 'pa',  'aptitude' => 'PA-40'],
+            ['id' => 'ens', 'aptitude' => 'ENS-30'],
+            ['id' => 'gp2', 'aptitude' => 'GP-40'],
+        ];
+        $sorted = \PdfRender::sortMembresForFiche($membres);
+        $this->assertSame(
+            ['ENS-30', 'GP-40', 'PE-20', 'PA-40', 'Débutant', 'GP-40'],
+            array_column($sorted, 'aptitude')
+        );
+        $this->assertSame('gp2', $sorted[count($sorted) - 1]['id']);
+    }
 }

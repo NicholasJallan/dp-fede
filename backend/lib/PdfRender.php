@@ -169,18 +169,25 @@ CSS;
             'PTH120' => 8, 'PTH70' => 9,
             'PA12' => 10, 'PA20' => 10, 'PA40' => 10, 'PA60' => 10,
             'Baptême' => 11,
+            // Rôles de la Polynésie (arrêté n° 199 CM), au rang de leurs équivalents.
+            'ENS-50' => 0, 'ENS-40' => 0.5, 'ENS-30' => 1, 'ENS-20' => 2, 'ENS-06' => 3,
+            'GP-50' => 4, 'GP-40' => 4.5,
+            'PE-50' => 5, 'PE-40' => 6, 'PE-30' => 6.5, 'PE-20' => 7, 'PE-12' => 7.5,
+            'PA-12' => 10, 'PA-20' => 10, 'PA-30' => 10, 'PA-40' => 10, 'PA-50' => 10,
+            'Débutant' => 10.5,
         ];
-        $priority = function (string $apt) use ($priorityMap): int {
-            return $priorityMap[$apt] ?? 99;
+        $priority = function (string $apt) use ($priorityMap): float {
+            return (float)($priorityMap[$apt] ?? 99);
         };
+        $isGp = static fn(string $apt): bool => $apt === 'GP' || str_starts_with($apt, 'GP-');
         $sorted = $membres;
-        usort($sorted, fn($a, $b) => $priority($a['aptitude'] ?? '') - $priority($b['aptitude'] ?? ''));
+        usort($sorted, fn($a, $b) => $priority($a['aptitude'] ?? '') <=> $priority($b['aptitude'] ?? ''));
 
         // 2 GP : le dernier GP devient serre-file (déplacé en queue)
-        $gpCount = count(array_filter($sorted, fn($m) => ($m['aptitude'] ?? '') === 'GP'));
+        $gpCount = count(array_filter($sorted, fn($m) => $isGp((string)($m['aptitude'] ?? ''))));
         if ($gpCount >= 2) {
             for ($i = count($sorted) - 1; $i >= 0; $i--) {
-                if (($sorted[$i]['aptitude'] ?? '') === 'GP') {
+                if ($isGp((string)($sorted[$i]['aptitude'] ?? ''))) {
                     $sf = array_splice($sorted, $i, 1)[0];
                     $sorted[] = $sf;
                     break;

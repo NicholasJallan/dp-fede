@@ -4,7 +4,7 @@
 import React, { useState, useMemo, useId } from 'react';
 import { Pill, diverFullName } from '../../components/components.jsx';
 import { Icon } from '../../components/icons.jsx';
-import { highestGasQual } from '../../domain/index.js';
+import { gasQualSummary } from '../../domain/index.js';
 
 const alpha = (a, b) => `${a.nom} ${a.prenom || ''}`.localeCompare(`${b.nom} ${b.prenom || ''}`, 'fr');
 const lvlOrd = (np) => ({ N3: 0, N2: 1, N1: 2 })[np] ?? 3;
@@ -31,11 +31,7 @@ function groupDivers(list) {
 function DiverCard({ d, palanquees, onAdd, onAddNew }) {
   const ne = d.niveau_encadrant,
     np = d.niveau_plongeur;
-  const quals = [
-    (d.nitrox || []).includes('PN-C') ? 'PN-C' : (d.nitrox || []).includes('PN') ? 'PN' : null,
-    highestGasQual(d.trimix),
-    (d.recycleurs || []).length ? 'CCR' : null,
-  ].filter(Boolean);
+  const quals = [...gasQualSummary(d), ...((d.recycleurs || []).length ? ['CCR'] : [])];
   return (
     <div className="diver-card">
       <div className="info">

@@ -51,6 +51,7 @@ export {
   isBassinDerogation,
   hasGasQual,
   highestGasQual,
+  gasQualSummary,
   palGas,
   withDecoO2,
   ENS_LEVELS,

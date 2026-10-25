@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 
 const fixtures = JSON.parse(readFileSync(new URL('./fixtures/pal-rules.json', import.meta.url), 'utf8'));
 
-const { validatePal, derivePalMode, hasGasQual, highestGasQual } = win;
+const { validatePal, derivePalMode, hasGasQual, highestGasQual, gasQualSummary } = win;
 
 function buildCase(c) {
   const diversById = {};
@@ -98,7 +98,7 @@ describe('hasGasQual — hiérarchie PN < PN-C < PTH-40 < PTH-70 < PTH-120', () 
   });
 });
 
-describe('highestGasQual — qualification affichée (la plus élevée, quel que soit l\'ordre)', () => {
+describe("highestGasQual — qualification affichée (la plus élevée, quel que soit l'ordre)", () => {
   test('PTH-120 saisi avant PTH-70 → PTH-120', () => {
     assert.equal(highestGasQual(['PTH-120', 'PTH-70']), 'PTH-120');
     assert.equal(highestGasQual(['PTH-70', 'PTH-120', 'PTH-40']), 'PTH-120');
@@ -106,12 +106,26 @@ describe('highestGasQual — qualification affichée (la plus élevée, quel que
   test('PTH-70 seul → PTH-70', () => {
     assert.equal(highestGasQual(['PTH-40', 'PTH-70']), 'PTH-70');
   });
-  test('nitrox : PN-C l\'emporte sur PN', () => {
+  test("nitrox : PN-C l'emporte sur PN", () => {
     assert.equal(highestGasQual(['PN-C', 'PN']), 'PN-C');
   });
   test('liste vide ou absente → null', () => {
     assert.equal(highestGasQual([]), null);
     assert.equal(highestGasQual(undefined), null);
+  });
+});
+
+describe('gasQualSummary — qualification la plus haute de chaque famille', () => {
+  test("nitrox puis trimix, quel que soit l'ordre de saisie", () => {
+    assert.deepEqual(gasQualSummary({ nitrox: ['PN-C', 'PN'], trimix: ['PTH-120', 'PTH-70', 'PTH-40'] }), [
+      'PN-C',
+      'PTH-120',
+    ]);
+  });
+  test('familles absentes ignorées', () => {
+    assert.deepEqual(gasQualSummary({ nitrox: ['PN'] }), ['PN']);
+    assert.deepEqual(gasQualSummary({}), []);
+    assert.deepEqual(gasQualSummary(null), []);
   });
 });
 

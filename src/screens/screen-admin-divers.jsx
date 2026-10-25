@@ -7,7 +7,7 @@ import { Alert, Pill, diverFullName } from '../components/components.jsx';
 import { ConfirmDialog, Dialog } from '../components/dialog.jsx';
 import { Icon, StatusIcon } from '../components/icons.jsx';
 import { formatDate, parseDateLike } from '../components/format.js';
-import { highestGasQual } from '../domain/index.js';
+import { gasQualSummary } from '../domain/index.js';
 import {
   DiverFormFields,
   diverToForm,
@@ -80,13 +80,12 @@ function DiverEditDialog({ editing, onClose, onSaved }) {
 }
 
 function QualPills({ d }) {
-  const nx = d.nitrox || [],
-    tx = highestGasQual(d.trimix);
   return (
     <>
       <Pill tone={d.niveau_encadrant ? 'ink' : 'default'}>{d.niveau_encadrant || d.niveau_plongeur || 'Débutant'}</Pill>
-      {nx.includes('PN-C') ? <Pill>PN-C</Pill> : nx.includes('PN') && <Pill>PN</Pill>}
-      {tx && <Pill>{tx}</Pill>}
+      {gasQualSummary(d).map((q) => (
+        <Pill key={q}>{q}</Pill>
+      ))}
       {(d.recycleurs || []).length > 0 && <Pill>CCR</Pill>}
       {d.rifap && <Pill>RIFAP</Pill>}
       {d.tiv && <Pill>TIV</Pill>}

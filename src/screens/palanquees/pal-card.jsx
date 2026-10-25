@@ -8,7 +8,15 @@
 import React, { useEffect, useId } from 'react';
 import { CdsLink, Pill, diverFullName } from '../../components/components.jsx';
 import { Icon, StatusIcon } from '../../components/icons.jsx';
-import { derivePalMode, getDiverAptitudes, minDtr, PAL_TYPE_LABELS, palGas, parseCdsRefs } from '../../domain/index.js';
+import {
+  derivePalMode,
+  gasQualSummary,
+  getDiverAptitudes,
+  minDtr,
+  PAL_TYPE_LABELS,
+  palGas,
+  parseCdsRefs,
+} from '../../domain/index.js';
 
 const ENS_ROLES = ['E1', 'E2', 'E3', 'E4'];
 
@@ -269,7 +277,7 @@ function MemberRow({ m, diversById, flagged, palContext, onAptitude, onRemove })
       <span className="lvl">{m._bapteme ? 'Bapt.' : d.niveau_encadrant || d.niveau_plongeur || '?'}</span>
       <div className="name">
         <b>{name}</b>
-        <small>{m._bapteme ? 'Baptême, hors annuaire' : [...(d.nitrox || []), ...(d.trimix || [])].join(' ')}</small>
+        <small>{m._bapteme ? 'Baptême, hors annuaire' : gasQualSummary(d).join(' ')}</small>
         <span className="flag">
           <StatusIcon tone="err" />
           Règle bloquante

@@ -45,6 +45,7 @@ export {
   diverFullName,
   hasGasQual,
   highestGasQual,
+  gasQualSummary,
   derivePalMode,
   isBassinDerogation,
   palGas,

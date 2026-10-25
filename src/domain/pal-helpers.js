@@ -89,6 +89,16 @@ export function highestGasQual(quals) {
   return (quals || []).reduce((best, q) => ((rank[q] || 0) > (rank[best] || 0) ? q : best), null);
 }
 
+/**
+ * Qualifications mélange affichées pour un plongeur : la plus haute de chaque
+ * famille (nitrox, puis trimix), ex. ['PN-C', 'PTH-120'].
+ * @param {{ nitrox?: string[], trimix?: string[] } | null | undefined} diver
+ * @returns {string[]}
+ */
+export function gasQualSummary(diver) {
+  return [highestGasQual(diver?.nitrox), highestGasQual(diver?.trimix)].filter((q) => q !== null);
+}
+
 /** Vrai si le plongeur justifie au moins la qualification mélange `req`. */
 export function hasGasQual(diver, req) {
   return gasQualRank(diver) >= tables().GAS_QUAL_RANK[req];

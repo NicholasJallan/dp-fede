@@ -21,6 +21,10 @@ import {
   withDecoO2,
 } from '../domain/index.js';
 import { useDiveRules } from '../app/hooks/use-dive-rules.js';
+import { api } from '../api/api.js';
+import { useOnline } from '../offline/use-online.jsx';
+import { diverFullName } from '../components/components.jsx';
+import { pfDailyQuotaIssues } from '../domain/index.js';
 import { PalCard } from './palanquees/pal-card.jsx';
 import { DiverPool } from './palanquees/diver-pool.jsx';
 import { BirthdateDialog } from './palanquees/birthdate-dialog.jsx';
@@ -299,7 +303,30 @@ function useAutoClamp({ setPalanquees, allowedMelangeValues, dpDiver, siteMax, r
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
-function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answers, setAnswer }) {
+// Polynésie, art. 5 : autres plongées du club le même jour (en ligne seulement).
+function useDayLoad(enabled, date, diveId) {
+  const online = useOnline();
+  const [state, setState] = useState({ entries: null, offline: false });
+  const day = typeof date === 'string' ? date.slice(0, 10) : '';
+  useEffect(() => {
+    if (!enabled || !day) return undefined;
+    if (!online) {
+      setState({ entries: null, offline: true });
+      return undefined;
+    }
+    let alive = true;
+    api.dives
+      .dayLoad(day, diveId)
+      .then((r) => alive && setState({ entries: r?.entries || [], offline: false }))
+      .catch(() => alive && setState({ entries: null, offline: true }));
+    return () => {
+      alive = false;
+    };
+  }, [enabled, day, diveId, online]);
+  return state;
+}
+
+function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answers, setAnswer, diveId }) {
   const [showQuickDiver, setShowQuickDiver] = useState(false);
   const { rules, ruleAnswers, jurisdiction, lucratif } = useDiveRules(answers);
   const pf = jurisdiction === 'PF';
@@ -334,6 +361,12 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
     defaultMode: isExplorationOnly ? 'exploration' : undefined,
   });
   const birthdate = useBirthdatePrompt({ diversById, setDivers });
+
+  const dayLoad = useDayLoad(pf, answers.date, diveId);
+  const quotaIssues = useMemo(
+    () => (pf && dayLoad.entries ? pfDailyQuotaIssues({ id: diveId, palanquees }, dayLoad.entries) : []),
+    [pf, dayLoad.entries, diveId, palanquees],
+  );
 
   const blockedCount = palanquees.filter((p) =>
     rules.validatePal(p, diversById, ruleAnswers, dpDiver).some((i) => i.tone === 'err'),
@@ -372,6 +405,18 @@ function ScreenPalanquees({ divers, setDivers, palanquees, setPalanquees, answer
           Les règles non respectées sont détaillées dans chaque palanquée encadrée en rouge.
         </Alert>
       )}
+      {quotaIssues.length > 0 && (
+        <Alert tone="warn" title="Quotas journaliers (arrêté n° 199 CM, art. 5)">
+          <ul>
+            {quotaIssues.map((q) => (
+              <li key={`${q.code}-${q.ids[0]}`}>
+                <b>{diversById[q.ids[0]] ? diverFullName(diversById[q.ids[0]]) : q.ids[0]}</b> : {q.text}
+              </li>
+            ))}
+          </ul>
+        </Alert>
+      )}
+      {pf && dayLoad.offline && <Alert tone="info">Quotas journaliers (art. 5) non vérifiés hors ligne.</Alert>}
 
       {/* Conteneur de requêtes : annuaire et palanquées côte à côte dès que la
           place le permet (tablette portrait, ou à côté de la synthèse). */}

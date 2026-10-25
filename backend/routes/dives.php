@@ -70,6 +70,19 @@ if ($method === 'GET' && $path === '/api/dives') {
     Json::ok($rows);
 }
 
+// ── GET /api/dives/day-load?date=AAAA-MM-JJ ─────────────────────────────────
+// Charge du jour (Polynésie, arrêté n° 199 CM art. 5) : une entrée par
+// plongeur et par palanquée des plongées du club ce jour-là. Déclarée avant
+// GET /api/dives/:id (sinon « day-load » serait lu comme un id).
+if ($method === 'GET' && $path === '/api/dives/day-load') {
+    $user = Auth::require();
+    Club::requirePermission($user, 'dives.read');
+    $date = (string)($_GET['date'] ?? '');
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1) Json::abort(422, 'Date invalide (AAAA-MM-JJ attendu)');
+    $exclude = isset($_GET['exclude']) ? (string)$_GET['exclude'] : null;
+    Json::ok(['date' => $date, 'entries' => DiveDayLoad::forDay((string)$user['club_id'], $date, $exclude)]);
+}
+
 // ── GET /api/dives/:id ──────────────────────────────────────────────────────
 // H4 : render_state chargé depuis dive_runtime_state (LEFT JOIN) afin de ne
 // pas dépendre de dives.render_state (colonne gardée pour compatibilité).

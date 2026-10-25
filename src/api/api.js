@@ -185,6 +185,9 @@ export const api = {
   dives: {
     list: () => apiFetch('/dives'),
     get: (id) => apiFetch(`/dives/${id}`),
+    // Charge du jour (Polynésie, art. 5) : plongées du club à cette date, hors plongée courante.
+    dayLoad: (date, exclude) =>
+      apiFetch(`/dives/day-load?date=${encodeURIComponent(date)}&exclude=${encodeURIComponent(exclude || '')}`),
     create: (data) => apiFetch('/dives', { method: 'POST', body: data }),
     update: (id, patch) => apiFetch(`/dives/${id}`, { method: 'PATCH', body: patch }),
     delete: (id) => apiFetch(`/dives/${id}`, { method: 'DELETE', body: {} }),

@@ -1,0 +1,399 @@
+{
+  "_doc": "Cas de test pour le calcul de charge et quotas journaliers PF (art. 5, arrêté n° 2018-199 CM).",
+  "entries": [
+    {
+      "desc": "Palanquée air prévue sans réalisation (2 plongeurs)",
+      "dive": {
+        "id": "dive-1",
+        "palanquees": [
+          {
+            "id": "p1",
+            "profMax": 20,
+            "duree": 45,
+            "melanges": ["Air"],
+            "membres": [
+              { "diverId": "d1", "aptitude": "PE-20" },
+              { "diverId": "d2", "aptitude": "PA-20" }
+            ]
+          }
+        ]
+      },
+      "expected": [
+        { "diveId": "dive-1", "diverId": "d1", "profMax": 20, "duree": 45, "trimix": false },
+        { "diveId": "dive-1", "diverId": "d2", "profMax": 20, "duree": 45, "trimix": false }
+      ]
+    },
+    {
+      "desc": "Réalisé écrase le prévu (profMax et duree)",
+      "dive": {
+        "id": "dive-2",
+        "palanquees": [
+          {
+            "id": "p1",
+            "profMax": 20,
+            "duree": 40,
+            "melanges": ["Nx ≤ 40%"],
+            "membres": [
+              { "diverId": "d1", "aptitude": "PE-20" }
+            ]
+          }
+        ],
+        "render_state": {
+          "realises": {
+            "p1": { "profMax": 25.5, "duree": 52 }
+          }
+        }
+      },
+      "expected": [
+        { "diveId": "dive-2", "diverId": "d1", "profMax": 25.5, "duree": 52, "trimix": false }
+      ]
+    },
+    {
+      "desc": "Exclusion des baptêmes et membres sans diverId",
+      "dive": {
+        "id": "dive-3",
+        "palanquees": [
+          {
+            "id": "p1",
+            "profMax": 6,
+            "duree": 20,
+            "melanges": ["Air"],
+            "membres": [
+              { "diverId": "d1", "aptitude": "Baptême" },
+              { "diverId": "d2", "_bapteme": true },
+              { "aptitude": "PE-12" },
+              { "diverId": "d3", "aptitude": "ENS-06" }
+            ]
+          }
+        ]
+      },
+      "expected": [
+        { "diveId": "dive-3", "diverId": "d3", "profMax": 6, "duree": 20, "trimix": false }
+      ]
+    },
+    {
+      "desc": "Trimix détecté via melanges contenant Tx",
+      "dive": {
+        "id": "dive-4",
+        "palanquees": [
+          {
+            "id": "p1",
+            "profMax": 65,
+            "duree": 35,
+            "melanges": ["Tx", "Nx > 40%"],
+            "membres": [
+              { "diverId": "d4", "aptitude": "PA-50" }
+            ]
+          }
+        ]
+      },
+      "expected": [
+        { "diveId": "dive-4", "diverId": "d4", "profMax": 65, "duree": 35, "trimix": true }
+      ]
+    },
+    {
+      "desc": "render_state sous forme de chaîne JSON",
+      "dive": {
+        "id": "dive-5",
+        "palanquees": [
+          {
+            "id": "p1",
+            "profMax": 15,
+            "duree": 40,
+            "melanges": ["Air"],
+            "membres": [
+              { "diverId": "d5", "aptitude": "PE-20" }
+            ]
+          }
+        ],
+        "render_state": "{\"realises\":{\"p1\":{\"profMax\":\"18\",\"duree\":\"45\"}}}"
+      },
+      "expected": [
+        { "diveId": "dive-5", "diverId": "d5", "profMax": 18, "duree": 45, "trimix": false }
+      ]
+    },
+    {
+      "desc": "Même plongeur présent dans deux palanquées d'une même plongée",
+      "dive": {
+        "id": "dive-6",
+        "palanquees": [
+          {
+            "id": "p1",
+            "profMax": 20,
+            "duree": 40,
+            "melanges": ["Air"],
+            "membres": [
+              { "diverId": "guide", "aptitude": "GP-40" },
+              { "diverId": "d1", "aptitude": "PE-20" }
+            ]
+          },
+          {
+            "id": "p2",
+            "profMax": 15,
+            "duree": 35,
+            "melanges": ["Air"],
+            "membres": [
+              { "diverId": "guide", "aptitude": "GP-40" },
+              { "diverId": "d2", "aptitude": "PE-20" }
+            ]
+          }
+        ]
+      },
+      "expected": [
+        { "diveId": "dive-6", "diverId": "guide", "profMax": 20, "duree": 40, "trimix": false },
+        { "diveId": "dive-6", "diverId": "d1", "profMax": 20, "duree": 40, "trimix": false },
+        { "diveId": "dive-6", "diverId": "guide", "profMax": 15, "duree": 35, "trimix": false },
+        { "diveId": "dive-6", "diverId": "d2", "profMax": 15, "duree": 35, "trimix": false }
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "desc": "Air : 3 plongées > 9 m au total (2 antérieures + courante) -> OK",
+      "currentDive": {
+        "id": "curr",
+        "palanquees": [
+          {
+            "id": "p1",
+            "profMax": 20,
+            "duree": 45,
+            "melanges": ["Air"],
+            "membres": [{ "diverId": "d1" }]
+          }
+        ]
+      },
+      "otherEntries": [
+        { "diveId": "prev-1", "diverId": "d1", "profMax": 25, "duree": 40, "trimix": false },
+        { "diveId": "prev-2", "diverId": "d1", "profMax": 18, "duree": 45, "trimix": false }
+      ],
+      "expectedCodes": []
+    },
+    {
+      "desc": "Air : 4 plongées > 9 m au total -> PF_QUOTA_PLONGEES",
+      "currentDive": {
+        "id": "curr",
+        "palanquees": [
+          {
+            "id": "p1",
+            "profMax": 20,
+            "duree": 45,
+            "melanges": ["Air"],
+            "membres": [{ "diverId": "d1" }]
+          }
+        ]
+      },
+      "otherEntries": [
+        { "diveId": "prev-1", "diverId": "d1", "profMax": 25, "duree": 40, "trimix": false },
+        { "diveId": "prev-2", "diverId": "d1", "profMax": 18, "duree": 45, "trimix": false },
+        { "diveId": "prev-3", "diverId": "d1", "profMax": 15, "duree": 40, "trimix": false }
+      ],
+      "expectedCodes": ["PF_QUOTA_PLONGEES"]
+    },
+    {
+      "desc": "Air : 4 plongées mais une <= 9 m (espace <= 9 m hors plafond) -> OK",
+      "currentDive": {
+        "id": "curr",
+        "palanquees": [
+          {
+            "id": "p1",
+            "profMax": 20,
+            "duree": 45,
+            "melanges": ["Air"],
+            "membres": [{ "diverId": "d1" }]
+          }
+        ]
+      },
+      "otherEntries": [
+        { "diveId": "prev-1", "diverId": "d1", "profMax": 25, "duree": 40, "trimix": false },
+        { "diveId": "prev-2", "diverId": "d1", "profMax": 18, "duree": 45, "trimix": false },
+        { "diveId": "prev-3", "diverId": "d1", "profMax": 8, "duree": 40, "trimix": false }
+      ],
+      "expectedCodes": []
+    },
+    {
+      "desc": "Trimix : 1 plongée > 70 m et une 2e plongée trimix -> PF_QUOTA_TRIMIX (max 1)",
+      "currentDive": {
+        "id": "curr",
+        "palanquees": [
+          {
+            "id": "p1",
+            "profMax": 40,
+            "duree": 30,
+            "melanges": ["Tx"],
+            "membres": [{ "diverId": "d1" }]
+          }
+        ]
+      },
+      "otherEntries": [
+        { "diveId": "prev-1", "diverId": "d1", "profMax": 75, "duree": 30, "trimix": true }
+      ],
+      "expectedCodes": ["PF_QUOTA_TRIMIX"]
+    },
+    {
+      "desc": "Trimix <= 70 m : 3 plongées trimix -> PF_QUOTA_TRIMIX (max 2)",
+      "currentDive": {
+        "id": "curr",
+        "palanquees": [
+          {
+            "id": "p1",
+            "profMax": 30,
+            "duree": 25,
+            "melanges": ["Tx"],
+            "membres": [{ "diverId": "d1" }]
+          }
+        ]
+      },
+      "otherEntries": [
+        { "diveId": "prev-1", "diverId": "d1", "profMax": 30, "duree": 25, "trimix": true },
+        { "diveId": "prev-2", "diverId": "d1", "profMax": 30, "duree": 25, "trimix": true }
+      ],
+      "expectedCodes": ["PF_QUOTA_TRIMIX"]
+    },
+    {
+      "desc": "Trimix <= 70 m : 2 plongées mais somme des profMax > 100 m -> PF_QUOTA_TRIMIX",
+      "currentDive": {
+        "id": "curr",
+        "palanquees": [
+          {
+            "id": "p1",
+            "profMax": 55,
+            "duree": 30,
+            "melanges": ["Tx"],
+            "membres": [{ "diverId": "d1" }]
+          }
+        ]
+      },
+      "otherEntries": [
+        { "diveId": "prev-1", "diverId": "d1", "profMax": 50, "duree": 30, "trimix": true }
+      ],
+      "expectedCodes": ["PF_QUOTA_TRIMIX"]
+    },
+    {
+      "desc": "Trimix <= 70 m : 2 plongées cumulant exactement 100 m -> OK",
+      "currentDive": {
+        "id": "curr",
+        "palanquees": [
+          {
+            "id": "p1",
+            "profMax": 50,
+            "duree": 30,
+            "melanges": ["Tx"],
+            "membres": [{ "diverId": "d1" }]
+          }
+        ]
+      },
+      "otherEntries": [
+        { "diveId": "prev-1", "diverId": "d1", "profMax": 50, "duree": 30, "trimix": true }
+      ],
+      "expectedCodes": []
+    },
+    {
+      "desc": "Durée quotidienne > 360 min (6 h) -> PF_QUOTA_DUREE",
+      "currentDive": {
+        "id": "curr",
+        "palanquees": [
+          {
+            "id": "p1",
+            "profMax": 15,
+            "duree": 60,
+            "melanges": ["Air"],
+            "membres": [{ "diverId": "d1" }]
+          }
+        ]
+      },
+      "otherEntries": [
+        { "diveId": "prev-1", "diverId": "d1", "profMax": 15, "duree": 160, "trimix": false },
+        { "diveId": "prev-2", "diverId": "d1", "profMax": 15, "duree": 150, "trimix": false }
+      ],
+      "expectedCodes": ["PF_QUOTA_DUREE"]
+    },
+    {
+      "desc": "Durée quotidienne égale à 360 min -> OK",
+      "currentDive": {
+        "id": "curr",
+        "palanquees": [
+          {
+            "id": "p1",
+            "profMax": 15,
+            "duree": 60,
+            "melanges": ["Air"],
+            "membres": [{ "diverId": "d1" }]
+          }
+        ]
+      },
+      "otherEntries": [
+        { "diveId": "prev-1", "diverId": "d1", "profMax": 15, "duree": 150, "trimix": false },
+        { "diveId": "prev-2", "diverId": "d1", "profMax": 15, "duree": 150, "trimix": false }
+      ],
+      "expectedCodes": []
+    },
+    {
+      "desc": "Plongeur dans 2 palanquées d'une même plongée : compte 1 plongée",
+      "currentDive": {
+        "id": "curr",
+        "palanquees": [
+          {
+            "id": "p1",
+            "profMax": 20,
+            "duree": 40,
+            "melanges": ["Air"],
+            "membres": [{ "diverId": "d1" }]
+          },
+          {
+            "id": "p2",
+            "profMax": 15,
+            "duree": 35,
+            "melanges": ["Air"],
+            "membres": [{ "diverId": "d1" }]
+          }
+        ]
+      },
+      "otherEntries": [
+        { "diveId": "prev-1", "diverId": "d1", "profMax": 25, "duree": 40, "trimix": false },
+        { "diveId": "prev-2", "diverId": "d1", "profMax": 18, "duree": 45, "trimix": false }
+      ],
+      "expectedCodes": []
+    },
+    {
+      "desc": "Un plongeur d'une autre plongée qui dépasse ses quotas mais n'est pas dans currentDive n'est pas signalé",
+      "currentDive": {
+        "id": "curr",
+        "palanquees": [
+          {
+            "id": "p1",
+            "profMax": 20,
+            "duree": 45,
+            "melanges": ["Air"],
+            "membres": [{ "diverId": "d1" }]
+          }
+        ]
+      },
+      "otherEntries": [
+        { "diveId": "prev-1", "diverId": "d2", "profMax": 25, "duree": 200, "trimix": false },
+        { "diveId": "prev-2", "diverId": "d2", "profMax": 25, "duree": 200, "trimix": false }
+      ],
+      "expectedCodes": []
+    },
+    {
+      "desc": "otherEntries contenant la plongée courante (même diveId) ignorée sans doublonner",
+      "currentDive": {
+        "id": "curr",
+        "palanquees": [
+          {
+            "id": "p1",
+            "profMax": 20,
+            "duree": 45,
+            "melanges": ["Air"],
+            "membres": [{ "diverId": "d1" }]
+          }
+        ]
+      },
+      "otherEntries": [
+        { "diveId": "curr", "diverId": "d1", "profMax": 20, "duree": 45, "trimix": false },
+        { "diveId": "prev-1", "diverId": "d1", "profMax": 25, "duree": 40, "trimix": false },
+        { "diveId": "prev-2", "diverId": "d1", "profMax": 18, "duree": 45, "trimix": false }
+      ],
+      "expectedCodes": []
+    }
+  ]
+}

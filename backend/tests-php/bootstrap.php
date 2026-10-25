@@ -43,6 +43,7 @@ require_once __DIR__ . '/../lib/LevelMapper.php';
 require_once __DIR__ . '/../lib/DiverImport.php';
 require_once __DIR__ . '/../lib/DiverImportPlan.php';
 require_once __DIR__ . '/../lib/DivePdf.php';
+require_once __DIR__ . '/../lib/DiveDayLoad.php';
 require_once __DIR__ . '/../lib/DivePolicy.php';
 require_once __DIR__ . '/../lib/DiveStore.php';
 require_once __DIR__ . '/../lib/DiveDates.php';

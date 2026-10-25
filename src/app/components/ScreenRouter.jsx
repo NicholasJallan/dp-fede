@@ -55,6 +55,7 @@ function DiveStepScreen({
           setPalanquees={s.setPalanquees}
           answers={s.answers}
           setAnswer={s.setAnswer}
+          diveId={s.currentDiveId}
         />
       );
     case 'checklist':

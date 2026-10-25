@@ -134,7 +134,7 @@ function checkAirDepth(ctx, add) {
     add(
       'err',
       'PF_DEROG_FORMATION_ONLY',
-      "La dérogation de 10 m au-delà de 50 m est réservée aux plongées de formation.",
+      'La dérogation de 10 m au-delà de 50 m est réservée aux plongées de formation.',
       'art. 26',
     );
   }
@@ -176,7 +176,7 @@ function checkExplorationEncadree(ctx, add) {
     add(
       'err',
       'PF_GP_REQUIRED',
-      "En exploration, la palanquée est encadrée par un guide de palanquée (GP-40 ou GP-50).",
+      'En exploration, la palanquée est encadrée par un guide de palanquée (GP-40 ou GP-50).',
       'ann. X',
       encadrants.map(memberId),
     );
@@ -185,7 +185,7 @@ function checkExplorationEncadree(ctx, add) {
   const { space } = ctx;
   if (space === null) return;
   if (space === 50 && gpLevel(guide.aptitude) < 50) {
-    add('err', 'PF_GP_LEVEL', 'Exploration dans l\'espace 0-50 m : guide GP-50 requis.', 'ann. X', [memberId(guide)]);
+    add('err', 'PF_GP_LEVEL', "Exploration dans l'espace 0-50 m : guide GP-50 requis.", 'ann. X', [memberId(guide)]);
   }
   const encadres = ctx.membres.filter((m) => !isEncadrantRole(m.aptitude));
   checkAptitudesForSpace(encadres, space, 'ann. X', add);
@@ -356,7 +356,12 @@ function palMode(pal, membres, add) {
   const roles = membres.map((m) => m.aptitude);
   const novices = roles.some(isNovice);
   if (pal.mode === 'exploration' && novices) {
-    add('warn', 'MODE_BAPTEME', "Un baptême ou un débutant relève de la formation : palanquée traitée en formation.", 'art. 25');
+    add(
+      'warn',
+      'MODE_BAPTEME',
+      'Un baptême ou un débutant relève de la formation : palanquée traitée en formation.',
+      'art. 25',
+    );
     return 'enseignement';
   }
   if (pal.mode === 'enseignement' || pal.mode === 'exploration') return pal.mode;

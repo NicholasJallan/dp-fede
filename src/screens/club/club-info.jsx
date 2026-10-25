@@ -3,12 +3,19 @@
 
 import React, { useState } from 'react';
 import { Alert, Field, Opt } from '../../components/components.jsx';
-import { STRUCTURE_LABELS } from '../../domain/index.js';
+import {
+  DEFAULT_JURISDICTION,
+  JURISDICTION_LABELS,
+  JURISDICTIONS,
+  rulesFor,
+  structureLabel,
+  structureLabels,
+} from '../../domain/index.js';
 import { api } from '../../api/api.js';
 import { describeApiError } from '../../club/permissions.js';
 
-const STRUCTURE_TYPES = Object.entries(STRUCTURE_LABELS).map(([value, label]) => ({ value, label }));
 const FIELDS = [
+  'jurisdiction',
   'nom',
   'numero_ffessm',
   'siret',
@@ -20,12 +27,37 @@ const FIELDS = [
 ];
 
 function toForm(club) {
-  return Object.fromEntries(FIELDS.map((k) => [k, club?.[k] || '']));
+  const form = Object.fromEntries(FIELDS.map((k) => [k, club?.[k] || '']));
+  return { ...form, jurisdiction: form.jurisdiction || DEFAULT_JURISDICTION };
+}
+
+// Types proposés pour la juridiction ; la valeur enregistrée reste affichée
+// même si elle n'y figure pas (ex. moniteur patenté repassé en France).
+function structureTypes(jurisdiction, current) {
+  const types = Object.entries(structureLabels(jurisdiction)).map(([value, label]) => ({ value, label }));
+  return !current || types.some((t) => t.value === current)
+    ? types
+    : [...types, { value: current, label: structureLabel(current, jurisdiction) }];
+}
+
+// Règles d'une juridiction pas encore transcrite : l'app applique celles d'une autre.
+function JurisdictionNote({ jurisdiction }) {
+  const applied = rulesFor(jurisdiction).jurisdiction;
+  if (applied === jurisdiction) return null;
+  return (
+    <Alert tone="info">
+      Règles de la Polynésie française en cours d'intégration : les contrôles du Code du sport sont appliqués en
+      attendant.
+    </Alert>
+  );
 }
 
 // Champs modifiés uniquement (PATCH partiel).
+// Comparaison avec le club normalisé : un club sans juridiction (cache
+// antérieur à la migration 012) vaut 'FR' et ne rend pas le formulaire modifié.
 function changedFields(form, club) {
-  return Object.fromEntries(FIELDS.filter((k) => (form[k] || '') !== (club?.[k] || '')).map((k) => [k, form[k]]));
+  const saved = toForm(club);
+  return Object.fromEntries(FIELDS.filter((k) => (form[k] || '') !== (saved[k] || '')).map((k) => [k, form[k]]));
 }
 
 function TextField({ label, value, onChange, hint, placeholder, type = 'text', inputMode, autoComplete, maxLength }) {
@@ -46,12 +78,14 @@ function TextField({ label, value, onChange, hint, placeholder, type = 'text', i
 }
 
 function ReadOnlyInfo({ club }) {
+  const isPf = club?.jurisdiction === 'PF';
   const president = [club?.president_prenom, club?.president_nom].filter(Boolean).join(' ');
   const rows = [
+    ['Réglementation', JURISDICTION_LABELS[club?.jurisdiction || DEFAULT_JURISDICTION]],
     ['Nom', club?.nom],
-    ['Type de structure', STRUCTURE_LABELS[club?.structure_type] || club?.structure_type],
-    ['Numéro FFESSM', club?.numero_ffessm],
-    ['SIRET', club?.siret],
+    ['Type de structure', structureLabel(club?.structure_type, club?.jurisdiction)],
+    [isPf ? 'Numéro de club' : 'Numéro FFESSM', club?.numero_ffessm],
+    [isPf ? 'N° TAHITI' : 'SIRET', club?.siret],
     ['Président', [president, club?.president_tel].filter(Boolean).join(', ')],
     ["Numéro d'urgence par défaut", club?.urgence_defaut],
   ];
@@ -68,12 +102,32 @@ function ReadOnlyInfo({ club }) {
 }
 
 function InfoForm({ form, set }) {
+  const isPf = form.jurisdiction === 'PF';
   return (
     <>
+      <Field
+        label="Réglementation applicable"
+        labelOnly
+        hint="Appliquée par défaut ; une plongée suit la réglementation du pays de son site."
+      >
+        {({ labelId }) => (
+          <div className="opt-group opt-wide" role="radiogroup" aria-labelledby={labelId}>
+            {JURISDICTIONS.map((j) => (
+              <Opt
+                key={j}
+                label={JURISDICTION_LABELS[j]}
+                checked={form.jurisdiction === j}
+                onClick={() => set('jurisdiction')(j)}
+              />
+            ))}
+          </div>
+        )}
+      </Field>
+      <JurisdictionNote jurisdiction={form.jurisdiction} />
       <Field label="Type de structure" labelOnly>
         {({ labelId }) => (
           <div className="opt-group opt-wide" role="radiogroup" aria-labelledby={labelId}>
-            {STRUCTURE_TYPES.map((t) => (
+            {structureTypes(form.jurisdiction, form.structure_type).map((t) => (
               <Opt
                 key={t.value}
                 label={t.label}
@@ -94,14 +148,14 @@ function InfoForm({ form, set }) {
       />
       <div className="grid-2">
         <TextField
-          label="Numéro de club FFESSM"
+          label={isPf ? 'Numéro de club (FFESSM / FPESSM)' : 'Numéro de club FFESSM'}
           value={form.numero_ffessm}
           onChange={set('numero_ffessm')}
           maxLength={50}
-          placeholder="06123456"
+          placeholder={isPf ? '' : '06123456'}
         />
         <TextField
-          label="SIRET ou numéro d'entreprise"
+          label={isPf ? "N° TAHITI ou numéro d'entreprise" : "SIRET ou numéro d'entreprise"}
           value={form.siret}
           onChange={set('siret')}
           maxLength={50}
@@ -131,7 +185,7 @@ function InfoForm({ form, set }) {
           value={form.president_tel}
           onChange={set('president_tel')}
           maxLength={30}
-          placeholder="+33 6 12 34 56 78"
+          placeholder={isPf ? '+689 87 12 34 56' : '+33 6 12 34 56 78'}
         />
       )}
       <TextField

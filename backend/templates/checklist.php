@@ -16,6 +16,7 @@ $fmt = fn($v): string => PdfRender::formatDateTime($v);
 $STRUCTURE_LABELS = [
     'club'  => 'Club FFESSM associatif',
     'sca'   => 'Structure Commerciale Agréée (SCA)',
+    'patente' => 'Moniteur patenté (indépendant)',
     'csa'   => "Convention de Section d'Activité (CSA)",
     'autre' => 'Autre',
 ];

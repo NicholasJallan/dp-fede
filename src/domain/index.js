@@ -16,7 +16,14 @@ export {
   getAvailableMelanges,
 } from './aptitudes.js';
 export { CDS_ARTICLES, parseCdsRefs } from './cds-articles.js';
-export { LEVELS, PAL_TYPE_LABELS, STRUCTURE_LABELS } from './levels.js';
+export {
+  LEVELS,
+  PAL_TYPE_LABELS,
+  STRUCTURE_LABELS,
+  JURISDICTION_LABELS,
+  structureLabels,
+  structureLabel,
+} from './levels.js';
 export {
   DIPLOMES_PRO,
   diplomeProLabel,

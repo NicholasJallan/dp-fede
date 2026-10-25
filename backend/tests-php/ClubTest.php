@@ -128,6 +128,12 @@ final class ClubTest extends TestCase
         $this->assertSame(['jurisdiction' => 'PF'], $fieldsWithJur);
     }
 
+    public function testStructureTypesContainsPatente(): void
+    {
+        $this->assertContains('patente', \Club::STRUCTURE_TYPES);
+        $this->assertSame(['club', 'sca', 'patente', 'csa', 'autre'], \Club::STRUCTURE_TYPES);
+    }
+
     public function testSanitizeClubFields(): void
     {
         [$fields, $errors] = \Club::sanitizeClubFields([
@@ -140,8 +146,29 @@ final class ClubTest extends TestCase
         $this->assertNull($fields['president_tel']);
         $this->assertSame('061', $fields['numero_ffessm']);
         $this->assertArrayNotHasKey('champ_inconnu', $fields);
-        // jurisdiction n'est pas dans EDITABLE_FIELDS au Lot 0
-        $this->assertArrayNotHasKey('jurisdiction', $fields);
+        // jurisdiction est dans EDITABLE_FIELDS au Lot 0 bis
+        $this->assertSame('PF', $fields['jurisdiction']);
+
+        // structure_type patente est acceptée
+        [$fieldsPatente] = \Club::sanitizeClubFields(['structure_type' => 'patente']);
+        $this->assertSame('patente', $fieldsPatente['structure_type']);
+
+        // Normalisation de jurisdiction (minuscules, espaces)
+        [$fieldsPfNorm] = \Club::sanitizeClubFields(['jurisdiction' => '  pf  ']);
+        $this->assertSame('PF', $fieldsPfNorm['jurisdiction']);
+        [$fieldsFrNorm] = \Club::sanitizeClubFields(['jurisdiction' => 'fr']);
+        $this->assertSame('FR', $fieldsFrNorm['jurisdiction']);
+
+        // Valeurs de juridiction invalides → erreur explicite
+        foreach (['XX', '', null, 123, ['bad']] as $invalid) {
+            [$fieldsBad, $errorsBad] = \Club::sanitizeClubFields(['jurisdiction' => $invalid]);
+            $this->assertArrayNotHasKey('jurisdiction', $fieldsBad);
+            $this->assertContains("jurisdiction : valeur invalide (FR ou PF attendu)", $errorsBad);
+        }
+
+        // Clé absente → pas de modification
+        [$fieldsWithoutJur] = \Club::sanitizeClubFields(['nom' => 'Club']);
+        $this->assertArrayNotHasKey('jurisdiction', $fieldsWithoutJur);
 
         [, $errors] = \Club::sanitizeClubFields(['nom' => str_repeat('a', 201), 'siret' => ['x']]);
         $this->assertCount(2, $errors);

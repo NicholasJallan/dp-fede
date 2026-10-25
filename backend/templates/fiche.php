@@ -34,6 +34,7 @@ if (!empty($answers['shot_line'])) $depart .= ' · Shot-line';
 $STRUCTURE_LABELS = [
     'club'  => 'Club FFESSM associatif',
     'sca'   => 'Structure Commerciale Agréée (SCA)',
+    'patente' => 'Moniteur patenté (indépendant)',
     'csa'   => "Convention de Section d'Activité (CSA)",
     'autre' => 'Autre',
 ];

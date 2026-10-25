@@ -9,7 +9,7 @@ import {
   getEmergencyInfo,
   getPalType,
   REGLEMENTATION,
-  STRUCTURE_LABELS,
+  structureLabel,
   sortMembresForFiche,
   withDecoO2,
 } from '../../domain/index.js';
@@ -22,7 +22,7 @@ const yesNo = (v, yes = 'Oui', no = 'Non') => (v ? yes : no);
 
 function structureLine(user) {
   if (!user?.club_nom) return "Structure non renseignée (à compléter dans l'écran Club)";
-  const type = user.structure_type ? `, ${STRUCTURE_LABELS[user.structure_type] || user.structure_type}` : '';
+  const type = user.structure_type ? `, ${structureLabel(user.structure_type, user.club_jurisdiction)}` : '';
   return `${user.club_nom}${type}${user.club_numero ? ` (${user.club_numero})` : ''}`;
 }
 

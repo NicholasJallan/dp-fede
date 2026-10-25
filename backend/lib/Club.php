@@ -18,7 +18,8 @@ class Club
 {
     public const ROLES = ['responsable', 'dp', 'encadrant', 'lecture'];
 
-    public const STRUCTURE_TYPES = ['club', 'sca', 'csa', 'autre'];
+    /** 'patente' : moniteur indépendant rémunéré (Polynésie française, LP 18). */
+    public const STRUCTURE_TYPES = ['club', 'sca', 'patente', 'csa', 'autre'];
 
     /** Numéro d'urgence affiché quand le club n'en a pas défini. */
     public const DEFAULT_URGENCE = '112';
@@ -69,6 +70,7 @@ class Club
         'president_nom'    => 100,
         'president_tel'    => 30,
         'urgence_defaut'   => 20,
+        'jurisdiction'     => 2,
     ];
 
     // ── Fonctions pures ────────────────────────────────────────────────────
@@ -134,6 +136,16 @@ class Club
         foreach (self::EDITABLE_FIELDS as $field => $max) {
             if (!array_key_exists($field, $input)) continue;
             $raw = $input[$field];
+            if ($field === 'jurisdiction') {
+                // Colonne NOT NULL : une valeur inconnue est refusée, pas effacée.
+                $jurisdiction = Jurisdiction::normalize($raw);
+                if ($jurisdiction === null) {
+                    $errors[] = 'jurisdiction : valeur invalide (FR ou PF attendu)';
+                } else {
+                    $fields[$field] = $jurisdiction;
+                }
+                continue;
+            }
             if ($raw !== null && !is_scalar($raw)) {
                 $errors[] = "{$field} : valeur invalide";
                 continue;

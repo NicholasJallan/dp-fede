@@ -10,7 +10,7 @@ import {
   QUESTIONS,
   resolveJurisdiction,
   resolveUrgenceNumber,
-  STRUCTURE_LABELS,
+  structureLabel,
   URGENCE_PAR_PAYS,
 } from '../domain/index.js';
 import { dpAnswerFields } from '../app/dp-guards.js';
@@ -149,7 +149,7 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
   }, [answers.prof_max]);
 
   // Structure type display
-  const structureLabel = user?.structure_type ? STRUCTURE_LABELS[user.structure_type] || user.structure_type : null;
+  const structureName = structureLabel(user?.structure_type, user?.club_jurisdiction);
 
   const renderQuestion = (q) => {
     if (!matchCondition(q.when, answers)) return null;
@@ -172,7 +172,7 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
                   </div>
                   {selectedDP.niveau_encadrant_annuaire !== undefined && (
                     <span>
-                      Niveau retenu ({structureLabel || 'cette structure'}) : {dpQual}, d'après le diplôme professionnel
+                      Niveau retenu ({structureName || 'cette structure'}) : {dpQual}, d'après le diplôme professionnel
                       ; niveau encadrant à l'annuaire : {selectedDP.niveau_encadrant_annuaire || 'aucun'}.
                     </span>
                   )}
@@ -194,8 +194,8 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
     if (q.id === 'structure') {
       return (
         <Field key={q.id} label={q.label} hint={q.hint} group>
-          <p className={structureLabel ? '' : 'muted'}>
-            {structureLabel || 'Non renseignée : à compléter dans Mon compte.'}
+          <p className={structureName ? '' : 'muted'}>
+            {structureName || 'Non renseignée : à compléter dans Mon compte.'}
             {user?.club_nom ? (
               <>
                 , <b>{user.club_nom}</b>

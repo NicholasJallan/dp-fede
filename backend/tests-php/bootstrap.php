@@ -19,6 +19,8 @@ require_once __DIR__ . '/../lib/Rules.php';
 require_once __DIR__ . '/../lib/Jurisdiction.php';
 require_once __DIR__ . '/../lib/RulesFor.php';
 require_once __DIR__ . '/../lib/PfProfile.php';
+require_once __DIR__ . '/../lib/PfRoles.php';
+require_once __DIR__ . '/../lib/PfGasRules.php';
 require_once __DIR__ . '/../lib/PfRules.php';
 require_once __DIR__ . '/../lib/Encadrement.php';
 // Db dépend de PDO live → on ne charge pas Auth::current/Session ici (les

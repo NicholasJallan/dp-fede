@@ -46,11 +46,194 @@
       "pf": { "fonctions": ["ENS-06", "ENS-20", "ENS-30", "ENS-40", "ENS-50"] },
       "medical": "2026-01-01",
       "date_naissance": "1990-01-01"
+    },
+    "n2_pn": {
+      "niveau_plongeur": "N2",
+      "nitrox": ["PN"],
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "n2_pnc": {
+      "niveau_plongeur": "N2",
+      "nitrox": ["PN-C"],
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "n3_pn": {
+      "niveau_plongeur": "N3",
+      "nitrox": ["PN"],
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "n3_pnc": {
+      "niveau_plongeur": "N3",
+      "nitrox": ["PN-C"],
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "n3_pth50": {
+      "niveau_plongeur": "N3",
+      "nitrox": ["PN-C"],
+      "trimix": ["PTH-40"],
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "n3_pth70": {
+      "niveau_plongeur": "N3",
+      "nitrox": ["PN-C"],
+      "trimix": ["PTH-70"],
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "n3_pth100": {
+      "niveau_plongeur": "N3",
+      "pf": {
+        "gaz": ["PN", "PN-C", "PTH-50", "PTH-70", "PTH-100"]
+      },
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "n3_pth120": {
+      "niveau_plongeur": "N3",
+      "nitrox": ["PN-C"],
+      "trimix": ["PTH-120"],
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "n2_pth50": {
+      "niveau_plongeur": "N2",
+      "nitrox": ["PN-C"],
+      "trimix": ["PTH-40"],
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "n3_16_pth70": {
+      "niveau_plongeur": "N3",
+      "nitrox": ["PN-C"],
+      "trimix": ["PTH-70"],
+      "medical": "2026-01-01",
+      "date_naissance": "2010-01-01"
+    },
+    "gp40_pn": {
+      "niveau_encadrant": "N4",
+      "nitrox": ["PN"],
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "gp40_pnc": {
+      "niveau_encadrant": "N4",
+      "nitrox": ["PN-C"],
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "gp50_pth50": {
+      "pf": {
+        "fonctions": ["GP-40", "GP-50"],
+        "gaz": ["PN", "PN-C", "PTH-50"]
+      },
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "gp50_pth70": {
+      "pf": {
+        "fonctions": ["GP-40", "GP-50"],
+        "gaz": ["PN", "PN-C", "PTH-50", "PTH-70"]
+      },
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "gp50_pth100": {
+      "pf": {
+        "fonctions": ["GP-40", "GP-50"],
+        "gaz": ["PN", "PN-C", "PTH-50", "PTH-70", "PTH-100"]
+      },
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "gp50_pth120": {
+      "pf": {
+        "fonctions": ["GP-40", "GP-50"],
+        "gaz": ["PN", "PN-C", "PTH-50", "PTH-70", "PTH-100", "PTH-120"]
+      },
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "ens06_pn": {
+      "niveau_encadrant": "E1",
+      "nitrox": ["PN"],
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "ens20_pn": {
+      "niveau_encadrant": "E2",
+      "nitrox": ["PN"],
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "ens20_pnc": {
+      "niveau_encadrant": "E2",
+      "nitrox": ["PN-C"],
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "ens50_pnc": {
+      "pf": {
+        "fonctions": ["ENS-06", "ENS-20", "ENS-30", "ENS-40", "ENS-50"],
+        "gaz": ["PN", "PN-C"]
+      },
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "ens50_pth70": {
+      "pf": {
+        "fonctions": ["ENS-06", "ENS-20", "ENS-30", "ENS-40", "ENS-50"],
+        "gaz": ["PN", "PN-C", "PTH-50", "PTH-70"]
+      },
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "ens50_pth100": {
+      "pf": {
+        "fonctions": ["ENS-06", "ENS-20", "ENS-30", "ENS-40", "ENS-50"],
+        "gaz": ["PN", "PN-C", "PTH-50", "PTH-70", "PTH-100"]
+      },
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "ens50_pth120": {
+      "pf": {
+        "fonctions": ["ENS-06", "ENS-20", "ENS-30", "ENS-40", "ENS-50"],
+        "gaz": ["PN", "PN-C", "PTH-50", "PTH-70", "PTH-100", "PTH-120"]
+      },
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
     }
   },
   "dps": {
     "dp40": { "pf": { "fonctions": ["DP-40"] }, "medical": "2026-01-01" },
+    "dp40_pn": { "pf": { "fonctions": ["DP-40"], "gaz": ["PN"] }, "medical": "2026-01-01" },
+    "dp40_pnc": { "pf": { "fonctions": ["DP-40"], "gaz": ["PN", "PN-C"] }, "medical": "2026-01-01" },
     "dp60": { "pf": { "fonctions": ["DP-40", "DP-60"] }, "medical": "2026-01-01" },
+    "dp60_pn": { "pf": { "fonctions": ["DP-40", "DP-60"], "gaz": ["PN"] }, "medical": "2026-01-01" },
+    "dp60_pnc": { "pf": { "fonctions": ["DP-40", "DP-60"], "gaz": ["PN", "PN-C"] }, "medical": "2026-01-01" },
+    "dp70": {
+      "pf": { "fonctions": ["DP-40", "DP-60", "DP-70"], "gaz": ["PN", "PN-C", "PTH-50", "PTH-70"] },
+      "medical": "2026-01-01"
+    },
+    "dp100": {
+      "pf": {
+        "fonctions": ["DP-40", "DP-60", "DP-70", "DP-100"],
+        "gaz": ["PN", "PN-C", "PTH-50", "PTH-70", "PTH-100"]
+      },
+      "medical": "2026-01-01"
+    },
+    "dp120": {
+      "pf": {
+        "fonctions": ["DP-40", "DP-60", "DP-70", "DP-100", "DP-120"],
+        "gaz": ["PN", "PN-C", "PTH-50", "PTH-70", "PTH-100", "PTH-120"]
+      },
+      "medical": "2026-01-01"
+    },
     "n5": { "niveau_encadrant": "N5", "medical": "2026-01-01" },
     "e3": { "niveau_encadrant": "E3", "medical": "2026-01-01" },
     "dp60_old_med": { "pf": { "fonctions": ["DP-40", "DP-60"] }, "medical": "2024-01-01" }
@@ -786,6 +969,865 @@
         "profMax": 20
       },
       "errors": ["APT_MISSING"]
+    },
+    {
+      "name": "Nitrox exploration : GP-40 (PN) + 4 PE-20 (PN) à 20 m avec DP-40 (PN)",
+      "ref": "Annexe XII",
+      "dp": "dp40_pn",
+      "pal": {
+        "melanges": ["Nx ≤ 40%"],
+        "o2": 32,
+        "membres": [
+          ["gp40_pn", "GP-40"],
+          ["n2_pn", "PE-20"],
+          ["n2_pn#2", "PE-20"],
+          ["n2_pn#3", "PE-20"],
+          ["n2_pn#4", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": []
+    },
+    {
+      "name": "Nitrox exploration : PE-20 sans PN → PF_NX_PN",
+      "ref": "Annexe XII",
+      "dp": "dp40_pn",
+      "pal": {
+        "melanges": ["Nx ≤ 40%"],
+        "o2": 32,
+        "membres": [
+          ["gp40_pn", "GP-40"],
+          ["n1", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["PF_NX_PN"]
+    },
+    {
+      "name": "Nitrox exploration : Guide GP-40 sans PN → PF_NX_ENCADRANT",
+      "ref": "Annexe XII",
+      "dp": "dp40_pn",
+      "pal": {
+        "melanges": ["Nx ≤ 40%"],
+        "o2": 32,
+        "membres": [
+          ["n4", "GP-40"],
+          ["n2_pn", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["PF_NX_ENCADRANT"]
+    },
+    {
+      "name": "Nitrox exploration : DP-40 sans PN → PF_NX_DP",
+      "ref": "Annexe XII nota 2",
+      "dp": "dp40",
+      "pal": {
+        "melanges": ["Nx ≤ 40%"],
+        "o2": 32,
+        "membres": [
+          ["gp40_pn", "GP-40"],
+          ["n2_pn", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["PF_NX_DP"]
+    },
+    {
+      "name": "Nitrox décompression Nx > 40% : GP-40 (PN-C) + PE-20 (PN-C) avec DP-40 (PN-C)",
+      "ref": "Annexe XII",
+      "dp": "dp40_pnc",
+      "pal": {
+        "melanges": ["Air", "Nx > 40%"],
+        "o2_deco": 80,
+        "membres": [
+          ["gp40_pnc", "GP-40"],
+          ["n2_pnc", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": []
+    },
+    {
+      "name": "Nitrox décompression Nx > 40% : PE-20 avec seulement PN → PF_NX_PNC",
+      "ref": "Annexe XII / Annexe V",
+      "dp": "dp40_pnc",
+      "pal": {
+        "melanges": ["Air", "Nx > 40%"],
+        "o2_deco": 80,
+        "membres": [
+          ["gp40_pnc", "GP-40"],
+          ["n2_pn", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["PF_NX_PNC"]
+    },
+    {
+      "name": "Nitrox décompression Nx > 40% : Guide avec seulement PN → PF_NX_ENCADRANT",
+      "ref": "Annexe XII",
+      "dp": "dp40_pnc",
+      "pal": {
+        "melanges": ["Air", "Nx > 40%"],
+        "o2_deco": 80,
+        "membres": [
+          ["gp40_pn", "GP-40"],
+          ["n2_pnc", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["PF_NX_ENCADRANT"]
+    },
+    {
+      "name": "Nitrox décompression Nx > 40% : DP avec seulement PN → PF_NX_DP",
+      "ref": "Annexe XII nota 2",
+      "dp": "dp40_pn",
+      "pal": {
+        "melanges": ["Air", "Nx > 40%"],
+        "o2_deco": 80,
+        "membres": [
+          ["gp40_pnc", "GP-40"],
+          ["n2_pnc", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["PF_NX_DP"]
+    },
+    {
+      "name": "Nitrox autonomie : 2 PA-20 (PN) à 20 m avec DP-40 (PN)",
+      "ref": "Annexe XII",
+      "dp": "dp40_pn",
+      "pal": {
+        "melanges": ["Nx ≤ 40%"],
+        "o2": 32,
+        "membres": [
+          ["n2_pn", "PA-20"],
+          ["n2_pn#2", "PA-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": []
+    },
+    {
+      "name": "Nitrox autonomie : PA-20 sans PN → PF_NX_PN",
+      "ref": "Annexe XII",
+      "dp": "dp40_pn",
+      "pal": {
+        "melanges": ["Nx ≤ 40%"],
+        "o2": 32,
+        "membres": [
+          ["n2_pn", "PA-20"],
+          ["n2", "PA-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["PF_NX_PN"]
+    },
+    {
+      "name": "Formation Nitrox : ENS-06 (PN) + 2 Débutants à 6 m avec DP-40 (PN)",
+      "ref": "Annexe XIII",
+      "dp": "dp40_pn",
+      "pal": {
+        "melanges": ["Nx ≤ 40%"],
+        "o2": 32,
+        "membres": [
+          ["ens06_pn", "ENS-06"],
+          ["deb", "Débutant"],
+          ["deb#2", "Débutant"]
+        ],
+        "profMax": 6
+      },
+      "errors": []
+    },
+    {
+      "name": "Formation Nitrox : Baptême au Nitrox interdit → PF_NX_BAPTEME",
+      "ref": "Article 25 / Annexe XIII",
+      "dp": "dp40_pn",
+      "pal": {
+        "melanges": ["Nx ≤ 40%"],
+        "o2": 32,
+        "membres": [["ens06_pn", "ENS-06"], "bapteme"],
+        "profMax": 6
+      },
+      "errors": ["PF_NX_BAPTEME"]
+    },
+    {
+      "name": "Formation Nitrox : ENS-20 (PN-C) + 2 PE-12 à 12 m avec DP-60 (PN-C)",
+      "ref": "Annexe XIII",
+      "dp": "dp60_pnc",
+      "pal": {
+        "melanges": ["Nx ≤ 40%"],
+        "o2": 32,
+        "membres": [
+          ["ens20_pnc", "ENS-20"],
+          ["n1", "PE-12"],
+          ["n1#2", "PE-12"]
+        ],
+        "profMax": 12
+      },
+      "errors": []
+    },
+    {
+      "name": "Formation Nitrox : Débutant au-delà de 6 m → PF_APT_DEPTH",
+      "ref": "Annexe XIII",
+      "dp": "dp60_pnc",
+      "pal": {
+        "melanges": ["Nx ≤ 40%"],
+        "o2": 32,
+        "membres": [
+          ["ens20_pnc", "ENS-20"],
+          ["deb", "Débutant"]
+        ],
+        "profMax": 12
+      },
+      "errors": ["PF_APT_DEPTH"]
+    },
+    {
+      "name": "Formation Nitrox : PE-12 au-delà de 12 m → PF_APT_DEPTH",
+      "ref": "Annexe XIII",
+      "dp": "dp60_pnc",
+      "pal": {
+        "melanges": ["Nx ≤ 40%"],
+        "o2": 32,
+        "membres": [
+          ["ens20_pnc", "ENS-20"],
+          ["n1", "PE-12"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["PF_APT_DEPTH"]
+    },
+    {
+      "name": "Formation Nitrox : Enseignant ENS-20 avec seulement PN à 20 m → PF_NX_ENCADRANT",
+      "ref": "Annexe XIII",
+      "dp": "dp60_pnc",
+      "pal": {
+        "melanges": ["Nx ≤ 40%"],
+        "o2": 32,
+        "membres": [
+          ["ens20_pn", "ENS-20"],
+          ["n2", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["PF_NX_ENCADRANT"]
+    },
+    {
+      "name": "Formation Nitrox : DP-60 avec seulement PN à 20 m → PF_NX_DP",
+      "ref": "Annexe XIII",
+      "dp": "dp60_pn",
+      "pal": {
+        "melanges": ["Nx ≤ 40%"],
+        "o2": 32,
+        "membres": [
+          ["ens20_pnc", "ENS-20"],
+          ["n2", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["PF_NX_DP"]
+    },
+    {
+      "name": "PpO2 Nitrox : 32% à 40 m (1.60 bar) → OK",
+      "ref": "Article 29",
+      "dp": "dp40_pn",
+      "pal": {
+        "melanges": ["Nx ≤ 40%"],
+        "o2": 32,
+        "membres": [
+          ["gp40_pn", "GP-40"],
+          ["n2_pn", "PE-40"]
+        ],
+        "profMax": 40
+      },
+      "errors": []
+    },
+    {
+      "name": "PpO2 Nitrox : 36% à 40 m (1.80 bar) → PPO2_MAX",
+      "ref": "Article 29",
+      "dp": "dp40_pn",
+      "pal": {
+        "melanges": ["Nx ≤ 40%"],
+        "o2": 36,
+        "membres": [
+          ["gp40_pn", "GP-40"],
+          ["n2_pn", "PE-40"]
+        ],
+        "profMax": 40
+      },
+      "errors": ["PPO2_MAX"]
+    },
+    {
+      "name": "Nitrox : O2 non renseigné → avertissement O2_UNKNOWN",
+      "ref": "Article 28",
+      "dp": "dp40_pn",
+      "pal": {
+        "melanges": ["Nx ≤ 40%"],
+        "membres": [
+          ["gp40_pn", "GP-40"],
+          ["n2_pn", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": [],
+      "warnings": ["O2_UNKNOWN"]
+    },
+    {
+      "name": "Nitrox : O2 pur au fond → O2_PUR_FOND",
+      "ref": "Règle sécurité",
+      "dp": "dp40_pnc",
+      "pal": {
+        "melanges": ["Nx > 40%"],
+        "o2": 100,
+        "membres": [
+          ["gp40_pnc", "GP-40"],
+          ["n2_pnc", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["O2_PUR_FOND", "PPO2_MAX"]
+    },
+    {
+      "name": "Nitrox : PpN2 > 5 bar à 50 m (15% O2) → PF_PPN2",
+      "ref": "Article 30",
+      "dp": "dp60_pn",
+      "pal": {
+        "melanges": ["Nx ≤ 40%"],
+        "o2": 15,
+        "membres": [
+          ["gp50", "GP-50"],
+          ["n3_pn", "PE-50"]
+        ],
+        "profMax": 50
+      },
+      "errors": ["PF_PPN2", "PF_NX_ENCADRANT"]
+    },
+    {
+      "name": "Trimix : Baptême interdit au Trimix → PF_TX_PUBLIC",
+      "ref": "Article 25 / Annexe XIV",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 21,
+        "he": 35,
+        "membres": [["gp50_pth50", "GP-50"], "bapteme"],
+        "profMax": 50
+      },
+      "errors": ["PF_TX_PUBLIC"]
+    },
+    {
+      "name": "Trimix : Débutant interdit au Trimix → PF_TX_PUBLIC",
+      "ref": "Article 25 / Annexe XIV",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 21,
+        "he": 35,
+        "membres": [
+          ["gp50_pth50", "GP-50"],
+          ["deb", "Débutant"]
+        ],
+        "profMax": 50
+      },
+      "errors": ["PF_TX_PUBLIC"]
+    },
+    {
+      "name": "Trimix : Profondeur > 120 m interdite (125 m) → PF_TX_120",
+      "ref": "Article 4",
+      "dp": "dp120",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 10,
+        "he": 65,
+        "membres": [
+          ["gp50_pth120", "GP-50"],
+          ["n3_pth120", "PE-50"]
+        ],
+        "profMax": 125
+      },
+      "errors": ["PF_TX_120"]
+    },
+    {
+      "name": "Trimix exploration : GP-50 (PTH-50) + 4 N3 (PTH-50) à 50 m avec DP-70",
+      "ref": "Annexe XIV",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 21,
+        "he": 35,
+        "membres": [
+          ["gp50_pth50", "GP-50"],
+          ["n3_pth50", "PE-50"],
+          ["n3_pth50#2", "PE-50"],
+          ["n3_pth50#3", "PE-50"],
+          ["n3_pth50#4", "PE-50"]
+        ],
+        "profMax": 50
+      },
+      "errors": []
+    },
+    {
+      "name": "Trimix exploration 50 m : Plongeur N3 sans PTH-50 → PF_TX_QUAL",
+      "ref": "Annexe XIV",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 21,
+        "he": 35,
+        "membres": [
+          ["gp50_pth50", "GP-50"],
+          ["n3_pnc", "PE-50"]
+        ],
+        "profMax": 50
+      },
+      "errors": ["PF_TX_QUAL"]
+    },
+    {
+      "name": "Trimix exploration 50 m : Plongeur N2 sans PE-50 ni PA-40 → PF_TX_QUAL",
+      "ref": "Annexe XIV",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 21,
+        "he": 35,
+        "membres": [
+          ["gp50_pth50", "GP-50"],
+          ["n2_pth50", "PE-40"]
+        ],
+        "profMax": 50
+      },
+      "errors": ["PF_TX_QUAL"]
+    },
+    {
+      "name": "Trimix exploration 50 m : Effectif 5 encadrés (max 4) → PF_EFFECTIF",
+      "ref": "Annexe XIV",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 21,
+        "he": 35,
+        "membres": [
+          ["gp50_pth50", "GP-50"],
+          ["n3_pth50", "PE-50"],
+          ["n3_pth50#2", "PE-50"],
+          ["n3_pth50#3", "PE-50"],
+          ["n3_pth50#4", "PE-50"],
+          ["n3_pth50#5", "PE-50"]
+        ],
+        "profMax": 50
+      },
+      "errors": ["PF_EFFECTIF"]
+    },
+    {
+      "name": "Trimix exploration 50 m : Guide GP-40 au lieu de GP-50 → PF_GP_LEVEL",
+      "ref": "Annexe XIV",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 21,
+        "he": 35,
+        "membres": [
+          ["gp40_pnc", "GP-40"],
+          ["n3_pth50", "PE-50"]
+        ],
+        "profMax": 50
+      },
+      "errors": ["PF_GP_LEVEL", "PF_TX_ENCADRANT"]
+    },
+    {
+      "name": "Trimix exploration 50 m : Guide sans PTH-50 → PF_TX_ENCADRANT",
+      "ref": "Annexe XIV",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 21,
+        "he": 35,
+        "membres": [
+          ["gp50", "GP-50"],
+          ["n3_pth50", "PE-50"]
+        ],
+        "profMax": 50
+      },
+      "errors": ["PF_TX_ENCADRANT"]
+    },
+    {
+      "name": "Trimix exploration 50 m : DP-60 au lieu de DP-70 → PF_TX_DP",
+      "ref": "Annexe XIV",
+      "dp": "dp60_pnc",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 21,
+        "he": 35,
+        "membres": [
+          ["gp50_pth50", "GP-50"],
+          ["n3_pth50", "PE-50"]
+        ],
+        "profMax": 50
+      },
+      "errors": ["PF_TX_DP"]
+    },
+    {
+      "name": "Trimix exploration 70 m : GP-50 (PTH-70) + 2 N3 (PTH-70) à 70 m avec DP-70",
+      "ref": "Annexe XIV",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 18,
+        "he": 45,
+        "membres": [
+          ["gp50_pth70", "GP-50"],
+          ["n3_pth70", "PA-50"],
+          ["n3_pth70#2", "PA-50"]
+        ],
+        "profMax": 70
+      },
+      "errors": []
+    },
+    {
+      "name": "Trimix exploration 70 m : Effectif 3 encadrés (max 2) → PF_EFFECTIF",
+      "ref": "Annexe XIV",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 18,
+        "he": 45,
+        "membres": [
+          ["gp50_pth70", "GP-50"],
+          ["n3_pth70", "PA-50"],
+          ["n3_pth70#2", "PA-50"],
+          ["n3_pth70#3", "PA-50"]
+        ],
+        "profMax": 70
+      },
+      "errors": ["PF_EFFECTIF"]
+    },
+    {
+      "name": "Trimix exploration 70 m : Plongeur avec seulement PTH-50 → PF_TX_QUAL",
+      "ref": "Annexe XIV",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 18,
+        "he": 45,
+        "membres": [
+          ["gp50_pth70", "GP-50"],
+          ["n3_pth50", "PA-50"]
+        ],
+        "profMax": 70
+      },
+      "errors": ["PF_TX_QUAL"]
+    },
+    {
+      "name": "Trimix exploration 70 m : Guide avec seulement PTH-50 → PF_TX_ENCADRANT",
+      "ref": "Annexe XIV",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 18,
+        "he": 45,
+        "membres": [
+          ["gp50_pth50", "GP-50"],
+          ["n3_pth70", "PA-50"]
+        ],
+        "profMax": 70
+      },
+      "errors": ["PF_TX_ENCADRANT"]
+    },
+    {
+      "name": "Trimix exploration 100 m : GP-50 (PTH-100) + 2 N3 (PTH-100) à 100 m avec DP-100",
+      "ref": "Annexe XIV",
+      "dp": "dp100",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 14,
+        "he": 50,
+        "membres": [
+          ["gp50_pth100", "GP-50"],
+          ["n3_pth100", "PA-50"],
+          ["n3_pth100#2", "PA-50"]
+        ],
+        "profMax": 100
+      },
+      "errors": []
+    },
+    {
+      "name": "Trimix exploration 100 m : DP-70 au lieu de DP-100 → PF_TX_DP",
+      "ref": "Annexe XIV",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 14,
+        "he": 50,
+        "membres": [
+          ["gp50_pth100", "GP-50"],
+          ["n3_pth100", "PA-50"]
+        ],
+        "profMax": 100
+      },
+      "errors": ["PF_TX_DP"]
+    },
+    {
+      "name": "Trimix exploration 120 m : GP-50 (PTH-120) + 2 N3 (PTH-120) à 120 m avec DP-120",
+      "ref": "Annexe XIV",
+      "dp": "dp120",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 12,
+        "he": 65,
+        "membres": [
+          ["gp50_pth120", "GP-50"],
+          ["n3_pth120", "PA-50"],
+          ["n3_pth120#2", "PA-50"]
+        ],
+        "profMax": 120
+      },
+      "errors": []
+    },
+    {
+      "name": "Trimix exploration 120 m : DP-100 au lieu de DP-120 → PF_TX_DP",
+      "ref": "Annexe XIV",
+      "dp": "dp100",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 12,
+        "he": 65,
+        "membres": [
+          ["gp50_pth120", "GP-50"],
+          ["n3_pth120", "PA-50"]
+        ],
+        "profMax": 120
+      },
+      "errors": ["PF_TX_DP"]
+    },
+    {
+      "name": "Trimix autonomie 70 m : 2 N3 (PTH-70) à 70 m avec DP-70",
+      "ref": "Annexe XIV",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 18,
+        "he": 45,
+        "membres": [
+          ["n3_pth70", "PA-50"],
+          ["n3_pth70#2", "PA-50"]
+        ],
+        "profMax": 70
+      },
+      "errors": []
+    },
+    {
+      "name": "Trimix autonomie 70 m : Effectif 4 autonomes (max 3) → PF_AUTONOMIE_EFFECTIF",
+      "ref": "LP 4 / Annexe XIV",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 18,
+        "he": 45,
+        "membres": [
+          ["n3_pth70", "PA-50"],
+          ["n3_pth70#2", "PA-50"],
+          ["n3_pth70#3", "PA-50"],
+          ["n3_pth70#4", "PA-50"]
+        ],
+        "profMax": 70
+      },
+      "errors": ["PF_AUTONOMIE_EFFECTIF"]
+    },
+    {
+      "name": "Trimix autonomie 70 m : Plongeur mineur 16 ans → PF_AUTONOMIE_MAJEUR",
+      "ref": "LP 4",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 18,
+        "he": 45,
+        "membres": [
+          ["n3_pth70", "PA-50"],
+          ["n3_16_pth70", "PA-50"]
+        ],
+        "profMax": 70
+      },
+      "errors": ["PF_AUTONOMIE_MAJEUR"]
+    },
+    {
+      "name": "Trimix autonomie 70 m : Plongeur sans PTH-70 → PF_TX_QUAL",
+      "ref": "Annexe XIV",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 18,
+        "he": 45,
+        "membres": [
+          ["n3_pth70", "PA-50"],
+          ["n3_pth50", "PA-50"]
+        ],
+        "profMax": 70
+      },
+      "errors": ["PF_TX_QUAL"]
+    },
+    {
+      "name": "Trimix formation 50 m : ENS-50 (PTH-70) + 2 élèves N3 (PA-40) avec DP-70",
+      "ref": "Annexe XV",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 21,
+        "he": 35,
+        "membres": [
+          ["ens50_pth70", "ENS-50"],
+          ["n3_pnc", "PA-40"],
+          ["n3_pnc#2", "PA-40"]
+        ],
+        "profMax": 50
+      },
+      "errors": []
+    },
+    {
+      "name": "Trimix formation 50 m : Enseignant avec seulement PTH-50 → PF_TX_ENCADRANT",
+      "ref": "Annexe XV",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 21,
+        "he": 35,
+        "membres": [
+          ["ens50", "ENS-50"],
+          ["n3_pnc", "PA-40"]
+        ],
+        "profMax": 50
+      },
+      "errors": ["PF_TX_ENCADRANT"]
+    },
+    {
+      "name": "Trimix formation 50 m : Effectif 3 élèves (max 2) → PF_EFFECTIF",
+      "ref": "Annexe XV",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 21,
+        "he": 35,
+        "membres": [
+          ["ens50_pth70", "ENS-50"],
+          ["n3_pnc", "PA-40"],
+          ["n3_pnc#2", "PA-40"],
+          ["n3_pnc#3", "PA-40"]
+        ],
+        "profMax": 50
+      },
+      "errors": ["PF_EFFECTIF"]
+    },
+    {
+      "name": "Trimix formation 70 m : ENS-50 (PTH-100) + 2 élèves N3 (PTH-70) avec DP-100",
+      "ref": "Annexe XV",
+      "dp": "dp100",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 18,
+        "he": 45,
+        "membres": [
+          ["ens50_pth100", "ENS-50"],
+          ["n3_pth70", "PA-50"],
+          ["n3_pth70#2", "PA-50"]
+        ],
+        "profMax": 70
+      },
+      "errors": []
+    },
+    {
+      "name": "Trimix formation 70 m : DP-70 au lieu de DP-100 → PF_TX_DP",
+      "ref": "Annexe XV",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 18,
+        "he": 45,
+        "membres": [
+          ["ens50_pth100", "ENS-50"],
+          ["n3_pth70", "PA-50"]
+        ],
+        "profMax": 70
+      },
+      "errors": ["PF_TX_DP"]
+    },
+    {
+      "name": "Trimix hypoxique < 16% O2 : Plongeur avec seulement PTH-70 → PF_TX_QUAL",
+      "ref": "Annexe VI / Annexe XIV",
+      "dp": "dp100",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 14,
+        "he": 55,
+        "membres": [
+          ["gp50_pth100", "GP-50"],
+          ["n3_pth70", "PA-50"]
+        ],
+        "profMax": 80
+      },
+      "errors": ["PF_TX_QUAL"]
+    },
+    {
+      "name": "PpO2 Trimix : 20% à 80 m (1.80 bar) → PPO2_MAX",
+      "ref": "Article 29",
+      "dp": "dp100",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 20,
+        "he": 40,
+        "membres": [
+          ["gp50_pth100", "GP-50"],
+          ["n3_pth100", "PA-50"]
+        ],
+        "profMax": 80
+      },
+      "errors": ["PPO2_MAX"]
+    },
+    {
+      "name": "PpN2 Trimix : PpN2 > 4 bar (18% O2, 20% He à 70 m = 4.96 bar) → PF_PPN2",
+      "ref": "Article 31",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 18,
+        "he": 20,
+        "membres": [
+          ["gp50_pth70", "GP-50"],
+          ["n3_pth70", "PA-50"]
+        ],
+        "profMax": 70
+      },
+      "errors": ["PF_PPN2"]
+    },
+    {
+      "name": "Trimix : O2 non renseigné → avertissement O2_UNKNOWN",
+      "ref": "Article 28",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "he": 35,
+        "membres": [
+          ["gp50_pth50", "GP-50"],
+          ["n3_pth50", "PE-50"]
+        ],
+        "profMax": 50
+      },
+      "errors": [],
+      "warnings": ["O2_UNKNOWN"]
+    },
+    {
+      "name": "Trimix : He non renseigné → avertissement PF_PPN2_UNKNOWN",
+      "ref": "Article 31",
+      "dp": "dp70",
+      "pal": {
+        "melanges": ["Tx"],
+        "o2": 21,
+        "membres": [
+          ["gp50_pth50", "GP-50"],
+          ["n3_pth50", "PE-50"]
+        ],
+        "profMax": 50
+      },
+      "errors": [],
+      "warnings": ["PF_PPN2_UNKNOWN"]
     }
   ]
 }

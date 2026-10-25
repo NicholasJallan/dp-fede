@@ -1,6 +1,7 @@
 // @ts-check
 // DP Assistant — Validation d'une palanquée en Polynésie française (loi du
-// pays n° 2017-44, arrêté n° 199 CM) : plongée à l'air (annexes X et XI).
+// pays n° 2017-44, arrêté n° 199 CM) : plongée à l'air (annexes X et XI) ;
+// mélanges dans ./pf-gas-rules.js (annexes XII à XV).
 //
 // Chaque membre choisit un rôle au sens de l'arrêté : aptitude (PE-12 à 50,
 // PA-12 à 50), fonction d'encadrement (GP-40/50, ENS-06 à 50), « Débutant »
@@ -13,7 +14,9 @@
 /** @typedef {import('../pal-rules.js').Issue} Issue */
 
 import { ageAt, memberId, memberName, palGas } from '../pal-helpers.js';
+import { checkNitrox, checkPressures, checkTrimix, nitroxEleveMax, TRIMIX_MAX, TRIMIX_SPACES } from './pf-gas-rules.js';
 import { pfProfile } from './pf-profile.js';
+import { airLevel, best, ensLevel, gpLevel, hasDp, isEncadrantRole, isNovice, level } from './pf-roles.js';
 
 const AIR_MAX = 50; // art. 4
 const AIR_FORMATION_MAX = 60; // art. 4 et 26 : +10 m si les standards de formation l'exigent
@@ -49,20 +52,7 @@ const FORMATION_MAX_PAR_ROLE = Object.freeze({
   'PE-50': 50,
   'PA-50': 50,
 });
-const DP_RANK = ['DP-40', 'DP-60', 'DP-70', 'DP-100', 'DP-120'];
-
-/** Niveau d'un code « XX-nn » (ENS-06 → 6, GP-50 → 50, PE-20 → 20). */
-const level = (code, prefix) => (code.startsWith(`${prefix}-`) ? Number(code.slice(prefix.length + 1)) : 0);
-const ensLevel = (role) => level(role, 'ENS');
-const gpLevel = (role) => level(role, 'GP');
-const airLevel = (role) => level(role, 'PE') || level(role, 'PA');
-const isEncadrantRole = (role) => ensLevel(role) > 0 || gpLevel(role) > 0;
-const isNovice = (role) => role === 'Baptême' || role === 'Débutant';
-
 const spaceIn = (spaces, profMax) => spaces.find((s) => profMax <= s) ?? null;
-
-const hasDp = (profile, required) =>
-  !!profile && profile.fonctions.some((f) => DP_RANK.indexOf(f) >= DP_RANK.indexOf(required));
 
 /** Pièce datée de moins d'un an à la date de plongée. */
 function validWithinYear(iso, date) {
@@ -72,9 +62,6 @@ function validWithinYear(iso, date) {
   expiry.setFullYear(expiry.getFullYear() + 1);
   return expiry >= date;
 }
-
-const best = (membres, levelOf) =>
-  membres.reduce((acc, m) => (!acc || levelOf(m.aptitude) > levelOf(acc.aptitude) ? m : acc), null);
 
 function resolveMembres(pal, diversById) {
   return (pal.membres || [])
@@ -168,10 +155,7 @@ function checkDp(ctx, required, add) {
 
 function checkExplorationEncadree(ctx, add) {
   const encadrants = ctx.membres.filter((m) => isEncadrantRole(m.aptitude));
-  const guide = best(
-    encadrants.filter((m) => gpLevel(m.aptitude) > 0),
-    gpLevel,
-  );
+  const { guide } = ctx;
   if (!guide) {
     add(
       'err',
@@ -265,10 +249,7 @@ function checkAutonomie(ctx, add) {
 
 function checkFormation(ctx, add) {
   const encadrants = ctx.membres.filter((m) => isEncadrantRole(m.aptitude));
-  const enseignant = best(
-    encadrants.filter((m) => ensLevel(m.aptitude) > 0),
-    ensLevel,
-  );
+  const { enseignant } = ctx;
   if (!enseignant) {
     add(
       'err',
@@ -291,7 +272,9 @@ function checkFormation(ctx, add) {
     );
   }
   const eleves = ctx.membres.filter((m) => !isEncadrantRole(m.aptitude));
-  const short = eleves.filter((m) => (FORMATION_MAX_PAR_ROLE[m.aptitude] ?? 0) < space);
+  // Au nitrox, l'élève évolue dans l'espace de son aptitude air (annexe XIII).
+  const eleveMax = (role) => (ctx.gas.nitrox ? nitroxEleveMax(role) : (FORMATION_MAX_PAR_ROLE[role] ?? 0));
+  const short = eleves.filter((m) => eleveMax(m.aptitude) < space);
   if (short.length > 0) {
     add(
       'err',
@@ -375,7 +358,9 @@ function buildContext(pal, membres, answers, dp, add) {
   const derog = mode === 'enseignement' && !!pal.derogation_formation_60;
   const limit = derog ? AIR_FORMATION_MAX : AIR_MAX;
   const spaces = mode === 'enseignement' ? FORMATION_SPACES : EXPLORATION_SPACES;
-  const space = gas.trimix || profMax > limit ? null : (spaceIn(spaces, profMax) ?? 50);
+  let space = profMax > limit ? null : (spaceIn(spaces, profMax) ?? 50);
+  if (gas.trimix) space = profMax > TRIMIX_MAX ? null : spaceIn(TRIMIX_SPACES, profMax);
+  const encadrants = membres.filter((m) => isEncadrantRole(m.aptitude));
   const dpProfile = dp ? pfProfile(dp) : answers.dp_qual ? pfProfile({ niveau_encadrant: answers.dp_qual }) : null;
   return {
     pal,
@@ -387,6 +372,14 @@ function buildContext(pal, membres, answers, dp, add) {
     mode,
     gas,
     space,
+    guide: best(
+      encadrants.filter((m) => gpLevel(m.aptitude) > 0),
+      gpLevel,
+    ),
+    enseignant: best(
+      encadrants.filter((m) => ensLevel(m.aptitude) > 0),
+      ensLevel,
+    ),
     date: answers.date ? new Date(answers.date) : new Date(),
   };
 }
@@ -407,19 +400,17 @@ export function validatePalPf(pal, diversById, answers, dp) {
   if (!checkGeneric(pal, membres, add)) return issues;
 
   const ctx = buildContext(pal, membres, answers, dp, add);
-  if (ctx.gas.nitrox || ctx.gas.trimix) {
-    add(
-      'warn',
-      'PF_GAZ_NON_CONTROLE',
-      "Mélanges autres que l'air : règles des annexes XII à XV pas encore contrôlées par l'application.",
-      'ann. XII',
-    );
-  }
   checkJustified(ctx, add);
   checkAirDepth(ctx, add);
-  if (ctx.mode === 'enseignement') checkFormation(ctx, add);
-  else if (membres.some((m) => isEncadrantRole(m.aptitude))) checkExplorationEncadree(ctx, add);
-  else checkAutonomie(ctx, add);
+  if (ctx.gas.trimix) {
+    checkTrimix(ctx, add);
+  } else {
+    if (ctx.mode === 'enseignement') checkFormation(ctx, add);
+    else if (membres.some((m) => isEncadrantRole(m.aptitude))) checkExplorationEncadree(ctx, add);
+    else checkAutonomie(ctx, add);
+    if (ctx.gas.nitrox) checkNitrox(ctx, add);
+  }
+  checkPressures(ctx, add);
   checkMedical(ctx, add);
 
   if (!issues.some((i) => i.tone === 'err')) {

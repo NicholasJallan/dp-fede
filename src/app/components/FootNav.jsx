@@ -40,7 +40,7 @@ export function FootNav(props) {
     archiveDone,
     onPrev,
     onNext,
-    onStartNew,
+    onFinish,
     onUrgence,
   } = props;
   const next = nextButton(props);
@@ -93,7 +93,7 @@ export function FootNav(props) {
       <button
         type="button"
         className="btn primary footnav-next"
-        onClick={next.isLast && archiveDone ? onStartNew : onNext}
+        onClick={next.isLast && archiveDone ? onFinish : onNext}
         disabled={!!next.blocked || !!next.disabled}
         aria-describedby={next.blocked ? 'footnav-hint' : undefined}
       >

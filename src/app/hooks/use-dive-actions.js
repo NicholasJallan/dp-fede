@@ -1,5 +1,5 @@
 // DP Assistant — Actions sur les plongées depuis le shell : ouvrir, créer,
-// démarrer (contrôle ±4 h), supprimer, cloner, terminer la préparation.
+// démarrer (contrôle ±4 h), supprimer, cloner, terminer la préparation / la plongée.
 
 import { useState, useCallback, useRef } from 'react';
 import { api } from '../../api/api.js';
@@ -261,6 +261,13 @@ export function useDiveActions(deps) {
     showToast({ tone: 'ok', title: 'Plongée préparée', body: 'Retrouvez-la dans la liste des plongées préparées.' });
   }, [currentDiveId, flushSave, setScreen, showToast]);
 
+  // « Terminé » après l'archivage → retour accueil (pas de nouvelle plongée)
+  const finishDive = useCallback(() => {
+    if (currentDiveId) flushSave(currentDiveId);
+    setScreen('home');
+    scrollTop();
+  }, [currentDiveId, flushSave, setScreen]);
+
   return {
     loadDive,
     startPreparation,
@@ -268,6 +275,7 @@ export function useDiveActions(deps) {
     cloneDive,
     clonePreparedH3,
     finishPreparation,
+    finishDive,
     ...execution,
   };
 }

@@ -324,8 +324,7 @@ function AppShell({ ctl }) {
           onUrgence={() => ctl.setUrgenceOpen(true)}
           onPrev={ctl.nav.goPrev}
           onNext={ctl.nav.goNext}
-          // Sans argument : l'événement de clic ne doit pas servir de modèle (prefill).
-          onStartNew={() => ctl.actions.startPreparation()}
+          onFinish={ctl.actions.finishDive}
         />
       )}
       <AppOverlays ctl={ctl} />

@@ -186,9 +186,10 @@ test.describe('build local — parcours en ligne', () => {
     expect(realised.paliers).toEqual({ 9: '', 6: '', 3: '3' });
     expect(realised.confort).toMatchObject({ on: true, duree: '2' });
 
-    // « Terminé » : nouvelle préparation vierge (le clic ne sert pas de modèle).
+    // « Terminé » : retour à l'accueil, sans ouvrir de nouvelle plongée.
     await nextBtn(page).click();
-    await expect(heading(page)).toHaveText('Caractériser la plongée à venir');
+    await expect(page.locator('.footnav')).toHaveCount(0);
+    await expect(diveRow(page, 'Carrière du Test')).toBeVisible();
     await expect(page.getByText("Cet écran n'a pas pu s'afficher")).toHaveCount(0);
 
     expect(errors.filter((e) => !isNetworkNoise(e))).toEqual([]);

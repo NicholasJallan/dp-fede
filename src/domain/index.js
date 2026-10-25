@@ -56,6 +56,7 @@ export {
 } from './jurisdiction.js';
 export { rulesFor } from './rules-for.js';
 export { PF_CODES, pfFromFr, pfProfile } from './pf/pf-profile.js';
+export { validatePalPf } from './pf/pf-rules.js';
 export { minDtr, dtrForProf } from './dtr.js';
 export {
   validatePal,

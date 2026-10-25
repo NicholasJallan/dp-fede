@@ -1,0 +1,791 @@
+{
+  "_doc": "Cas réglementaires de palanquée en Polynésie française (arrêté n° 199 CM, annexes X et XI). Partagé JS (tests/pal-rules-pf.test.js) et PHP (backend/tests-php/PfRulesFixturesTest.php).",
+  "defaults": { "date": "2026-06-01T10:00", "milieu": "En mer" },
+  "divers": {
+    "deb": { "medical": "2026-01-01", "date_naissance": "1990-01-01" },
+    "deb_attestation": { "date_naissance": "1990-01-01", "pf": { "attestation": "2026-05-01" } },
+    "deb_no_med": { "date_naissance": "1990-01-01" },
+    "n1": { "niveau_plongeur": "N1", "medical": "2026-01-01", "date_naissance": "1990-01-01" },
+    "n1_attestation": {
+      "niveau_plongeur": "N1",
+      "date_naissance": "1990-01-01",
+      "pf": { "attestation": "2026-05-01" }
+    },
+    "n2": { "niveau_plongeur": "N2", "medical": "2026-01-01", "date_naissance": "1990-01-01" },
+    "n2_pa40": {
+      "niveau_plongeur": "N2",
+      "aptitudes_sup": ["PA40"],
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "n2_16": { "niveau_plongeur": "N2", "medical": "2026-01-01", "date_naissance": "2010-01-01" },
+    "n2_nodob": { "niveau_plongeur": "N2", "medical": "2026-01-01" },
+    "n3": { "niveau_plongeur": "N3", "medical": "2026-01-01", "date_naissance": "1990-01-01" },
+    "n4": { "niveau_encadrant": "N4", "medical": "2026-01-01", "date_naissance": "1990-01-01" },
+    "n4_old_med": { "niveau_encadrant": "N4", "medical": "2024-01-01", "date_naissance": "1990-01-01" },
+    "gp50": {
+      "pf": { "fonctions": ["GP-40", "GP-50"] },
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "e1": { "niveau_encadrant": "E1", "medical": "2026-01-01", "date_naissance": "1990-01-01" },
+    "e2": { "niveau_encadrant": "E2", "medical": "2026-01-01", "date_naissance": "1990-01-01" },
+    "e3": { "niveau_encadrant": "E3", "medical": "2026-01-01", "date_naissance": "1990-01-01" },
+    "e4": { "niveau_encadrant": "E4", "medical": "2026-01-01", "date_naissance": "1990-01-01" },
+    "ens30_sans_gp": {
+      "pf": { "fonctions": ["ENS-06", "ENS-20", "ENS-30"] },
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "ens40": {
+      "pf": { "fonctions": ["ENS-06", "ENS-20", "ENS-30", "ENS-40"] },
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    },
+    "ens50": {
+      "pf": { "fonctions": ["ENS-06", "ENS-20", "ENS-30", "ENS-40", "ENS-50"] },
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01"
+    }
+  },
+  "dps": {
+    "dp40": { "pf": { "fonctions": ["DP-40"] }, "medical": "2026-01-01" },
+    "dp60": { "pf": { "fonctions": ["DP-40", "DP-60"] }, "medical": "2026-01-01" },
+    "n5": { "niveau_encadrant": "N5", "medical": "2026-01-01" },
+    "e3": { "niveau_encadrant": "E3", "medical": "2026-01-01" },
+    "dp60_old_med": { "pf": { "fonctions": ["DP-40", "DP-60"] }, "medical": "2024-01-01" }
+  },
+  "cases": [
+    {
+      "name": "Exploration encadrée : GP-40 + 4 PE-12 à 12 m",
+      "ref": "Annexe X",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["n4", "GP-40"],
+          ["n1", "PE-12"],
+          ["n1#2", "PE-12"],
+          ["n1#3", "PE-12"],
+          ["n1#4", "PE-12"]
+        ],
+        "profMax": 12
+      },
+      "errors": []
+    },
+    {
+      "name": "Exploration encadrée : GP-40 + 5 PE-12 à 12 m → effectif dépassé (max 4)",
+      "ref": "Annexe X",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["n4", "GP-40"],
+          ["n1", "PE-12"],
+          ["n1#2", "PE-12"],
+          ["n1#3", "PE-12"],
+          ["n1#4", "PE-12"],
+          ["n1#5", "PE-12"]
+        ],
+        "profMax": 12
+      },
+      "errors": ["PF_EFFECTIF"]
+    },
+    {
+      "name": "Exploration encadrée : GP-40 + 4 PE-12 + 2e GP-40 à 12 m (note a)",
+      "ref": "Annexe X note a",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["n4", "GP-40"],
+          ["n4#2", "GP-40"],
+          ["n1", "PE-12"],
+          ["n1#2", "PE-12"],
+          ["n1#3", "PE-12"],
+          ["n1#4", "PE-12"]
+        ],
+        "profMax": 12
+      },
+      "errors": []
+    },
+    {
+      "name": "Exploration encadrée : GP-40 + 5 PE-20 à 20 m",
+      "ref": "Annexe X",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["n4", "GP-40"],
+          ["n1", "PE-20"],
+          ["n1#2", "PE-20"],
+          ["n1#3", "PE-20"],
+          ["n1#4", "PE-20"],
+          ["n1#5", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": []
+    },
+    {
+      "name": "Exploration encadrée : GP-40 + 6 PE-20 à 20 m → effectif dépassé (max 5)",
+      "ref": "Annexe X",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["n4", "GP-40"],
+          ["n1", "PE-20"],
+          ["n1#2", "PE-20"],
+          ["n1#3", "PE-20"],
+          ["n1#4", "PE-20"],
+          ["n1#5", "PE-20"],
+          ["n1#6", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["PF_EFFECTIF"]
+    },
+    {
+      "name": "Exploration encadrée : GP-40 + 5 PE-20 + 2e GP-40 à 20 m (note a)",
+      "ref": "Annexe X note a",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["n4", "GP-40"],
+          ["n4#2", "GP-40"],
+          ["n1", "PE-20"],
+          ["n1#2", "PE-20"],
+          ["n1#3", "PE-20"],
+          ["n1#4", "PE-20"],
+          ["n1#5", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": []
+    },
+    {
+      "name": "Exploration encadrée : GP-40 + PE-20 à 30 m → aptitude insuffisante pour l'espace",
+      "ref": "Annexe X",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["n4", "GP-40"],
+          ["n1", "PE-20"]
+        ],
+        "profMax": 30
+      },
+      "errors": ["PF_APT_DEPTH"]
+    },
+    {
+      "name": "Exploration encadrée : GP-40 + 4 PE-40 à 40 m avec DP-40",
+      "ref": "Annexe X",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["n4", "GP-40"],
+          ["n2", "PE-40"],
+          ["n2#2", "PE-40"],
+          ["n2#3", "PE-40"],
+          ["n2#4", "PE-40"]
+        ],
+        "profMax": 40
+      },
+      "errors": []
+    },
+    {
+      "name": "Exploration encadrée : 50 m avec GP-40 → GP-50 requis",
+      "ref": "Annexe X",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["n4", "GP-40"],
+          ["n3", "PE-50"]
+        ],
+        "profMax": 50
+      },
+      "errors": ["PF_GP_LEVEL"]
+    },
+    {
+      "name": "Exploration encadrée : 50 m avec DP-40 → DP-60 requis",
+      "ref": "Annexe X",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["gp50", "GP-50"],
+          ["n3", "PE-50"]
+        ],
+        "profMax": 50
+      },
+      "errors": ["PF_DP_LEVEL"]
+    },
+    {
+      "name": "Exploration encadrée : GP-50 + 4 PE-50 à 50 m avec DP-60",
+      "ref": "Annexe X",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["gp50", "GP-50"],
+          ["n3", "PE-50"],
+          ["n3#2", "PE-50"],
+          ["n3#3", "PE-50"],
+          ["n3#4", "PE-50"]
+        ],
+        "profMax": 50
+      },
+      "errors": []
+    },
+    {
+      "name": "Exploration encadrée : GP-50 + 5 PE-50 à 50 m → effectif dépassé (max 4)",
+      "ref": "Annexe X",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["gp50", "GP-50"],
+          ["n3", "PE-50"],
+          ["n3#2", "PE-50"],
+          ["n3#3", "PE-50"],
+          ["n3#4", "PE-50"],
+          ["n3#5", "PE-50"]
+        ],
+        "profMax": 50
+      },
+      "errors": ["PF_EFFECTIF"]
+    },
+    {
+      "name": "Exploration encadrée : ENS-30 seul sans GP → GP requis en exploration",
+      "ref": "Annexe X",
+      "dp": "dp40",
+      "pal": {
+        "mode": "exploration",
+        "membres": [
+          ["ens30_sans_gp", "ENS-30"],
+          ["n1", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["PF_GP_REQUIRED"]
+    },
+    {
+      "name": "Exploration à l'air à 55 m → dépassement du plafond air 50 m",
+      "ref": "Article 4",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["gp50", "GP-50"],
+          ["n3", "PE-50"]
+        ],
+        "profMax": 55
+      },
+      "errors": ["PF_AIR_50"]
+    },
+    {
+      "name": "Exploration à 55 m avec dérogation formation → dérogation interdite en exploration",
+      "ref": "Article 26",
+      "dp": "dp60",
+      "pal": {
+        "mode": "exploration",
+        "derogation_formation_60": true,
+        "membres": [
+          ["gp50", "GP-50"],
+          ["n3", "PE-50"]
+        ],
+        "profMax": 55
+      },
+      "errors": ["PF_AIR_50", "PF_DEROG_FORMATION_ONLY"]
+    },
+    {
+      "name": "Exploration ou formation à l'air à 65 m → plafond absolu 60 m",
+      "ref": "Article 4",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["ens50", "ENS-50"],
+          ["n3", "PE-50"]
+        ],
+        "profMax": 65
+      },
+      "errors": ["PF_AIR_60"]
+    },
+    {
+      "name": "Autonomie : 3 PA-20 majeurs à 20 m avec DP-40",
+      "ref": "Annexe X",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["n2", "PA-20"],
+          ["n2#2", "PA-20"],
+          ["n2#3", "PA-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": []
+    },
+    {
+      "name": "Autonomie : 4 PA-20 majeurs à 20 m → effectif max 3",
+      "ref": "LP 4 / Annexe X",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["n2", "PA-20"],
+          ["n2#2", "PA-20"],
+          ["n2#3", "PA-20"],
+          ["n2#4", "PA-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["PF_AUTONOMIE_EFFECTIF"]
+    },
+    {
+      "name": "Autonomie : 2 PA-20 dont 1 mineur de 16 ans → interdit",
+      "ref": "LP 4 / Article 24",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["n2", "PA-20"],
+          ["n2_16", "PA-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["PF_AUTONOMIE_MAJEUR"]
+    },
+    {
+      "name": "Autonomie : 2 PA-20 dont 1 sans date de naissance → avertissement âge inconnu",
+      "ref": "LP 4",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["n2", "PA-20"],
+          ["n2_nodob", "PA-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": [],
+      "warnings": ["AGE_UNKNOWN"]
+    },
+    {
+      "name": "Autonomie : 2 PA-20 à 30 m → aptitude insuffisante",
+      "ref": "Annexe X",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["n2", "PA-20"],
+          ["n2#2", "PA-20"]
+        ],
+        "profMax": 30
+      },
+      "errors": ["PF_APT_DEPTH"]
+    },
+    {
+      "name": "Autonomie : 2 PE-20 sans encadrant → encadrant requis",
+      "ref": "Annexe X",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["n1", "PE-20"],
+          ["n1#2", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["PF_ENCADRANT_REQUIRED"]
+    },
+    {
+      "name": "Autonomie : 2 PA-50 à 50 m avec DP-40 → DP-60 requis",
+      "ref": "Annexe X",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["n3", "PA-50"],
+          ["n3#2", "PA-50"]
+        ],
+        "profMax": 50
+      },
+      "errors": ["PF_DP_LEVEL"]
+    },
+    {
+      "name": "Formation : ENS-06 + 2 baptêmes à 6 m avec DP-40",
+      "ref": "Annexe XI",
+      "dp": "dp40",
+      "pal": {
+        "membres": [["e1", "ENS-06"], "bapteme", "bapteme"],
+        "profMax": 6
+      },
+      "errors": []
+    },
+    {
+      "name": "Formation : ENS-06 + 3 baptêmes à 6 m → effectif max 2",
+      "ref": "Annexe XI",
+      "dp": "dp40",
+      "pal": {
+        "membres": [["e1", "ENS-06"], "bapteme", "bapteme", "bapteme"],
+        "profMax": 6
+      },
+      "errors": ["PF_EFFECTIF"]
+    },
+    {
+      "name": "Formation : ENS-06 + 2 baptêmes + 2e GP-40 à 6 m (note b)",
+      "ref": "Annexe XI note b",
+      "dp": "dp40",
+      "pal": {
+        "membres": [["e1", "ENS-06"], ["n4", "GP-40"], "bapteme", "bapteme"],
+        "profMax": 6
+      },
+      "errors": []
+    },
+    {
+      "name": "Formation : ENS-06 + 2 débutants à 6 m avec DP-40",
+      "ref": "Annexe XI",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["e1", "ENS-06"],
+          ["deb", "Débutant"],
+          ["deb#2", "Débutant"]
+        ],
+        "profMax": 6
+      },
+      "errors": []
+    },
+    {
+      "name": "Formation : ENS-20 + 4 débutants à 12 m avec DP-60",
+      "ref": "Annexe XI",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["e2", "ENS-20"],
+          ["deb", "Débutant"],
+          ["deb#2", "Débutant"],
+          ["deb#3", "Débutant"],
+          ["deb#4", "Débutant"]
+        ],
+        "profMax": 12
+      },
+      "errors": []
+    },
+    {
+      "name": "Formation : N5 (DP-40) dirige une formation à 12 m → DP-60 requis",
+      "ref": "Annexe XI",
+      "dp": "n5",
+      "pal": {
+        "membres": [
+          ["e2", "ENS-20"],
+          ["deb", "Débutant"]
+        ],
+        "profMax": 12
+      },
+      "errors": ["PF_DP_LEVEL"]
+    },
+    {
+      "name": "Formation : ENS-06 à 12 m → ENS-20 requis",
+      "ref": "Annexe XI",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["e1", "ENS-06"],
+          ["deb", "Débutant"]
+        ],
+        "profMax": 12
+      },
+      "errors": ["PF_ENS_LEVEL"]
+    },
+    {
+      "name": "Formation : Débutant à 15 m → débutant plafonné à 12 m",
+      "ref": "Annexe XI",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["e2", "ENS-20"],
+          ["deb", "Débutant"]
+        ],
+        "profMax": 15
+      },
+      "errors": ["PF_APT_DEPTH"]
+    },
+    {
+      "name": "Formation : ENS-20 + 4 PE-12 à 20 m avec DP-60",
+      "ref": "Annexe XI",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["e2", "ENS-20"],
+          ["n1", "PE-12"],
+          ["n1#2", "PE-12"],
+          ["n1#3", "PE-12"],
+          ["n1#4", "PE-12"]
+        ],
+        "profMax": 20
+      },
+      "errors": []
+    },
+    {
+      "name": "Formation : PE-12 à 25 m → PE-12 plafonné à 20 m et ENS-30 requis",
+      "ref": "Annexe XI",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["e2", "ENS-20"],
+          ["n1", "PE-12"]
+        ],
+        "profMax": 25
+      },
+      "errors": ["PF_APT_DEPTH", "PF_ENS_LEVEL"]
+    },
+    {
+      "name": "Formation : ENS-30 + 4 PE-20 à 30 m avec DP-60",
+      "ref": "Annexe XI",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["e3", "ENS-30"],
+          ["n1", "PE-20"],
+          ["n1#2", "PE-20"],
+          ["n1#3", "PE-20"],
+          ["n1#4", "PE-20"]
+        ],
+        "profMax": 30
+      },
+      "errors": []
+    },
+    {
+      "name": "Formation : ENS-40 + PE-20 à 40 m avec DP-60 (Niveau 1 à 40 m)",
+      "ref": "Annexe XI",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["ens40", "ENS-40"],
+          ["n1", "PE-20"]
+        ],
+        "profMax": 40
+      },
+      "errors": []
+    },
+    {
+      "name": "Formation : ENS-30 à 35 m → ENS-40 requis au-delà de 30 m",
+      "ref": "Annexe XI",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["e3", "ENS-30"],
+          ["n1", "PE-20"]
+        ],
+        "profMax": 35
+      },
+      "errors": ["PF_ENS_LEVEL"]
+    },
+    {
+      "name": "Formation : ENS-50 + PE-20 à 45 m → PE-20 plafonné à 40 m en formation",
+      "ref": "Annexe XI",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["ens50", "ENS-50"],
+          ["n1", "PE-20"]
+        ],
+        "profMax": 45
+      },
+      "errors": ["PF_APT_DEPTH"]
+    },
+    {
+      "name": "Formation : ENS-50 + 2 PE-40 à 50 m avec DP-60",
+      "ref": "Annexe XI",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["ens50", "ENS-50"],
+          ["n2", "PE-40"],
+          ["n2#2", "PE-40"]
+        ],
+        "profMax": 50
+      },
+      "errors": []
+    },
+    {
+      "name": "Formation : ENS-50 + 3 PE-40 à 50 m → effectif max 2",
+      "ref": "Annexe XI",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["ens50", "ENS-50"],
+          ["n2", "PE-40"],
+          ["n2#2", "PE-40"],
+          ["n2#3", "PE-40"]
+        ],
+        "profMax": 50
+      },
+      "errors": ["PF_EFFECTIF"]
+    },
+    {
+      "name": "Formation : 55 m sans dérogation → PF_AIR_50",
+      "ref": "Article 26 / Annexe XI note f",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["ens50", "ENS-50"],
+          ["n2", "PE-40"]
+        ],
+        "profMax": 55
+      },
+      "errors": ["PF_AIR_50"]
+    },
+    {
+      "name": "Formation : 55 m avec dérogation et ENS-50",
+      "ref": "Article 26 / Annexe XI note f",
+      "dp": "dp60",
+      "pal": {
+        "derogation_formation_60": true,
+        "membres": [
+          ["ens50", "ENS-50"],
+          ["n2", "PE-40"]
+        ],
+        "profMax": 55
+      },
+      "errors": []
+    },
+    {
+      "name": "Formation : 55 m avec dérogation mais ENS-40 → ENS-50 requis",
+      "ref": "Annexe XI",
+      "dp": "dp60",
+      "pal": {
+        "derogation_formation_60": true,
+        "membres": [
+          ["ens40", "ENS-40"],
+          ["n2", "PE-40"]
+        ],
+        "profMax": 55
+      },
+      "errors": ["PF_ENS_LEVEL"]
+    },
+    {
+      "name": "Formation : GP-40 seul sans ENS avec un débutant → ENS requis",
+      "ref": "Annexe XI",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["n4", "GP-40"],
+          ["deb", "Débutant"]
+        ],
+        "profMax": 6
+      },
+      "errors": ["PF_ENS_REQUIRED"]
+    },
+    {
+      "name": "Médical : encadrant avec certificat périmé (> 12 mois) → erreur bloquante",
+      "ref": "Article 13",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["n4_old_med", "GP-40"],
+          ["n1", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["PF_MEDICAL_ENCADRANT"]
+    },
+    {
+      "name": "Médical : DP avec certificat périmé (> 12 mois) → erreur bloquante",
+      "ref": "Article 13",
+      "dp": "dp60_old_med",
+      "pal": {
+        "membres": [
+          ["n4", "GP-40"],
+          ["n1", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["PF_MEDICAL_DP"]
+    },
+    {
+      "name": "Médical : plongeur sans certificat ni attestation → avertissement",
+      "ref": "Article 12",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["e1", "ENS-06"],
+          ["deb_no_med", "Débutant"]
+        ],
+        "profMax": 6
+      },
+      "errors": [],
+      "warnings": ["PF_ATTESTATION_MISSING"]
+    },
+    {
+      "name": "Médical : plongeur avec attestation seule < 12 mois → OK",
+      "ref": "Article 12",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["e1", "ENS-06"],
+          ["deb_attestation", "Débutant"]
+        ],
+        "profMax": 6
+      },
+      "errors": []
+    },
+    {
+      "name": "Médical : baptisé sans médical ni attestation → OK (exempté)",
+      "ref": "Article 12",
+      "dp": "dp40",
+      "pal": {
+        "membres": [["e1", "ENS-06"], "bapteme"],
+        "profMax": 6
+      },
+      "errors": []
+    },
+    {
+      "name": "Aptitude non justifiée : N1 qui prend le rôle PA-20 → erreur",
+      "ref": "LP 13",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["n4", "GP-40"],
+          ["n1", "PA-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["PF_APT_NOT_JUSTIFIED"]
+    },
+    {
+      "name": "Mode forcé exploration avec un baptême → avertissement",
+      "ref": "Article 25",
+      "dp": "dp40",
+      "pal": {
+        "mode": "exploration",
+        "membres": [["e1", "ENS-06"], "bapteme"],
+        "profMax": 6
+      },
+      "errors": [],
+      "warnings": ["MODE_BAPTEME"]
+    },
+    {
+      "name": "Génériques : palanquée solo → PAL_SOLO",
+      "ref": "LP 4",
+      "dp": "dp40",
+      "pal": {
+        "membres": [["n2", "PA-20"]],
+        "profMax": 20
+      },
+      "errors": ["PAL_SOLO"]
+    },
+    {
+      "name": "Génériques : profMax manquante → PROF_MISSING",
+      "ref": "Article 2",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["n2", "PA-20"],
+          ["n2#2", "PA-20"]
+        ],
+        "profMax": 0
+      },
+      "errors": ["PROF_MISSING"]
+    },
+    {
+      "name": "Génériques : aptitude manquante → APT_MISSING",
+      "ref": "Article 2",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["n2", ""],
+          ["n2#2", "PA-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["APT_MISSING"]
+    }
+  ]
+}

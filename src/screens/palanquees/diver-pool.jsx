@@ -4,6 +4,7 @@
 import React, { useState, useMemo, useId } from 'react';
 import { Pill, diverFullName } from '../../components/components.jsx';
 import { Icon } from '../../components/icons.jsx';
+import { highestGasQual } from '../../domain/index.js';
 
 const alpha = (a, b) => `${a.nom} ${a.prenom || ''}`.localeCompare(`${b.nom} ${b.prenom || ''}`, 'fr');
 const lvlOrd = (np) => ({ N3: 0, N2: 1, N1: 2 })[np] ?? 3;
@@ -32,7 +33,7 @@ function DiverCard({ d, palanquees, onAdd, onAddNew }) {
     np = d.niveau_plongeur;
   const quals = [
     (d.nitrox || []).includes('PN-C') ? 'PN-C' : (d.nitrox || []).includes('PN') ? 'PN' : null,
-    (d.trimix || []).length ? d.trimix[d.trimix.length - 1] : null,
+    highestGasQual(d.trimix),
     (d.recycleurs || []).length ? 'CCR' : null,
   ].filter(Boolean);
   return (

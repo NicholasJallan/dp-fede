@@ -78,6 +78,17 @@ function gasQualRank(diver) {
   return quals.reduce((max, q) => Math.max(max, rank[q] || 0), 0);
 }
 
+/**
+ * Qualification mélange la plus élevée d'une liste (ex. `diver.trimix`), selon
+ * GAS_QUAL_RANK et non l'ordre de saisie : ['PTH-120', 'PTH-70'] → 'PTH-120'.
+ * @param {string[] | undefined} quals
+ * @returns {string | null}
+ */
+export function highestGasQual(quals) {
+  const rank = tables().GAS_QUAL_RANK;
+  return (quals || []).reduce((best, q) => ((rank[q] || 0) > (rank[best] || 0) ? q : best), null);
+}
+
 /** Vrai si le plongeur justifie au moins la qualification mélange `req`. */
 export function hasGasQual(diver, req) {
   return gasQualRank(diver) >= tables().GAS_QUAL_RANK[req];

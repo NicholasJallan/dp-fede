@@ -50,6 +50,7 @@ export {
   diverFullName,
   isBassinDerogation,
   hasGasQual,
+  highestGasQual,
   palGas,
   withDecoO2,
   ENS_LEVELS,

@@ -16,6 +16,8 @@ require_once __DIR__ . '/../lib/Csrf.php';
 require_once __DIR__ . '/../lib/SyncHelpers.php';
 require_once __DIR__ . '/../lib/Auth.php';
 require_once __DIR__ . '/../lib/Rules.php';
+require_once __DIR__ . '/../lib/Jurisdiction.php';
+require_once __DIR__ . '/../lib/RulesFor.php';
 require_once __DIR__ . '/../lib/Encadrement.php';
 // Db dépend de PDO live → on ne charge pas Auth::current/Session ici (les
 // tests qui en ont besoin doivent mocker explicitement).

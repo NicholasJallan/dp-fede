@@ -17,6 +17,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/api.js';
+import { DEFAULT_JURISDICTION, normalizeJurisdiction } from '../domain/index.js';
 import { STORAGE_KEYS } from '../api/storage-keys.js';
 import { useAuth } from '../auth/auth-context.jsx';
 import { offlineStore } from '../offline/offline-store.js';
@@ -173,6 +174,9 @@ export function ClubProvider({ children }) {
     return {
       info: current,
       club: current?.club || null,
+      // Juridiction d'origine du club : repli quand le pays du site est inconnu.
+      jurisdiction:
+        normalizeJurisdiction(current?.club?.jurisdiction ?? user?.club_jurisdiction) ?? DEFAULT_JURISDICTION,
       role,
       permissions,
       error,
@@ -193,6 +197,7 @@ export function ClubProvider({ children }) {
     user?.club_id,
     user?.club_role,
     user?.club_count,
+    user?.club_jurisdiction,
     error,
     refresh,
     switchClub,

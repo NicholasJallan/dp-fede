@@ -81,9 +81,9 @@ final class MigratorTest extends TestCase
             $versions[] = $v;
         }
         $this->assertSame(count($versions), count(array_unique($versions)), 'Versions en double');
-        // 000 → 011 sans trou ; 002 = workspaces, déjà appliquée en production.
+        // 000 → 012 sans trou ; 002 = workspaces, déjà appliquée en production.
         sort($versions, SORT_STRING);
-        $this->assertSame(array_map(static fn(int $n): string => sprintf('%03d', $n), range(0, 11)), $versions);
+        $this->assertSame(array_map(static fn(int $n): string => sprintf('%03d', $n), range(0, 12)), $versions);
     }
 
     /**

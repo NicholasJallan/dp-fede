@@ -87,21 +87,52 @@ final class ClubTest extends TestCase
         $this->assertSame('112', $out['urgence_defaut']);
         $this->assertSame('c1', $out['club_id']);
         $this->assertSame('dp', $out['club_role']);
+        $this->assertSame('FR', $out['club_jurisdiction']);
         $this->assertSame(2, $out['club_count']);
         $this->assertSame('dp@example.com', $out['email']);
+    }
+
+    public function testProfileOverlayExposesClubJurisdiction(): void
+    {
+        $user = ['id' => 3];
+        $base = ['id' => 'c1', 'nom' => 'Club'];
+
+        // Club avec PF explicite
+        $outPf = \Club::profileOverlay($user, $base + ['jurisdiction' => 'PF'], 'dp', 1);
+        $this->assertSame('PF', $outPf['club_jurisdiction']);
+
+        // Club avec minuscules
+        $outLower = \Club::profileOverlay($user, $base + ['jurisdiction' => 'pf'], 'dp', 1);
+        $this->assertSame('PF', $outLower['club_jurisdiction']);
+
+        // Club sans clé jurisdiction → repli sur FR
+        $outNone = \Club::profileOverlay($user, $base, 'dp', 1);
+        $this->assertSame('FR', $outNone['club_jurisdiction']);
+
+        // Club avec valeur invalide → repli sur FR
+        $outInvalid = \Club::profileOverlay($user, $base + ['jurisdiction' => 'XX'], 'dp', 1);
+        $this->assertSame('FR', $outInvalid['club_jurisdiction']);
+
+        // Sans club ($club === null) → pas de clé club_jurisdiction
+        $outNull = \Club::profileOverlay($user, null, null, 0);
+        $this->assertArrayNotHasKey('club_jurisdiction', $outNull);
     }
 
     public function testLegacyBodyMapsOnlyPresentClubFields(): void
     {
         $fields = \Club::fieldsFromLegacyBody(['club_nom' => '  Club A ', 'nom' => 'Dupont', 'urgence_defaut' => null]);
         $this->assertSame(['nom' => 'Club A', 'urgence_defaut' => null], $fields);
+
+        // Mappage de club_jurisdiction vers jurisdiction
+        $fieldsWithJur = \Club::fieldsFromLegacyBody(['club_jurisdiction' => 'PF']);
+        $this->assertSame(['jurisdiction' => 'PF'], $fieldsWithJur);
     }
 
     public function testSanitizeClubFields(): void
     {
         [$fields, $errors] = \Club::sanitizeClubFields([
             'nom' => '', 'structure_type' => 'inconnu', 'president_tel' => '  ', 'numero_ffessm' => ' 061 ',
-            'champ_inconnu' => 'x',
+            'champ_inconnu' => 'x', 'jurisdiction' => 'PF',
         ]);
         $this->assertSame([], $errors);
         $this->assertSame('', $fields['nom']);
@@ -109,6 +140,8 @@ final class ClubTest extends TestCase
         $this->assertNull($fields['president_tel']);
         $this->assertSame('061', $fields['numero_ffessm']);
         $this->assertArrayNotHasKey('champ_inconnu', $fields);
+        // jurisdiction n'est pas dans EDITABLE_FIELDS au Lot 0
+        $this->assertArrayNotHasKey('jurisdiction', $fields);
 
         [, $errors] = \Club::sanitizeClubFields(['nom' => str_repeat('a', 201), 'siret' => ['x']]);
         $this->assertCount(2, $errors);

@@ -52,8 +52,15 @@ final class DiveService
                 if (empty($m['_bapteme']) && !empty($m['diverId'])) $ids[(string)$m['diverId']] = true;
             }
         }
-        $club     = Db::row('SELECT structure_type FROM clubs WHERE id=?', [$clubId]);
+        $club     = Db::row('SELECT jurisdiction, structure_type FROM clubs WHERE id=?', [$clubId]);
         $cadrePro = Encadrement::isCadrePro($club['structure_type'] ?? null);
+
+        // Réglementation du lieu : le pays du site enregistré prime sur ce
+        // que le client a déduit (answers.jurisdiction n'est jamais lu).
+        $site = !empty($answers['site_id'])
+            ? Db::row('SELECT pays_code FROM sites WHERE id=? AND club_id=?', [(string)$answers['site_id'], $clubId])
+            : null;
+        $answers['jurisdiction'] = self::diveJurisdiction($site, $answers, $club);
 
         $diversById = [];
         if ($ids) {
@@ -92,8 +99,26 @@ final class DiveService
             $dp = ['niveau_encadrant' => $answers['dp_qual'], 'nitrox' => [], 'trimix' => []];
         }
 
-        $result = Rules::validateDive($palanquees, $diversById, $answers, $dp);
+        $rules  = RulesFor::forJurisdiction($answers['jurisdiction']);
+        $result = $rules::validateDive($palanquees, $diversById, $answers, $dp);
         return $result['ok'] ? null : implode(' | ', $result['errors']);
+    }
+
+    /**
+     * Juridiction d'une plongée : pays du site enregistré (même vide : on
+     * retombe alors sur le club, pas sur le client) ; site inconnu du serveur
+     * (créé hors ligne, pas encore synchronisé) : pays recopié dans
+     * answers.site_pays_code ; sinon juridiction du club.
+     *
+     * @param array{pays_code?: ?string}|null $site
+     * @param array{jurisdiction?: ?string}|null $club
+     */
+    public static function diveJurisdiction(?array $site, array $answers, ?array $club): string
+    {
+        $pays = $site !== null
+            ? ($site['pays_code'] ?? null)
+            : (isset($answers['site_pays_code']) ? (string)$answers['site_pays_code'] : null);
+        return Jurisdiction::resolve($pays, $club['jurisdiction'] ?? null);
     }
 
     /**

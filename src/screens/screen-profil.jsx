@@ -2,11 +2,13 @@
 
 import React, { useState, useEffect, useEffectEvent, useMemo } from 'react';
 import { useAuth } from '../auth/auth-context.jsx';
+import { useClub } from '../club/club-context.jsx';
 import { Alert, Field, Opt, Question, Pill, CdsLink, diverFullName } from '../components/components.jsx';
 import {
   diplomeProLabel,
   matchCondition,
   QUESTIONS,
+  resolveJurisdiction,
   resolveUrgenceNumber,
   STRUCTURE_LABELS,
   URGENCE_PAR_PAYS,
@@ -19,6 +21,7 @@ import { MeteoField, MareeField } from './profil/conditions-fields.jsx';
 // ── ScreenProfil ──────────────────────────────────────────────────────────
 function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, setSites }) {
   const { user } = useAuth();
+  const { jurisdiction: clubJurisdiction } = useClub();
   const sections = QUESTIONS;
   const [activeId, setActiveId] = useState(sections[0].id);
 
@@ -58,6 +61,8 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
       setAnswer('site_ville', selectedSite.ville || '');
       setAnswer('site_pays', selectedSite.pays || '');
       setAnswer('site_pays_code', selectedSite.pays_code || '');
+      // Réglementation du lieu (le serveur la recalcule depuis le site).
+      setAnswer('jurisdiction', resolveJurisdiction(selectedSite.pays_code, clubJurisdiction));
       setAnswer('site_prof_max', selectedSite.profondeur_max || null);
       // Plan de secours : champs site réutilisés dans le bloc « conduite à tenir » de la fiche
       setAnswer('site_acces_secours', selectedSite.acces_secours || '');

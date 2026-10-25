@@ -1,6 +1,6 @@
 // DP Assistant — Valeurs dérivées de la plongée ouverte (pures, sans React).
 
-import { CHECKLIST_RULES, getMilieuType, isBassinDerogation, matchCondition, validatePal } from '../domain/index.js';
+import { CHECKLIST_RULES, getMilieuType, isBassinDerogation, matchCondition, rulesFor } from '../domain/index.js';
 
 // Notes réglementaires affichées sur l'écran profil.
 export function computeProfilNotes(answers) {
@@ -32,6 +32,7 @@ export function computeBlockingPalSummary(palanquees, divers, answers) {
     diversById[d.id] = d;
   });
   const dp = divers.find((d) => d.id === answers.dp_id) || null;
+  const { validatePal } = rulesFor(answers.jurisdiction);
   return palanquees
     .map((p, idx) => {
       const issues = validatePal(p, diversById, answers, dp);

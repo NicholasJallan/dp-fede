@@ -40,6 +40,14 @@ export {
   URGENCE_INCONNUE,
 } from './emergency.js';
 export { computePalHardLimit, clampProfMax } from './depth-clamp.js';
+export {
+  JURISDICTIONS,
+  DEFAULT_JURISDICTION,
+  normalizeJurisdiction,
+  jurisdictionForCountry,
+  resolveJurisdiction,
+} from './jurisdiction.js';
+export { rulesFor } from './rules-for.js';
 export { minDtr, dtrForProf } from './dtr.js';
 export {
   validatePal,

@@ -56,6 +56,7 @@ class Club
         'president_nom'    => 'president_nom',
         'president_tel'    => 'president_tel',
         'urgence_defaut'   => 'urgence_defaut',
+        'club_jurisdiction' => 'jurisdiction',
     ];
 
     /** Champs modifiables du club, avec leur longueur maximale. */
@@ -96,6 +97,7 @@ class Club
             }
             // Même repli que les fiches PDF (DivePdf::clubProfile).
             $user['urgence_defaut'] = ($club['urgence_defaut'] ?? null) ?: self::DEFAULT_URGENCE;
+            $user['club_jurisdiction'] = Jurisdiction::normalize($club['jurisdiction'] ?? null) ?? Jurisdiction::DEFAULT;
         }
         $user['club_id']    = $club['id'] ?? null;
         $user['club_role']  = $role;

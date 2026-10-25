@@ -105,6 +105,91 @@ final class DiveServiceTest extends TestCase
         $this->assertNull(\DiveService::rulesInput('prepared', null, ['palanquees' => []], $stored));
     }
 
+    // ── diveJurisdiction (méthode pure) ────────────────────────────────────
+
+    public function testDiveJurisdictionSitePfTakesPrecedenceOverAnswersAndClub(): void
+    {
+        $site = ['pays_code' => 'PF'];
+        $answers = ['site_pays_code' => 'FR', 'jurisdiction' => 'FR'];
+        $club = ['jurisdiction' => 'FR'];
+        $this->assertSame('PF', \DiveService::diveJurisdiction($site, $answers, $club));
+
+        // Alpha-3 PYF
+        $sitePyf = ['pays_code' => 'PYF'];
+        $this->assertSame('PF', \DiveService::diveJurisdiction($sitePyf, $answers, $club));
+    }
+
+    public function testDiveJurisdictionSiteWithoutCountryFallsBackToClub(): void
+    {
+        // Site avec pays_code vide ou null : on ne retombe PAS sur answers client, mais sur le club
+        $siteEmpty = ['pays_code' => ''];
+        $answers = ['site_pays_code' => 'PF', 'jurisdiction' => 'PF'];
+        $club = ['jurisdiction' => 'FR'];
+        $this->assertSame('FR', \DiveService::diveJurisdiction($siteEmpty, $answers, $club));
+
+        $siteNull = ['pays_code' => null];
+        $clubPf = ['jurisdiction' => 'PF'];
+        $this->assertSame('PF', \DiveService::diveJurisdiction($siteNull, $answers, $clubPf));
+    }
+
+    public function testDiveJurisdictionNullSiteFallsBackToAnswersSitePaysCode(): void
+    {
+        // Site null (site pas encore en base, créé hors-ligne) : lecture de answers.site_pays_code
+        $answersPf = ['site_pays_code' => 'PF'];
+        $clubFr = ['jurisdiction' => 'FR'];
+        $this->assertSame('PF', \DiveService::diveJurisdiction(null, $answersPf, $clubFr));
+
+        $answersFr = ['site_pays_code' => 'FR'];
+        $clubPf = ['jurisdiction' => 'PF'];
+        $this->assertSame('FR', \DiveService::diveJurisdiction(null, $answersFr, $clubPf));
+
+        // answers sans pays_code → repli sur club
+        $this->assertSame('PF', \DiveService::diveJurisdiction(null, [], $clubPf));
+        $this->assertSame('FR', \DiveService::diveJurisdiction(null, [], $clubFr));
+    }
+
+    public function testDiveJurisdictionDefaultIsFrWhenAllEmpty(): void
+    {
+        $this->assertSame('FR', \DiveService::diveJurisdiction(null, [], null));
+        $this->assertSame('FR', \DiveService::diveJurisdiction(['pays_code' => null], [], null));
+    }
+
+    public function testDiveJurisdictionIgnoresClientAnswersJurisdiction(): void
+    {
+        $site = ['pays_code' => 'FR'];
+        $answers = ['jurisdiction' => 'PF'];
+        $club = ['jurisdiction' => 'FR'];
+        $this->assertSame('FR', \DiveService::diveJurisdiction($site, $answers, $club));
+    }
+
+    public function testRulesErrorsQueriesSiteWhenSiteIdIsProvided(): void
+    {
+        $this->pdo->respond('/SELECT jurisdiction, structure_type FROM clubs/', [['jurisdiction' => 'FR', 'structure_type' => 'club']]);
+        $this->pdo->respond('/SELECT pays_code FROM sites/', [['pays_code' => 'PF']]);
+
+        // Palanquée minimale pour déclencher rulesErrors
+        $pal = [
+            'id' => 'p1',
+            'profMax' => 20,
+            'duree' => 30,
+            'membres' => [
+                ['diverId' => 'd1', 'nom' => 'Alain', 'prenom' => 'Dupont', 'aptitude' => 'PA20'],
+                ['diverId' => 'd2', 'nom' => 'Bernard', 'prenom' => 'Durand', 'aptitude' => 'PA20'],
+            ],
+        ];
+        $answers = [
+            'site_id' => 'site-123',
+            'dp_nom'  => 'DP Test',
+        ];
+
+        \DiveService::rulesErrors([$pal], $answers, self::CLUB);
+
+        $siteQueries = array_filter($this->pdo->log, fn($e) => stripos($e['sql'], 'SELECT pays_code FROM sites') !== false);
+        $this->assertNotEmpty($siteQueries, 'rulesErrors doit interroger la table sites pour déterminer la juridiction');
+        $siteEntry = array_values($siteQueries)[0];
+        $this->assertSame(['site-123', self::CLUB], $siteEntry['params']);
+    }
+
     // ── create ─────────────────────────────────────────────────────────────
 
     public function testCreateWithRenderStateWrapsInTransactionAndInsertsBoth(): void

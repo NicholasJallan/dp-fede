@@ -261,7 +261,7 @@ final class LegacyWorkspacesTest extends TestCase
 
     /**
      * Migrator::run sur une base à l'état de production (000, 001, 002
-     * appliquées) : 003 → 011 dans l'ordre, chacune marquée après ses
+     * appliquées) : 003 → 012 dans l'ordre, chacune marquée après ses
      * instructions, sous verrou.
      */
     public function testMigratorAppliesOurMigrationsAfterTheProductionOnes(): void
@@ -271,14 +271,14 @@ final class LegacyWorkspacesTest extends TestCase
         $pdo->respond('/FROM schema_migrations/', [['version' => '000'], ['version' => '001'], ['version' => '002']]);
 
         $done = \Migrator::run($pdo);
-        $this->assertSame(['003', '004', '005', '006', '007', '008', '009', '010', '011'], $done);
+        $this->assertSame(['003', '004', '005', '006', '007', '008', '009', '010', '011', '012'], $done);
 
         $log = $pdo->statements();
         $marks = [];
         foreach ($pdo->log as $i => $e) {
             if (str_starts_with($e['sql'], 'INSERT IGNORE INTO schema_migrations')) $marks[$e['params'][0]] = $i;
         }
-        $this->assertSame(['003', '004', '005', '006', '007', '008', '009', '010', '011'], array_keys($marks));
+        $this->assertSame(['003', '004', '005', '006', '007', '008', '009', '010', '011', '012'], array_keys($marks));
         $this->assertNotContains('000', array_keys($marks));
         $this->assertStringStartsWith('SELECT GET_LOCK', $log[0]);
         $this->assertStringStartsWith('SELECT RELEASE_LOCK', end($log));

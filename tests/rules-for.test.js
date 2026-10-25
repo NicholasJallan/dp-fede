@@ -11,6 +11,7 @@ import {
   getDpMaxDepth,
   computePalHardLimit,
   CHECKLIST_RULES,
+  PF_CHECKLIST_RULES,
 } from '../src/domain/index.js';
 
 import win from './setup.js';
@@ -54,7 +55,7 @@ describe('rulesFor — dispatcher de règles (Lot 2d)', () => {
     assert.ok(Object.isFrozen(rules));
     assert.equal(rules.jurisdiction, 'PF');
     assert.equal(rules.validatePal, validatePalPf);
-    assert.equal(rules.checklistRules, CHECKLIST_RULES);
+    assert.equal(rules.checklistRules, PF_CHECKLIST_RULES);
 
     // API commune
     for (const key of COMMON_INTERFACE_KEYS) {

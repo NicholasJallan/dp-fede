@@ -27,7 +27,10 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
   const sections = QUESTIONS;
   const [activeId, setActiveId] = useState(sections[0].id);
 
-  const visibleSections = sections.filter((s) => !s.when || s.when(answers));
+  // Visibilité des questions : réponses complétées de la juridiction de la
+  // plongée (celle du club tant qu'aucun site n'est choisi).
+  const condAnswers = diveRules.ruleAnswers;
+  const visibleSections = sections.filter((s) => !s.when || s.when(condAnswers));
 
   // DP sélectionné
   const selectedDP = useMemo(() => divers.find((d) => d.id === answers.dp_id), [divers, answers.dp_id]);
@@ -154,7 +157,7 @@ function ScreenProfil({ answers, setAnswer, derived, divers, setDivers, sites, s
   const structureName = structureLabel(user?.structure_type, user?.club_jurisdiction);
 
   const renderQuestion = (q) => {
-    if (!matchCondition(q.when, answers)) return null;
+    if (!matchCondition(q.when, condAnswers)) return null;
     const val = answers[q.id];
     const set = (v) => setAnswer(q.id, v);
 

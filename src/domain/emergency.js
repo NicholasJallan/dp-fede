@@ -9,6 +9,12 @@ export function getEmergencyInfo(paysCode, milieu) {
       vhf: null,
     };
   }
+  if (paysCode === 'PF') {
+    return {
+      secondaryNums: '+689 40 54 16 16 (JRCC Tahiti, secours en mer)',
+      vhf: isMer ? 'Canal 16 (JRCC Tahiti)' : null,
+    };
+  }
   if (paysCode === 'FR') {
     const parts = ['15 (SAMU)', '112 (Europe)'];
     if (isMer) parts.push('196 (CROSS)');
@@ -28,7 +34,8 @@ export function getEmergencyInfo(paysCode, milieu) {
 
 // Numéro principal (bouton URGENCE, fiche) selon le pays du site. Pays
 // inconnu : numéro réglé par le club, sinon 112 (valable dans toute l'Europe).
-export const URGENCE_PAR_PAYS = Object.freeze({ CH: '144', FR: '18' });
+// Polynésie : SAMU 15 ; en mer, JRCC Tahiti (numéros secondaires).
+export const URGENCE_PAR_PAYS = Object.freeze({ CH: '144', FR: '18', PF: '15' });
 export const URGENCE_INCONNUE = '112';
 
 const trimmed = (v) => (typeof v === 'string' ? v.trim() : '');

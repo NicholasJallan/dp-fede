@@ -35,7 +35,7 @@ final class EmergencyTest extends TestCase
     public function testConstants(): void
     {
         $this->assertSame('112', \Emergency::INCONNUE);
-        $this->assertSame(['CH' => '144', 'FR' => '18'], \Emergency::PAR_PAYS);
+        $this->assertSame(['CH' => '144', 'FR' => '18', 'PF' => '15'], \Emergency::PAR_PAYS);
     }
 
     public static function infoProvider(): array

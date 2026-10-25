@@ -32,6 +32,18 @@
       "vhf": "Canal 16 (CROSS)"
     },
     {
+      "pays": "PF",
+      "milieu": "En mer",
+      "secondaryNums": "+689 40 54 16 16 (JRCC Tahiti, secours en mer)",
+      "vhf": "Canal 16 (JRCC Tahiti)"
+    },
+    {
+      "pays": "PF",
+      "milieu": "Lac",
+      "secondaryNums": "+689 40 54 16 16 (JRCC Tahiti, secours en mer)",
+      "vhf": null
+    },
+    {
       "pays": null,
       "milieu": "Carrière",
       "secondaryNums": "112 (Europe) · 15 (SAMU FR) · 18 (Pompiers FR) · 144 (CH) · 1414 (REGA CH)",
@@ -70,6 +82,16 @@
       "pays": "FR",
       "clubDefault": null,
       "expected": "18"
+    },
+    {
+      "pays": "PF",
+      "clubDefault": "18",
+      "expected": "15"
+    },
+    {
+      "pays": "PF",
+      "clubDefault": null,
+      "expected": "15"
     },
     {
       "pays": "IT",
@@ -154,6 +176,13 @@
       "current": "144",
       "manual": false,
       "expected": "18"
+    },
+    {
+      "pays": "PF",
+      "clubDefault": "18",
+      "current": "18",
+      "manual": false,
+      "expected": "15"
     },
     {
       "pays": null,

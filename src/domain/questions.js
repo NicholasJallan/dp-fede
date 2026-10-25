@@ -3,6 +3,10 @@
 
 import { getMilieuType, isMilieuNaturel } from './milieu.js';
 
+// Questions propres à la Polynésie française (arrêté n° 199 CM) : visibles
+// seulement pour une plongée dont la réglementation est celle de la PF.
+const pf = (a) => a.jurisdiction === 'PF';
+
 // =========================================================================
 // QUESTIONNAIRE (sections A → H)
 // =========================================================================
@@ -71,6 +75,23 @@ export const QUESTIONS = [
       { id: 'vhf', label: 'VHF à bord ?', type: 'bool', when: { depart_bateau: true }, ref: 'CdS A322-78' },
       { id: 'chef_bord', label: 'Pilote / chef de bord désigné ?', type: 'bool', when: { depart_bateau: true } },
       { id: 'pavillon_alpha', label: 'Pavillon Alpha hissé prévu ?', type: 'bool', when: { depart_bateau: true } },
+      {
+        id: 'navire_nom',
+        label: 'Nom du navire support',
+        type: 'text',
+        when: (a) => pf(a) && !!a.depart_bateau,
+        hint: 'Reporté sur la feuille de palanquée (annexe XX).',
+      },
+      {
+        id: 'navire_immat',
+        label: 'Immatriculation du navire',
+        type: 'text',
+        placeholder: 'PY …',
+        when: (a) => pf(a) && !!a.depart_bateau,
+      },
+      { id: 'plongee_nuit', label: 'Plongée de nuit ?', type: 'bool', when: pf, ref: 'art. 10' },
+      { id: 'plongee_derive', label: 'Plongée dérivante ?', type: 'bool', when: pf, ref: 'art. 11' },
+      { id: 'plongee_passe', label: 'Plongée dans une passe ?', type: 'bool', when: pf, ref: 'art. 9' },
       {
         id: 'distance_cote',
         label: 'Distance prévue à la côte (M nautiques)',
@@ -167,12 +188,19 @@ export const QUESTIONS = [
         id: 'urgence_num',
         label: "Numéro d'urgence (bouton URGENCE et fiche)",
         type: 'text',
-        hint: 'Suit le pays du site : 18 en France, 144 en Suisse, sinon le numéro du club ou le 112.',
+        hint: 'Suit le pays du site : 18 en France, 144 en Suisse, 15 en Polynésie, sinon le numéro du club ou le 112.',
         ref: 'CdS A322-78',
       },
       { id: 'o2', label: 'Matériel O₂ vérifié (pression, BAVU, masques) ?', type: 'bool', ref: 'CdS A322-78' },
       { id: 'trousse', label: 'Trousse de secours + couverture isothermique vérifiées ?', type: 'bool' },
       { id: 'eau_potable', label: 'Eau douce potable disponible ?', type: 'bool' },
+      {
+        id: 'o2_litres',
+        label: "Quantité d'oxygène disponible (litres détendus)",
+        type: 'number',
+        hint: 'Au moins 600 L (art. 15).',
+        when: pf,
+      },
       {
         id: 'rappel',
         label: 'Moyen de rappel des plongeurs (pétard, sondeur) ?',

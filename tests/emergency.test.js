@@ -14,8 +14,8 @@ describe("Constantes d'urgence", () => {
     assert.equal(URGENCE_INCONNUE, '112');
   });
 
-  test('URGENCE_PAR_PAYS définit les numéros par défaut pour CH et FR', () => {
-    assert.deepEqual(URGENCE_PAR_PAYS, { CH: '144', FR: '18' });
+  test('URGENCE_PAR_PAYS définit les numéros par défaut pour CH, FR et PF', () => {
+    assert.deepEqual(URGENCE_PAR_PAYS, { CH: '144', FR: '18', PF: '15' });
   });
 });
 
@@ -45,6 +45,18 @@ describe('getEmergencyInfo — numéros secondaires et VHF', () => {
     const info = getEmergencyInfo('FR', '  en MER ');
     assert.ok(info.secondaryNums.includes('196'));
     assert.equal(info.vhf, 'Canal 16 (CROSS)');
+  });
+
+  test('Polynésie française (PF) en mer : JRCC Tahiti et Canal 16 (JRCC Tahiti)', () => {
+    const info = getEmergencyInfo('PF', 'En mer');
+    assert.equal(info.secondaryNums, '+689 40 54 16 16 (JRCC Tahiti, secours en mer)');
+    assert.equal(info.vhf, 'Canal 16 (JRCC Tahiti)');
+  });
+
+  test('Polynésie française (PF) hors mer (ex. Lac) : JRCC Tahiti et vhf null', () => {
+    const info = getEmergencyInfo('PF', 'Lac');
+    assert.equal(info.secondaryNums, '+689 40 54 16 16 (JRCC Tahiti, secours en mer)');
+    assert.equal(info.vhf, null);
   });
 
   test('Pays inconnu ou null : contient 112, vhf null hors mer', () => {

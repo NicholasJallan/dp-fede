@@ -7,6 +7,7 @@ import React, { useState, useMemo, useId } from 'react';
 import { Pill, CdsLink } from '../components/components.jsx';
 import { Icon, StatusIcon } from '../components/icons.jsx';
 import { visibleChecklist, GO_DECISION_ID } from '../app/derive.js';
+import { useDiveRules } from '../app/hooks/use-dive-rules.js';
 
 const TAG_LABELS = {
   meteo: 'Météo',
@@ -129,7 +130,8 @@ function ChecklistItem({ it, checked, comment, onToggle, onComment }) {
 }
 
 function ScreenChecklist({ answers, setAnswer, checked, setChecked, comments, setComment, mode = 'execute' }) {
-  const phases = useMemo(() => visibleChecklist(answers, mode), [answers, mode]);
+  const { rules, ruleAnswers } = useDiveRules(answers);
+  const phases = useMemo(() => visibleChecklist(ruleAnswers, mode, rules), [ruleAnswers, mode, rules]);
   const items = phases.flatMap((p) => p.items);
   const total = items.length;
   const done = items.filter((i) => checked[i.id]).length;

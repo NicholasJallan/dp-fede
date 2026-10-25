@@ -185,7 +185,7 @@ function useAppController() {
     nav,
     theme,
     toggleTheme,
-    progress: checklistProgress(session.answers, session.checked, diveMode),
+    progress: checklistProgress(diveRules.ruleAnswers, session.checked, diveMode, diveRules.rules),
     exit: exitProgress(session.palanquees, session.heuresDebut, session.heuresFin),
   };
 }

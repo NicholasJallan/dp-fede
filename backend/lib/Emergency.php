@@ -9,7 +9,7 @@ declare(strict_types=1);
 final class Emergency
 {
     /** Numéro principal selon le pays du site. */
-    public const array PAR_PAYS = ['CH' => '144', 'FR' => '18'];
+    public const array PAR_PAYS = ['CH' => '144', 'FR' => '18', 'PF' => '15'];
 
     /** Pays inconnu et club sans numéro réglé : valable dans toute l'Europe. */
     public const string INCONNUE = '112';
@@ -22,6 +22,12 @@ final class Emergency
             return [
                 'secondaryNums' => '1414 (REGA · évacuation aérienne) · 117 (Police) · 112 (Europe)',
                 'vhf'           => null,
+            ];
+        }
+        if ($pays === 'PF') {
+            return [
+                'secondaryNums' => '+689 40 54 16 16 (JRCC Tahiti, secours en mer)',
+                'vhf'           => $isMer ? 'Canal 16 (JRCC Tahiti)' : null,
             ];
         }
         if ($pays === 'FR') {

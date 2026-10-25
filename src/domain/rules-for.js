@@ -21,6 +21,7 @@ import {
   pfPalType,
   pfRolesFor,
 } from './pf/pf-ui.js';
+import { PF_CHECKLIST_RULES } from './pf/pf-checklist.js';
 import { validatePalPf } from './pf/pf-rules.js';
 
 const FR_DP_LEVELS = ['E1', 'E2', 'E3', 'E4', 'N5'];
@@ -47,7 +48,7 @@ const FR_RULES = Object.freeze({
 const PF_RULES = Object.freeze({
   jurisdiction: 'PF',
   validatePal: validatePalPf,
-  checklistRules: CHECKLIST_RULES,
+  checklistRules: PF_CHECKLIST_RULES,
   rolesFor: (diver) => pfRolesFor(diver),
   palHardLimit: pfPalHardLimit,
   dpMaxDepth: pfDpMaxDepth,

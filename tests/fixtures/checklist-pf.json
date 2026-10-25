@@ -1,0 +1,133 @@
+{
+  "_doc": "Scénarios de check-list Polynésie française (arrêté n° 199 CM) partagés JS (tests/checklist-pf.test.js) et PHP (backend/tests-php/PfChecklistRulesTest.php) : 'visible' = identifiants affichés, dans l'ordre.",
+  "scenarios": [
+    {
+      "name": "Bateau en mer de nuit",
+      "answers": {
+        "milieu": "En mer",
+        "depart_bateau": true,
+        "plongee_nuit": true
+      },
+      "visible": [
+        "pf1_meteo",
+        "pf1_affichage",
+        "pf1_blocs",
+        "pf1_gonflage",
+        "pf1_entretien",
+        "pf1_plan_secours",
+        "pf1_o2",
+        "pf1_bavu",
+        "pf1_trousse",
+        "pf1_fiches",
+        "pf1_bloc_secours",
+        "pf1_registre_secours",
+        "pf1_aptitudes",
+        "pf1_vhf",
+        "pf1_carburant",
+        "pf2_appel",
+        "pf2_feuille",
+        "pf2_briefing",
+        "pf2_equipement",
+        "pf2_rappel",
+        "pf2_surveillant",
+        "pf2_pavillon",
+        "pf2_nuit",
+        "pf2_echelle",
+        "p2_go_decision"
+      ]
+    },
+    {
+      "name": "Bord en lac",
+      "answers": {
+        "milieu": "Lac",
+        "depart_bord": true
+      },
+      "visible": [
+        "pf1_meteo",
+        "pf1_affichage",
+        "pf1_blocs",
+        "pf1_gonflage",
+        "pf1_entretien",
+        "pf1_plan_secours",
+        "pf1_o2",
+        "pf1_bavu",
+        "pf1_trousse",
+        "pf1_fiches",
+        "pf1_bloc_secours",
+        "pf1_registre_secours",
+        "pf1_aptitudes",
+        "pf2_appel",
+        "pf2_feuille",
+        "pf2_briefing",
+        "pf2_equipement",
+        "pf2_bord_entree",
+        "p2_go_decision"
+      ]
+    },
+    {
+      "name": "Trimix profond",
+      "answers": {
+        "milieu": "En mer",
+        "depart_bateau": true,
+        "trimix": true,
+        "prof_max": "70 m"
+      },
+      "visible": [
+        "pf1_meteo",
+        "pf1_affichage",
+        "pf1_blocs",
+        "pf1_gonflage",
+        "pf1_entretien",
+        "pf1_melanges",
+        "pf1_planifs",
+        "pf1_plan_secours",
+        "pf1_o2",
+        "pf1_bavu",
+        "pf1_trousse",
+        "pf1_fiches",
+        "pf1_bloc_secours",
+        "pf1_registre_secours",
+        "pf1_aptitudes",
+        "pf1_vhf",
+        "pf1_carburant",
+        "pf1_shot_line",
+        "pf2_appel",
+        "pf2_feuille",
+        "pf2_briefing",
+        "pf2_equipement",
+        "pf2_rappel",
+        "pf2_surveillant",
+        "pf2_pavillon",
+        "pf2_tx",
+        "pf2_echelle",
+        "p2_go_decision"
+      ]
+    },
+    {
+      "name": "Piscine",
+      "answers": {
+        "milieu": "Piscine",
+        "depart_bord": true
+      },
+      "visible": [
+        "pf1_affichage",
+        "pf1_blocs",
+        "pf1_gonflage",
+        "pf1_entretien",
+        "pf1_plan_secours",
+        "pf1_o2",
+        "pf1_bavu",
+        "pf1_trousse",
+        "pf1_fiches",
+        "pf1_bloc_secours",
+        "pf1_registre_secours",
+        "pf1_aptitudes",
+        "pf2_appel",
+        "pf2_feuille",
+        "pf2_briefing",
+        "pf2_bord_entree",
+        "p2_go_decision"
+      ]
+    }
+  ]
+}

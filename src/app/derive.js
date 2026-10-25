@@ -1,6 +1,6 @@
 // DP Assistant — Valeurs dérivées de la plongée ouverte (pures, sans React).
 
-import { CHECKLIST_RULES, getMilieuType, isBassinDerogation, matchCondition, rulesFor } from '../domain/index.js';
+import { getMilieuType, isBassinDerogation, matchCondition, rulesFor } from '../domain/index.js';
 
 // Notes réglementaires affichées sur l'écran profil.
 export function computeProfilNotes(answers) {
@@ -57,17 +57,17 @@ function itemVisible(it, answers) {
 
 // Phases de check-list affichées pour un mode : 'prepare' → phase 1,
 // 'execute' → phase 2, autre → toutes. Items filtrés par le profil.
-export function visibleChecklist(answers, mode) {
-  return CHECKLIST_RULES.filter((phase) =>
-    mode === 'prepare' ? phase.phase === 1 : mode === 'execute' ? phase.phase === 2 : true,
-  ).map((phase) => ({ ...phase, items: phase.items.filter((it) => itemVisible(it, answers)) }));
+export function visibleChecklist(answers, mode, rules = rulesFor(answers.jurisdiction)) {
+  return rules.checklistRules
+    .filter((phase) => (mode === 'prepare' ? phase.phase === 1 : mode === 'execute' ? phase.phase === 2 : true))
+    .map((phase) => ({ ...phase, items: phase.items.filter((it) => itemVisible(it, answers)) }));
 }
 
 // Progression de la check-list du mode courant : { total, doneCount }.
 // Seuls les items visibles comptent (un item coché puis masqué par le profil
 // ne gonfle plus le compteur).
-export function checklistProgress(answers, checked, mode) {
-  const items = visibleChecklist(answers, mode).flatMap((p) => p.items);
+export function checklistProgress(answers, checked, mode, rules) {
+  const items = visibleChecklist(answers, mode, rules).flatMap((p) => p.items);
   return { total: items.length, doneCount: items.filter((it) => checked[it.id]).length };
 }
 

@@ -10,7 +10,7 @@ import { diveLoadEntries, pfDailyQuotaIssues } from '../src/domain/pf/pf-quota.j
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/daily-quota.json', import.meta.url), 'utf8'));
 
-describe('diveLoadEntries — extraction de la charge d\'une plongée', () => {
+describe("diveLoadEntries — extraction de la charge d'une plongée", () => {
   for (const [idx, item] of fixture.entries.entries()) {
     test(`entries[${idx}] : ${item.desc}`, () => {
       const actual = diveLoadEntries(item.dive);
@@ -18,7 +18,7 @@ describe('diveLoadEntries — extraction de la charge d\'une plongée', () => {
     });
   }
 
-  test('Gère les entrées invalides ou vides sans lever d\'exception', () => {
+  test("Gère les entrées invalides ou vides sans lever d'exception", () => {
     assert.deepEqual(diveLoadEntries(null), []);
     assert.deepEqual(diveLoadEntries({}), []);
     assert.deepEqual(diveLoadEntries({ palanquees: [] }), []);
@@ -33,7 +33,7 @@ describe('pfDailyQuotaIssues — avertissements sur quotas journaliers (art. 5)'
       assert.deepEqual(codes, item.expectedCodes);
 
       for (const issue of issues) {
-        assert.equal(issue.tone, 'warn', 'Les quotas de l\'art. 5 sont des avertissements');
+        assert.equal(issue.tone, 'warn', "Les quotas de l'art. 5 sont des avertissements");
         assert.equal(issue.ref, 'art. 5');
         assert.ok(Array.isArray(issue.ids) && issue.ids.length === 1, 'Chaque issue cible un plongeur précis');
         assert.ok(typeof issue.text === 'string' && issue.text.length > 0);

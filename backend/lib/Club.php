@@ -21,6 +21,9 @@ class Club
     /** 'patente' : moniteur indépendant rémunéré (Polynésie française, LP 18). */
     public const STRUCTURE_TYPES = ['club', 'sca', 'patente', 'csa', 'autre'];
 
+    /** Longueur minimale du nom d'un club créé. */
+    public const MIN_NAME_LENGTH = 2;
+
     /** Numéro d'urgence affiché quand le club n'en a pas défini. */
     public const DEFAULT_URGENCE = '112';
 
@@ -159,10 +162,80 @@ class Club
                 $fields[$field] = in_array($v, self::STRUCTURE_TYPES, true) ? $v : null;
                 continue;
             }
+            if ($field === 'nom') $v = self::normalizeName($v);
+            if ($field === 'numero_ffessm' || $field === 'siret') $v = self::normalizeIdentifier($v);
             $nullable = !in_array($field, ['nom', 'numero_ffessm', 'siret'], true);
             $fields[$field] = ($v === '' && $nullable) ? null : $v;
         }
         return [$fields, $errors];
+    }
+
+    /** Nom d'un club : espaces superflus retirés (« Bulles  en Valais » → « Bulles en Valais »). */
+    public static function normalizeName(string $nom): string
+    {
+        return trim((string)preg_replace('/\s+/u', ' ', $nom));
+    }
+
+    /**
+     * Numéro de club (FFESSM, agrément SCA, FPESSM) ou SIRET / N° TAHITI :
+     * sans espaces, points, tirets ni barres obliques, en majuscules
+     * (« 06 13 0045 » → « 06130045 »). Même règle que la migration 014.
+     */
+    public static function normalizeIdentifier(string $value): string
+    {
+        return mb_strtoupper((string)preg_replace('#[\s./-]+#u', '', $value));
+    }
+
+    /**
+     * Valide les champs d'un NOUVEAU club : nom obligatoire, type de
+     * structure connu. Les autres champs suivent sanitizeClubFields.
+     *
+     * @return array{0: array<string,string|null>, 1: string[]} [champs, erreurs]
+     */
+    public static function sanitizeNewClub(array $input): array
+    {
+        [$fields, $errors] = self::sanitizeClubFields($input);
+        if (mb_strlen((string)($fields['nom'] ?? '')) < self::MIN_NAME_LENGTH) {
+            $errors[] = 'Nom du club obligatoire (' . self::MIN_NAME_LENGTH . ' caractères au moins)';
+        }
+        if (($fields['structure_type'] ?? null) === null) {
+            $errors[] = 'Type de structure obligatoire (' . implode(', ', self::STRUCTURE_TYPES) . ')';
+        }
+        $fields['jurisdiction'] = $fields['jurisdiction'] ?? Jurisdiction::DEFAULT;
+        return [$fields, $errors];
+    }
+
+    /**
+     * Champ du club qui identifie un club de façon unique et message du refus.
+     * Clé = colonne, valeur = code d'erreur stable et message.
+     */
+    public const IDENTITY_FIELDS = [
+        'nom'           => ['code' => 'CLUB_NAME_TAKEN', 'message' => 'Un club porte déjà ce nom'],
+        'numero_ffessm' => ['code' => 'CLUB_NUMBER_TAKEN', 'message' => 'Ce numéro de club est déjà enregistré pour un autre club'],
+        'siret'         => ['code' => 'CLUB_SIRET_TAKEN', 'message' => 'Ce SIRET (ou N° TAHITI) est déjà enregistré pour un autre club'],
+    ];
+
+    /** Index UNIQUE (migration 014) → colonne contrôlée. */
+    private const IDENTITY_INDEXES = [
+        'uq_clubs_nom'    => 'nom',
+        'uq_clubs_numero' => 'numero_ffessm',
+        'uq_clubs_siret'  => 'siret',
+    ];
+
+    /**
+     * Refus correspondant à une violation d'unicité MariaDB (création
+     * simultanée), ou null si l'exception n'en est pas une.
+     *
+     * @return array{code:string, message:string}|null
+     */
+    public static function identityConflictFromException(\Throwable $e): ?array
+    {
+        if (!$e instanceof PDOException || (string)$e->getCode() !== '23000') return null;
+        // « for key 'uq_clubs_nom' » (MariaDB) ou « 'clubs.uq_clubs_nom' » (MySQL 8).
+        foreach (self::IDENTITY_INDEXES as $index => $field) {
+            if (strpos($e->getMessage(), "{$index}'") !== false) return self::IDENTITY_FIELDS[$field];
+        }
+        return null;
     }
 
     /** Vrai si la mise à jour modifie au moins un champ du club. */
@@ -292,7 +365,10 @@ class Club
     /** Représentation publique d'un club (sans marqueurs de reprise, dates ISO). */
     public static function publicClub(array $club): array
     {
-        unset($club['auto_created_for'], $club['legacy_workspace_id'], $club['deleted_at'], $club['retention_until']);
+        unset(
+            $club['auto_created_for'], $club['legacy_workspace_id'], $club['deleted_at'], $club['retention_until'],
+            $club['nom_unique'], $club['numero_unique'], $club['siret_unique']
+        );
         foreach (['created_at', 'updated_at'] as $k) {
             if (array_key_exists($k, $club)) $club[$k] = SyncHelpers::toIso($club[$k]);
         }
@@ -301,7 +377,11 @@ class Club
 
     /**
      * Crée le club personnel d'un utilisateur sans club (nouveau compte, ou
-     * compte retiré de tous ses clubs). Reprend les anciens champs users.club_*.
+     * compte retiré de tous ses clubs). Reprend les anciens champs users.club_*
+     * SAUF le nom, le numéro de club et le SIRET : uniques depuis la migration
+     * 014, ils désignent le vrai club, que l'utilisateur rejoint ou crée depuis
+     * l'annuaire (un INSERT IGNORE les heurtant serait ignoré, et l'INSERT de
+     * repli échouerait à chaque requête). Le club personnel reste sans nom.
      * Robuste aux requêtes concurrentes grâce à UNIQUE(auto_created_for).
      */
     public static function createPersonalClub(array $user): string
@@ -357,9 +437,9 @@ class Club
     {
         return [
             $id,
-            (string)($user['club_nom'] ?? ''),
-            (string)($user['club_numero'] ?? ''),
-            (string)($user['club_siret'] ?? ''),
+            '',
+            '',
+            '',
             $user['structure_type'] ?? null,
             $user['president_prenom'] ?? null,
             $user['president_nom'] ?? null,
@@ -489,6 +569,7 @@ class Club
             'divers'             => $run('DELETE FROM divers WHERE club_id=?'),
             'sites'              => $run('DELETE FROM sites WHERE club_id=?'),
             'club_invitations'   => $run('DELETE FROM club_invitations WHERE club_id=?'),
+            'club_join_requests' => $run('DELETE FROM club_join_requests WHERE club_id=?'),
             'users_current'      => $run('UPDATE users SET current_club_id=NULL WHERE current_club_id=?'),
             'club_members'       => $run('DELETE FROM club_members WHERE club_id=?'),
             'clubs'              => $run('DELETE FROM clubs WHERE id=?'),
@@ -516,15 +597,18 @@ class Club
      * Supprime les clubs personnels VIDES de l'utilisateur dont il est le seul
      * membre (appelé après l'acceptation d'une invitation : le club créé
      * automatiquement à la première connexion n'a plus d'objet).
+     * $unnamedOnly : seulement ceux dont le nom n'a jamais été renseigné
+     * (création d'un club, adhésion acceptée : un club personnel que
+     * l'utilisateur a nommé reste le sien).
      *
      * @return string[] identifiants des clubs supprimés
      */
-    public static function removeEmptyPersonalClubs(int $userId, string $keepClubId): array
+    public static function removeEmptyPersonalClubs(int $userId, string $keepClubId, bool $unnamedOnly = false): array
     {
         $rows = Db::all(
             'SELECT c.id FROM clubs c
                JOIN club_members m ON m.club_id = c.id AND m.user_id = ?
-              WHERE c.auto_created_for = ? AND c.id <> ?
+              WHERE c.auto_created_for = ? AND c.id <> ?' . ($unnamedOnly ? " AND c.nom = ''" : '') . '
                 AND (SELECT COUNT(*) FROM club_members m2 WHERE m2.club_id = c.id) = 1',
             [$userId, $userId, $keepClubId]
         );

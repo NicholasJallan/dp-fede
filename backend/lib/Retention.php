@@ -127,6 +127,13 @@ class Retention
                 '(accepted_at IS NOT NULL OR revoked_at IS NOT NULL OR expires_at < NOW()) AND created_at < ?',
                 [self::cutoff($now, self::CLOSED_INVITATIONS_DAYS, 'days')]
             ),
+            // Demandes d'adhésion traitées : affichées 30 jours au demandeur, puis purgées.
+            'join_requests_closed' => self::countOrDelete(
+                $dry,
+                'club_join_requests',
+                "status <> 'pending' AND decided_at < ?",
+                [self::cutoff($now, ClubJoinRequest::RECENT_DAYS, 'days')]
+            ),
         ];
 
         if ($opts['soft_deleted_days'] > 0) {

@@ -164,7 +164,7 @@ Permission `club.read`.
   },
   "role": "responsable",
   "permissions": { "club.read": true, "club.manage": true, "divers.write": true, "…": true },
-  "counts": { "members": 3, "divers": 84, "sites": 12, "dives": 40, "dives_archived": 31 },
+  "counts": { "members": 3, "divers": 84, "sites": 12, "dives": 40, "dives_archived": 31, "join_requests": 1 },
   "clubs_count": 1
 }
 ```
@@ -176,7 +176,100 @@ Permission `club.manage`. Corps : n'importe quel sous-ensemble de
 `structure_type` (`club` \| `sca` \| `csa` \| `autre`, autre valeur → `null`),
 `president_prenom` (≤ 100), `president_nom` (≤ 100), `president_tel` (≤ 30),
 `urgence_defaut` (≤ 20). Réponse : comme `GET /api/club`.
-Erreurs : `422` (longueur, aucun champ).
+Erreurs : `422` (longueur, aucun champ) ; `409 CLUB_NAME_TAKEN`,
+`CLUB_NUMBER_TAKEN`, `CLUB_SIRET_TAKEN` (cf. « Annuaire des clubs »).
+Même contrôle pour les anciens champs `club_*` de `PATCH /api/auth/account`.
+
+`counts.join_requests` : demandes d'adhésion en attente (`null` hors
+responsable).
+
+## Annuaire des clubs
+
+Un club actif ne partage **ni son nom, ni son numéro de club**
+(`numero_ffessm` : FFESSM, agrément SCA, FPESSM), **ni son `siret`**
+(N° TAHITI en Polynésie) avec un autre club actif. Le nom est comparé sans
+casse ni accents (« Bulles » = « bullés ») ; les valeurs vides ne sont pas
+contrôlées (club personnel pas encore renseigné) ; un club supprimé libère
+ses valeurs. Normalisation à l'écriture : nom sans espaces superflus,
+numéros sans espaces, points, tirets ni `/`, en majuscules
+(`Club::normalizeName` / `normalizeIdentifier` ↔ `src/club/directory.js`,
+fixture `tests/fixtures/club-identity.json`). Index `UNIQUE` sur colonnes
+générées (migration 014) contre les créations simultanées.
+
+Les clubs personnels jamais nommés (créés à la première connexion)
+n'apparaissent pas dans l'annuaire. Ces routes n'exigent pas de club courant.
+
+### `GET /api/clubs?q=…` — annuaire
+
+Authentifié. Clubs actifs et nommés, par nom (500 au plus) ; `q` filtre sur
+le nom (sans casse ni accents) ou le numéro de club.
+
+```json
+{
+  "clubs": [
+    {
+      "club_id": "…",
+      "nom": "Bulles en Valais",
+      "numero_ffessm": "06123456",
+      "structure_type": "club",
+      "jurisdiction": "FR",
+      "members_count": 3,
+      "is_member": false,
+      "pending_request_id": null
+    }
+  ]
+}
+```
+
+### `POST /api/clubs` — créer un club
+
+Authentifié. Corps : champs de `PATCH /api/club`, avec `nom` (≥ 2
+caractères) et `structure_type` obligatoires ; `jurisdiction` vaut `FR` par
+défaut. Le créateur devient **responsable** et le club devient son club
+courant ; son club personnel **vide et jamais nommé** est supprimé.
+Réponse `201` : comme `GET /api/club` + `removed_empty_clubs`. Erreurs :
+`422`, `409 CLUB_NAME_TAKEN` / `CLUB_NUMBER_TAKEN` / `CLUB_SIRET_TAKEN`,
+`429` (5 créations / heure / compte).
+
+### Demandes d'adhésion
+
+Une seule demande **en attente** par (club, utilisateur). Le responsable
+l'accepte en choisissant le rôle, ou la refuse ; le demandeur voit ses
+demandes traitées pendant 30 jours (puis `bin/purge.php` les supprime).
+
+#### `POST /api/clubs/:id/join-requests`
+
+Authentifié. Corps `{ "message": "…" }` (facultatif, ≤ 500). Réponse `201` :
+`{ id, club_id, club_nom, status: "pending", role: null, message, created_at, decided_at }`.
+Erreurs : `404 CLUB_NOT_FOUND` (club inconnu, supprimé ou sans nom),
+`409 ALREADY_MEMBER`, `409 JOIN_REQUEST_PENDING`, `422` (message),
+`429` (10 demandes en attente par compte, 50 par club, 20 envois / heure).
+
+#### `GET /api/clubs/join-requests` — mes demandes
+
+`{ "requests": [ … ] }` : en attente, et acceptées / refusées depuis moins de
+30 jours (`status`, `role` attribué, `decided_at`).
+
+#### `DELETE /api/clubs/join-requests/:id` — retirer ma demande
+
+Seulement en attente ; sinon `404 JOIN_REQUEST_NOT_FOUND`.
+
+#### `GET /api/club/join-requests` — demandes reçues
+
+Permission `club.manage`. Demandes en attente du club courant :
+`{ "requests": [{ id, user_id, nom, prenom, email, avatar_url, message, created_at }] }`.
+
+#### `POST /api/club/join-requests/:id/accept` · `…/refuse`
+
+Permission `club.manage`. `accept` : corps `{ "role": "dp" }` (`lecture` par
+défaut) ; un membre existant garde son rôle. Le club rejoint devient le club
+courant du demandeur s'il n'en a pas ou s'il était sur son club personnel
+jamais nommé (détecté par son appareil via `GET /api/sync/state`). Ce club
+personnel est **conservé** : l'appareil du demandeur peut encore avoir des
+saisies hors ligne en file pour lui.
+Réponse : `{ id, status, user_id, role }`. Demande déjà traitée ou retirée :
+`404 JOIN_REQUEST_NOT_FOUND`. La décision est prise sous verrou (deux
+responsables ne traitent pas deux fois la même demande).
 
 ### `DELETE /api/club` — supprimer le club
 
@@ -593,11 +686,17 @@ libellé.
 | 403  | `CLUB_ROLE_FORBIDDEN`     | rôle insuffisant dans le club                                                                                                             |
 | 403  | `CLUB_NOT_MEMBER`         | `X-DP-Club` désigne un club dont l'utilisateur n'est pas (plus) membre → resynchroniser le club courant                                   |
 | 404  | `MEMBER_NOT_FOUND`        | membre du club introuvable                                                                                                                |
+| 404  | `CLUB_NOT_FOUND`          | club de l'annuaire introuvable (supprimé, ou personnel sans nom)                                                                          |
+| 404  | `JOIN_REQUEST_NOT_FOUND`  | demande d'adhésion introuvable, déjà traitée ou retirée                                                                                   |
 | 409  | `CLIENT_UUID_CONFLICT`    | `client_uuid` d'une plongée d'un autre club ou supprimée                                                                                  |
 | 409  | `EMPTY_OVERWRITE_REFUSED` | PATCH qui viderait une plongée existante (answers et palanquees vides)                                                                    |
 | 409  | `LAST_RESPONSABLE`        | le club doit garder un responsable (rôle, retrait, suppression de compte)                                                                 |
 | 409  | `LAST_ADMIN`              | seul administrateur de l'application                                                                                                      |
-| 409  | `ALREADY_MEMBER`          | invitation d'une personne déjà membre                                                                                                     |
+| 409  | `ALREADY_MEMBER`          | invitation (ou demande d'adhésion) d'une personne déjà membre                                                                             |
+| 409  | `JOIN_REQUEST_PENDING`    | une demande d'adhésion est déjà en attente pour ce club                                                                                   |
+| 409  | `CLUB_NAME_TAKEN`         | nom déjà porté par un autre club actif (sans casse ni accents)                                                                            |
+| 409  | `CLUB_NUMBER_TAKEN`       | numéro de club (FFESSM, agrément SCA, FPESSM) déjà enregistré pour un autre club                                                          |
+| 409  | `CLUB_SIRET_TAKEN`        | SIRET ou N° TAHITI déjà enregistré pour un autre club                                                                                     |
 | 409  | `DIVE_NOT_ARCHIVED`       | documents demandés pour une plongée non archivée                                                                                          |
 | 409  | `DOCUMENTS_COMPLETE`      | régénération refusée : documents complets et intègres                                                                                     |
 | 409  | `DOCUMENTS_PENDING`       | régénération refusée : génération en cours                                                                                                |

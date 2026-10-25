@@ -1,0 +1,19 @@
+{
+  "_doc": "Normalisation du nom et des identifiants d'un club, commune à src/club/directory.js et Club::normalizeName / normalizeIdentifier (PHP) — même règle que la migration 014.",
+  "names": [
+    ["Bulles en Valais", "Bulles en Valais"],
+    ["  Bulles   en Valais  ", "Bulles en Valais"],
+    ["Club\tde\nplongée", "Club de plongée"],
+    ["", ""],
+    ["   ", ""]
+  ],
+  "identifiers": [
+    ["06130045", "06130045"],
+    ["06 13 0045", "06130045"],
+    ["02.59-0049c", "02590049C"],
+    ["123 456 789 00012", "12345678900012"],
+    ["a12/345 b", "A12345B"],
+    ["", ""],
+    [" - ", ""]
+  ]
+}

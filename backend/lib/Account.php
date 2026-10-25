@@ -64,7 +64,8 @@ class Account
         array $sessions,
         string $generatedAt,
         array $clubs = [],
-        array $invitations = []
+        array $invitations = [],
+        array $joinRequests = []
     ): array {
         unset($user['google_sub']);
         return [
@@ -73,6 +74,7 @@ class Account
             'account'      => $user,
             'clubs'        => $clubs,
             'invitations'  => array_map([self::class, 'exportInvitation'], $invitations),
+            'join_requests' => $joinRequests,
             'divers'       => array_map([self::class, 'exportDiver'], $divers),
             'sites'        => array_map([self::class, 'exportSite'], $sites),
             'dives'        => array_map([self::class, 'exportDive'], $dives),
@@ -129,7 +131,7 @@ class Account
 
     /**
      * Données personnelles du compte : profil, adhésions aux clubs (avec les
-     * informations du club), invitations envoyées, et les fiches dont il est
+     * informations du club), invitations envoyées, demandes d'adhésion, et les fiches dont il est
      * l'AUTEUR (plongeurs, sites, plongées + métadonnées des PDF archivés).
      * Les données d'un club saisies par d'autres membres relèvent du club.
      */
@@ -144,6 +146,12 @@ class Account
             [$userId]
         );
         $invitations = Db::all('SELECT * FROM club_invitations WHERE invited_by=? ORDER BY created_at', [$userId]);
+        $joinRequests = Db::all(
+            'SELECT r.id, r.club_id, c.nom AS club_nom, r.message, r.status, r.role, r.created_at, r.decided_at
+               FROM club_join_requests r LEFT JOIN clubs c ON c.id = r.club_id
+              WHERE r.user_id=? ORDER BY r.created_at',
+            [$userId]
+        );
         $divers = Db::all('SELECT * FROM divers WHERE user_id=? ORDER BY nom, prenom', [$userId]);
         $sites  = Db::all('SELECT * FROM sites WHERE user_id=? ORDER BY nom', [$userId]);
         $dives  = Db::all(
@@ -170,7 +178,7 @@ class Account
             'SELECT id, ip_addr, user_agent, created_at, expires_at FROM sessions WHERE user_id=? ORDER BY created_at',
             [$userId]
         );
-        return self::buildExport($user, $divers, $sites, $dives, $sessions, date('c'), $clubs, $invitations);
+        return self::buildExport($user, $divers, $sites, $dives, $sessions, date('c'), $clubs, $invitations, $joinRequests);
     }
 
     /**
@@ -209,7 +217,8 @@ class Account
      *     conservation légale (ClubRetention) : les fiches archivées de moins
      *     d'un an et les données qu'elles référencent sont conservées dans un
      *     club soft-deleted, tout le reste est supprimé ;
-     *   - ses adhésions, ses invitations en attente (annulées) et ses sessions ;
+     *   - ses adhésions, ses invitations en attente (annulées), ses demandes
+     *     d'adhésion et ses sessions ;
      *   - ses contributions aux clubs partagés RESTENT au club : l'auteur
      *     (user_id) est remis à NULL.
      * L'appelant vérifie au préalable clubBlockers() (seul responsable d'un
@@ -247,6 +256,8 @@ class Account
             $out['sites_anonymized']    = $run('UPDATE sites SET user_id=NULL, updated_at=updated_at WHERE user_id=?');
             $out['dives_anonymized']    = $run('UPDATE dives SET user_id=NULL, updated_at=updated_at WHERE user_id=?');
             $out['invitations_revoked'] = $run('UPDATE club_invitations SET revoked_at=NOW() WHERE invited_by=? AND accepted_at IS NULL AND revoked_at IS NULL');
+            $out['join_requests']       = $run('DELETE FROM club_join_requests WHERE user_id=?');
+            $out['join_decisions']      = $run('UPDATE club_join_requests SET decided_by=NULL WHERE decided_by=?');
             $out['club_members']        = ($out['club_members'] ?? 0) + $run('DELETE FROM club_members WHERE user_id=?');
             $out['sessions']            = $run('DELETE FROM sessions WHERE user_id=?');
             $out['users']               = $run('DELETE FROM users WHERE id=?');

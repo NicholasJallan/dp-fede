@@ -238,6 +238,7 @@ class ClubRetention
             ),
             'sites_anonymized'   => $run('UPDATE sites SET notes=NULL WHERE club_id=?', [$clubId]),
             'club_invitations'   => $run('DELETE FROM club_invitations WHERE club_id=?', [$clubId]),
+            'club_join_requests' => $run('DELETE FROM club_join_requests WHERE club_id=?', [$clubId]),
             'users_current'      => $run('UPDATE users SET current_club_id=NULL WHERE current_club_id=?', [$clubId]),
             'club_members'       => $run('DELETE FROM club_members WHERE club_id=?', [$clubId]),
             // auto_created_for libéré : l'ancien membre pourra recevoir un nouveau club personnel.

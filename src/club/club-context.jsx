@@ -4,6 +4,7 @@
 //   const club = useClub();
 //   club.can('divers.write')   // matrice docs/api-club.md (droits serveur prioritaires)
 //   await club.switchClub(id)  // purge les données locales de l'ancien club puis resynchronise
+//   await club.createClub(f)   // POST /api/clubs : nouveau club courant (responsable)
 //
 // Club quitté ou retiré (403 CLUB_NOT_MEMBER sur n'importe quelle requête,
 // événement dp:clubNotMember) : actions « à revoir » de ce club retirées de
@@ -136,6 +137,8 @@ export function ClubProvider({ children }) {
 
   const switchClub = useCallback(async (clubId) => applyClubChange(await api.club.switch(clubId)), [applyClubChange]);
 
+  const createClub = useCallback(async (fields) => applyClubChange(await api.clubs.create(fields)), [applyClubChange]);
+
   const acceptInvitation = useCallback(
     async (token) => {
       const res = await api.club.invitations.accept(token);
@@ -184,6 +187,7 @@ export function ClubProvider({ children }) {
       can: (permission) => canRole(role, permission, permissions),
       refresh,
       switchClub,
+      createClub,
       acceptInvitation,
       reloadCurrentClub,
       setInfo,
@@ -201,6 +205,7 @@ export function ClubProvider({ children }) {
     error,
     refresh,
     switchClub,
+    createClub,
     acceptInvitation,
     reloadCurrentClub,
     setInfo,
@@ -224,6 +229,7 @@ const NO_CLUB = {
   can: () => true,
   refresh: async () => null,
   switchClub: async () => null,
+  createClub: async () => null,
   acceptInvitation: async () => null,
   reloadCurrentClub: async () => null,
   setInfo: () => {},

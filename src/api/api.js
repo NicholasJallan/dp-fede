@@ -215,9 +215,24 @@ export const api = {
       preview: (token) => apiFetch('/club/invitations/preview', { method: 'POST', body: { token } }),
       accept: (token) => apiFetch('/club/invitations/accept', { method: 'POST', body: { token } }),
     },
+    // Demandes d'adhésion au club courant (responsable).
+    joinRequests: {
+      list: () => apiFetch('/club/join-requests'),
+      accept: (id, role) => apiFetch(`/club/join-requests/${enc(id)}/accept`, { method: 'POST', body: { role } }),
+      refuse: (id) => apiFetch(`/club/join-requests/${enc(id)}/refuse`, { method: 'POST', body: {} }),
+    },
     alerts: (days = 30) => apiFetch(`/club/alerts${query({ days })}`),
     stats: ({ from, to } = {}) => apiFetch(`/club/stats${query({ from, to })}`),
     statsCsv: ({ from, to } = {}) => apiBlob(`/club/stats${query({ from, to, format: 'csv' })}`, 'statistiques.csv'),
+  },
+  // Annuaire des clubs : recherche, création, demandes d'adhésion (côté demandeur).
+  clubs: {
+    search: (q = '') => apiFetch(`/clubs${query({ q: q || undefined })}`),
+    create: (fields) => apiFetch('/clubs', { method: 'POST', body: fields }),
+    requestJoin: (clubId, message) =>
+      apiFetch(`/clubs/${enc(clubId)}/join-requests`, { method: 'POST', body: { message: message || null } }),
+    myRequests: () => apiFetch('/clubs/join-requests'),
+    cancelRequest: (id) => apiFetch(`/clubs/join-requests/${enc(id)}`, { method: 'DELETE', body: {} }),
   },
   account: {
     export: () => apiFetch('/account/export'),

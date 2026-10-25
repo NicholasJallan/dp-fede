@@ -35,6 +35,8 @@ require_once __DIR__ . '/../lib/PdfRender.php';
 require_once __DIR__ . '/../lib/ChecklistRules.php';
 require_once __DIR__ . '/../lib/PfChecklistRules.php';
 require_once __DIR__ . '/../lib/Club.php';
+require_once __DIR__ . '/../lib/ClubDirectory.php';
+require_once __DIR__ . '/../lib/ClubJoinRequest.php';
 require_once __DIR__ . '/../lib/ClubInvitation.php';
 require_once __DIR__ . '/../lib/ClubAlerts.php';
 require_once __DIR__ . '/../lib/DiverValidation.php';

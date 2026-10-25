@@ -85,6 +85,12 @@ d'invitation `#invitation=…` (sessionStorage, fragment retiré de l'URL).
   Rôles responsable / dp / encadrant / lecture (contrat : `docs/api-club.md`) ;
   le front masque les actions non autorisées via `useClub().can(perm)`, le serveur tranche (403).
   Écrans : Club (barre haute + onglets admin), Statistiques, Import (depuis l'annuaire).
+  Annuaire des clubs (`/api/clubs`, `lib/ClubDirectory.php`, `lib/ClubJoinRequest.php` ↔ `src/club/directory.js`) :
+  rejoindre un club sur demande (acceptée par un responsable, qui choisit le rôle) ou en créer un. Nom
+  (sans casse ni accents), numéro de club et SIRET / N° TAHITI uniques parmi les clubs actifs (index UNIQUE
+  sur colonnes générées, migration 014). Les clubs personnels jamais nommés sont hors annuaire ; supprimés
+  (s'ils sont vides) quand l'utilisateur crée un club ou accepte une invitation, mais CONSERVÉS quand un
+  responsable accepte sa demande (action d'un tiers : saisies hors ligne possibles en file pour ce club).
 - Session : cookie HttpOnly SameSite=Lax + CSRF double-submit cookie
 - Premier utilisateur connecté = admin automatiquement
 
@@ -220,7 +226,7 @@ pas la modifier à la main. `PRECACHE_URLS` liste l'app shell : `/`,
 Lancer : `npm test` (utilise `node --test`, Node 20+ requis, zéro dépendance NPM). Contrôles statiques, aussi en CI : `npm run typecheck` (TypeScript, seuls les fichiers `// @ts-check`, types JSDoc de `src/domain/types.js`) et `cd backend && composer phpstan` (PHPStan niveau 5 sur `lib/`, `bin/`, `index.php` ; les `routes/` sont des fichiers inclus, hors analyse). PHPUnit 13.
 Les tests sont des modules ES (`tests/package.json` → `"type": "module"`) qui
 importent directement `src/domain/*` et les fabriques de `src/offline/*`.
-Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **877 tests JS**, 810 PHPUnit, 48 e2e locaux
+Voir [TESTING.md](TESTING.md) pour le détail. Couverture actuelle : **930 tests JS**, 837 PHPUnit, 52 e2e locaux
 (métier FFESSM/Code du Sport + offline : outbox, offline-store, sync, dive-lifecycle, home-buckets + contextualisation check-list par milieu
 
 - socle club : `sync-club.test.js` (X-DP-Club, périmètre club du store), `club-logic.test.js` (droits, alertes, rapport d'import, suppressions)
@@ -284,7 +290,7 @@ Une seule appli ; seul le domaine réglementaire est doublé. Textes de référe
 - `validatePal` vit dans `src/domain/pal-rules.js`. Toute modification doit être accompagnée d'un cas dans `tests/fixtures/pal-rules.json` (lu aussi par PHPUnit — ne pas déplacer ce fichier) et passer `tests/pal-rules.test.js`.
 - Plafond de profondeur d'une palanquée : `computePalHardLimit({...})` de `src/domain/depth-clamp.js` (UN seul endroit). Les 4 anciennes duplications ont été supprimées.
 - Super-administrateur : email unique `nicholas.jallan@gmail.com` (constante `SUPER_ADMIN_EMAIL` de `src/auth/super-admin.js` côté front + `Auth::SUPER_ADMIN_EMAIL` côté back). Le rôle DB `admin` ne donne PAS accès aux endpoints `/api/users/*` — `Auth::requireSuperAdmin()` est requis.
-- **Schéma DB** : géré par `Migrator::run()` (CLI `bin/migrate.php`). Migrations dans `backend/migrations/NNN_*.sql`, appliquées dans l'ordre lexicographique, trackées dans `schema_migrations`. **La production a appliqué 000, 001 et `002_workspaces.sql`** (structures partagées de l'ancienne branche `main`) : ce fichier ne doit jamais changer (empreinte vérifiée par `MigratorTest`) ; nos migrations sont 003 → 011. `007_clubs.sql` reprend les structures en clubs (règles et plan/verify : `lib/LegacyWorkspaces.php`, `bin/workspaces-plan.php`, appelé par `deploy-backend.sh` ; recette MariaDB : `deploy/recette-migration-clubs.php`). Comptes `users.kind='workspace'` : jamais connectables (`Auth::current`), exclus de `/api/users*` et des purges ; `/api/workspaces*` → 410 `WORKSPACES_REPLACED`. Inventaire de la fusion : `docs/integration-upstream.md`. `Db::migrate()` conserve aussi les garde-fous `addColumnIfMissing`/`addIndexIfMissing` pour la compatibilité. Nouvelles modifications → ajouter un fichier `NNN_*.sql`.
+- **Schéma DB** : géré par `Migrator::run()` (CLI `bin/migrate.php`). Migrations dans `backend/migrations/NNN_*.sql`, appliquées dans l'ordre lexicographique, trackées dans `schema_migrations`. **La production a appliqué 000, 001 et `002_workspaces.sql`** (structures partagées de l'ancienne branche `main`) : ce fichier ne doit jamais changer (empreinte vérifiée par `MigratorTest`) ; nos migrations sont 003 → 014. `007_clubs.sql` reprend les structures en clubs (règles et plan/verify : `lib/LegacyWorkspaces.php`, `bin/workspaces-plan.php`, appelé par `deploy-backend.sh` ; recette MariaDB : `deploy/recette-migration-clubs.php`). Comptes `users.kind='workspace'` : jamais connectables (`Auth::current`), exclus de `/api/users*` et des purges ; `/api/workspaces*` → 410 `WORKSPACES_REPLACED`. Inventaire de la fusion : `docs/integration-upstream.md`. `Db::migrate()` conserve aussi les garde-fous `addColumnIfMissing`/`addIndexIfMissing` pour la compatibilité. Nouvelles modifications → ajouter un fichier `NNN_*.sql`.
 - **Écritures des plongées** : `backend/lib/DiveService.php` (`create`, `patch`, `rulesInput`, `rulesErrors`) ; les routes ne font que traduire `DiveRefusal` en JSON. Validation des règles dures sur l'état fusionné à chaque passage en `archived` ; `in_progress` (mise à l'eau, envoyé seul par `use-dive-lifecycle.js`) n'est validé que si le corps porte les palanquées. Tests : `DiveServiceTest` (RecordingPdo).
 - **Table `dives`** : cycle de vie `status ENUM('prepared','in_progress','archived')`. Colonnes : `planned_at`, `started_at`, `closed_at`, `deleted_at`. `render_state` conservé dans `dives` pour backward-compat mais écrits dans `dive_runtime_state` (H4).
 - **Table `dive_runtime_state`** : `(dive_id PK FK, state MEDIUMTEXT, updated_at)`. Écritures render_state (autosave) ici → ne touche PAS `dives.updated_at` (curseur de sync préservé). GET /api/dives/:id fait un LEFT JOIN (COALESCE state/dives.render_state).

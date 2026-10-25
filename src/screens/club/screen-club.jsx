@@ -1,5 +1,6 @@
 // DP Assistant — Écran « Club » : club courant, membres et rôles,
-// invitations, changement de club, départ / suppression.
+// invitations et demandes d'adhésion, changement de club, annuaire des clubs
+// (rejoindre / créer), départ / suppression.
 //
 // Droits (docs/api-club.md) : tout membre consulte ; le responsable
 // (club.manage) modifie les informations, gère membres et invitations.
@@ -18,6 +19,10 @@ import { ClubMembersCard } from './club-members.jsx';
 import { ClubInvitationsCard } from './club-invitations.jsx';
 import { ClubSwitcherCard, useMemberships } from './club-switcher.jsx';
 import { ClubDangerZone } from './club-danger-zone.jsx';
+import { ClubJoinCard, useClubDirectory } from './club-directory.jsx';
+import { ClubCreateCard } from './club-create.jsx';
+import { ClubJoinRequestsCard, useJoinRequests } from './club-join-requests.jsx';
+import { isUnnamedClub } from '../../club/directory.js';
 
 function useMembers(online, clubId) {
   const [members, setMembers] = useState([]);
@@ -40,7 +45,7 @@ function useMembers(online, clubId) {
     if (online) load();
     else setLoading(false);
   }, [online, clubId, load]);
-  return { members, setMembers, invitations, setInvitations, loading, error };
+  return { members, setMembers, invitations, setInvitations, loading, error, reload: load };
 }
 
 function ClubCounts({ counts }) {
@@ -99,6 +104,10 @@ export function ScreenClub({ onNavigate }) {
   const clubs = useMemberships(online, clubId);
   const name = club.club?.nom || user?.club_nom || 'Club sans nom';
   const me = m.members.find((x) => x.is_me);
+  const directory = useClubDirectory(online, clubId);
+  const joins = useJoinRequests(canManage && online, clubId);
+  // Club personnel jamais nommé : l'utilisateur n'a pas encore rejoint ni créé son club.
+  const unattached = !!club.club && isUnnamedClub(club.club) && (club.info?.counts?.members ?? 1) <= 1;
 
   const onSaved = async (payload) => {
     club.setInfo(payload);
@@ -114,6 +123,28 @@ export function ScreenClub({ onNavigate }) {
     });
     onNavigate('home');
   };
+
+  const onCreate = async (fields) => {
+    const res = await club.createClub(fields);
+    showToast({
+      tone: 'ok',
+      title: 'Club créé',
+      body: `Vous êtes responsable de ${res?.club?.nom || 'ce club'}. Complétez sa fiche puis invitez ses membres.`,
+    });
+    window.scrollTo(0, 0);
+  };
+
+  const onJoinAccepted = () => {
+    club.refresh();
+    m.reload();
+  };
+
+  const directoryCards = (
+    <>
+      <ClubJoinCard directory={directory} online={online} />
+      <ClubCreateCard directory={directory} online={online} onCreate={onCreate} />
+    </>
+  );
 
   const onLeft = async () => {
     try {
@@ -142,7 +173,22 @@ export function ScreenClub({ onNavigate }) {
           {describeApiError(club.error, 'consulter le club')}
         </Alert>
       )}
+      {unattached && (
+        <Notice tone="signal" title="Rattachez-vous à votre club">
+          Votre compte n'appartient encore à aucun club. Demandez à rejoindre le vôtre dans l'annuaire ci-dessous, ou
+          créez-le s'il n'y figure pas encore.
+        </Notice>
+      )}
+      {unattached && directoryCards}
       <ClubCounts counts={club.info?.counts} />
+      {canManage && (
+        <ClubJoinRequestsCard
+          requests={joins.requests}
+          setRequests={joins.setRequests}
+          online={online}
+          onAccepted={onJoinAccepted}
+        />
+      )}
       {clubs && clubs.length > 1 && (
         <ClubSwitcherCard clubs={clubs} online={online} currentName={name} onSwitch={onSwitch} />
       )}
@@ -166,6 +212,7 @@ export function ScreenClub({ onNavigate }) {
           <StatusIcon tone="info" /> Pour inviter quelqu'un ou changer un rôle, adressez-vous au responsable du club.
         </p>
       )}
+      {!unattached && directoryCards}
       <ClubDangerZone
         clubName={name}
         myUserId={me?.user_id ?? null}

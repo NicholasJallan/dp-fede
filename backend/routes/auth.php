@@ -64,7 +64,7 @@ if ($method === 'PATCH' && $path === '/api/auth/account') {
     $changed = Club::changedFields($club, $clubFields);
     if ($changed) {
         Club::requirePermission($user, 'club.manage');
-        Club::update((string)$user['club_id'], $changed);
+        ClubDirectory::updateOrAbort((string)$user['club_id'], $changed);
         Log::action('club.updated', ['club_id' => $user['club_id']]);
     }
 

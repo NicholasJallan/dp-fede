@@ -19,6 +19,7 @@ import { useClub } from '../club/club-context.jsx';
 import { useClubAlerts } from '../club/use-club-alerts.js';
 import { roleLabel } from '../club/permissions.js';
 import { AlertsBanner } from './alerts/club-alerts.jsx';
+import { ClubHomeNotices } from './club/club-notices.jsx';
 
 const diveKey = (d) => d.client_uuid || d.id;
 
@@ -314,6 +315,8 @@ function ScreenHome({ onNew, onLoadDive, onStartExecution, onDeleteDive, onClone
       <HomeConsole user={user} driveAuth={driveAuth} onNew={handleNew} canWrite={canWrite} role={club.role} />
 
       {inProgress.length > 0 && canWrite && <ResumeCard dives={inProgress} onResume={onLoadDive} />}
+
+      <ClubHomeNotices onOpenClub={() => onNavigate('club')} />
 
       <AlertsBanner data={alerts.data} onOpen={() => onNavigate('admin-divers')} />
 

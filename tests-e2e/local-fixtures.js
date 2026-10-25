@@ -282,10 +282,10 @@ const ok = (data, status = 200) => ({
   contentType: 'application/json',
   body: JSON.stringify({ ok: true, data }),
 });
-const fail = (status, error) => ({
+const fail = (status, error, code) => ({
   status,
   contentType: 'application/json',
-  body: JSON.stringify({ ok: false, error }),
+  body: JSON.stringify({ ok: false, error, ...(code ? { code } : {}) }),
 });
 
 function findDive(state, key) {
@@ -381,7 +381,14 @@ function clubPayload(state) {
     club,
     role: state.role,
     permissions: Object.fromEntries(all.map((p) => [p, (PERMS[state.role] || all).includes(p)])),
-    counts: { members: state.members.length, divers: DIVERS.length, sites: SITES.length, dives: 4, dives_archived: 1 },
+    counts: {
+      members: state.members.length,
+      divers: DIVERS.length,
+      sites: SITES.length,
+      dives: 4,
+      dives_archived: 1,
+      join_requests: state.role === 'responsable' ? state.joinRequests.length : null,
+    },
     clubs_count: Object.keys(state.clubs).length,
   };
 }
@@ -611,6 +618,121 @@ function memberRoute(method, path, body, state) {
   return ok({ user_id: id, removed: true });
 }
 
+// ── Annuaire des clubs et demandes d'adhésion ──────────────────────────
+const nameKey = (s) =>
+  String(s || '')
+    .normalize('NFD')
+    .replace(/\p{M}+/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+const ANNECY_CLUB_ID = 'c0000000-0000-4000-8000-0000000000a1';
+
+function directory(state) {
+  const own = Object.values(state.clubs)
+    .filter((c) => c.nom)
+    .map((c) => ({
+      club_id: c.id,
+      nom: c.nom,
+      numero_ffessm: c.numero_ffessm,
+      structure_type: c.structure_type,
+      jurisdiction: c.jurisdiction,
+      members_count: 3,
+      is_member: true,
+    }));
+  const others = [
+    {
+      club_id: ANNECY_CLUB_ID,
+      nom: 'Plongée Annecy',
+      numero_ffessm: '07740012',
+      structure_type: 'club',
+      jurisdiction: 'FR',
+      members_count: 12,
+      is_member: false,
+    },
+  ];
+  return [...own, ...others].map((c) => {
+    const pending = state.myJoinRequests.find((r) => r.club_id === c.club_id && r.status === 'pending');
+    return { ...c, pending_request_id: pending ? pending.id : null };
+  });
+}
+
+function clubsRoute(method, path, body, state) {
+  if (path === '/api/clubs' && method === 'GET') return ok({ clubs: directory(state) });
+  if (path === '/api/clubs' && method === 'POST') {
+    if (directory(state).some((c) => nameKey(c.nom) === nameKey(body.nom))) {
+      return fail(409, 'Un club porte déjà ce nom', 'CLUB_NAME_TAKEN');
+    }
+    const id = `c0000000-0000-4000-8000-${String(Object.keys(state.clubs).length).padStart(12, '0')}`;
+    state.clubs[id] = {
+      id,
+      siret: '',
+      president_prenom: '',
+      president_nom: '',
+      president_tel: '',
+      urgence_defaut: '',
+      ...body,
+    };
+    state.createdClubs.push(id);
+    state.currentClub = id;
+    state.role = 'responsable';
+    return ok({ ...clubPayload(state), removed_empty_clubs: [] }, 201);
+  }
+  if (path === '/api/clubs/join-requests') return ok({ requests: state.myJoinRequests });
+  const cancel = /^\/api\/clubs\/join-requests\/(.+)$/.exec(path);
+  if (cancel && method === 'DELETE') {
+    state.myJoinRequests = state.myJoinRequests.filter((r) => r.id !== cancel[1]);
+    return ok({ id: cancel[1], status: 'cancelled' });
+  }
+  const join = /^\/api\/clubs\/([^/]+)\/join-requests$/.exec(path);
+  if (join && method === 'POST') {
+    const club = directory(state).find((c) => c.club_id === join[1]);
+    if (!club) return fail(404, 'Club introuvable', 'CLUB_NOT_FOUND');
+    const request = {
+      id: `jr-${state.myJoinRequests.length + 1}`,
+      club_id: club.club_id,
+      club_nom: club.nom,
+      status: 'pending',
+      role: null,
+      message: body.message,
+      created_at: '2026-10-25T10:00:00',
+      decided_at: null,
+    };
+    state.myJoinRequests.push(request);
+    return ok(request, 201);
+  }
+  return fail(404, 'Route clubs inconnue');
+}
+
+function joinRequestRoute(method, path, body, state) {
+  if (path === '/api/club/join-requests') return ok({ requests: state.joinRequests });
+  const m = /^\/api\/club\/join-requests\/([^/]+)\/(accept|refuse)$/.exec(path);
+  if (!m || method !== 'POST') return fail(404, 'Route inconnue');
+  const request = state.joinRequests.find((r) => r.id === m[1]);
+  if (!request) return fail(404, 'Demande introuvable ou déjà traitée', 'JOIN_REQUEST_NOT_FOUND');
+  state.joinRequests = state.joinRequests.filter((r) => r.id !== m[1]);
+  state.joinDecisions.push({ id: m[1], action: m[2], role: body.role ?? null });
+  if (m[2] === 'accept') {
+    state.members.push({
+      user_id: request.user_id,
+      role: body.role,
+      nom: request.nom,
+      prenom: request.prenom,
+      email: request.email,
+      joined_at: '2026-10-25T10:00:00',
+      last_seen_at: null,
+      is_me: false,
+    });
+  }
+  return ok({
+    id: m[1],
+    status: m[2] === 'accept' ? 'accepted' : 'refused',
+    user_id: request.user_id,
+    role: body.role,
+  });
+}
+
 function clubRoute(method, path, search, body, state) {
   if (path === '/api/club' && method === 'GET') return ok(clubPayload(state));
   if (path === '/api/club' && method === 'PATCH') {
@@ -637,6 +759,7 @@ function clubRoute(method, path, search, body, state) {
   }
   if (path.startsWith('/api/club/members')) return memberRoute(method, path, body, state);
   if (path.startsWith('/api/club/invitations')) return invitationRoute(method, path, body, state);
+  if (path.startsWith('/api/club/join-requests')) return joinRequestRoute(method, path, body, state);
   if (path === '/api/club/alerts') return ok(ALERTS);
   if (path === '/api/club/stats') {
     if (search.includes('format=csv')) {
@@ -677,7 +800,7 @@ function currentUser(state) {
     ...USER,
     club_id: club.id,
     club_nom: club.nom,
-    club_role: state.currentClub === CLUB_ID ? state.role : 'dp',
+    club_role: state.currentClub === CLUB_ID || state.createdClubs.includes(club.id) ? state.role : 'dp',
     club_jurisdiction: club.jurisdiction || 'FR',
   };
 }
@@ -707,6 +830,7 @@ function apiResponse(method, path, search, body, state) {
   if (path === '/api/sync/state')
     return ok({ club_id: state.currentClub, club_role: state.role, divers: {}, sites: {}, dives: {} });
   if (path.startsWith('/api/dives')) return diveRoute(method, path, search, body, state);
+  if (path.startsWith('/api/clubs')) return clubsRoute(method, path, body, state);
   if (path.startsWith('/api/club')) return clubRoute(method, path, search, body, state);
   if (path === '/api/account' || path === '/api/account/export') return accountRoute(method, state);
   return ok(null);
@@ -746,6 +870,21 @@ function newState() {
     revokedClubs: [],
     unauthorized: false,
     regenerations: [],
+    createdClubs: [],
+    myJoinRequests: [],
+    joinDecisions: [],
+    joinRequests: [
+      {
+        id: 'jr-in-1',
+        user_id: 7,
+        nom: 'Bernard',
+        prenom: 'Léa',
+        email: 'lea.bernard@example.org',
+        avatar_url: null,
+        message: 'Encadrante E2, arrivée cette saison',
+        created_at: '2026-10-24T18:00:00',
+      },
+    ],
   };
 }
 
@@ -797,6 +936,7 @@ module.exports = {
   SITES,
   CLUB_ID,
   OTHER_CLUB_ID,
+  ANNECY_CLUB_ID,
   INVITATION_TOKEN,
   MISMATCH_TOKEN,
   newState,

@@ -33,6 +33,7 @@ const {
   mockBackend,
   CLUB_ID,
   OTHER_CLUB_ID,
+  ANNECY_CLUB_ID,
   INVITATION_TOKEN,
   MISMATCH_TOKEN,
 } = require('./local-fixtures.js');
@@ -614,6 +615,91 @@ test.describe('build local — socle club', () => {
     expect(state.currentClub).toBe(OTHER_CLUB_ID);
     const localClub = await page.evaluate(() => localStorage.getItem('dp-club-id'));
     expect(localClub).toBe(OTHER_CLUB_ID);
+  });
+
+  test("annuaire des clubs : demande d'adhésion envoyée puis retirée", async ({ page }) => {
+    const errors = trackErrors(page);
+    await openHome(page);
+    await openTopbar(page, 'Club');
+    const card = page.locator('section.card', { has: page.getByRole('heading', { name: 'Rejoindre un club' }) });
+    await card.getByRole('searchbox', { name: 'Rechercher un club' }).fill('annecy');
+    const row = card.locator('.club-switch-row', { hasText: 'Plongée Annecy' });
+    await expect(card.locator('.club-switch-row')).toHaveCount(1);
+    await row.getByRole('button', { name: 'Demander à rejoindre' }).click();
+    const dlg = page.getByRole('dialog', { name: 'Rejoindre Plongée Annecy ?' });
+    await dlg.getByLabel('Message pour le responsable (facultatif)').fill('DP N5, licencié au club');
+    await dlg.getByRole('button', { name: 'Envoyer la demande' }).click();
+    await expect(dlg).toBeHidden();
+    await expect(row).toContainText('Demande envoyée');
+    expect(state.myJoinRequests[0]).toMatchObject({ club_id: ANNECY_CLUB_ID, message: 'DP N5, licencié au club' });
+
+    await row.getByRole('button', { name: 'Retirer' }).click();
+    await expect(row.getByRole('button', { name: 'Demander à rejoindre' })).toBeVisible();
+    expect(state.myJoinRequests).toEqual([]);
+    // Mes clubs : déjà membre, pas de bouton de demande.
+    await card.getByRole('searchbox', { name: 'Rechercher un club' }).fill('bulles du lac');
+    await expect(card.locator('.club-switch-row', { hasText: 'Bulles du Lac' })).toContainText('Déjà membre');
+    expect(errors).toEqual([]);
+  });
+
+  test('création d’un club : nom déjà pris signalé, puis nouveau club courant', async ({ page }) => {
+    const errors = trackErrors(page);
+    await openHome(page);
+    await openTopbar(page, 'Club');
+    const card = page.locator('section.card', { has: page.getByRole('heading', { name: 'Créer un club' }) });
+    await card.getByRole('button', { name: 'Créer un nouveau club' }).click();
+    await card.getByRole('radio', { name: 'Club FFESSM associatif' }).click();
+    const nom = card.getByLabel('Nom du club ou de la structure');
+    await nom.fill('  plongée  ANNECY ');
+    await card.getByRole('button', { name: 'Créer le club' }).click();
+    await expect(card.locator('#new-club-nom-error')).toContainText('Plongée Annecy');
+    expect(state.createdClubs).toEqual([]);
+
+    await nom.fill('Plongée Léman');
+    await card.getByLabel('Numéro de club FFESSM ou agrément SCA').fill('07 74 0099');
+    await card.getByRole('button', { name: 'Créer le club' }).click();
+    await expect(page.locator('.toast')).toContainText('Plongée Léman');
+    await expect(heading(page)).toHaveText('Plongée Léman');
+    // Formulaire refermé (et non bloqué sur « Création… »).
+    await expect(card.getByRole('button', { name: 'Créer un nouveau club' })).toBeVisible();
+    expect(state.createdClubs).toHaveLength(1);
+    expect(state.clubs[state.createdClubs[0]]).toMatchObject({
+      nom: 'Plongée Léman',
+      numero_ffessm: '07740099',
+      structure_type: 'club',
+      jurisdiction: 'FR',
+    });
+    expect(state.currentClub).toBe(state.createdClubs[0]);
+    expect(errors).toEqual([]);
+  });
+
+  test("demandes d'adhésion : bandeau d'accueil puis acceptation avec un rôle", async ({ page }) => {
+    const errors = trackErrors(page);
+    await openHome(page);
+    const notice = page.locator('.notice', { hasText: "1 demande d'adhésion en attente" });
+    await notice.getByRole('button', { name: 'Voir les demandes' }).click();
+    const card = page.locator('section.card', { has: page.getByRole('heading', { name: "Demandes d'adhésion" }) });
+    await expect(card).toContainText('Encadrante E2, arrivée cette saison');
+    await card.getByRole('combobox', { name: 'Rôle de Léa Bernard' }).selectOption('encadrant');
+    await card.getByRole('button', { name: 'Accepter' }).click();
+    await expect(card).toBeHidden();
+    expect(state.joinDecisions).toEqual([{ id: 'jr-in-1', action: 'accept', role: 'encadrant' }]);
+    await expect(page.getByRole('combobox', { name: 'Rôle de Léa Bernard' })).toHaveValue('encadrant');
+    expect(errors).toEqual([]);
+  });
+
+  test('compte rattaché à aucun club : rejoindre ou créer son club', async ({ page }) => {
+    state.clubs[CLUB_ID].nom = '';
+    state.members = state.members.filter((mb) => mb.is_me);
+    await openHome(page);
+    const notice = page.locator('.notice', { hasText: 'Rattachez-vous à votre club' });
+    await notice.getByRole('button', { name: 'Rejoindre ou créer un club' }).click();
+    await expect(page.locator('.notice', { hasText: "Votre compte n'appartient encore à aucun club" })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Rejoindre un club' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Créer un club' })).toBeVisible();
+    // Le club personnel sans nom n'apparaît pas dans l'annuaire.
+    const card = page.locator('section.card', { has: page.getByRole('heading', { name: 'Rejoindre un club' }) });
+    await expect(card.locator('.club-switch-row')).toHaveCount(2);
   });
 
   test("acceptation d'une invitation après connexion", async ({ page }) => {

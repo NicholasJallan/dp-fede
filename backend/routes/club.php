@@ -23,7 +23,7 @@ if (strpos($path, '/api/club') === 0) {
         [$fields, $errors] = Club::sanitizeClubFields(Json::body());
         if ($errors) Json::abort(422, implode('; ', $errors));
         if (!$fields) Json::abort(422, 'Aucun champ à mettre à jour');
-        Club::update((string)$user['club_id'], $fields);
+        ClubDirectory::updateOrAbort((string)$user['club_id'], $fields);
         Log::action('club.updated', ['club_id' => $user['club_id'], 'fields' => array_keys($fields)]);
         Json::ok(clubPayload($user));
     }
@@ -233,6 +233,43 @@ if (strpos($path, '/api/club') === 0) {
         ]);
     }
 
+    // ── Demandes d'adhésion (responsable) ───────────────────────────────────
+
+    // GET /api/club/join-requests — demandes en attente du club courant.
+    if ($method === 'GET' && $path === '/api/club/join-requests') {
+        $user = Auth::require();
+        Club::requirePermission($user, 'club.manage');
+        Json::ok(['requests' => ClubJoinRequest::listForClub((string)$user['club_id'])]);
+    }
+
+    // POST /api/club/join-requests/:id/accept { role } — accepte (rôle choisi, « lecture » par défaut).
+    // POST /api/club/join-requests/:id/refuse — refuse.
+    if ($method === 'POST' && preg_match('#^/api/club/join-requests/([0-9a-fA-F-]{36})/(accept|refuse)$#', $path, $m)) {
+        Csrf::verify();
+        $user = Auth::require();
+        Club::requirePermission($user, 'club.manage');
+        $clubId    = (string)$user['club_id'];
+        $requestId = strtolower($m[1]);
+        if ($m[2] === 'refuse') {
+            if (!ClubJoinRequest::refuse($clubId, $requestId, (int)$user['id'])) {
+                Json::abort(404, 'Demande introuvable ou déjà traitée', 'JOIN_REQUEST_NOT_FOUND');
+            }
+            Log::action('club.join_refused', ['club_id' => $clubId, 'request_id' => $requestId]);
+            Json::ok(['id' => $requestId, 'status' => 'refused']);
+        }
+        $role = (string)(Json::body()['role'] ?? 'lecture');
+        if (!Club::isRole($role)) Json::abort(422, 'Rôle invalide (responsable, dp, encadrant, lecture)');
+        $memberId = ClubJoinRequest::accept($clubId, $requestId, $role, (int)$user['id']);
+        if ($memberId === null) Json::abort(404, 'Demande introuvable ou déjà traitée', 'JOIN_REQUEST_NOT_FOUND');
+        Log::action('club.join_accepted', ['club_id' => $clubId, 'request_id' => $requestId, 'role' => $role]);
+        Json::ok([
+            'id'      => $requestId,
+            'status'  => 'accepted',
+            'user_id' => $memberId,
+            'role'    => Club::memberRole($clubId, $memberId) ?? $role,
+        ]);
+    }
+
     // ── Alertes / statistiques ──────────────────────────────────────────────
 
     // GET /api/club/alerts?days=30 — CACI, licences, autorisations parentales.
@@ -288,6 +325,10 @@ function clubPayload(array $user): array {
             'sites'          => $count('SELECT COUNT(*) AS n FROM sites WHERE club_id=? AND deleted_at IS NULL'),
             'dives'          => $count('SELECT COUNT(*) AS n FROM dives WHERE club_id=? AND deleted_at IS NULL'),
             'dives_archived' => $count("SELECT COUNT(*) AS n FROM dives WHERE club_id=? AND deleted_at IS NULL AND status='archived'"),
+            // Demandes d'adhésion en attente : visibles du seul responsable.
+            'join_requests'  => Club::can($user['club_role'], 'club.manage')
+                ? $count("SELECT COUNT(*) AS n FROM club_join_requests WHERE club_id=? AND status='pending'")
+                : null,
         ],
         'clubs_count' => count(Club::membershipRoles((int)$user['id'])),
     ];

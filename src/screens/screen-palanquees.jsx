@@ -10,6 +10,7 @@ import { Alert } from '../components/components.jsx';
 import { DiverQuickAdd } from '../components/diver-quick-add.jsx';
 import { Icon } from '../components/icons.jsx';
 import {
+  ageAt,
   aptitudeMaxDepth,
   CDS,
   clampProfMax,
@@ -54,15 +55,7 @@ function hardLimitFor(pal, membres, dp, siteMax = Infinity) {
   });
 }
 
-function ageAt(birthIso, whenIso) {
-  if (!birthIso) return null;
-  const b = new Date(birthIso),
-    w = whenIso ? new Date(whenIso) : new Date();
-  if (isNaN(b.getTime())) return null;
-  let age = w.getFullYear() - b.getFullYear();
-  if (w.getMonth() < b.getMonth() || (w.getMonth() === b.getMonth() && w.getDate() < b.getDate())) age -= 1;
-  return age;
-}
+const ageOn = (birthIso, whenIso) => ageAt(birthIso, whenIso ? new Date(whenIso) : new Date());
 
 // DTR prévue suivant un éventuel changement de profondeur (prev → next).
 function withDtrFor(prev, next) {
@@ -110,7 +103,7 @@ function useDerivedAnswers({ palanquees, divers, diversById, answers, setAnswer 
     const hasMinor = palanquees.some((p) =>
       p.membres.some((m) => {
         if (m._bapteme) return false;
-        const age = ageAt(diversById[m.diverId]?.date_naissance, answers.date);
+        const age = ageOn(diversById[m.diverId]?.date_naissance, answers.date);
         return age !== null && age < 18;
       }),
     );

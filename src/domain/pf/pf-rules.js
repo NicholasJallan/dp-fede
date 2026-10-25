@@ -13,7 +13,8 @@
 
 /** @typedef {import('../pal-rules.js').Issue} Issue */
 
-import { ageAt, memberId, memberName, palGas } from '../pal-helpers.js';
+import { getMilieuType } from '../milieu.js';
+import { ageAt, calendarDate, memberId, memberName, palGas } from '../pal-helpers.js';
 import { checkNitrox, checkPressures, checkTrimix, nitroxEleveMax, TRIMIX_MAX, TRIMIX_SPACES } from './pf-gas-rules.js';
 import { pfProfile } from './pf-profile.js';
 import { airLevel, best, ensLevel, gpLevel, hasDp, isEncadrantRole, isNovice, level } from './pf-roles.js';
@@ -56,11 +57,27 @@ const spaceIn = (spaces, profMax) => spaces.find((s) => profMax <= s) ?? null;
 
 /** Pièce datée de moins d'un an à la date de plongée. */
 function validWithinYear(iso, date) {
-  if (!iso) return false;
-  const expiry = new Date(iso);
-  if (isNaN(expiry.getTime())) return false;
+  const expiry = calendarDate(iso);
+  if (!expiry) return false;
   expiry.setFullYear(expiry.getFullYear() + 1);
   return expiry >= date;
+}
+
+const STRUCTURES_LUCRATIVES = ['sca', 'patente']; // LP 5 : bénévolat interdit
+const STAGIAIRE_MAX = 20; // annexe III
+const STAGIAIRE_MAX_AVEC_ENS50 = 40;
+const EAR_MAX = 6; // LP 4
+
+/**
+ * Espace aquatique restreint (LP 4, art. 7) : piscine de 6 m au plus ; une
+ * fosse n'en est un que si sa profondeur (site) est connue et ≤ 6 m.
+ */
+function isEar(answers, profMax) {
+  const type = getMilieuType(answers.milieu);
+  if (profMax > EAR_MAX || (type !== 'piscine' && type !== 'fosse')) return false;
+  const siteMax = Number(answers.site_prof_max);
+  if (siteMax > 0) return siteMax <= EAR_MAX;
+  return type === 'piscine';
 }
 
 function resolveMembres(pal, diversById) {
@@ -143,7 +160,13 @@ function checkDp(ctx, required, add) {
     add('warn', 'DP_MISSING', 'Directeur de plongée non désigné.', 'LP 8');
     return;
   }
-  if (!hasDp(ctx.dpProfile, required)) {
+  // Art. 7 : en espace aquatique restreint, un enseignant (ENS-06 au moins) dirige.
+  const earOk =
+    ctx.ear &&
+    ctx.mode === 'enseignement' &&
+    required === 'DP-40' &&
+    ctx.dpProfile.fonctions.some((f) => ensLevel(f) > 0);
+  if (!hasDp(ctx.dpProfile, required) && !earOk) {
     add(
       'err',
       'PF_DP_LEVEL',
@@ -335,6 +358,63 @@ function checkMedical(ctx, add) {
   }
 }
 
+/** Encadrement rémunéré : structure lucrative, sinon case de la plongée, sinon « patenté ». */
+function isRemunere(ctx, choix, profile) {
+  if (STRUCTURES_LUCRATIVES.includes(ctx.answers.structure_type)) return true;
+  if (typeof choix === 'boolean') return choix;
+  return !!profile?.patente;
+}
+
+/** LP 18 : encadrer contre rémunération exige un diplôme de la liste d'homologation. */
+function checkHomologation(ctx, add) {
+  const sans = ctx.membres.filter(
+    (m) =>
+      !m._bapteme &&
+      isEncadrantRole(m.aptitude) &&
+      isRemunere(ctx, m.remunere, m.profile) &&
+      !m.profile.diplome_homologue,
+  );
+  if (sans.length > 0) {
+    add(
+      'err',
+      'PF_HOMOLOGATION',
+      `${sans.map(memberName).join(', ')} : encadrement rémunéré sans diplôme de la liste d'homologation.`,
+      'LP 18',
+      sans.map(memberId),
+    );
+  }
+  const dp = ctx.dpProfile;
+  if (dp && isRemunere(ctx, ctx.answers.dp_remunere, dp) && !dp.diplome_homologue) {
+    add('err', 'PF_HOMOLOGATION_DP', "Directeur de plongée rémunéré sans diplôme de la liste d'homologation.", 'LP 18');
+  }
+}
+
+/** Annexes II et III : stagiaire sous tuteur ; enseignement limité à 20 m (40 m avec un ENS-50). */
+function checkStagiaires(ctx, add) {
+  const stagiaires = ctx.membres.filter((m) => !m._bapteme && isEncadrantRole(m.aptitude) && m.profile.stagiaire);
+  if (stagiaires.length === 0) return;
+  add(
+    'warn',
+    'PF_STAGIAIRE_TUTEUR',
+    `${stagiaires.map(memberName).join(', ')} : stagiaire, sous le contrôle direct d'un tuteur présent sur les lieux.`,
+    'ann. II / III',
+    stagiaires.map(memberId),
+  );
+  for (const s of stagiaires.filter((m) => ensLevel(m.aptitude) > 0)) {
+    const tuteur = ctx.membres.some((m) => m !== s && ensLevel(m.aptitude) >= 50);
+    const max = tuteur ? STAGIAIRE_MAX_AVEC_ENS50 : STAGIAIRE_MAX;
+    if (ctx.profMax > max) {
+      add(
+        'err',
+        'PF_STAGIAIRE_DEPTH',
+        `${memberName(s)} : stagiaire pédagogique, enseignement limité à ${max} m${tuteur ? ' avec un ENS-50' : ''}.`,
+        'ann. III',
+        [memberId(s)],
+      );
+    }
+  }
+}
+
 function palMode(pal, membres, add) {
   const roles = membres.map((m) => m.aptitude);
   const novices = roles.some(isNovice);
@@ -372,6 +452,7 @@ function buildContext(pal, membres, answers, dp, add) {
     mode,
     gas,
     space,
+    ear: isEar(answers, profMax),
     guide: best(
       encadrants.filter((m) => gpLevel(m.aptitude) > 0),
       gpLevel,
@@ -411,6 +492,8 @@ export function validatePalPf(pal, diversById, answers, dp) {
     if (ctx.gas.nitrox) checkNitrox(ctx, add);
   }
   checkPressures(ctx, add);
+  checkHomologation(ctx, add);
+  checkStagiaires(ctx, add);
   checkMedical(ctx, add);
 
   if (!issues.some((i) => i.tone === 'err')) {

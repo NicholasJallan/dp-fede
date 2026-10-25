@@ -15,6 +15,10 @@ final class PfRules
     private const int AIR_FORMATION_MAX = 60;  // art. 4 et 26
     private const int AGE_AUTONOMIE = 18;      // LP 4
     private const int AUTONOMIE_MAX = 3;       // LP 4
+    private const array STRUCTURES_LUCRATIVES = ['sca', 'patente']; // LP 5
+    private const int STAGIAIRE_MAX = 20;      // annexe III
+    private const int STAGIAIRE_MAX_AVEC_ENS50 = 40;
+    private const int EAR_MAX = 6;             // LP 4
 
     private const array EXPLORATION_SPACES = [12, 20, 30, 40, 50];
     private const array FORMATION_SPACES = [6, 12, 20, 30, 40, 50];
@@ -85,6 +89,8 @@ final class PfRules
             if ($ctx['gas']['nitrox']) PfGasRules::checkNitrox($ctx, $add);
         }
         PfGasRules::checkPressures($ctx, $add);
+        self::checkHomologation($ctx, $add);
+        self::checkStagiaires($ctx, $add);
         self::checkMedical($ctx, $add);
 
         if (!array_filter($issues, static fn(array $i): bool => $i['tone'] === 'err')) {
@@ -156,7 +162,10 @@ final class PfRules
             $add('warn', 'DP_MISSING', 'Directeur de plongée non désigné.', 'LP 8');
             return;
         }
-        if (!PfRoles::hasDp($ctx['dpProfile'], $required)) {
+        // Art. 7 : en espace aquatique restreint, un enseignant (ENS-06 au moins) dirige.
+        $earOk = $ctx['ear'] && $ctx['mode'] === 'enseignement' && $required === 'DP-40'
+            && (bool)array_filter($ctx['dpProfile']['fonctions'], static fn(string $f): bool => PfRoles::ensLevel($f) > 0);
+        if (!PfRoles::hasDp($ctx['dpProfile'], $required) && !$earOk) {
             $add('err', 'PF_DP_LEVEL',
                 "Directeur de plongée {$required} au minimum pour cette palanquée ({$ctx['mode']}, " . PfRoles::fmt($ctx['profMax']) . ' m).',
                 'ann. I');
@@ -274,6 +283,64 @@ final class PfRules
         self::checkDp($ctx, $space === 6 ? 'DP-40' : 'DP-60', $add);
     }
 
+    /** Encadrement rémunéré : structure lucrative, sinon case de la plongée, sinon « patenté ». */
+    private static function isRemunere(array $ctx, mixed $choix, ?array $profile): bool
+    {
+        if (in_array($ctx['answers']['structure_type'] ?? null, self::STRUCTURES_LUCRATIVES, true)) return true;
+        if (is_bool($choix)) return $choix;
+        return !empty($profile['patente']);
+    }
+
+    /** LP 18 : encadrer contre rémunération exige un diplôme de la liste d'homologation. */
+    private static function checkHomologation(array $ctx, callable $add): void
+    {
+        $sans = array_values(array_filter($ctx['membres'], static fn(array $m): bool =>
+            !$m['_bapteme'] && PfRoles::isEncadrantRole($m['aptitude'])
+            && self::isRemunere($ctx, $m['remunere'] ?? null, $m['profile'])
+            && empty($m['profile']['diplome_homologue'])));
+        if ($sans) {
+            $add('err', 'PF_HOMOLOGATION',
+                implode(', ', PfRoles::names($sans)) . " : encadrement rémunéré sans diplôme de la liste d'homologation.",
+                'LP 18', PfRoles::ids($sans));
+        }
+        $dp = $ctx['dpProfile'];
+        if ($dp !== null && self::isRemunere($ctx, $ctx['answers']['dp_remunere'] ?? null, $dp) && empty($dp['diplome_homologue'])) {
+            $add('err', 'PF_HOMOLOGATION_DP', "Directeur de plongée rémunéré sans diplôme de la liste d'homologation.", 'LP 18');
+        }
+    }
+
+    /** Annexes II et III : stagiaire sous tuteur ; enseignement limité à 20 m (40 m avec un ENS-50). */
+    private static function checkStagiaires(array $ctx, callable $add): void
+    {
+        $stagiaires = array_values(array_filter($ctx['membres'], static fn(array $m): bool =>
+            !$m['_bapteme'] && PfRoles::isEncadrantRole($m['aptitude']) && !empty($m['profile']['stagiaire'])));
+        if (!$stagiaires) return;
+        $add('warn', 'PF_STAGIAIRE_TUTEUR',
+            implode(', ', PfRoles::names($stagiaires)) . " : stagiaire, sous le contrôle direct d'un tuteur présent sur les lieux.",
+            'ann. II / III', PfRoles::ids($stagiaires));
+        foreach ($stagiaires as $s) {
+            if (PfRoles::ensLevel($s['aptitude']) === 0) continue;
+            $tuteur = (bool)array_filter($ctx['membres'], static fn(array $m): bool =>
+                $m['_idx'] !== $s['_idx'] && PfRoles::ensLevel($m['aptitude']) >= 50);
+            $max = $tuteur ? self::STAGIAIRE_MAX_AVEC_ENS50 : self::STAGIAIRE_MAX;
+            if ($ctx['profMax'] > $max) {
+                $add('err', 'PF_STAGIAIRE_DEPTH',
+                    PfRoles::memberName($s) . " : stagiaire pédagogique, enseignement limité à {$max} m" . ($tuteur ? ' avec un ENS-50' : '') . '.',
+                    'ann. III', [PfRoles::memberId($s)]);
+            }
+        }
+    }
+
+    /** Espace aquatique restreint (LP 4, art. 7) : piscine ≤ 6 m ; fosse seulement si sa profondeur connue ≤ 6 m. */
+    private static function isEar(array $answers, float $profMax): bool
+    {
+        $type = ChecklistRules::milieuType($answers['milieu'] ?? null);
+        if ($profMax > self::EAR_MAX || ($type !== 'piscine' && $type !== 'fosse')) return false;
+        $siteMax = is_numeric($answers['site_prof_max'] ?? null) ? (float)$answers['site_prof_max'] : 0.0;
+        if ($siteMax > 0) return $siteMax <= self::EAR_MAX;
+        return $type === 'piscine';
+    }
+
     private static function checkMedical(array $ctx, callable $add): void
     {
         foreach ($ctx['membres'] as $m) {
@@ -346,6 +413,8 @@ final class PfRules
             'mode'      => $mode,
             'gas'       => $gas,
             'space'     => $space,
+            'ear'       => self::isEar($answers, $profMax),
+            'answers'   => $answers,
             'guide'     => PfRoles::best(array_values(array_filter($encadrants,
                 static fn(array $m): bool => PfRoles::gpLevel($m['aptitude']) > 0)), [PfRoles::class, 'gpLevel']),
             'enseignant' => PfRoles::best(array_values(array_filter($encadrants,

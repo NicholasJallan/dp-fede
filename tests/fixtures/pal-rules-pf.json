@@ -207,6 +207,58 @@
       },
       "medical": "2026-01-01",
       "date_naissance": "1990-01-01"
+    },
+    "e3_homologue": {
+      "niveau_encadrant": "E3",
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01",
+      "pf": {
+        "fonctions": ["ENS-06", "ENS-20", "ENS-30", "ENS-40", "GP-40"],
+        "diplome_homologue": "DEJEPS"
+      }
+    },
+    "n4_patente": {
+      "niveau_encadrant": "N4",
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01",
+      "pf": {
+        "fonctions": ["GP-40"],
+        "patente": true
+      }
+    },
+    "n4_patente_homologue": {
+      "niveau_encadrant": "N4",
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01",
+      "pf": {
+        "fonctions": ["GP-40"],
+        "patente": true,
+        "diplome_homologue": "BPJEPS"
+      }
+    },
+    "ens20_stagiaire": {
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01",
+      "pf": {
+        "fonctions": ["ENS-06", "ENS-20"],
+        "stagiaire": true
+      }
+    },
+    "ens30_stagiaire": {
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01",
+      "pf": {
+        "fonctions": ["ENS-06", "ENS-20", "ENS-30"],
+        "stagiaire": true
+      }
+    },
+    "gp40_stagiaire": {
+      "medical": "2026-01-01",
+      "date_naissance": "1990-01-01",
+      "pf": {
+        "fonctions": ["GP-40"],
+        "stagiaire": true
+      }
     }
   },
   "dps": {
@@ -216,6 +268,26 @@
     "dp60": { "pf": { "fonctions": ["DP-40", "DP-60"] }, "medical": "2026-01-01" },
     "dp60_pn": { "pf": { "fonctions": ["DP-40", "DP-60"], "gaz": ["PN"] }, "medical": "2026-01-01" },
     "dp60_pnc": { "pf": { "fonctions": ["DP-40", "DP-60"], "gaz": ["PN", "PN-C"] }, "medical": "2026-01-01" },
+    "dp60_homologue": {
+      "pf": {
+        "fonctions": ["DP-40", "DP-60"],
+        "diplome_homologue": "DEJEPS"
+      },
+      "medical": "2026-01-01"
+    },
+    "dp60_patente": {
+      "pf": {
+        "fonctions": ["DP-40", "DP-60"],
+        "patente": true
+      },
+      "medical": "2026-01-01"
+    },
+    "dp_ens06": {
+      "pf": {
+        "fonctions": ["ENS-06"]
+      },
+      "medical": "2026-01-01"
+    },
     "dp70": {
       "pf": { "fonctions": ["DP-40", "DP-60", "DP-70"], "gaz": ["PN", "PN-C", "PTH-50", "PTH-70"] },
       "medical": "2026-01-01"
@@ -1828,6 +1900,317 @@
       },
       "errors": [],
       "warnings": ["PF_PPN2_UNKNOWN"]
+    },
+    {
+      "name": "Homologation SCA : Encadrant et DP sans diplôme homologué → PF_HOMOLOGATION et PF_HOMOLOGATION_DP",
+      "ref": "LP 5 / LP 18",
+      "dp": "dp40",
+      "answers": { "structure_type": "sca" },
+      "pal": {
+        "membres": [
+          ["n4", "GP-40"],
+          ["n1", "PE-12"]
+        ],
+        "profMax": 12
+      },
+      "errors": ["PF_HOMOLOGATION", "PF_HOMOLOGATION_DP"]
+    },
+    {
+      "name": "Homologation SCA : Encadrant et DP avec diplômes homologués → OK",
+      "ref": "LP 18",
+      "dp": "dp60_homologue",
+      "answers": { "structure_type": "sca" },
+      "pal": {
+        "membres": [
+          ["e3_homologue", "ENS-30"],
+          ["n1", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": []
+    },
+    {
+      "name": "Homologation SCA : Plongeurs encadrés non soumis à l'homologation",
+      "ref": "LP 18",
+      "dp": "dp60_homologue",
+      "answers": { "structure_type": "sca" },
+      "pal": {
+        "membres": [
+          ["e3_homologue", "ENS-30"],
+          ["n1", "PE-20"],
+          ["deb", "Débutant"]
+        ],
+        "profMax": 12
+      },
+      "errors": []
+    },
+    {
+      "name": "Homologation patente : Structure patente avec encadrant non homologué → PF_HOMOLOGATION",
+      "ref": "LP 5 / LP 18",
+      "dp": "dp60_homologue",
+      "answers": { "structure_type": "patente" },
+      "pal": {
+        "membres": [
+          ["n4", "GP-40"],
+          ["n1", "PE-12"]
+        ],
+        "profMax": 12
+      },
+      "errors": ["PF_HOMOLOGATION"]
+    },
+    {
+      "name": "Homologation club : Encadrant rémunéré explicitement sans diplôme → PF_HOMOLOGATION",
+      "ref": "LP 18",
+      "dp": "dp40",
+      "answers": { "structure_type": "club" },
+      "pal": {
+        "membres": [
+          ["n4", "GP-40", { "remunere": true }],
+          ["n1", "PE-12"]
+        ],
+        "profMax": 12
+      },
+      "errors": ["PF_HOMOLOGATION"]
+    },
+    {
+      "name": "Homologation club : Encadrant patenté sans statut remunere précisé → présumé rémunéré → PF_HOMOLOGATION",
+      "ref": "LP 18",
+      "dp": "dp40",
+      "answers": { "structure_type": "club" },
+      "pal": {
+        "membres": [
+          ["n4_patente", "GP-40"],
+          ["n1", "PE-12"]
+        ],
+        "profMax": 12
+      },
+      "errors": ["PF_HOMOLOGATION"]
+    },
+    {
+      "name": "Homologation club : Encadrant patenté mais déclaré bénévole remunere false → OK",
+      "ref": "LP 18",
+      "dp": "dp40",
+      "answers": { "structure_type": "club" },
+      "pal": {
+        "membres": [
+          ["n4_patente", "GP-40", { "remunere": false }],
+          ["n1", "PE-12"]
+        ],
+        "profMax": 12
+      },
+      "errors": []
+    },
+    {
+      "name": "Homologation club : DP rémunéré sans diplôme homologué → PF_HOMOLOGATION_DP",
+      "ref": "LP 18",
+      "dp": "dp40",
+      "answers": { "structure_type": "club", "dp_remunere": true },
+      "pal": {
+        "membres": [
+          ["n4", "GP-40"],
+          ["n1", "PE-12"]
+        ],
+        "profMax": 12
+      },
+      "errors": ["PF_HOMOLOGATION_DP"]
+    },
+    {
+      "name": "Homologation club : DP patenté sans statut dp_remunere précisé → PF_HOMOLOGATION_DP",
+      "ref": "LP 18",
+      "dp": "dp60_patente",
+      "answers": { "structure_type": "club" },
+      "pal": {
+        "membres": [
+          ["n4", "GP-40"],
+          ["n1", "PE-12"]
+        ],
+        "profMax": 12
+      },
+      "errors": ["PF_HOMOLOGATION_DP"]
+    },
+    {
+      "name": "Homologation SCA : DP extérieur via dp_qual sans profil complet → PF_HOMOLOGATION_DP",
+      "ref": "LP 18",
+      "dp": null,
+      "answers": { "structure_type": "sca", "dp_qual": "E3" },
+      "pal": {
+        "membres": [
+          ["e3_homologue", "ENS-30"],
+          ["n1", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": ["PF_HOMOLOGATION_DP"]
+    },
+    {
+      "name": "Stagiaire GP : Exploration à 20 m → avertissement tuteur PF_STAGIAIRE_TUTEUR",
+      "ref": "Annexe II",
+      "dp": "dp40",
+      "pal": {
+        "membres": [
+          ["gp40_stagiaire", "GP-40"],
+          ["n1", "PE-20"]
+        ],
+        "profMax": 20
+      },
+      "errors": [],
+      "warnings": ["PF_STAGIAIRE_TUTEUR"]
+    },
+    {
+      "name": "Stagiaire ENS : Formation à 15 m (≤ 20 m) → avertissement tuteur seul",
+      "ref": "Annexe III",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["ens20_stagiaire", "ENS-20"],
+          ["n1", "PE-12"]
+        ],
+        "profMax": 15
+      },
+      "errors": [],
+      "warnings": ["PF_STAGIAIRE_TUTEUR"]
+    },
+    {
+      "name": "Stagiaire ENS : Formation à 25 m sans tuteur dans la palanquée → PF_STAGIAIRE_DEPTH",
+      "ref": "Annexe III",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["ens30_stagiaire", "ENS-30"],
+          ["n2", "PE-20"]
+        ],
+        "profMax": 25
+      },
+      "errors": ["PF_STAGIAIRE_DEPTH"],
+      "warnings": ["PF_STAGIAIRE_TUTEUR"]
+    },
+    {
+      "name": "Stagiaire ENS : Formation à 35 m avec tuteur ENS-50 dans la palanquée (≤ 40 m) → OK",
+      "ref": "Annexe III",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["ens20_stagiaire", "ENS-20"],
+          ["ens50", "ENS-50"],
+          ["n2", "PE-20"]
+        ],
+        "profMax": 35
+      },
+      "errors": [],
+      "warnings": ["PF_STAGIAIRE_TUTEUR"]
+    },
+    {
+      "name": "Stagiaire ENS : Formation à 45 m même avec tuteur ENS-50 (> 40 m) → PF_STAGIAIRE_DEPTH",
+      "ref": "Annexe III",
+      "dp": "dp60",
+      "pal": {
+        "membres": [
+          ["ens20_stagiaire", "ENS-20"],
+          ["ens50", "ENS-50"],
+          ["n3", "PE-40"]
+        ],
+        "profMax": 45
+      },
+      "errors": ["PF_STAGIAIRE_DEPTH"],
+      "warnings": ["PF_STAGIAIRE_TUTEUR"]
+    },
+    {
+      "name": "EAR Piscine 5 m : DP ENS-06 sans DP-40 → OK en EAR",
+      "ref": "Article 7 / LP 4",
+      "dp": "dp_ens06",
+      "answers": { "milieu": "Piscine" },
+      "pal": {
+        "membres": [
+          ["e1", "ENS-06"],
+          ["deb", "Débutant"]
+        ],
+        "profMax": 5
+      },
+      "errors": []
+    },
+    {
+      "name": "Hors EAR : DP ENS-06 sans DP-40 à 5 m en mer → PF_DP_LEVEL",
+      "ref": "Annexe XI",
+      "dp": "dp_ens06",
+      "answers": { "milieu": "En mer" },
+      "pal": {
+        "membres": [
+          ["e1", "ENS-06"],
+          ["deb", "Débutant"]
+        ],
+        "profMax": 5
+      },
+      "errors": ["PF_DP_LEVEL"]
+    },
+    {
+      "name": "Hors EAR : Piscine 8 m (> 6 m) avec DP ENS-06 → PF_DP_LEVEL",
+      "ref": "Article 7",
+      "dp": "dp_ens06",
+      "answers": { "milieu": "Piscine" },
+      "pal": {
+        "membres": [
+          ["e2", "ENS-20"],
+          ["deb", "Débutant"]
+        ],
+        "profMax": 8
+      },
+      "errors": ["PF_DP_LEVEL"]
+    },
+    {
+      "name": "Hors EAR : Piscine à 5 m avec site_prof_max 10 m → PF_DP_LEVEL",
+      "ref": "Article 7",
+      "dp": "dp_ens06",
+      "answers": { "milieu": "Piscine", "site_prof_max": 10 },
+      "pal": {
+        "membres": [
+          ["e1", "ENS-06"],
+          ["deb", "Débutant"]
+        ],
+        "profMax": 5
+      },
+      "errors": ["PF_DP_LEVEL"]
+    },
+    {
+      "name": "Hors EAR : Fosse à 5 m sans site_prof_max (présumée > 6 m) → PF_DP_LEVEL",
+      "ref": "Article 7",
+      "dp": "dp_ens06",
+      "answers": { "milieu": "Fosse" },
+      "pal": {
+        "membres": [
+          ["e1", "ENS-06"],
+          ["deb", "Débutant"]
+        ],
+        "profMax": 5
+      },
+      "errors": ["PF_DP_LEVEL"]
+    },
+    {
+      "name": "EAR Fosse 5 m avec site_prof_max 5 m (≤ 6 m) → OK en EAR",
+      "ref": "Article 7",
+      "dp": "dp_ens06",
+      "answers": { "milieu": "Fosse", "site_prof_max": 5 },
+      "pal": {
+        "membres": [
+          ["e1", "ENS-06"],
+          ["deb", "Débutant"]
+        ],
+        "profMax": 5
+      },
+      "errors": []
+    },
+    {
+      "name": "Hors EAR : Exploration à 5 m en piscine avec DP ENS-06 → PF_DP_LEVEL",
+      "ref": "Article 7 / Annexe X",
+      "dp": "dp_ens06",
+      "answers": { "milieu": "Piscine" },
+      "pal": {
+        "membres": [
+          ["n4", "GP-40"],
+          ["n1", "PE-12"]
+        ],
+        "profMax": 5
+      },
+      "errors": ["PF_DP_LEVEL"]
     }
   ]
 }

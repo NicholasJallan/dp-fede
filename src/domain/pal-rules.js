@@ -31,6 +31,7 @@ import {
   hasGasQual,
   isGpQualified,
   ageAt,
+  calendarDate,
   spaceFor,
   resolveMembres,
   buildContext,
@@ -80,7 +81,8 @@ function checkMedical(ctx, add) {
       ]);
       continue;
     }
-    const expiry = new Date(m.diver.medical);
+    const expiry = calendarDate(m.diver.medical);
+    if (!expiry) continue;
     expiry.setFullYear(expiry.getFullYear() + 1);
     if (expiry < ctx.date) {
       add(

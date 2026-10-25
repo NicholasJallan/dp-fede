@@ -114,10 +114,22 @@ export function isGpQualified(m) {
   return ['N4', 'N5', 'E2', 'E3', 'E4'].includes(d.niveau_encadrant) || (d.aptitudes_sup || []).includes('GP');
 }
 
+/**
+ * Date calendaire « AAAA-MM-JJ… » à minuit LOCAL ; null si invalide.
+ * (`new Date('AAAA-MM-JJ')` donne minuit UTC : la veille à Tahiti, UTC-10.)
+ * @param {unknown} iso
+ * @returns {Date|null}
+ */
+export function calendarDate(iso) {
+  const m = typeof iso === 'string' ? /^(\d{4})-(\d{2})-(\d{2})/.exec(iso) : null;
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d.getMonth() === Number(m[2]) - 1 && d.getDate() === Number(m[3]) ? d : null;
+}
+
 export function ageAt(birthIso, when) {
-  if (!birthIso) return null;
-  const b = new Date(birthIso);
-  if (isNaN(b.getTime())) return null;
+  const b = calendarDate(birthIso);
+  if (!b) return null;
   let age = when.getFullYear() - b.getFullYear();
   const beforeBirthday =
     when.getMonth() < b.getMonth() || (when.getMonth() === b.getMonth() && when.getDate() < b.getDate());

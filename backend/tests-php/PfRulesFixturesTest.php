@@ -60,6 +60,7 @@ class PfRulesFixturesTest extends TestCase
                 continue;
             }
             [$key, $aptitude] = $spec;
+            $extra = is_array($spec[2] ?? null) ? $spec[2] : [];
             $presetKey = explode('#', $key)[0];
             if (!isset($fx['divers'][$presetKey])) {
                 throw new RuntimeException("preset plongeur inconnu : {$key}");
@@ -68,10 +69,10 @@ class PfRulesFixturesTest extends TestCase
                 ['id' => $key, 'nom' => strtoupper($key), 'prenom' => 'Test'],
                 $fx['divers'][$presetKey]
             );
-            $membres[] = ['diverId' => $key, 'aptitude' => $aptitude];
+            $membres[] = array_merge(['diverId' => $key, 'aptitude' => $aptitude], $extra);
         }
         $pal = array_merge(['melanges' => ['Air']], $c['pal'], ['membres' => $membres]);
-        $dp  = $fx['dps'][$c['dp']] ?? null;
+        $dp  = isset($c['dp']) && is_string($c['dp']) ? ($fx['dps'][$c['dp']] ?? null) : null;
         $answers = array_merge(
             $fx['defaults'],
             $c['answers'] ?? []

@@ -20,12 +20,12 @@ function buildCase(c) {
       baptemeSeq += 1;
       return { id: `b${baptemeSeq}`, _bapteme: true, aptitude: 'Baptême', prenom: 'Baptisé', nom: String(baptemeSeq) };
     }
-    const [key, aptitude] = spec;
+    const [key, aptitude, extra] = spec;
     const presetKey = key.split('#')[0];
     const preset = fixtures.divers[presetKey];
     assert.ok(preset, `preset plongeur inconnu : ${key}`);
     diversById[key] = { id: key, nom: key.toUpperCase(), prenom: 'Test', ...preset };
-    return { diverId: key, aptitude };
+    return { diverId: key, aptitude, ...(extra || {}) };
   });
   const pal = { melanges: ['Air'], ...c.pal, membres };
   const dp = fixtures.dps[c.dp] || null;
